@@ -1,5 +1,5 @@
 import type { MoveDef, PoseFrame } from "../../core/types";
-import { JOINT, clamp01, joint, latest, recent } from "../../pose/signals";
+import { JOINT, clamp01, elbowAngle, joint, latest, recent } from "../../pose/signals";
 
 /** Meters the wrist is in front of its shoulder. World z is negative toward the camera. */
 function reach(frame: PoseFrame, side: "left" | "right"): number {
@@ -15,8 +15,10 @@ function handsUp(frame: PoseFrame): boolean {
   return Math.abs(left) < 0.3 && Math.abs(right) < 0.3;
 }
 
+/** True when both hands are close to the chest with the elbows bent. */
 function atChest(frame: PoseFrame): boolean {
-  return handsUp(frame) && reach(frame, "left") < 0.2 && reach(frame, "right") < 0.2;
+  if (!handsUp(frame) || reach(frame, "left") >= 0.2 || reach(frame, "right") >= 0.2) return false;
+  return elbowAngle(frame, "left") < 110 && elbowAngle(frame, "right") < 110;
 }
 
 export const move: MoveDef = {
@@ -29,7 +31,10 @@ export const move: MoveDef = {
   diagram: { leftElbow: [30, 44], leftWrist: [40, 36], rightElbow: [70, 44], rightWrist: [60, 36] },
   detect(history) {
     const frame = latest(history);
-    if (!frame || !handsUp(frame) || !recent(history, 450).some(atChest)) return 0;
+    if (!frame || !handsUp(frame)) return 0;
+    // The arms have to go from bent to straight, so lifting bent arms into a guard is not a push.
+    if (elbowAngle(frame, "left") < 140 || elbowAngle(frame, "right") < 140) return 0;
+    if (!recent(history, 450).some(atChest)) return 0;
     // Reaches 0.7 when the nearer wrist is 0.35 m out.
     return clamp01(Math.min(reach(frame, "left"), reach(frame, "right")) / 0.5);
   },

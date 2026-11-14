@@ -17,7 +17,7 @@ function drawn(frame: PoseFrame, bow: Side, pull: Side): boolean {
 function released(history: PoseHistory, bow: Side, pull: Side): boolean {
   const frame = latest(history);
   // The string hand has to clear its shoulder by more than the draw allows, so a shaky draw is not a release.
-  if (!frame || !armOut(frame, bow) || handToShoulder(frame, pull) < 0.9) return false;
+  if (!frame || !armOut(frame, bow) || handToShoulder(frame, pull) < 0.75) return false;
   let since: number | null = null;
   for (const old of recent(history, 500)) {
     if (!drawn(old, bow, pull)) {
@@ -35,7 +35,7 @@ export const move: MoveDef = {
   name: "Moon arrow",
   kind: "strike",
   prompt: "MOON ARROW",
-  hint: "Hold one arm straight out, pull the other hand to your shoulder, then let go",
+  hint: "Aim one arm out, draw the other hand to your shoulder, then drop it",
   key: "5",
   diagram: { leftElbow: [24, 31], leftWrist: [10, 30], rightElbow: [78, 36], rightWrist: [65, 30] },
   detect(history) {
