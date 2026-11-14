@@ -84,6 +84,14 @@ export interface Voice {
   dispose(): void;
 }
 
+/** Told true when a line starts and false when the voice falls quiet. */
+let onSpeaking: (speaking: boolean) => void = () => undefined;
+
+/** Lets one listener (the music) know when a line is being spoken, so it can dip under it. */
+export function watchVoice(listener: (speaking: boolean) => void): void {
+  onSpeaking = listener;
+}
+
 export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
   let current: { readonly id: string; stop: () => void } | null = null;
   let disposed = false;
@@ -96,9 +104,12 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
     current?.stop();
     const line = { id, stop: (): void => undefined };
     const free = (): void => {
-      if (current === line) current = null;
+      if (current !== line) return;
+      current = null;
+      onSpeaking(false);
     };
     current = line;
+    onSpeaking(true);
     try {
       line.stop = deps.play(id, free);
     } catch (error) {
@@ -130,6 +141,7 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
     dispose() {
       disposed = true;
       current?.stop();
+      if (current) onSpeaking(false);
       current = null;
     },
   };
