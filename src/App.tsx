@@ -1,60 +1,51 @@
-// Screen flow: title -> pick a style -> fight each enemy in ladder order.
-import { useState } from "react";
+// Screen flow (see screens/flow.ts): title -> style -> quest map -> intro -> fight -> result -> map.
+import { useReducer, useState } from "react";
 import { log } from "./core/log";
-import type { FightingStyle } from "./core/types";
 import { ENEMIES } from "./enemies/registry";
 import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
+import { MONSTER_MODELS } from "./render/monsters/registry";
+import { EndPanel } from "./screens/EndScreen";
+import { flowReducer, playable, START, unlocked } from "./screens/flow";
+import { IntroScreen } from "./screens/IntroScreen";
+import { QuestMap } from "./screens/QuestMap";
+import { TitleScreen } from "./screens/TitleScreen";
 import { WebcamGate } from "./screens/WebcamGate";
 import { STYLES } from "./styles/registry";
 
-interface Fight {
-  readonly style: FightingStyle;
-  readonly index: number;
-  readonly seed: number;
-}
+const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 
 export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
-  const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState("");
-  const [fight, setFight] = useState<Fight | null>(null);
+  const [flow, dispatch] = useReducer(flowReducer, START);
 
   const useCamera = (): void => {
     setNotice("Starting the camera...");
     startTracker().then(
       (started) => {
         setTracker(started);
-        setReady(true);
+        dispatch({ type: "ready" });
       },
       (error: unknown) => {
         log("warn", "tracker_failed", error);
         setNotice("No camera available, so you're on keyboard controls.");
-        setReady(true);
+        dispatch({ type: "ready" });
       },
     );
   };
 
-  if (!ready) {
-    return (
-      <main className="menu">
-        <h1>Odyssey Fighter</h1>
-        <p>Fight your way home to Ithaca. Your body is the controller.</p>
-        <button onClick={useCamera}>Fight with your body (webcam)</button>
-        <button onClick={() => { setReady(true); }}>Keyboard only</button>
-        <p className="notice">{notice}</p>
-      </main>
-    );
+  if (flow.screen === "title") {
+    return <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { dispatch({ type: "ready" }); }} />;
   }
 
-  const enemy = fight ? ENEMIES[fight.index] : undefined;
-  if (!fight || !enemy) {
+  if (flow.screen === "style") {
     return (
       <main className="menu">
         <h1>Choose your fighting style</h1>
         <p className="notice">{notice}</p>
         {STYLES.map((style) => (
-          <button key={style.id} onClick={() => { setFight({ style, index: 0, seed: Date.now() }); }}>
+          <button key={style.id} onClick={() => { dispatch({ type: "pickStyle", style }); }}>
             {style.name}
             <small>{style.blurb}</small>
           </button>
@@ -63,23 +54,45 @@ export function App() {
     );
   }
 
-  const go = (index: number): void => { setFight({ style: fight.style, index, seed: Date.now() }); };
+  const enemy = ENEMIES[flow.index];
+  if (flow.screen === "map" || !enemy || !flow.style) {
+    return (
+      <QuestMap
+        enemies={ENEMIES}
+        cleared={flow.cleared}
+        open={(index) => unlocked(ENEMIES, CAN_PLAY, flow.cleared, index)}
+        onEnter={(index) => { dispatch({ type: "enter", index }); }}
+        onStyle={() => { dispatch({ type: "changeStyle" }); }}
+      />
+    );
+  }
+
+  if (flow.screen === "intro") {
+    return (
+      <IntroScreen
+        enemy={enemy}
+        onBegin={() => { dispatch({ type: "begin", seed: Date.now() }); }}
+        onBack={() => { dispatch({ type: "toMap" }); }}
+      />
+    );
+  }
+
   return (
     <WebcamGate
-      key={fight.seed}
+      key={flow.seed}
       enemy={enemy}
-      style={fight.style}
+      style={flow.style}
       tracker={tracker}
-      seed={fight.seed}
-      renderEnd={(won) => (
-        <>
-          {won && fight.index + 1 < ENEMIES.length && (
-            <button onClick={() => { go(fight.index + 1); }}>Next fight</button>
-          )}
-          {won && fight.index + 1 >= ENEMIES.length && <p>Ithaca is yours.</p>}
-          {!won && <button onClick={() => { go(fight.index); }}>Try again</button>}
-          <button onClick={() => { setFight(null); }}>Change style</button>
-        </>
+      seed={flow.seed}
+      renderEnd={(won, _score, mastery) => (
+        <EndPanel
+          won={won}
+          mastery={mastery}
+          onShown={() => { dispatch({ type: "ended", enemyId: enemy.id, won }); }}
+          onRetry={() => { dispatch({ type: "retry", seed: Date.now() }); }}
+          onMap={() => { dispatch({ type: "toMap" }); }}
+          onStyle={() => { dispatch({ type: "changeStyle" }); }}
+        />
       )}
     />
   );
