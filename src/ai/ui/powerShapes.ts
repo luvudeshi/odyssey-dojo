@@ -108,7 +108,7 @@ export function sunRayPath(centre: Point, inner: number, outer: number, count: n
   const parts: string[] = [];
   for (let i = 0; i < rays; i++) {
     const angle = ((i + (next() - 0.5) * 0.4) / rays) * Math.PI * 2;
-    const spread = (Math.PI / rays) * (0.25 + next() * 0.35);
+    const spread = (Math.PI / rays) * (0.15 + next() * 0.3);
     const tip = core + (reach - core) * (i % 2 === 0 ? 1 : 0.6 + next() * 0.25);
     parts.push(`M ${at(angle, core)} L ${at(angle - spread, tip)} L ${at(angle + spread, tip)} Z`);
   }

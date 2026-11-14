@@ -158,11 +158,12 @@ function Apollo({ seed }: { seed: number }) {
         <defs>
           <radialGradient id="power-sunlight" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="50">
             <stop offset="0" stopColor="#fffdf0" />
-            <stop offset="0.4" stopColor="#ffe08a" stopOpacity="0.8" />
-            <stop offset="1" stopColor="#ffb347" stopOpacity="0" />
+            <stop offset="0.12" stopColor="#ffe08a" stopOpacity="0.9" />
+            <stop offset="0.32" stopColor="#ffb347" stopOpacity="0.5" />
+            <stop offset="0.56" stopColor="#ff9a3c" stopOpacity="0" />
           </radialGradient>
         </defs>
-        <path d={sunRayPath([0, 0], 3, 50, 18, seed)} fill="url(#power-sunlight)" />
+        <path d={sunRayPath([0, 0], 2, 50, 26, seed)} fill="url(#power-sunlight)" />
       </svg>
       <div className="power-sun" />
     </>
