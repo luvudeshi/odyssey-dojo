@@ -16,6 +16,7 @@ import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { Hero } from "./hero/Hero";
+import { GhostFigure } from "./GhostFigure";
 import { QualityContext, useQualityToggle } from "./quality";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
@@ -98,6 +99,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           </MonsterRig>
           <CameraRig />
           <Hero poseRef={poseRef} />
+          <GhostFigure poseRef={poseRef} />
           <Effects />
         </QualityContext.Provider>
       </Canvas>
