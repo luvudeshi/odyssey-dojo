@@ -89,3 +89,27 @@ Ranking: 1. `giant`, 2. `classic`. No other confirmed-CC0 giant is on disk (the 
 | polyphemusProps (eye, stake, club) | built in code | Ours | 0 KB | metres | none | Kept. The first club colour was invisible against the dark rock behind it; lightened. |
 
 Weak spots: the giant's body fits the existing positions (eye `[0, 4.1, 0.95]`, gut `[0, 2, 1.1]`) without a data edit: the gut ring lands on his belt and the eye ring on his face, slightly below the big eye (his eye centre is about 4.3 m). No data was changed.
+
+## Cave mouth at dusk: model log
+
+Every model or set piece brought into the fight, looked at in the running Polyphemus battle (keyboard fight, headless Chrome, 1440x810; screenshots in `docs/screenshots/cave-mouth-*.png`). Scale reference: hero about 1.8 m, Polyphemus about 5 m.
+
+| Name | Source | Licence | Size | Target height / scale / rotation | Clips used | Verdict | Why |
+|---|---|---|---|---|---|---|---|
+| Qwantani Dusk 2 Puresky HDRI | https://polyhaven.com/a/qwantani_dusk_2_puresky | CC0 | 1.1 MB (1K .hdr) | sky background intensity 0.42, yaw 2.449 rad so its sun sits left of the giant | none | kept | Gives the dusk sky through the mouth. Stacked with the sun light it first blew out; intensity was cut until the sky reads orange without washing the cave. |
+| Cave shell (roof, walls) | built in code, `cave/solids.ts` | ours | 1 merged mesh | hall 12.5 x 9.5 m, pinches to 11.5 x 8.6 m at the lip, roof stays above 8 m over the camera | none | resized | First pass left stalactite tips inside the giant's reach; the roof and teeth were raised so nothing hangs below 5.4 m over the fight. |
+| Floor and ledge | built in code | ours | 1 merged mesh | flat inside the fight zone, ledge slopes to the sea at y=-1.5 | none | resized | Was rendered white because the winding faced down; flipped. Hero and giant both stand on it, with contact shadows. |
+| Boulders (about 60 pieces) | built in code, `mouthLayout.ts` | ours | merged | 0.25 m stones up to 3 m wall boulders, none inside the fight or camera zones (unit test) | none | kept | Faceted flat shading matches the low-poly look. |
+| Stalactites (about 38) | built in code | ours | merged | 1.2 to 3.8 m long, hung from the roof | none | resized | Two tips hung low over the fight; filtered out by the layout and covered by a test. |
+| Fire pit, flames, embers | built in code, `cave/Fire.tsx` | ours | cones + point light | pit at x=-6.3, z=-2.4 | flicker only | resized | At x=-5.6 it touched the fight zone; moved out. |
+| Clay jars (5) | built in code (lathe) | ours | merged | 1.8 to 2.6 m tall, so they read as giant's jars next to the 1.8 m hero | none | resized | First version was hero sized and looked like pots; scaled up to giant scale. |
+| Shepherd pen: posts and rails | built in code | ours | merged | posts 2 m, rails at 0.8 and 1.6 m | none | resized | Was knee high; raised so the fence reads against a 5 m giant. |
+| Sheep (4) | built in code | ours | merged | scaled x1.4 | none | kept, weak | Still read as pale blobs at distance. Acceptable as set dressing, would be the first thing to redo. |
+| Sea | built in code shader, `cave/Sea.tsx` | ours | 1 quad | y=-1.5, runs to the horizon | shader time | resized | Checker pattern showed at the horizon; ripple tilt softened and faded with distance. Low quality drops the ripples. |
+| Light shafts, dust motes | built in code | ours | 6 beams | high only | pulse | kept | Gone on low as required. |
+| Hero (boxer) | existing in repo, not mine | n/a | n/a | about 1.8 m | existing | not changed | Seen in every shot: stands on the floor, faces the giant, scale right. It has no shadow caster, only the blob. |
+| Polyphemus | existing in repo, not mine | n/a | n/a | about 5 m | existing | not changed | Seen in every shot: the hand-built capsule model at the time of testing (a GLB giant candidate is logged above, and was not in this run), grounded, facing the camera, windup and fall animations play. Owned by another agent; a better model would lift the scene most. |
+
+Not brought in and not tested in the fight: the Poly Haven photoscans (boulder_01, stone_fire_pit, antique_ceramic_vase_01, rock_face_01, namaqualand_cliff_02, mountainside, marble_bust) and the small_harbour_sunset HDRI. Photo textures on large shapes break the flat-shaded look, so the set pieces are built in code instead.
+
+Cost at high quality: about 172 draw calls and 30.9k triangles peak per frame, including the shadow pass and post effects. Low quality: 54 calls and 17.3k triangles. Median frame 16.7 ms on both.

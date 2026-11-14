@@ -26,7 +26,7 @@ export function FightScreen(props: {
   /** Set by calibration; null for keyboard play. */
   baseline?: Baseline | null;
   /** Buttons shown once the fight is over. */
-  renderEnd: (won: boolean, score: number) => ReactNode;
+  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
 }) {
   const { enemy, style, tracker, seed, renderEnd, baseline = null } = props;
   const [lost, setLost] = useState(false);
@@ -94,7 +94,7 @@ export function FightScreen(props: {
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
           <p>Score {state.score}</p>
-          {renderEnd(state.phase.kind === "won", state.score)}
+          {renderEnd(state.phase.kind === "won", state.score, state.mastery)}
         </div>
       )}
     </div>

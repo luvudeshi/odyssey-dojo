@@ -128,7 +128,7 @@ test("the existing strikes still read as themselves with the new moves loaded", 
 });
 
 test("every style, old and new, has real strikes, a blurb and a unique id; every move has a unique key and id", () => {
-  expect(STYLES.map((style) => style.id).sort()).toEqual(["boxer", "hoplite", "karate", "kung_fu"]);
+  expect(STYLES.map((style) => style.id).sort()).toEqual(["boxer", "hoplite", "karate", "kung_fu", "pankration"]);
   expect(new Set(STYLES.map((style) => style.id)).size).toBe(STYLES.length);
   for (const style of STYLES) {
     expect(style.blurb.length, style.id).toBeGreaterThan(10);
