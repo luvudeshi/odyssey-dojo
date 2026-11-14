@@ -95,16 +95,19 @@ describe("defends are not confused with each other", () => {
   }
 });
 
-// double_palm reads as block at 0.35 for a few frames before the arms straighten (wrists near the nose).
-// That is under the 0.7 the game needs to hold a defend (src/input/poseInput.ts), so it is listed, not fixed.
+// double_palm reads as block at about 0.35 for a few frames before the arms straighten (wrists near the nose).
+// That is a known detector quirk, so it is held to the real limit instead of 0.3: below the 0.7 hold threshold
+// (ON in src/input/poseInput.ts), or every double palm would also raise a block.
 const KNOWN_CONFUSIONS = new Set(["double_palm>block"]);
+const DEFEND_HOLD = 0.7;
 
 describe("a strike does not read as a defend", () => {
   const strikes = [...MOVES.values()].filter((move) => move.kind === "strike");
   for (const strike of strikes) {
-    for (const defend of DEFENDS.filter((id) => !KNOWN_CONFUSIONS.has(`${strike.id}>${id}`))) {
+    for (const defend of DEFENDS) {
+      const limit = KNOWN_CONFUSIONS.has(`${strike.id}>${defend}`) ? DEFEND_HOLD : 0.3;
       test(`${strike.id} does not read as ${defend}`, () => {
-        expect(peak((h) => moveOf(defend).detect(h), sequence(GOOD[strike.id] ?? []))).toBeLessThan(0.3);
+        expect(peak((h) => moveOf(defend).detect(h), sequence(GOOD[strike.id] ?? []))).toBeLessThan(limit);
       });
     }
   }
