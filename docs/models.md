@@ -76,7 +76,7 @@ The cave and the primitive Polyphemus are untouched by this PR. Packing used `@g
 
 ## Polyphemus candidates
 
-Try each with the keyboard: `http://localhost:5173/?model=giant`, `?model=classic`, `?model=dev` (add `&debug` to read `window.__modelDebug`). Screenshots from a full keyboard fight (a bot played each one to the end) are in `docs/screenshots/polyphemus-<id>-{idle,attack,hit,blinded,death}.png`.
+The giant is the default. Try the others with the keyboard: `http://localhost:5173/?model=giant`, `?model=classic`, `?model=dev` (add `&debug` to read `window.__modelDebug`). Screenshots from a full keyboard fight (a bot played each one to the end) are in `docs/screenshots/polyphemus-<id>-{idle,attack,hit,blinded,death}.png`.
 
 Ranking: 1. `giant`, 2. `classic`. No other confirmed-CC0 giant is on disk (the Bestiary has only an Imp and a Puglin, and the sea-monster and tentacle files are for Scylla), so there is no third candidate.
 
@@ -88,4 +88,34 @@ Ranking: 1. `giant`, 2. `classic`. No other confirmed-CC0 giant is on disk (the 
 | classic (hand-built Polyphemus) | `src/render/monsters/models/Polyphemus.tsx`, restyled in `classicPolyphemus.tsx` | Ours | 0 KB | 5 m, no fit needed | none: arms swing by windup, falls over on defeat | Fallback, resized by hand. Flat-shaded, darker skin (the first tint was washed out by the cave light), cloth, club, stake. Weak-spot rings sit exactly on eye and gut. Looks like a doll next to the giant; arms are two capsules. |
 | polyphemusProps (eye, stake, club) | built in code | Ours | 0 KB | metres | none | Kept. The first club colour was invisible against the dark rock behind it; lightened. |
 
-Weak spots: the giant's body fits the existing positions (eye `[0, 4.1, 0.95]`, gut `[0, 2, 1.1]`) without a data edit: the gut ring lands on his belt and the eye ring on his face, slightly below the big eye (his eye centre is about 4.3 m). No data was changed.
+Weak spots (changed): measured on the scaled giant in the running fight (`window.__giantEye`, `window.__giantRoot` under `&debug`). The eye prop sits at about y 3.87, z 1.35 in the monster's frame, not 4.3, so the eye is `[0, 3.75, 1.45]` (ring just in front of the eye disc) and the gut is `[0, 2.5, 0.8]` (the torso front is at about z 0.55). Hit sparks use the same positions. Shots: `docs/screenshots/giant-default-strike-eye-p0.png`, `-strike-gut-p0.png`, `-strike-eye-p2.png`.
+
+The giant is now the default Polyphemus with no flag. `?model=classic` keeps the code-built one, `?model=dev` the test robot, anything else gets the giant (`polyphemusChoice`). The GLB is preloaded at import; until it has loaded, or if it fails, the code-built model shows, so there is no blank or T-pose. Checked with a full keyboard fight, all three phases, windups, hits, Blinded, the finisher and the fall (`docs/screenshots/giant-default-*.png`). The eye was a pale plate with a tiny hexagon pupil; it is now amber with a tall dark slit pupil and a lower glow (`docs/screenshots/giant-eye-slit.png`). Known: the giant looks pale and flat while the finisher camera is close and in death; the club is a thin stick from behind; the pack has one Attack clip, so left and right club swings look alike.
+
+## Cave mouth at dusk: model log
+
+Every model or set piece brought into the fight, looked at in the running Polyphemus battle (keyboard fight, headless Chrome, 1440x810; screenshots in `docs/screenshots/cave-mouth-*.png`). Scale reference: hero about 1.8 m, Polyphemus about 5 m.
+
+| Name | Source | Licence | Size | Target height / scale / rotation | Clips used | Verdict | Why |
+|---|---|---|---|---|---|---|---|
+| Dusk sky dome | built in code, `cave/Sky.tsx` | ours | 1 sphere, 1 shader | graded dome pinned to the camera; sun painted at `SUN.visual` (11 degrees up) so it shows through the mouth | none | replaced the HDRI background | The Qwantani Dusk HDRI background blew out to white at any exposure that kept its sun, and was the reason the sky never read as sunset. The dome is hand-graded (orange horizon, rose, violet overhead, cloud bars, sun glow) in linear colour. The HDRI is kept only for reflections at intensity 0.3. Bloom threshold went from 0.85 to 1.0 so the sky no longer bleeds. |
+| Cave shell (roof, walls) | built in code, `cave/solids.ts` | ours | 1 merged mesh | hall 12.5 x 9.5 m, pinches to 11.5 x 8.6 m at the lip, roof stays above 8 m over the camera | none | resized | First pass left stalactite tips inside the giant's reach; the roof and teeth were raised so nothing hangs below 7 m over the fight. |
+| Floor and ledge | built in code | ours | 1 merged mesh | flat inside the fight zone, ledge slopes to the sea at y=-1.5 | none | resized | Was rendered white because the winding faced down; flipped. Hero and giant both stand on it, with contact shadows. |
+| Boulders (about 60 pieces) | built in code, `mouthLayout.ts` | ours | merged | 0.25 m stones up to 3 m wall boulders, none inside the fight or camera zones (unit test) | none | kept | Faceted flat shading matches the low-poly look. |
+| Stalactites (about 38) | built in code | ours | merged | 1.2 to 3.8 m long, hung from the roof | none | resized | Nothing hangs below 7 m over the fight now (the raised club and arms reach about 6.5 m); covered by a test. |
+| Fire pit, flames, embers | built in code, `cave/Fire.tsx` | ours | cones + point light | pit at x=-6.3, z=-2.4 | flicker only | resized | At x=-5.6 it touched the fight zone; moved out. |
+| Clay jars (5) | built in code (lathe) | ours | merged | 1.8 to 2.6 m tall, so they read as giant's jars next to the 1.8 m hero | none | resized | First version was hero sized and looked like pots; scaled up to giant scale. |
+| Shepherd pen: posts and rails | built in code | ours | merged | posts 2 m, rails at 0.8 and 1.6 m | none | resized | Was knee high; raised so the fence reads against a 5 m giant. |
+| Sheep (4) | built in code | ours | merged | scaled x1.5, three fleece lumps, dark head and legs | none | redone, still small | The first sheep were pale cream and clipped to white blobs under the orange sun. Now earth-toned wool with a dark face; they read as grey woolly animals behind the fence, though at the screen edge they are still small. |
+| Sea | built in code shader, `cave/Sea.tsx` | ours | 1 quad | y=-1.5, runs to the horizon, reflects the same sky function as the dome | shader time | resized | Now mirrors the dusk sky so the horizon is seamless. Earlier: checker pattern showed at the horizon; ripple tilt softened and faded with distance. Low quality drops the ripples. |
+| Light shafts, dust motes | built in code | ours | 6 beams | high only | pulse | kept | Gone on low as required. |
+| Hero (boxer, knight) | existing in repo, not mine | n/a | n/a | about 1.8 m | existing | not changed | Boxer seen in every shot, knight (`?model=giant&hero=knight`) at idle only (`cave-mouth-knight.png`). Both stand on the floor, face the giant, scale right. Nothing sits between the camera and the hero. |
+| Polyphemus | existing in repo, not mine | n/a | n/a | about 5 m | existing | not changed | Seen with `?model=giant` (GLB) through idle, every windup (club left/right, grab, boulder), strikes, Blinded, finisher, death and loss. Head and raised club clear the roof (7 m). The giant turns pale peach for about 0.4 s when the killing blow lands (a 70-unit point light from HitEffects plus the hit flash); the rest of the finisher it is dark rust (re-checked in `cave-mouth-finisher.png`). Left as deliberate impact feedback. |
+
+Not brought in and not tested in the fight: the Poly Haven photoscans (boulder_01, stone_fire_pit, antique_ceramic_vase_01, rock_face_01, namaqualand_cliff_02, mountainside, marble_bust) and the small_harbour_sunset HDRI. Photo textures on large shapes break the flat-shaded look, so the set pieces are built in code instead.
+
+Cost: measured before the sky change at about 172 draw calls and 30.9k triangles at high, 54 calls and 17.3k at low. The dome adds one draw call and the HDRI background is gone, so it should be about the same; not re-measured.
+
+Not tested: a low-quality finisher shot, the knight past idle, close-range sheep, the live webcam path. The Bloom threshold change (0.85 to 1.0) is shared by every arena and was only looked at here. The 404 console errors seen in every run predate this change and were not traced.
+
+Review fixes: the sea ripple now uses smooth noise and fades at grazing angles (no checker tiles in the finisher orbit); with the HDRI blocked the hero keeps light from a hand-built fallback environment (`cave-mouth-no-hdri.png`), though it is dimmer than with the HDRI.

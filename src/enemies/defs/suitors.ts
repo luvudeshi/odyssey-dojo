@@ -33,10 +33,12 @@ export const enemy: EnemySpec = {
     { name: "The Volley", belowHp: 0.35, attackIds: ["spear_left", "spear_right", "sword_rush"], telegraphScale: 0.72 },
   ],
   weakSpots: [
-    { id: "throat", label: "the throat of Antinous", position: [0, 3.1, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm"] },
-    { id: "chest", label: "an unguarded chest", position: [-0.7, 2.4, 0.9], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm"] },
+    { id: "throat", label: "the throat of Antinous", position: [0, 3.1, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "uppercut"] },
+    { id: "chest", label: "an unguarded chest", position: [-0.7, 2.4, 0.9], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm", "front_kick", "knee"] },
     { id: "helm", label: "a raised helm", position: [0.8, 3.4, 0.7], moves: ["overhead_strike", "hook", "knife_hand", "hammer_fist", "rising_palm"] },
   ],
+  // The arrows run out and the last of them fall to the spear.
+  finisher: "spear_thrust",
   taunts: [
     "Stand off from my table, beggar, or you will be sorry you came.",
     "Stranger, you have shot your last. The vultures will have you here.",

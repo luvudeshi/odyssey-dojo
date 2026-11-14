@@ -11,7 +11,7 @@ export const enemy: EnemySpec = {
   order: 1.7,
   place: "The meadow of the Sirens",
   book: 12,
-  hp: 340,
+  hp: 370,
   strikeWindowMs: 2300,
   attacks: [
     { id: "song", name: "The song", telegraphMs: 1900, damage: 12, counter: "block" },
@@ -33,7 +33,7 @@ export const enemy: EnemySpec = {
     },
   ],
   weakSpots: [
-    { id: "throat", label: "a singing throat", position: [0, 3.2, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm"] },
+    { id: "throat", label: "a singing throat", position: [0, 3.2, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "front_kick", "uppercut"] },
     { id: "wing", label: "an open wing", position: [-1.1, 3, 0.6], moves: ["hook", "overhead_strike", "knife_hand", "hammer_fist", "rising_palm"] },
   ],
   taunts: [

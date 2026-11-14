@@ -2,7 +2,7 @@
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { clipUrl } from "./athenaLines";
-import { tauntFor } from "./storyLines";
+import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
 const WARNINGS = ["warn_1", "warn_2", "warn_3"] as const;
@@ -81,6 +81,10 @@ export interface Voice {
   handle(events: readonly CombatEvent[], phase?: CombatPhase): void;
   /** True when the line started playing. */
   speak(id: string): boolean;
+  /** The line being spoken now, or null when the voice is free. */
+  playing(): string | null;
+  /** Cuts this line off if it is the one being spoken. Any other line plays on. */
+  stop(id: string): void;
   dispose(): void;
 }
 
@@ -127,6 +131,12 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
       if (best !== null) speak(best);
     },
+    playing: () => current?.id ?? null,
+    stop(id) {
+      if (current?.id !== id) return;
+      current.stop();
+      current = null;
+    },
     dispose() {
       disposed = true;
       current?.stop();
@@ -151,7 +161,8 @@ export interface ClipAudio {
 /** Plays clips through audio elements. A failed load or a blocked play() reports done, so the voice is never left waiting. */
 export function audioPlayer(open: (url: string) => ClipAudio): VoiceDeps["play"] {
   return (id, done) => {
-    const audio = open(clipUrl(id));
+    // Homer's and the monsters' clips have folders of their own; every other id is Athena's.
+    const audio = open(storyClipUrl(id));
     const timer = setTimeout(() => {
       audio.pause();
       done();
@@ -173,27 +184,36 @@ export function audioPlayer(open: (url: string) => ClipAudio): VoiceDeps["play"]
   };
 }
 
-function browserDeps(): VoiceDeps {
+/**
+ * Plays the clips Athena's index lists. `storyIndexes` are further index files whose clips can be spoken too.
+ * Those clips are not fetched ahead of time: a story line can start a moment late, a call cannot.
+ */
+export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   if (typeof Audio === "undefined" || typeof fetch === "undefined") {
     return { available: () => false, play: () => () => undefined, random: Math.random };
   }
   let clips: ReadonlySet<string> = new Set();
   const warmed: HTMLAudioElement[] = [];
-  fetch(INDEX_URL)
-    .then((response): Promise<unknown> => (response.ok ? response.json() : Promise.resolve([])))
-    .then((data) => {
-      clips = parseClipIndex(data);
-      // Fetch every listed clip now, so a call is not late the first time it is spoken. Kept so the loads are not dropped.
-      for (const id of clips) warmed.push(new Audio(clipUrl(id)));
-    })
-    .catch((error: unknown) => {
-      log("warn", "voice.index", error);
-    });
+  const load = (url: string, warm: boolean): void => {
+    fetch(url)
+      .then((response): Promise<unknown> => (response.ok ? response.json() : Promise.resolve([])))
+      .then((data) => {
+        const listed = parseClipIndex(data);
+        clips = new Set([...clips, ...listed]);
+        // Fetch every listed clip now, so a call is not late the first time it is spoken. Kept so the loads are not dropped.
+        if (warm) for (const id of listed) warmed.push(new Audio(clipUrl(id)));
+      })
+      .catch((error: unknown) => {
+        log("warn", "voice.index", error);
+      });
+  };
+  load(INDEX_URL, true);
+  for (const url of storyIndexes) load(url, false);
   return { available: (id) => clips.has(id), play: audioPlayer((url) => new Audio(url)), random: Math.random };
 }
 
-// Created with the module so the clip index is loaded before the first fight starts.
-const shared = createVoice();
+// Created with the module so the clip indexes are loaded before the first fight starts.
+const shared = createVoice(browserDeps(STORY_INDEX_URLS));
 
 export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): void {
   shared.handle(events, phase);
@@ -204,8 +224,21 @@ export function speakLine(id: string): boolean {
   return shared.speak(id);
 }
 
-/** Has the monster taunt the player, if it has a taunt recorded and the voice is free. */
+/**
+ * Has the monster taunt the player, if it has a taunt recorded and the voice is free. Works for every stop of the quest.
+ * In the frame a phase changes, Athena's phase line cuts this off: there, use speakMonsterTaunt in storyVoice.ts.
+ */
 export function speakTaunt(enemyId: string): boolean {
-  const id = tauntFor(enemyId, Math.random);
+  const id = pickTaunt(enemyId, Math.random);
   return id !== null && shared.speak(id);
+}
+
+/** The line the shared voice is speaking now, or null. */
+export function voicePlaying(): string | null {
+  return shared.playing();
+}
+
+/** Cuts this line off if the shared voice is speaking it. */
+export function stopLine(id: string): void {
+  shared.stop(id);
 }
