@@ -48,6 +48,8 @@ npm run dev:all
 
 The keys stay on the server and never reach the browser. Every AI call has a timeout and a bundled fallback, so a slow or missing network only means a handcrafted level instead of a generated one. `GET /api/health` shows which services have a key.
 
+Sound effects in `public/audio/sfx/` and Athena's voice in `public/audio/athena/` were generated for this project with ElevenLabs.
+
 ## Before you open a PR
 
 ```bash
