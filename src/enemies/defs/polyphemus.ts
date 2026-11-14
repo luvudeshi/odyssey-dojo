@@ -1,7 +1,9 @@
 import type { EnemySpec } from "../../core/types";
 
-// Pacing: a player who gets most prompts right should take 90 to 150 seconds (tests/content.test.ts checks this).
-// Health sets the length; the phases set how it feels. The four attack ids are the ones his 3D model animates.
+// Pacing (issue #127): this is the first fight, and often the only one a new player gets, so it is tuned to be won.
+// A beginner who defends half his attacks wins most fights in under 90 seconds; a good player still needs 30.
+// tests/balance/balance.test.ts holds those numbers. Health sets the length, damage sets who wins, and the phases
+// set how it feels. The four attack ids are the ones his 3D model animates.
 export const enemy: EnemySpec = {
   id: "polyphemus",
   name: "Polyphemus",
@@ -9,13 +11,13 @@ export const enemy: EnemySpec = {
   order: 1,
   place: "The land of the Cyclopes",
   book: 9,
-  hp: 400,
+  hp: 162,
   strikeWindowMs: 2600,
   attacks: [
-    { id: "club_left", name: "Club swing", telegraphMs: 1800, damage: 7, counter: "dodge_right" },
-    { id: "club_right", name: "Club swing", telegraphMs: 1800, damage: 7, counter: "dodge_left" },
-    { id: "grab", name: "Grasping hand", telegraphMs: 1700, damage: 8, counter: "block" },
-    { id: "boulder", name: "Boulder throw", telegraphMs: 2000, damage: 10, counter: "duck" },
+    { id: "club_left", name: "Club swing", telegraphMs: 1800, damage: 5, counter: "dodge_right" },
+    { id: "club_right", name: "Club swing", telegraphMs: 1800, damage: 5, counter: "dodge_left" },
+    { id: "grab", name: "Grasping hand", telegraphMs: 1700, damage: 4, counter: "block" },
+    { id: "boulder", name: "Boulder throw", telegraphMs: 2000, damage: 6, counter: "duck" },
   ],
   phases: [
     // He is slow and sure of himself: long warnings, and no ducking yet.
