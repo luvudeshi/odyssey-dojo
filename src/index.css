@@ -27,7 +27,9 @@ button small { display: block; font-size: 0.8rem; }
 .prompt.defend .prompt-word { color: #ff6b5a; }
 .prompt-target { font-size: 1.1rem; }
 .prompt-hint { font-size: 0.95rem; opacity: 0.85; font-family: system-ui, sans-serif; }
-kbd { border: 1px solid var(--marble); border-radius: 4px; padding: 0 0.3rem; }
+kbd { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 700; border: 1px solid var(--marble); border-radius: 4px; padding: 0 0.3rem; }
+.prompt-hold { color: #ff6b5a; letter-spacing: 0.08em; }
+.prompt.mini { padding: 0.6rem 1.2rem; }
 .timer { height: 6px; background: var(--gold); margin-top: 0.5rem; }
 .hud > .timer { position: absolute; bottom: 1.5%; left: 25%; max-width: 50%; }
 .stick { width: 6.5rem; height: 6.5rem; fill: none; stroke: var(--marble); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
