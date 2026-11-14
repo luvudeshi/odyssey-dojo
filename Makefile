@@ -1,4 +1,4 @@
-.PHONY: setup dev lint test check ready
+.PHONY: setup dev lint test check ready fps
 
 setup:
 	npm install
@@ -20,3 +20,7 @@ ready:
 	@git merge-base --is-ancestor origin/main HEAD || (echo "Behind main: run git rebase origin/main first" && exit 1)
 	@git symbolic-ref --short HEAD | grep -qvx main || (echo "You are on main: work on a branch" && exit 1)
 	$(MAKE) check
+
+# Frame rate of every stop at each quality level, in headless Chrome. Writes docs/perf.md.
+fps:
+	node scripts/fps.mjs
