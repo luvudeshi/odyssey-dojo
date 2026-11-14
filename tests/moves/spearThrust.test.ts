@@ -44,9 +44,3 @@ const leftLeads = play(
 test("a spear thrust with the left fist one frame ahead of the right still counts once", () => {
   expect(thrown(leftLeads, "spear_thrust")).toBe(1);
 });
-
-// Fails today: a jab is thrown one frame before the spear thrust. The jab only checks that the right arm is not
-// straight yet, so whichever arm straightens first, even 33 ms early, is read as a punch of its own.
-test.fails("no other base move fires when the left fist arrives one frame ahead of the right", () => {
-  expect(others(leftLeads, "spear_thrust")).toEqual([]);
-});

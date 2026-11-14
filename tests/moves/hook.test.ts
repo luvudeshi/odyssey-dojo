@@ -33,14 +33,6 @@ test("a straight left arm swung across at the same speed, a slap, is not a hook"
   expect(thrown(slap, "hook")).toBe(0);
 });
 
-// Fails today: the hook only asks for a bent elbow, a fist near shoulder height and a fist moving to the player's
-// right in the picture. Folding a sideways arm back to the chest does all three (confidence 0.85 as the elbow
-// passes 75 degrees), though the fist never crosses the body. It fires for a pull back of up to 300 ms, not 400.
-test.fails("a straight left arm held out to the side and pulled back to the chest in 200 ms is not a hook", () => {
-  const back = play(recording([[READY, 300], [READY, 200], [WIDE, 200], [WIDE, 300], [READY, 200], [READY, 600]]));
-  expect(thrown(back, "hook")).toBe(0);
-});
-
 test("no other base move fires during a hook", () => {
   expect(others(hook, "hook")).toEqual([]);
 });

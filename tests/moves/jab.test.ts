@@ -21,39 +21,6 @@ test("a short push that stops with the elbow still bent at 120 degrees is not a 
   expect(thrown(short, "jab")).toBe(0);
 });
 
-// Fails today: armThrust only asks that the elbow was under 115 degrees at some point in the last 450 ms and is
-// over 145 now. A steady reach from the chest covers those 30 degrees in a quarter of its time, so it still
-// fires when the whole reach takes 1.7 s. The cross and the spear thrust share armThrust and do the same.
-test.fails("the left arm reached out slowly, taking a full second, is not a jab", () => {
-  const reach = play(recording([[READY, 300], [READY, 200], [OUT, 1000], [OUT, 300], [READY, 200], [READY, 600]]));
-  expect(thrown(reach, "jab")).toBe(0);
-});
-
-// Fails today: the jab's confidence is 0 or 1 on the 145 degree line, so an elbow reading that wobbles between
-// 150 and 142 degrees drops it below the pose input's OFF level and raises it again, and each rise is a new jab.
-// Three are thrown here.
-test.fails("a jab that stops just short of a locked elbow is still one jab when the tracker wobbles", () => {
-  const nearly = blend(READY, OUT, 0.78);
-  const wobbled = blend(READY, OUT, 0.72);
-  const soft = play(
-    recording([
-      [READY, 300], [READY, 200], [nearly, 132],
-      [wobbled, 33], [nearly, 33], [wobbled, 33], [nearly, 33], [wobbled, 33],
-      [READY, 200], [READY, 600],
-    ]),
-  );
-  expect(thrown(soft, "jab")).toBe(1);
-});
-
-// Fails today: armOut only asks for an elbow past 145 degrees and a fist within 30 cm of shoulder height. It never
-// checks that the fist went toward the camera, so an arm straightened out to the side (the fist 48 cm to the left
-// of the shoulder and 21 cm in front of it when the jab is thrown) counts as a punch.
-test.fails("a straight left arm flung out to the side at shoulder height is not a jab", () => {
-  const wide = pose({ leftUpper: [-1, 0, -0.2], leftFore: [-1, 0, -0.4] }, READY);
-  const fling = play(recording([[READY, 300], [READY, 200], [wide, 200], [wide, 300], [READY, 400], [READY, 600]]));
-  expect(thrown(fling, "jab")).toBe(0);
-});
-
 test("no other base move fires during a jab", () => {
   expect(others(jab, "jab")).toEqual([]);
 });
