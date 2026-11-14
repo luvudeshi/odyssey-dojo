@@ -56,6 +56,8 @@ export function Scene(props: {
           attackId: phase.kind === "defend" ? phase.attack.id : null,
           weakSpotId: weakSpot?.id ?? null,
           defeated: phase.kind === "won",
+          phaseIndex: state.phaseIndex,
+          hitFlash: 0,
         })}
         {weakSpot && (
           <mesh position={[...weakSpot.position]}>

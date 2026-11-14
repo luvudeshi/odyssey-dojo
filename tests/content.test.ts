@@ -8,13 +8,18 @@ import { JOINT } from "../src/pose/signals";
 import { STYLES } from "../src/styles/registry";
 import { frameAt } from "./poseFixture";
 
-test("enemy counters are defend moves and weak spots name strike moves", () => {
+test("enemy counters, weak spots, phases and finishers name real moves and attacks", () => {
   expect(ENEMIES.length).toBeGreaterThan(0);
   for (const enemy of ENEMIES) {
     for (const attack of enemy.attacks) expect(MOVES.get(attack.counter)?.kind, attack.id).toBe("defend");
     for (const spot of enemy.weakSpots) {
       for (const move of spot.moves) expect(MOVES.get(move)?.kind, `${enemy.id}/${spot.id}/${move}`).toBe("strike");
     }
+    const attackIds = enemy.attacks.map((attack) => attack.id);
+    for (const phase of enemy.phases ?? []) {
+      for (const id of phase.attackIds) expect(attackIds, `${enemy.id}/${phase.name}`).toContain(id);
+    }
+    if (enemy.finisher !== undefined) expect(MOVES.get(enemy.finisher)?.kind, `${enemy.id} finisher`).toBe("strike");
   }
 });
 
@@ -39,6 +44,6 @@ test("standing still triggers nothing; fists at the face is a block; bent-then-s
   const bent = frameAt(700, {}, { [JOINT.leftElbow]: [-0.3, -0.35, 0], [JOINT.leftWrist]: [-0.2, -0.45, -0.05] });
   const straight = frameAt(900, {}, { [JOINT.leftElbow]: [-0.2, -0.5, -0.3], [JOINT.leftWrist]: [-0.2, -0.5, -0.6] });
   const punched = pushFrame(pushFrame(history, bent), straight);
-  expect(read(punched).struck).toEqual(["jab"]);
+  expect(read(punched).struck.map((strike) => strike.move)).toEqual(["jab"]);
   expect(read(punched).struck).toEqual([]);
 });

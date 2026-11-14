@@ -9,6 +9,9 @@ const TONES: Record<CombatEvent["type"], readonly [frequency: number, seconds: n
   opening: [660, 0.1],
   enemyHit: [330, 0.2],
   whiffed: [160, 0.15],
+  phaseChanged: [140, 0.4],
+  finished: [440, 0.5],
+  powerUnleashed: [990, 0.5],
   won: [880, 0.6],
   lost: [70, 0.8],
 };
