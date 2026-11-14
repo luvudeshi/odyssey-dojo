@@ -1,4 +1,7 @@
-// The GLB hero candidates, picked with ?hero=<id>. Data only: file, fit, tint and which clip plays for each action.
+// The GLB hero candidates, picked with ?hero=<id>: file, fit, tint and which clip plays for each action.
+// Add one by dropping a file in ./defs that exports `candidate`; nothing here needs editing.
+import type { ReactNode } from "react";
+import type { Material, Object3D } from "three";
 import type { ModelFit } from "../models/fitModel";
 import type { HeroRig } from "./heroClips";
 
@@ -9,6 +12,12 @@ export interface HeroCandidate {
   readonly rig: HeroRig;
   /** Multiplies a mesh's colour (by mesh name) toward bronze, white and crimson. */
   readonly tint?: Readonly<Record<string, string>>;
+  /** Gear parented to the bone of that name (a helmet, a shield). Wrap in BoneMount to size it in metres. */
+  readonly anchors?: Readonly<Record<string, ReactNode>>;
+  /** Runs once on the cloned model, after the tint: hide a mesh, swap a part. */
+  readonly prepare?: (root: Object3D) => void;
+  /** Runs once on each material: recolour or flat-shade a pack that does not match the look. */
+  readonly tweakMaterial?: (material: Material) => void;
 }
 
 const A = "CharacterArmature|";
@@ -64,4 +73,8 @@ export const adventurer: HeroCandidate = {
   },
 };
 
-export const HERO_CANDIDATES: ReadonlyMap<string, HeroCandidate> = new Map([knight, adventurer].map((c) => [c.id, c]));
+const defs = import.meta.glob<{ candidate: HeroCandidate }>("./defs/*.tsx", { eager: true });
+
+export const HERO_CANDIDATES: ReadonlyMap<string, HeroCandidate> = new Map(
+  [knight, adventurer, ...Object.values(defs).map((m) => m.candidate)].map((c) => [c.id, c]),
+);
