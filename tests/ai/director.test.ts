@@ -1,6 +1,6 @@
 // The adaptive difficulty director: what it counts, how it reads the player, and what it may and may not change.
 import { expect, test } from "vitest";
-import { EMPTY_STATS, observe, skill, tune } from "../../src/ai/director";
+import { EMPTY_STATS, JUDGED_ENEMY_ID, observe, skill, tune } from "../../src/ai/director";
 import type { DirectorStats } from "../../src/ai/director";
 import { startFight, step } from "../../src/combat/engine";
 import type { CombatEvent, EnemyAttack, EnemySpec, FightingStyle, Strike } from "../../src/core/types";
@@ -211,6 +211,8 @@ test("defence ids that are Object.prototype names are counted like any other", (
 test("no registered enemy is tuned under a second in any phase, however well the player does", () => {
   expect(ENEMIES.length).toBeGreaterThan(0);
   for (const enemy of ENEMIES) {
+    // The judged fight is never tuned; it has its own test below.
+    if (enemy.id === JUDGED_ENEMY_ID) continue;
     const tuned = tune(enemy, cruising);
     const phases = enemy.phases ?? [{ name: "whole fight", attackIds: enemy.attacks.map((attack) => attack.id), telegraphScale: 1 }];
     for (const phase of phases) {
@@ -366,4 +368,81 @@ test("with the real engine, a player who defends 90 percent faces shorter warnin
   }
   // A 30 percent player can still string a few stops together, so their warnings are judged over all the fights.
   expect(weakPace).toBeGreaterThan(1.02);
+});
+
+test("the judged Polyphemus fight is handed back untouched, whatever the player has done", () => {
+  expect(JUDGED_ENEMY_ID).toBe("polyphemus");
+  const polyphemus = ENEMIES.find((enemy) => enemy.id === JUDGED_ENEMY_ID);
+  expect(polyphemus).toBeDefined();
+  if (!polyphemus) return;
+  const beaten = observe(EMPTY_STATS, times(10, hit("block")));
+  for (const stats of [EMPTY_STATS, cruising, struggling, weakDuck, beaten]) {
+    expect(tune(polyphemus, stats)).toBe(polyphemus);
+  }
+  // The same numbers under another id are tuned, so it is the id that protects the fight.
+  const renamed: EnemySpec = { ...polyphemus, id: "not-the-judged-fight" };
+  expect(tune(renamed, cruising)).not.toBe(renamed);
+  expect(tune(renamed, beaten)).not.toBe(renamed);
+  // And the test enemy is left alone once it carries the judged id.
+  const judged: EnemySpec = { ...boss, id: JUDGED_ENEMY_ID };
+  expect(tune(judged, cruising)).toBe(judged);
+  expect(tune(judged, beaten)).toBe(judged);
+});
+
+test("a player hit ten times in a row gets warnings exactly 30 percent longer and a strike window exactly 25 percent wider", () => {
+  const beaten = observe(EMPTY_STATS, times(10, hit("block")));
+  expect(skill(beaten)).toBe(-1);
+  const tuned = tune(boss, beaten);
+  expect(warnings(tuned)).toEqual([2470, 2340, 2600]);
+  expect(tuned.strikeWindowMs).toBe(2500);
+  // Only one defence has been tried, so none stands out and no weight moves.
+  expect(tuned.attacks.map((attack) => attack.weight)).toEqual([undefined, 2, undefined]);
+
+  // A window that does not scale to a whole number is rounded: 1999 x 1.25 is 2498.75.
+  expect(tune({ ...boss, strikeWindowMs: 1999 }, beaten).strikeWindowMs).toBe(2499);
+  // Part strength gives whole milliseconds too.
+  for (const stats of [struggling, observe(cruising, times(2, hit("duck")))]) {
+    const eased = tune({ ...boss, strikeWindowMs: 1999 }, stats);
+    expect(eased.strikeWindowMs).toBeGreaterThan(1999);
+    expect(Number.isInteger(eased.strikeWindowMs)).toBe(true);
+    for (const attack of eased.attacks) expect(Number.isInteger(attack.telegraphMs), attack.id).toBe(true);
+  }
+});
+
+test("a strike result counts half as much as a defence result", () => {
+  // Newest first: the landed strike counts 0.5, the hit before it 0.85. So 0.5 good out of 1.35.
+  expect(skill(observe(EMPTY_STATS, [hit("block"), landed]))).toBeCloseTo((0.5 / 1.35 - 0.7) / 0.7, 10);
+  // The missed opening counts 0.5, the stop before it 0.85. So 0.85 good out of 1.35.
+  expect(skill(observe(EMPTY_STATS, [defended("block"), whiffed]))).toBeCloseTo((0.85 / 1.35 - 0.7) / 0.7, 10);
+  // If strikes counted the same as defences these would be about -0.23 and -0.34.
+  expect(skill(observe(EMPTY_STATS, [hit("block"), landed]))).toBeLessThan(-0.4);
+  expect(skill(observe(EMPTY_STATS, [defended("block"), whiffed]))).toBeGreaterThan(-0.2);
+});
+
+test("an attack whose counter is an Object.prototype name the player has never met does not hide a real weakness", () => {
+  const strange: EnemySpec = {
+    ...boss,
+    attacks: [{ id: "odd", name: "Odd", telegraphMs: 2000, damage: 5, counter: "constructor" }, ...boss.attacks],
+    phases: [{ name: "Only", belowHp: 1, attackIds: ["odd", "swing", "lunge", "sweep"], telegraphScale: 1 }],
+  };
+  const plain: EnemySpec = { ...boss, phases: [{ name: "Only", belowHp: 1, attackIds: ["swing", "lunge", "sweep"], telegraphScale: 1 }] };
+  for (const stats of [weakDuck, struggling]) {
+    expect(Object.hasOwn(stats.defences, "constructor")).toBe(false);
+    const tuned = tune(strange, stats);
+    const expected = tune(plain, stats);
+    // The three known attacks come out exactly as they do without the strange one beside them.
+    expect(tuned.attacks.slice(1)).toEqual(expected.attacks);
+    expect(tuned.attacks[0].weight).toBeUndefined();
+    expect(Number.isFinite(tuned.attacks[0].telegraphMs)).toBe(true);
+  }
+  // Pressing still leans on the weak duck, and easing still leans on the good block.
+  expect(weightOf(tune(strange, weakDuck), "lunge")).toBeGreaterThan(3);
+  expect(weightOf(tune(strange, struggling), "swing")).toBeGreaterThan(1.5);
+});
+
+test("an enemy with no attacks, which the types rule out, is handed back instead of throwing", () => {
+  const empty = { ...boss, attacks: [] } as unknown as EnemySpec;
+  for (const stats of [EMPTY_STATS, cruising, struggling, weakDuck]) {
+    expect(tune(empty, stats)).toBe(empty);
+  }
 });
