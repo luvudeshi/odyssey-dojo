@@ -7,14 +7,21 @@ import { useQualityLevel } from "./quality";
 
 const HDRI = `${import.meta.env.BASE_URL}hdri/small_cave_1k.hdr`;
 
-export function Atmosphere() {
+export function Atmosphere({ sky }: { sky?: { readonly hdri: string; readonly yaw: number } | undefined }) {
   const high = useQualityLevel() === "high";
   return (
     <>
       {/* A missing HDRI only loses reflections. */}
       <ErrorBoundary label="hdri" fallback={null}>
         <Suspense fallback={null}>
-          <Environment files={HDRI} background={false} environmentIntensity={0.6} />
+          <Environment
+            files={sky?.hdri ?? HDRI}
+            background={sky !== undefined}
+            backgroundIntensity={0.42}
+            backgroundRotation={[0, sky?.yaw ?? 0, 0]}
+            environmentRotation={[0, sky?.yaw ?? 0, 0]}
+            environmentIntensity={sky ? 0.3 : 0.6}
+          />
         </Suspense>
       </ErrorBoundary>
       <directionalLight position={[-4, 5, -10]} intensity={1.6} color="#6f9dff" />
