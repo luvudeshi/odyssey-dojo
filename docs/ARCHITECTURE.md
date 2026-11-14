@@ -38,6 +38,7 @@ Every move also has a key, so the game runs with no camera and no network. That 
 | 9 | Finishing move: the stake | #6, #13 |
 | 10 | Athena as voice coach, clips made ahead of time so it works offline | #14, #15 |
 | 11 | Hit feel: shake, flashes, sparks, a cave arena | #9, #10 |
+| 11a | Action-RPG battle view: our own character seen from behind, facing the monster; camera and characters move | #51 |
 | 12 | Quest map in Odyssey order, Polyphemus playable, the rest shown ahead | #26 |
 | 13 | Title, intro line, win and loss screens | #16 |
 | 14 | Detectors tuned on all three of us | #17 |
@@ -59,6 +60,15 @@ Every move also has a key, so the game runs with no camera and no network. That 
 - Replay and god card with a QR code (#2).
 - More quest stops: Circe, the Sirens, Charybdis, the suitors.
 - Difficulty that adapts to the player. Rigged downloaded models.
+
+### Later: agreed, not started (do not begin until toyeshhm says so)
+
+The direction is a fully fleshed-out game with action-RPG style battles.
+
+| Feature | Issue |
+|---|---|
+| Complete UI redesign: HUD, prompt cards, menus, screens | #52 |
+| Sophisticated graphics and real 3D models for the opponents | #53 |
 
 ## How it fits together
 
