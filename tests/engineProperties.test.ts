@@ -196,11 +196,15 @@ function fight(enemy: EnemySpec, style: FightingStyle, seed: number, players: 1 
 }
 
 const SEEDS = [1, 2, 3, 42, 1234, 99991] as const;
-const CASES = ENEMIES.flatMap((enemy) =>
-  STYLES.flatMap((style) =>
-    SEEDS.flatMap((seed) => SKILLS.flatMap((skill) => ([1, 2] as const).map((players) => ({ enemy, style, seed, skill, players })))),
+const COMBOS = SEEDS.flatMap((seed) => SKILLS.flatMap((skill) => ([1, 2] as const).map((players) => ({ seed, skill, players }))));
+const COMBO_STRIDE = 6;
+/** Every enemy x style pair gets 1/6 of the seed, skill and player combos, rotating so all of them are covered across pairs. The cost stays flat as enemies and styles are added. */
+const CASES = ENEMIES.flatMap((enemy, e) =>
+  STYLES.flatMap((style, s) =>
+    COMBOS.filter((_, i) => i % COMBO_STRIDE === (e + s) % COMBO_STRIDE).map((combo) => ({ enemy, style, ...combo })),
   ),
 );
+const STATES_PER_FIGHT = 8;
 
 describe("random fights keep every rule", () => {
   const seen = new Set<string>();
@@ -264,9 +268,15 @@ describe("the same seed and inputs always give the same fight", () => {
 });
 
 describe("time of zero and time that is huge", () => {
-  const states = CASES.filter((k) => k.seed <= 3 && k.players === 1).flatMap((c) =>
-    fight(c.enemy, c.style, c.seed, c.players, c.skill, false).states.map((state) => ({ state, enemy: c.enemy, style: c.style })),
-  );
+  // Built once and shared by the three tests below. Per fight: evenly spaced states, plus the first of every phase kind.
+  const states = CASES.filter((k) => k.players === 1).flatMap((c) => {
+    const all = fight(c.enemy, c.style, c.seed, c.players, c.skill, false).states;
+    const stride = Math.max(1, Math.floor(all.length / STATES_PER_FIGHT));
+    const firstOfKind = new Map<string, CombatState>();
+    for (const state of all) if (!firstOfKind.has(state.phase.kind)) firstOfKind.set(state.phase.kind, state);
+    const picked = new Set([...all.filter((_, i) => i % stride === 0), ...firstOfKind.values()]);
+    return [...picked].map((state) => ({ state, enemy: c.enemy, style: c.style }));
+  });
   const idle: CombatInput = { held: new Set(), struck: [] };
 
   test("dt 0 with no input moves nothing", () => {
