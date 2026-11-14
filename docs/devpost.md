@@ -4,6 +4,8 @@ First draft of the submission page. The table pitch and judge answers are in [pi
 
 **How to read this draft.** It was checked against `main` at commit `de77074` (Saturday afternoon). A sentence tagged `[pending #N]` describes something that is not on `main` yet, or not yet proven; N is the issue that will settle it. Each one sits in its own sentence or bullet. Before submitting, go through every tag: if the issue is done, delete the tag; if it is not, publish the "Today" version next to it, or delete the sentence if it has none. Nothing tagged may reach the published page.
 
+The ElevenLabs and Gemini parts were checked again against `main` at commit `fd14780` and use two more tags. `[if wired]` means the code is on `main` but no game screen calls it yet, so a player does not see or hear it. `[if built]` means it is not on `main` at all. Treat both like `[pending]`: publish the sentence only once it is true.
+
 The webcam claims are tagged `[pending #7]` on purpose. The tracking and every detector are built and unit-tested, but nobody has yet won a fight with their body on the demo laptop.
 
 ## Tagline
@@ -35,10 +37,10 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 - **Feel the hits.** The cave is lit by torches. A hit on him throws sparks; a hit on you shakes the camera and flashes the edge of the screen red. Every fight event has its own sound.
 - `[pending #23]` Each strike is rated GOOD, GREAT or PERFECT on how well it was thrown, and a better strike does more damage. **Today:** the rules already scale damage by how well a strike is thrown, but only the stake thrust is measured.
 - `[pending #36]` Each move says in one line what it is for in real self-defense.
-- `[pending #15 wiring]` Athena coaches you by voice: she calls each defense and strike as it is needed. **Today:** her 22 lines are recorded and the playback is built and tested, but she is not yet heard in a fight (two lines in the fight screen are still to add).
+- `[pending #21]` **Athena coaches you by voice.** She calls each defense and each strike as it is needed, praises a hit, warns after one, and announces the phases and the result. Her lines are clips stored with the game. **Today:** the clips are stored with the game and the fight screen on `main` plays them, but nobody has logged hearing her in a fight (see "Still to add").
 - `[pending #26]` A quest map shows the route in the poem's order: the Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca.
 - `[pending #27]` Scylla is the second fight. (Today she exists as data and is drawn as a placeholder block.)
-- `[pending #20]` Before the fight, the camera looks at you and names the Olympian you take after.
+- `[if wired]` Before the fight, the camera looks at you and names the Olympian you take after. **Today:** the god scan is on `main` and runs on a test page, but the game does not open it.
 - `[pending #30]` That god grants one power: defending fills a meter and the god's gesture spends it.
 - `[pending #28]` A second player can step into the frame; striking together does double damage.
 - **Play with no camera.** Every move has a key. The camera and the keyboard feed the same fight at the same time, and if the camera cannot start the game says so and carries on with keys.
@@ -53,9 +55,78 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 - **Everything visible only reads.** The scene, the HUD, the hit effects and the sound take the state and the events and never change the fight.
 - **Content registers itself.** Moves, styles, monsters, monster models and arenas are one file each in a folder that is scanned at build time. Adding one never means editing a shared list.
 - **Tests in plain Node.** Because the engine is pure, vitest runs whole fights without a browser. One test plays 30 simulated fights against Polyphemus and fails unless they average 90 to 150 seconds. Another plays 1,000 random fights and fails if one never ends. Another fails if a monster or a style names a move that does not exist. Detectors are tested with made-up pose sequences.
-- **Sound** is one clip file per fight event, generated ahead of time with the **ElevenLabs** Sound Effects API and played offline through the Web Audio API. If a clip fails to load, a sound synthesised in code plays instead. Athena's 22 lines are clips made the same way with one ElevenLabs voice, and only the clips listed in an index file are ever requested.
-- `[pending #2]` An optional **Node and Express** server holds the API keys and talks to **Google Gemini** (the god scan and fights built from a sentence) and **ElevenLabs** (speech made on demand). The game starts and plays a full fight with the server off.
+- **Sound** is one clip file per fight event, 11 in all, generated ahead of time with the **ElevenLabs** sound generation API and played offline through the Web Audio API. Eight of the 11 events also have a sound synthesised in code, which plays if the clip fails to load. Athena's 37 lines are clips made ahead of time with ElevenLabs text to speech, and only the clips listed in an index file are ever requested. See "How we used ElevenLabs".
+- An optional **Node and Express** server in `server/` holds the API keys and talks to **Google Gemini** (the god scan and a fight described from a sentence) and **ElevenLabs** (speech made on demand). The game starts and plays a full fight with the server off. No game screen calls the server yet. See "How we used Gemini".
 - **Three people, three coding agents.** Each of us ran a coding agent. We agreed the shared contracts first and wrote one issue per task listing the files it may touch. Every change, from anyone, goes through a branch and a pull request that must sit on the latest `main` and pass lint, typecheck, tests and a build. No code is copied from earlier projects.
+
+## How we used ElevenLabs
+
+Checked against `main` at `fd14780`. Every count below was read from the file named beside it.
+
+**What it does in the game**
+
+- **Sound effects, played in every fight.** One clip for each of the engine's 11 fight events: `telegraph`, `defended`, `playerHit`, `opening`, `enemyHit`, `whiffed`, `phaseChanged`, `finished`, `powerUnleashed`, `won` and `lost`. The clips are `public/audio/sfx/<event>.mp3`, listed in `public/audio/sfx/index.json`. `src/audio/sfx.ts` plays them, and `src/screens/FightScreen.tsx` calls it for every event.
+- **Athena the coach, played in every fight.** 37 lines in `src/audio/athenaLines.ts`, one clip each in `public/audio/athena/`: 26 move calls, 3 lines of praise, 3 warnings, 2 phase lines, a fight start, a win and a loss. `src/audio/voice.ts` picks the line from the fight's events and plays one line at a time; `src/screens/FightScreen.tsx` calls it every frame. On `main` she calls the defense when an attack winds up, calls the strike when a weak spot opens, calls the stake, praises a hit, warns after one, and announces a phase change, the win and the loss.
+- The front kick and the knee have no line of their own, so for those she says "Strike now!".
+- The two phase lines were written for Polyphemus: "He takes his club!" and "He is blind! Stay light!". `src/audio/voice.ts` picks them by phase number for any monster. Circe, the Sirens, Charybdis and the suitors each have three phases in `src/enemies/defs/`, so in those fights she would say the Cyclops's lines. On `main` the game only opens a fight whose monster has a model, and only Polyphemus has one (`src/render/monsters/models/`), so today the lines fit the one fight that plays them.
+- Eight of the 37 lines are recorded but nothing on `main` asks for them: `fight_start`, `call_jump` and the six god-power calls. A ninth, `call_any_defend` ("Defend yourself!"), is only a stand-in for a defense with no clip. The six monsters in `src/enemies/defs/` use four defenses (block, duck, dodge left, dodge right) and each has its own clip, so it is not heard either.
+- **Homer and Polyphemus, in the repo, `[if wired]`.** Eight more clips sit in the same folder and index: four lines for Homer as narrator (title, before Polyphemus, win, loss) and Polyphemus's four taunts. The script is `src/audio/storyLines.ts`. `speakLine` and `speakTaunt` in `src/audio/voice.ts` play them, but no screen calls either, so a player does not hear them.
+- **Speech made live, in the repo, `[if wired]`.** `POST /api/speech` in `server/routes/speech.ts` turns a line of text into speech in an Athena, Homer or monster voice, and saves each line under `server/data/speech/` so it is made once. `src/audio/narration.ts` is the browser side. It is for lines that cannot be recorded ahead of time, such as the narration of a fight Gemini wrote. Nothing on `main` calls it.
+- `[if built]` Music and ambience (issue `#85`), and narration for each stop with taunts for the other monsters (issue `#86`), are not on `main`.
+
+**When the calls happen**
+
+- **Ahead of time.** `server/tools/genClips.ts` made the 11 effects and Athena's 37 lines. It uses three ElevenLabs endpoints through `server/ai/elevenlabs.ts`: `POST /v1/sound-generation` with model `eleven_text_to_sound_v3` (the prompt and length for each event are in the script), `POST /v1/text-to-speech/<voice id>` trying model `eleven_v4` first and `eleven_multilingual_v2` second, and `GET /v2/voices` to find a voice the key may use (the names tried are in `server/ai/voices.ts`). The repo does not record which of the two speech models, or which voice, made the committed clips. The eight Homer and Polyphemus clips came in with PR `#90`, which says they were recorded once with ElevenLabs; `genClips.ts` has no command for them.
+- **Live.** Only `POST /api/speech`, with model `eleven_flash_v2_5`, and only once something calls it.
+- **During a fight on `main`:** no ElevenLabs call. The sound code only fetches files under `/audio/`.
+
+**With no network or no key**
+
+- The clips are files served with the game. Playing them needs no key and no server.
+- If a sound effect's clip fails to load, `src/audio/sfxSynth.ts` has a sound synthesised in code for 8 of the 11 events. `phaseChanged`, `finished` and `powerUnleashed` have none and stay silent.
+- Athena only requests clips listed in `public/audio/athena/index.json`. With a clip or the index missing she is silent for that line and the fight carries on. A call whose clip is missing is replaced by "Defend yourself!" or "Strike now!".
+- Live speech: with no key the server answers 503 unless that line was saved earlier. With no server the browser side plays nothing and does not throw.
+
+**Tests:** `tests/sfx.test.ts`, `tests/voice.test.ts`, `tests/athenaLines.test.ts`, `tests/storyLines.test.ts`, `tests/ai/narration.test.ts`, `server/tests/speech.test.ts`. They use fakes and need no key.
+
+**Not checked:** nobody has logged listening to a full fight in a browser. No test compares the scripts with the clip folder; at this commit the 45 ids in the two scripts, the 45 ids in the index and the 45 clip files agree.
+
+## How we used Gemini
+
+Checked against `main` at `fd14780`.
+
+**What it does in the game**
+
+- **The god scan, in the repo, `[if wired]`.** One still picture from the webcam goes to Gemini, which picks one of six Olympians (Zeus, Poseidon, Athena, Hermes, Artemis or Apollo) and writes an epithet, one sentence saying why, and a rival god. A second Gemini call repaints the same picture as a marble bust or a vase painting of the player. The screen is `src/ai/ui/RevealScreen.tsx`. On `main` it is only mounted on the test page `src/ai/lab/index.html`, which runs under the dev server and is not linked from the game. The game's own flow in `src/App.tsx` does not open it, so a player does not see it.
+- **A fight from a sentence: the level is in the repo, the fight is `[if built]`.** `POST /api/level` in `server/routes/level.ts` sends Gemini the player's phrase, god and rival (and the epithet, when the request has one), and gets back a level: a title, an arena, a monster, 6 to 12 attacks, a tempo, 2 to 4 phases, 4 to 8 taunts and narration in Homer's voice (the limits are in `src/ai/contracts.ts`). `src/ai/repair.ts` pulls every number into range and fills gaps. On `main` the test page prints that level as text. Turning it into a fight the engine runs, and the "How do you fight?" screen, are PRs `#78` and `#92`, not merged.
+
+**When the calls happen**
+
+All of them are live, at the moment the player asks. Nothing from Gemini is made ahead of time or stored with the game. Every call goes through `server/ai/gemini.ts`: the `@google/genai` SDK, the Interactions API (`client.interactions.create`), API version `v1beta`, `store: false`, and no SDK retries.
+
+- **Choosing the god and writing a level:** text in (plus the one picture for the god), JSON bound to a schema out. Model `gemini-3.5-flash-lite`; `gemini-3.1-flash-lite` is tried once if the first fails. It is not tried after a 400, 401 or 403 (a bad request or a refused key), or once the route's time limit for the call has run out.
+- **Painting the portrait:** picture in, picture out. Model `gemini-3.1-flash-lite-image`, then `gemini-nano-banana-2.1` if the first fails or returns no picture, under the same rule.
+- The prompts are in `server/revealPrompts.ts` and `server/prompts.ts`.
+- The key is read from `.env` by the server (`server/env.ts`) and is not sent to the browser. The routes that call Gemini answer only requests from the same machine (`server/lib/localOnly.ts`).
+
+**With no network or no key**
+
+- **God scan.** With no key the server answers 503 at once. With no server, or a slow, failed or unusable answer, the browser picks the god itself in `src/ai/gods/offlineReveal.ts`: from the stance (9 stances in `src/ai/gods/stance.ts`), then from the clothing colour (7 colour families in `src/ai/gods/tint.ts`), then by lot.
+- **Portrait.** If Gemini's portrait does not arrive, the browser draws its own from the snapshot: a marble bust in a gold ring with a laurel wreath (`src/ai/gods/marble.ts`, `src/ai/gods/portrait.ts`).
+- **Level.** `/api/level` answers every well-formed request with a valid level; a malformed request gets a 400 and no level. With no key, or on any error, timeout or unusable answer, it returns one of 5 handcrafted levels in `src/ai/fallbacks.ts`, marked `source: "fallback"`. The level is picked by keywords in the phrase, or by a hash of the phrase when no keyword matches. With no server at all, `src/ai/client.ts` picks the same fallback in the browser.
+
+**Privacy of the god scan, as the code does it**
+
+- **What is sent.** One JPEG, at most 640 pixels wide, taken after a three-second countdown and only after the player presses "Reveal my god". The request holds that picture and nothing else. It goes to our server on the same laptop (`POST /api/reveal` in `server/routes/reveal.ts`). The server sends it to Gemini to choose the god and, if that worked, once more to paint the portrait. When a model fails in a way that lets the second one be tried (see "When the calls happen"), the same picture goes to that second model. No video is sent.
+- **What is not sent.** With no camera, or when the player presses "Cast the lot instead (no picture)", no picture is taken and no request is made. With the server off, the picture does not leave the laptop. With the server on but no Gemini key, it reaches our server and goes no further.
+- **What is kept.** Our server holds the snapshot in memory only. The portrait call is started but not waited for, so the snapshot is still held after the answer is sent, until the portrait is painted or the call gives up; the limit for that call is 12 seconds (`portraitMs` in `server/env.ts`). It does not write it to disk and does not log it; long base64 runs are cut out of error messages before they are logged. The Gemini calls set `store: false`, which asks Gemini not to keep the request as a stored interaction. We have not checked what Google keeps beyond that setting. The painted portrait stays in the server's memory, at most 20 at a time, each forgotten after two minutes (`server/lib/portraits.ts`), and is served with `Cache-Control: no-store`.
+- **What is judged.** The prompt tells Gemini to judge only the expression, the stance, the colours of the clothing and the energy of the pose. It tells it never to mention or use body shape, size, age, gender, skin, hair, face or attractiveness, and not to identify the person. The server then checks the answer: an epithet or reason with a word about body, age, looks or gender (the list is in `server/revealGuard.ts`) is replaced by a fixed line for that god. The offline scan reads only the stance and the clothing colour.
+- **The portrait is a likeness, not a judgment.** Its prompt asks the image model to keep the player's face, hair, expression and pose so they stay recognisable as a statue.
+- **What the screen tells the player** (`src/ai/ui/RevealScreen.tsx`): "One picture is taken and sent to Google Gemini to choose your god. It is not saved. With no network, the choice is made on this laptop." That text does not mention the portrait call.
+
+**Tests:** `server/tests/reveal.test.ts`, `server/tests/app.test.ts`, `tests/ai/reveal.test.ts`, `tests/ai/revealGod.test.ts`, `tests/ai/gods.test.ts`, `tests/ai/marble.test.ts`, `tests/ai/level.test.ts`. They use a fake model and need no key.
+
+**Not checked:** no live Gemini call was made for this page. The model names are as written in `server/ai/gemini.ts`.
 
 ## Challenges we ran into
 
@@ -76,7 +147,7 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 - Prompts that step back as the player learns, so the game is teaching and not just scoring.
 - A structure where a new move, monster, style or arena is one new file.
 - A fight that ends the way Book 9 does: he does not fall until the stake is driven in. `[pending #7]` Done with both hands, in front of the camera.
-- `[pending #15 wiring]` Athena's voice working with the network off.
+- `[pending #21]` Athena coaching by voice in a fight from clips stored with the game, so she needs no network. **Today:** the clips and the code that plays them are on `main`; nobody has logged hearing her in a fight.
 
 ## What we learned
 
@@ -92,7 +163,7 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 - The rest of the route: Circe, the Sirens, Scylla, Charybdis and the suitors in Ithaca, each with its own finishing move.
 - Kicks and knees, and a Pankration style.
 - Two players on one camera, and rooms so a friend can join from another laptop.
-- Fights built from a sentence: describe how you fight and Gemini builds the fight.
+- `[if built]` Fights built from a sentence: describe how you fight and Gemini builds the fight. **Today:** the Gemini call that writes the level and five handcrafted fallback levels are on `main`; the fight itself and its screen are PRs `#78` and `#92`, not merged.
 - A replay and a god card to take away.
 - Difficulty that adapts to the player, and rigged 3D models in place of the ones built in code.
 
@@ -107,13 +178,12 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 - @react-three/postprocessing
 - MediaPipe Tasks Vision (pose landmarker)
 - Web Audio API
-- ElevenLabs (sound effects and Athena's voice clips)
+- ElevenLabs (sound effects, Athena's voice clips, Homer's and Polyphemus's clips)
 - Poly Haven (CC0 textures and lighting map)
 - Vitest
 - ESLint with typescript-eslint
-- `[pending #2]` Node.js
-- `[pending #2]` Express
-- `[pending #20]` Google Gemini API
+- Node.js and Express (the optional server)
+- `[if wired]` Google Gemini API (Interactions API through the `@google/genai` SDK). On `main` only the test page reaches it.
 
 ## Still to add before submitting
 
@@ -125,5 +195,6 @@ All `[pending #21]`:
 - Play one keyboard fight to the stake and the win screen in the browser and log it in [playtest.md](playtest.md). The logged run predates the stake and did not reach a win.
 - Re-verify every webcam claim after `#7` and `#17` close: the tagline, "Your body is the controller", "See yourself", and the first and sixth accomplishments.
 - Re-read the two test numbers (30 simulated fights, 1,000 random fights) and the list of styles against `main`.
-- `[pending #15 wiring]` is not an ordinary issue tag: issue `#15` is closed, and the tag clears when Athena is heard in a fight.
+- Play one fight with the sound on and log in [playtest.md](playtest.md) that the effects and Athena are heard. Both are called from the fight screen on `main`, but no logged run mentions sound. That run clears the two `[pending #21]` tags on Athena ("What it does" and the last accomplishment).
+- Go through every `[if wired]` and `[if built]` tag in the two sponsor sections the same way as the `[pending]` tags, and count the clips and lines again if `public/audio/` changed.
 - One pass to remove every `[pending]` tag as described at the top.
