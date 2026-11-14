@@ -15,7 +15,7 @@ export interface Shot {
 }
 
 export const MONSTER_Z = -4;
-const BASE = { px: 1.5, py: 2.2, pz: 5.2, lx: 0.9, ly: 1.7, lz: -1.6, fov: 52 } as const;
+const BASE = { px: 1.4, py: 2.15, pz: 4.9, lx: 0.8, ly: 1.5, lz: -1.6, fov: 52 } as const;
 
 export function makeShot(): Shot {
   return { ...BASE, lambda: 3, kick: 0, fovKick: 0 };
@@ -25,11 +25,11 @@ const ease = (p: number): number => p * p * (3 - 2 * p);
 
 /** A slow sweep around the middle of the arena, kept to the front so the camera never ends up behind the monster. */
 function orbit(out: Shot, phase: number, height: number): void {
-  const angle = Math.sin(phase) * 1.1;
-  out.px = Math.sin(angle) * 6;
-  out.pz = -1.4 + Math.cos(angle) * 6;
+  const angle = Math.sin(phase) * 0.9;
+  out.px = Math.sin(angle) * 7;
+  out.pz = -1.4 + Math.cos(angle) * 7;
   out.py = height;
-  out.lx = 0; out.ly = 1.9; out.lz = -1.4;
+  out.lx = 0; out.ly = 1.6; out.lz = -1.4;
   out.fov = 55;
   out.lambda = 2;
 }
@@ -50,9 +50,9 @@ export function cameraShot(out: Shot, b: Battle, now: number, calm: boolean): Sh
     out.pz += 0.9 * e; out.py -= 0.5 * e; out.ly += 0.9 * e; out.fov += 5 * e;
   } else if (phase?.kind === "strike") {
     const [sx, sy, sz] = phase.weakSpot.position;
-    out.px = 1.3 + b.heroX * 0.5; out.py = 2.2; out.pz = 4.0 + b.heroZ * 0.5;
+    out.px = 1.5 + b.heroX * 0.5; out.py = 2.9; out.pz = 6.9 + b.heroZ * 0.5;
     // Look most of the way to the weak spot, but keep the hero in frame.
-    out.lx = 0.4 * out.lx + 0.6 * sx; out.ly = 0.4 * out.ly + 0.6 * sy; out.lz = 0.4 * out.lz + 0.6 * (MONSTER_Z + sz);
+    out.lx = 0.75 * out.lx + 0.25 * sx; out.ly = 0.75 * out.ly + 0.25 * sy; out.lz = 0.75 * out.lz + 0.25 * (MONSTER_Z + sz);
     out.fov -= 4; out.lambda = 4;
   } else if (phase?.kind === "finisher") {
     orbit(out, now * 0.4, 2.6);
@@ -65,6 +65,6 @@ export function cameraShot(out: Shot, b: Battle, now: number, calm: boolean): Sh
   const wide = decay(now, b.phaseAt, 1.8);
   out.px += 1.6 * wide; out.py -= 0.4 * wide; out.pz += 1.5 * wide; out.fov += 12 * wide;
   const hit = decay(now, b.enemyHitAt, 0.35);
-  out.kick = 0.1 * hit; out.fovKick = -4 * hit;
+  out.kick = 0.06 * hit; out.fovKick = -3 * hit;
   return out;
 }
