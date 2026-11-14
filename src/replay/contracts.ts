@@ -6,6 +6,13 @@ export const CARD_PREFIX = "data:image/png;base64,";
 export const MAX_CARD_BYTES = 4_000_000;
 export const MAX_VIDEO_BYTES = 64 * 1024 * 1024;
 
+const PNG_SIGNATURE: readonly number[] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+/** True when the bytes start the way every PNG file does. The card is always sent and stored as one. */
+export function isPng(bytes: Uint8Array): boolean {
+  return bytes.length >= PNG_SIGNATURE.length && PNG_SIGNATURE.every((byte, index) => bytes[index] === byte);
+}
+
 /** What the phone page says about the fight. */
 export const ReplayMetaSchema = z.object({
   godName: z.string().max(60),

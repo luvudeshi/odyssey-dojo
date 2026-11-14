@@ -1,6 +1,6 @@
 // How the game shares a finished fight: the god card and the replay video go to the server, a phone page and its QR code come back. Never rejects and never hangs.
 import { log } from "../core/log";
-import { CARD_PREFIX, CreateReplayResponseSchema, MAX_CARD_BYTES, MAX_VIDEO_BYTES } from "./contracts";
+import { CARD_PREFIX, CreateReplayResponseSchema, MAX_CARD_BYTES, MAX_VIDEO_BYTES, isPng } from "./contracts";
 import type { CreateReplayRequest, ReplayMeta } from "./contracts";
 
 const CREATE_TIMEOUT_MS = 8000;
@@ -10,7 +10,7 @@ const CHUNK = 0x8000;
 
 export interface ReplayUpload {
   readonly meta: ReplayMeta;
-  /** The god card as a PNG. */
+  /** The god card as a PNG. Anything else is left out, and the page is made without a picture. */
   readonly card: Blob | null;
   /** The recorded fight, WebM or MP4. */
   readonly video: Blob | null;
@@ -36,6 +36,11 @@ async function cardDataUrl(card: Blob | null): Promise<string | null> {
     return null;
   }
   const bytes = new Uint8Array(await card.arrayBuffer());
+  // The server refuses the whole request over a card that is not a PNG, which would lose the page and the video too.
+  if (!isPng(bytes)) {
+    log("warn", "replay_card_not_png", card.type);
+    return null;
+  }
   let binary = "";
   for (let start = 0; start < bytes.length; start += CHUNK) {
     binary += String.fromCharCode(...bytes.subarray(start, start + CHUNK));

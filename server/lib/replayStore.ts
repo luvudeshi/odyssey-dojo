@@ -17,7 +17,7 @@ const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
 const ID_LENGTH = 10;
 const ID_PATTERN = /^[a-hjkmnp-z2-9]{10}$/;
 const META_FILE = "meta.json";
-const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const CLAIM_GRACE_MS = 60_000;
 
 const RecordSchema = z.object({ meta: ReplayMetaSchema, page_url: z.string(), created_ms: z.number() });
 type StoredRecord = z.infer<typeof RecordSchema>;
@@ -35,10 +35,6 @@ export interface StoredReplay {
 /** The only gate between a request and the filesystem: nothing but a well-formed id ever becomes part of a path. */
 export function isReplayId(value: unknown): value is string {
   return typeof value === "string" && ID_PATTERN.test(value);
-}
-
-export function isPng(bytes: Buffer): boolean {
-  return bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE);
 }
 
 export function videoFile(kind: VideoKind): string {
@@ -85,18 +81,35 @@ async function claimFolder(dataDir: string): Promise<string> {
   throw new Error("no free replay id");
 }
 
-/** Deletes the oldest replays beyond the cap. A folder with no readable meta counts as the oldest of all. */
+/**
+ * When a replay was made, or null for a folder the cap must leave alone. A folder with no readable meta
+ * that was touched in the last minute may still be being written; an older one was abandoned, and is aged by that touch.
+ */
+async function createdAt(dir: string): Promise<number | null> {
+  const record = await readRecord(dir);
+  if (record !== null) return record.created_ms;
+  try {
+    const touched = (await stat(dir)).mtimeMs;
+    return Date.now() - touched < CLAIM_GRACE_MS ? null : touched;
+  } catch {
+    return 0;
+  }
+}
+
+/** Deletes the oldest replays beyond the cap. */
 async function prune(dataDir: string, keep: string): Promise<void> {
   try {
     const ids = (await readdir(root(dataDir))).filter(isReplayId);
     if (ids.length <= MAX_REPLAYS) return;
     const aged = await Promise.all(ids.filter((id) => id !== keep).map(async (id) => ({
       id,
-      created: (await readRecord(join(root(dataDir), id)))?.created_ms ?? 0,
+      created: await createdAt(join(root(dataDir), id)),
     })));
-    aged.sort((a, b) => a.created - b.created);
-    for (const { id } of aged.slice(0, ids.length - MAX_REPLAYS)) {
-      await rm(join(root(dataDir), id), { recursive: true, force: true });
+    const oldestFirst = aged
+      .flatMap(({ id, created }) => (created === null ? [] : [{ id, created }]))
+      .sort((a, b) => a.created - b.created);
+    for (const { id } of oldestFirst.slice(0, ids.length - MAX_REPLAYS)) {
+      await rm(join(root(dataDir), id), { recursive: true, force: true, maxRetries: 2 });
     }
   } catch (error) {
     log("warn", "replay_prune_failed", error);
@@ -106,7 +119,25 @@ async function prune(dataDir: string, keep: string): Promise<void> {
 // Replays made in the same millisecond still need an order for the cap, so this clock never repeats.
 let lastCreated = 0;
 
-export async function createReplay(
+// Creates take turns, so the cap never counts or deletes a replay that another create is still writing.
+let turn: Promise<unknown> = Promise.resolve();
+
+function inTurn<T>(task: () => Promise<T>): Promise<T> {
+  const done = turn.then(task);
+  turn = done.catch(() => undefined);
+  return done;
+}
+
+export function createReplay(
+  dataDir: string,
+  meta: ReplayMeta,
+  card: Buffer | null,
+  pageUrl: (id: string) => string,
+): Promise<StoredReplay> {
+  return inTurn(() => writeReplay(dataDir, meta, card, pageUrl));
+}
+
+async function writeReplay(
   dataDir: string,
   meta: ReplayMeta,
   card: Buffer | null,

@@ -3,12 +3,12 @@ import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import { toString as qrCode } from "qrcode";
 import { log } from "../../src/core/log";
-import { CARD_PREFIX, CreateReplayRequestSchema, MAX_VIDEO_BYTES } from "../../src/replay/contracts";
+import { CARD_PREFIX, CreateReplayRequestSchema, MAX_VIDEO_BYTES, isPng } from "../../src/replay/contracts";
 import type { CreateReplayResponse } from "../../src/replay/contracts";
 import type { Register } from "../app";
 import { baseUrl, lanAddress } from "../lib/address";
 import { missingPage, replayPage } from "../lib/replayPage";
-import { CARD_FILE, createReplay, findReplay, isPng, saveVideo, videoFile } from "../lib/replayStore";
+import { CARD_FILE, createReplay, findReplay, saveVideo, videoFile } from "../lib/replayStore";
 import type { StoredReplay, VideoKind } from "../lib/replayStore";
 
 type Handler = (request: Request, response: Response, next: NextFunction) => Promise<void>;
@@ -32,7 +32,14 @@ function safely(handler: Handler): Handler {
 }
 
 function notFound(response: Response): void {
-  response.status(404).json({ error: "not_found" });
+  // The type is set outright: a file route has already labelled the response as a picture or a video.
+  response.status(404).type("json").json({ error: "not_found" });
+}
+
+/** The status sendFile gave its error when the request, not the file, was at fault: a range past the end, or a failed If-Match. */
+function refusal(error: Error): number | null {
+  const status: unknown = "status" in error ? error.status : null;
+  return status === 412 || status === 416 ? status : null;
 }
 
 /** Sends a stored file. sendFile answers Range requests, which is how a phone plays and seeks a video. */
@@ -42,7 +49,15 @@ function sendStored(response: Response, replay: StoredReplay, file: string, type
   response.sendFile(file, { root: replay.dir }, (error?: Error) => {
     if (error === undefined) return;
     log("warn", "replay_send_failed", error);
-    if (!response.headersSent) notFound(response);
+    if (response.headersSent) return;
+    const status = refusal(error);
+    if (status === null) {
+      notFound(response);
+      return;
+    }
+    // A refusal has no body, and keeps the Content-Range that tells the caller how long the file is.
+    response.removeHeader("Content-Type");
+    response.status(status).end();
   });
 }
 
