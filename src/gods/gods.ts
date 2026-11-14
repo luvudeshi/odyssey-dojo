@@ -21,11 +21,14 @@ export interface GodDef {
     /** One line telling the player the gesture. */
     readonly blurb: string;
   };
+  /** Homeric titles of the god. They describe the god, never the player: show one as "<God>, <epithet>". */
   readonly epithets: readonly [string, ...string[]];
   /** Gods Homer shows this one quarrelling or competing with, best attested first. */
   readonly rivals: readonly [GodId, ...GodId[]];
 }
 
+// Homer's Apollo is not the sun (that is Helios, a god of his own) and his Artemis is not the moon. Only the two
+// power names, which are fixed, say otherwise: keep the rest of the copy Homeric.
 export const GODS: Readonly<Record<GodId, GodDef>> = {
   zeus: {
     id: "zeus",
@@ -70,8 +73,8 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
       "holder of the earth",
       "wide-ruling",
       "loud-crashing",
-      "lord of the grey salt sea",
-      "mighty far and wide",
+      "who rules the grey salt sea",
+      "glorious shaker of the land",
     ],
     // Athena: the central quarrel of the Odyssey, over Odysseus. Odyssey 6.328-331 and 13.341-343: she will not
     // show herself openly to him for fear of her father's brother.
@@ -97,7 +100,7 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
       "rouser of armies",
       "guardian of the city",
       "rich in counsel",
-      "daughter of aegis-bearing Zeus",
+      "unwearied",
     ],
     // Poseidon: Odyssey 6.328-331 and 13.341-343, as above.
     // Apollo: Iliad 23.382-400, the chariot race: he knocks the whip from Diomedes' hand, she hands it back and
@@ -125,16 +128,15 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
       "the luck-bringer",
       "the gracious helper",
     ],
-    // Hermes has no real feud in the Iliad or the Odyssey; these are the nearest Homer gives.
+    // Hermes has no real feud in the Iliad or the Odyssey; this is the nearest Homer gives.
     // Apollo: Iliad 20.31-40, they take opposite sides at Troy; Odyssey 8.334-342, Apollo baits him in front of the
     // gods. (Their famous quarrel over the stolen cattle is in the Homeric Hymn to Hermes, not in Homer.)
-    // Artemis: Iliad 20.31-40, opposite sides in the same battle.
-    rivals: ["apollo", "artemis"],
+    rivals: ["apollo"],
   },
   artemis: {
     id: "artemis",
     name: "Artemis",
-    domain: "Huntress of the wild hills and the moonlit chase",
+    domain: "Huntress of the wild hills, mistress of beasts",
     odyssey:
       "Artemis is the huntress Odysseus likens Nausicaa to when he first sees her, and the goddess Penelope begs for a swift, gentle arrow rather than marriage to a suitor.",
     accent: "#8fe8a4",
@@ -147,19 +149,18 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
       "arrow-pouring",
       "of the golden shaft",
       "of the loud chase",
-      "mistress of wild things",
       "golden-throned",
-      "the huntress",
+      "of the golden reins",
+      "the holy archer",
     ],
-    // Apollo: Iliad 21.470-477, she scolds her brother to his face for backing down from Poseidon.
-    // Poseidon: the same passage: it is his victory she cannot bear.
-    // Athena: Iliad 20.31-40, opposite sides at Troy.
-    rivals: ["apollo", "poseidon", "athena"],
+    // Apollo: Iliad 21.470-477, she scolds her brother to his face for backing down from Poseidon. Homer shows her
+    // in no direct quarrel with any other god on this list.
+    rivals: ["apollo"],
   },
   apollo: {
     id: "apollo",
     name: "Apollo",
-    domain: "Far-shooter, lord of the bow, the lyre and the light",
+    domain: "Far-shooter, lord of the silver bow and the lyre",
     odyssey:
       "Apollo is the archer god on whose feast day Odysseus strings the great bow, and the one Odysseus calls on for glory as he turns it on the suitors.",
     accent: "#ff9f2e",
