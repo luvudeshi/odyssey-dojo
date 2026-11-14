@@ -12,17 +12,22 @@ import { baselineOf } from "../pose/signals";
 import { battle, nowSeconds } from "./battle";
 import { ghostCloseness, ghostJoints, ghostOpacity, promptedMove } from "./ghost/ghostPose";
 import type { GhostJoints, Vec3 } from "./ghost/ghostPose";
-import { HOME_Z } from "./PlayerFigure";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
 const MATERIAL = new MeshBasicMaterial({ color: "#ffd54a", transparent: true, opacity: 0.5, depthWrite: false, fog: false });
-const SIDE_X = 1.5;
 const SCALE = 0.9;
-const AHEAD = 1;
+/** The ghost is pinned to the camera, so every shot (the strike push-in, the finisher orbit) frames it the same way:
+ * this far ahead of the lens, right of centre, with its feet this far below the middle of the view. */
+const DIST = 3.2;
+const RIGHT = 1.3;
+const FEET_Y = -1.25;
 const STALE_SECONDS = 0.5;
 /** How fast the resting shoulders are tracked, per frame: slow enough that a held dodge does not become the rest. */
 const REST_RATE = 0.01;
 const UP = new Vector3(0, 1, 0);
+const FORWARD = new Vector3();
+const SIDE = new Vector3();
+const LIFT = new Vector3();
 const BONES: readonly (readonly [keyof GhostJoints, keyof GhostJoints, number])[] = [
   ["leftShoulder", "rightShoulder", 0.04], ["leftShoulder", "leftElbow", 0.045], ["leftElbow", "leftWrist", 0.04],
   ["rightShoulder", "rightElbow", 0.045], ["rightElbow", "rightWrist", 0.04], ["leftHip", "rightHip", 0.05],
@@ -51,7 +56,7 @@ export function GhostFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null> 
   const tmp = useMemo(() => new Vector3(), []);
   const quat = useMemo(() => new Quaternion(), []);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const g = group.current;
     if (!g) return;
     const state = battle.state;
@@ -59,6 +64,11 @@ export function GhostFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null> 
     const move = id === null ? undefined : MOVES.get(id);
     g.visible = move !== undefined;
     if (!move || !state) { shown.current = ""; return; }
+    FORWARD.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    SIDE.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    LIFT.set(0, 1, 0).applyQuaternion(camera.quaternion);
+    g.position.copy(camera.position).addScaledVector(FORWARD, DIST).addScaledVector(SIDE, RIGHT).addScaledVector(LIFT, FEET_Y);
+    g.rotation.y = Math.atan2(-FORWARD.x, -FORWARD.z); // back to the lens whichever way the camera looks
     if (shown.current !== move.id) {
       shown.current = move.id;
       const j = ghostJoints(move.diagram);
@@ -92,7 +102,7 @@ export function GhostFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null> 
   });
 
   return (
-    <group ref={group} position={[SIDE_X, 0, HOME_Z - AHEAD]} scale={SCALE} visible={false}>
+    <group ref={group} scale={SCALE} visible={false}>
       {BONES.map(([from, to, radius]) => (
         <mesh key={`${from}-${to}`} ref={(mesh) => { bones.current[BONES.findIndex((b) => b[0] === from && b[1] === to)] = mesh; }} material={MATERIAL}>
           <cylinderGeometry args={[radius, radius, 1, 8]} />
