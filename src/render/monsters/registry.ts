@@ -2,7 +2,7 @@
 // An enemy with no model gets the placeholder, so data and art can land in separate PRs.
 import type { ComponentType } from "react";
 import type { MonsterProps } from "../../core/types";
-import { CANDIDATES } from "../models/candidates";
+import { candidateLoader } from "../models/candidates";
 
 export interface MonsterModel {
   readonly enemyId: string;
@@ -16,6 +16,5 @@ export const MONSTER_MODELS: ReadonlyMap<string, ComponentType<MonsterProps>> = 
 );
 
 // ?model=<id> swaps Polyphemus for a candidate (dev, giant, classic; see ../models/candidates).
-const candidate = new URLSearchParams(window.location.search).get("model");
-const load = candidate === null ? undefined : CANDIDATES[candidate];
+const load = candidateLoader(new URLSearchParams(window.location.search).get("model"));
 if (load) void load().then((component) => (MONSTER_MODELS as Map<string, ComponentType<MonsterProps>>).set("polyphemus", component));
