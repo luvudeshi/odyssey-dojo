@@ -1,6 +1,6 @@
 // Draws the god portrait in the browser: the webcam snapshot as a marble bust inside a gold ring and laurel wreath.
 // This is what the player sees when the AI portrait is slow, fails or there is no network, so it never throws.
-import { log } from "../core/log";
+import { log } from "../../core/log";
 import { gilded, headIsFramed, isBlank, laurelBranch, marbleize, portraitCrop, sourceX } from "./marble";
 
 export interface PortraitOptions {
