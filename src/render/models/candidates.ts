@@ -9,3 +9,8 @@ export const CANDIDATES: Readonly<Record<string, Loader>> = {
   giant: () => import("./giantPolyphemus").then((m) => m.GiantPolyphemus),
   classic: () => import("./classicPolyphemus").then((m) => m.ClassicPolyphemus),
 };
+
+/** Own keys only, so ?model=constructor or ?model=__proto__ finds nothing instead of an inherited function. */
+export function candidateLoader(id: string | null): Loader | undefined {
+  return id !== null && Object.hasOwn(CANDIDATES, id) ? CANDIDATES[id] : undefined;
+}
