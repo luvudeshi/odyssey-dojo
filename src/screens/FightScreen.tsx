@@ -17,7 +17,6 @@ import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { battle, noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
-import { battle } from "../render/battle";
 import { useSettings } from "../settings/store";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
