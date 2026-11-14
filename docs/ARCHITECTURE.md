@@ -22,6 +22,46 @@ Every move also has a key, so the game runs with no camera and no network. That 
 
 **The judged demo is the Polyphemus fight.** It gets the polish. Everything else exists to make the quest real around it.
 
+## Status: where we are (updated Saturday 4:30 PM by the lead's agent)
+
+The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards.
+
+### Done, on `main`
+- Fight rules: phases, finishing move that cannot be lost, strike quality scaling damage, divine power meter (#4, #5, #6, #23, #30).
+- Calibration with a keyboard escape and the "step back" pause (#8).
+- Battle view: third-person camera behind our own character, camera and characters that move (#51).
+- Cave arena, hit effects, post-processing with a low quality mode on `q` (#9, #10).
+- Athena's clips and playback, real sound effects, the divine power screen effect (#14, #15, #19).
+- Styles (Boxer, Hoplite, Karate, Kung Fu), their mythic figures, what each move teaches (#45, #74, #36).
+- Polyphemus data and pacing, the stake thrust (#12, #13).
+- Tests: random fights never break the rules, a pose sequence per base move, the coach (#34, #35, #50 half).
+- One prompt card at the right edge; no move list on the fight screen.
+- Pitch script and Devpost draft, the asset list, the playtest checklist (#39, #38, #40).
+
+### In progress
+| What | Who | Where |
+|---|---|---|
+| Cave mouth at dusk, the battle world for Polyphemus | lead's agents | #53, branch `53-cave-mouth-dusk` |
+| Hero candidates (animated, with the pose ghost) for toyeshhm to pick | lead's agents | #53, #18, #24, branch `53-hero-candidates` |
+| Polyphemus candidates (one-eyed giant) for toyeshhm to pick | lead's agents | #53, #11, branch `53-polyphemus-candidates` |
+| GLB model pipeline | lead's agents | PR #91, in review |
+| Title, quest map, intro and result screens | lead's agents | PR #60, being rebased |
+| Athena's voice, phase banner and teaches line wired into the fight | lead's agents | PR #93, in review |
+| Test fixes so new monsters and god moves merge | lead's agents | branch `fix-tests-for-new-content` |
+| Quest stops as data; kicks and Pankration; detector fixes | tagrawal029's agent | PR #44, PR #69, #81 |
+| God moves; AI server, god scan and replay sharing; narration and taunts | luvudeshi's agent | PR #56, PR #43, PR #90 |
+
+### Left
+- **Must:** toyeshhm picks the hero and Polyphemus models from screenshots, then they become the default (#53). Webcam fight on a real body and detector tuning (#7, #17; toyeshhm does the real-body test). Devpost, demo video, backup recording (#21).
+- **Should:** music and ambience (#85), noisy-camera defend tests (#82), two players (#83, then #28), pacing for later stops (#84), Scylla (#27), online rooms (#29), sponsor sections (#87).
+- **Later, on toyeshhm's word:** complete UI redesign (#52).
+
+### Art direction (toyeshhm, Saturday 4:15 PM)
+1. Stylized low-poly look with strong lighting.
+2. The Polyphemus fight is in the mouth of his cave at dusk: sunset sky and sea behind the giant, light shafts, a fire pit, boulders.
+3. The player is an animated rigged hero that plays real clips when a move is detected, plus a faint ghost outline of the live webcam pose.
+4. toyeshhm chooses the look and the models. Agents decide engineering only, and build model choices as candidates behind a URL flag.
+
 ## Features
 
 ### Must have: frozen at 1 AM Sunday
@@ -68,7 +108,8 @@ The direction is a fully fleshed-out game with action-RPG style battles.
 | Feature | Issue |
 |---|---|
 | Complete UI redesign: HUD, prompt cards, menus, screens | #52 |
-| Sophisticated graphics and real 3D models for the opponents | #53 |
+
+Sophisticated graphics and real 3D models (#53) moved to "in progress" on Saturday afternoon: looks are now the top priority.
 
 ## How it fits together
 
