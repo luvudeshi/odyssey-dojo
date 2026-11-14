@@ -1,4 +1,4 @@
-.PHONY: setup dev lint test check ready credits
+.PHONY: setup dev lint test check ready credits fps
 
 setup:
 	npm install
@@ -24,3 +24,7 @@ ready:
 # Lists every shipped asset with its credit, licence and size. Fails when one has no credit. Not part of check.
 credits:
 	@node scripts/credits-report.mjs
+
+# Frame rate of every stop at each quality level, in headless Chrome. Writes docs/perf.md.
+fps:
+	node scripts/fps.mjs

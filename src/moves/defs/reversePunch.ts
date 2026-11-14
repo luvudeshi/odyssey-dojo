@@ -1,8 +1,8 @@
 // Karate's gyaku-zuki: the rear hand punches while the other hand pulls back to the hip.
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
-import { armThrust, elbowAngle, latest } from "../../pose/signals";
-import { wristRise } from "../handSignals";
+import { elbowAngle, latest } from "../../pose/signals";
+import { armThrust, wristRise } from "../handSignals";
 
 export const move: MoveDef = {
   id: "reverse_punch",

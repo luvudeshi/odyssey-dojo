@@ -16,6 +16,7 @@ import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { Hero } from "./hero/Hero";
+import { GhostFigure } from "./GhostFigure";
 import { QualityContext, useQualityToggle } from "./quality";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
@@ -67,9 +68,9 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
         frameloop={paused ? "never" : "always"}
         dpr={[1, 1.5]}
         gl={{ toneMapping: ACESFilmicToneMapping }}
-        camera={{ position: [1.5, 2.2, 5.2], fov: 52 }}
+        camera={{ position: [1.4, 2.15, 4.9], fov: 52 }}
         onCreated={({ camera }) => {
-          camera.lookAt(0.9, 1.7, -1.6);
+          camera.lookAt(0.8, 1.5, -1.6);
         }}
       >
         <QualityContext.Provider value={quality}>
@@ -98,6 +99,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           </MonsterRig>
           <CameraRig />
           <Hero poseRef={poseRef} />
+          <GhostFigure poseRef={poseRef} />
           <Effects />
         </QualityContext.Provider>
       </Canvas>
