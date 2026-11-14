@@ -25,6 +25,12 @@ export type FlowAction =
 
 export const START: Flow = { screen: "title", style: null, index: 0, seed: 0, cleared: [] };
 
+/** Where the game opens. `?stop=<enemy id>` marks every earlier stop as beaten, to reach a later fight for a demo or a check. */
+export function startAt(enemies: readonly EnemySpec[], stopId: string | null): Flow {
+  const index = enemies.findIndex((enemy) => enemy.id === stopId);
+  return index < 0 ? START : { ...START, cleared: enemies.slice(0, index).map((enemy) => enemy.id) };
+}
+
 export function flowReducer(flow: Flow, action: FlowAction): Flow {
   switch (action.type) {
     case "ready":
