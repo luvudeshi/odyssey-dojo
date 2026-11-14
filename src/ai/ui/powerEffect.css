@@ -4,8 +4,8 @@
 .power-fx { position: absolute; inset: 0; }
 .power-layer { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; will-change: transform, opacity; }
 
-.power-name { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 4vw 0 calc(4vw + 0.22em); text-align: center; font-family: "Cinzel", "Trajan Pro", Georgia, serif; font-size: clamp(2.5rem, 9vw, 7rem); font-weight: 700; letter-spacing: 0.22em; line-height: 1.1; text-transform: uppercase; text-shadow: 0 0 0.3em #140c22, 0 0 0.08em #140c22, 0 0.04em 0.1em #000; opacity: 0; animation: power-name 1.5s both; will-change: transform, opacity; }
-@keyframes power-name { 0%, 14% { opacity: 0; transform: scale(1.3); } 30%, 74% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.06); } }
+.power-name { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 6vw 0 calc(6vw + 0.18em); text-align: center; font-family: "Cinzel", "Trajan Pro", Georgia, serif; font-size: clamp(2rem, 6.5vw, 6rem); font-weight: 700; letter-spacing: 0.18em; line-height: 1.15; text-transform: uppercase; -webkit-text-stroke: 0.07em #140c22; paint-order: stroke fill; text-shadow: 0 0 0.35em #140c22, 0 0.04em 0.1em #000; opacity: 0; animation: power-name 1.5s both; will-change: transform, opacity; }
+@keyframes power-name { 0%, 14% { opacity: 0; transform: scale(1.18); } 30%, 74% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
 @keyframes power-name-fade { 0%, 100% { opacity: 0; } 25%, 75% { opacity: 1; } }
 
 .power-veil { background: radial-gradient(ellipse at center, #140c2280, #140c22d9); animation: power-veil 1.5s both; }
