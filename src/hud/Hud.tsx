@@ -1,6 +1,8 @@
 // Everything drawn over the 3D view: health bars, the prompt card and the end banner.
 import { PLAYER_HP, promptLevel } from "../combat/engine";
 import type { CombatState, EnemySpec, MoveDef, MoveDiagram } from "../core/types";
+import { PowerBar } from "./PowerBar";
+import { PhaseBanner } from "./PhaseBanner";
 import { RatingFlash } from "./RatingFlash";
 import { MOVES } from "../moves/registry";
 
@@ -38,6 +40,7 @@ function PromptCard(props: { move: MoveDef; target: string; successes: number; l
             {move.hint} <kbd>{move.key === " " ? "Space" : move.key}</kbd>
           </div>
         )}
+        {level === "full" && move.teaches && <div className="prompt-teaches">{move.teaches}</div>}
         <div className="timer" style={{ width: `${String(left * 100)}%` }} />
       </div>
     </div>
@@ -66,7 +69,9 @@ export function Hud({ enemy, state }: { enemy: EnemySpec; state: CombatState }) 
       <div className="score">
         {state.score} {state.combo > 1 && <span>x{state.combo} combo</span>}
       </div>
+      <PowerBar power={state.power} />
       <RatingFlash />
+      <PhaseBanner />
       {phase.kind === "intro" && <div className="banner">{enemy.name}<small>{enemy.title}</small></div>}
       {move && (phase.kind === "defend" || phase.kind === "strike" || phase.kind === "finisher") && (
         <PromptCard

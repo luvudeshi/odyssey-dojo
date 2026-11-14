@@ -1,6 +1,6 @@
 // Seeded random fights against every enemy and style: the rules must hold on every step, not just on hand-made cases.
 import { describe, expect, test } from "vitest";
-import { PLAYER_HP, phaseIndexFor, startFight, step } from "../src/combat/engine";
+import { PLAYER_HP, POWER_DAMAGE, POWER_MOVES, phaseIndexFor, startFight, step } from "../src/combat/engine";
 import type {
   CombatEvent, CombatInput, CombatPhase, CombatState, EnemySpec, FightingStyle, Strike,
 } from "../src/core/types";
@@ -20,7 +20,8 @@ function rng(seed: number): () => number {
 
 const DTS = [0, 1, 7, 16, 33, 50, 120, 700, 1600, 7000, 1e12] as const;
 const SKILLS = [0.2, 0.6, 0.95, 1] as const;
-const MOVE_IDS = [...MOVES.keys(), "not_a_move"];
+// The god moves are always in the mix, so divine power is exercised even before their definitions are registered.
+const MOVE_IDS = [...new Set([...MOVES.keys(), ...POWER_MOVES, "not_a_move"])];
 const DEFEND_IDS = [...MOVES.values()].filter((m) => m.kind === "defend").map((m) => m.id);
 const MAX_TICKS = 20000;
 
@@ -51,7 +52,8 @@ function inputFor(random: () => number, state: CombatState, enemy: EnemySpec, sk
 const NEXT: Record<CombatPhase["kind"], readonly CombatPhase["kind"][]> = {
   intro: ["intro", "defend"],
   recover: ["recover", "defend"],
-  defend: ["defend", "strike", "recover", "lost"],
+  // A divine power move can end the fight from either open phase.
+  defend: ["defend", "strike", "recover", "lost", "finisher", "won"],
   strike: ["strike", "recover", "finisher", "won"],
   finisher: ["finisher", "won"],
   won: ["won"],
@@ -76,6 +78,8 @@ function check(
   expect(next.phaseIndex).toBeGreaterThanOrEqual(prev.phaseIndex);
   expect(next.phaseIndex).toBe(phaseIndexFor(enemy, next.enemyHp));
   expect(next.score).toBeGreaterThanOrEqual(prev.score);
+  expect(next.power).toBeGreaterThanOrEqual(0);
+  expect(next.power).toBeLessThanOrEqual(1);
   expect(next.combo).toBeGreaterThanOrEqual(0);
   for (const [move, n] of Object.entries(prev.mastery)) expect(next.mastery[move] ?? 0).toBeGreaterThanOrEqual(n);
   expect(NEXT[prev.phase.kind]).toContain(next.phase.kind);
@@ -108,7 +112,6 @@ function check(
       case "defended":
         expect(prev.phase.kind === "defend" && prev.phase.attack === event.attack).toBe(true);
         expect(input.held.has(event.attack.counter)).toBe(true);
-        expect(next.score).toBe(prev.score + 50);
         expect(next.mastery[event.attack.counter]).toBe((prev.mastery[event.attack.counter] ?? 0) + 1);
         break;
       case "playerHit":
@@ -132,15 +135,13 @@ function check(
         expect(Number.isInteger(event.damage)).toBe(true);
         expect(event.damage).toBeGreaterThanOrEqual(6); // 12 x 0.5 at worst
         expect(event.damage).toBeLessThanOrEqual(54); // 12 x 1.5 combo x 1.5 quality x 2 together
-        expect(next.enemyHp).toBe(Math.max(0, prev.enemyHp - event.damage));
         expect(next.combo).toBe(prev.combo + 1);
-        expect(next.score).toBe(prev.score + event.damage * 10);
         expect(next.mastery[event.move]).toBe((prev.mastery[event.move] ?? 0) + 1);
         break;
       }
       case "phaseChanged":
-        expect(next.phaseIndex).toBe(event.index);
         expect(event.index).toBeGreaterThan(prev.phaseIndex);
+        expect(event.index).toBeLessThanOrEqual(next.phaseIndex);
         expect(event.name).toBe(enemy.phases?.[event.index]?.name);
         break;
       case "finished":
@@ -154,6 +155,13 @@ function check(
         expect(next.combo).toBe(prev.phase.kind === "strike" ? 0 : prev.combo);
         break;
       case "powerUnleashed":
+        // Spent from a full meter by a god move, in an open phase, and always the first thing that happens in the step.
+        expect(events[0]).toBe(event);
+        expect(["defend", "strike"]).toContain(prev.phase.kind);
+        expect(prev.power).toBe(1);
+        expect(input.struck.some((thrown) => POWER_MOVES.has(thrown.move))).toBe(true);
+        expect(event.damage).toBe(prev.enemyHp - Math.max(0, prev.enemyHp - POWER_DAMAGE));
+        expect(next.power).toBeLessThan(1);
         break;
       case "won":
         expect(next.phase.kind).toBe("won");
@@ -166,7 +174,29 @@ function check(
   // And the other way round: every change shows up as an event.
   expect(count(events, "telegraph")).toBe(next.phase.kind === "defend" && prev.phase.kind !== "defend" ? 1 : 0);
   expect(count(events, "opening")).toBe(next.phase.kind === "strike" && prev.phase.kind !== "strike" ? 1 : 0);
-  expect(count(events, "phaseChanged")).toBe(next.phaseIndex > prev.phaseIndex ? 1 : 0);
+  // The engine's own rule: a god move fires exactly when the meter is full in an open phase and one is thrown.
+  const open = prev.phase.kind === "defend" || prev.phase.kind === "strike";
+  const power = open && prev.power >= 1 && input.struck.some((thrown) => POWER_MOVES.has(thrown.move));
+  expect(count(events, "powerUnleashed")).toBe(power ? 1 : 0);
+  if (!power) expect(next.power).toBeGreaterThanOrEqual(prev.power);
+  // Health and score follow the events one by one: a power hit and a strike can land in the same step. Each hit that
+  // crosses a phase line is followed by exactly one phaseChanged for that line.
+  let hp = prev.enemyHp;
+  let index = prev.phaseIndex;
+  let hits = 0;
+  events.forEach((event, i) => {
+    if (event.type !== "powerUnleashed" && event.type !== "enemyHit") return;
+    hp = Math.max(0, hp - event.damage);
+    hits += event.damage;
+    const crossed = phaseIndexFor(enemy, hp);
+    const after = events[i + 1];
+    expect(after?.type === "phaseChanged", `phase change after hit ${String(i)}`).toBe(crossed > index);
+    if (after?.type === "phaseChanged") expect(after.index).toBe(crossed);
+    index = crossed;
+  });
+  expect(next.enemyHp).toBe(hp);
+  expect(next.phaseIndex).toBe(index);
+  expect(next.score).toBe(prev.score + hits * 10 + count(events, "defended") * 50);
   expect(total(next.mastery) - total(prev.mastery)).toBe(count(events, "defended") + count(events, "enemyHit") + count(events, "finished"));
 }
 
@@ -196,11 +226,15 @@ function fight(enemy: EnemySpec, style: FightingStyle, seed: number, players: 1 
 }
 
 const SEEDS = [1, 2, 3, 42, 1234, 99991] as const;
-const CASES = ENEMIES.flatMap((enemy) =>
-  STYLES.flatMap((style) =>
-    SEEDS.flatMap((seed) => SKILLS.flatMap((skill) => ([1, 2] as const).map((players) => ({ enemy, style, seed, skill, players })))),
+const COMBOS = SEEDS.flatMap((seed) => SKILLS.flatMap((skill) => ([1, 2] as const).map((players) => ({ seed, skill, players }))));
+const COMBO_STRIDE = 6;
+/** Every enemy x style pair gets 1/6 of the seed, skill and player combos, rotating so all of them are covered across pairs. The cost stays flat as enemies and styles are added. */
+const CASES = ENEMIES.flatMap((enemy, e) =>
+  STYLES.flatMap((style, s) =>
+    COMBOS.filter((_, i) => i % COMBO_STRIDE === (e + s) % COMBO_STRIDE).map((combo) => ({ enemy, style, ...combo })),
   ),
 );
+const STATES_PER_FIGHT = 8;
 
 describe("random fights keep every rule", () => {
   const seen = new Set<string>();
@@ -215,7 +249,7 @@ describe("random fights keep every rule", () => {
     }
   });
   test("the random play reached every kind of event, so the checks above were not idle", () => {
-    for (const type of ["telegraph", "defended", "playerHit", "opening", "enemyHit", "phaseChanged", "finished", "whiffed", "won", "lost"]) {
+    for (const type of ["telegraph", "defended", "playerHit", "opening", "enemyHit", "phaseChanged", "finished", "whiffed", "won", "lost", "powerUnleashed"]) {
       expect(seen.has(type), type).toBe(true);
     }
   });
@@ -264,9 +298,15 @@ describe("the same seed and inputs always give the same fight", () => {
 });
 
 describe("time of zero and time that is huge", () => {
-  const states = CASES.filter((k) => k.seed <= 3 && k.players === 1).flatMap((c) =>
-    fight(c.enemy, c.style, c.seed, c.players, c.skill, false).states.map((state) => ({ state, enemy: c.enemy, style: c.style })),
-  );
+  // Built once and shared by the three tests below. Per fight: evenly spaced states, plus the first of every phase kind.
+  const states = CASES.filter((k) => k.players === 1).flatMap((c) => {
+    const all = fight(c.enemy, c.style, c.seed, c.players, c.skill, false).states;
+    const stride = Math.max(1, Math.floor(all.length / STATES_PER_FIGHT));
+    const firstOfKind = new Map<string, CombatState>();
+    for (const state of all) if (!firstOfKind.has(state.phase.kind)) firstOfKind.set(state.phase.kind, state);
+    const picked = new Set([...all.filter((_, i) => i % stride === 0), ...firstOfKind.values()]);
+    return [...picked].map((state) => ({ state, enemy: c.enemy, style: c.style }));
+  });
   const idle: CombatInput = { held: new Set(), struck: [] };
 
   test("dt 0 with no input moves nothing", () => {
