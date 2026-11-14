@@ -163,6 +163,20 @@ const palmsOut = pose(
     [J.rightElbow]: [0.2, -0.45, -0.3], [J.rightWrist]: [0.18, -0.45, -0.58],
   },
 );
+/** Both arms straight out in front with the wrists `gap` shoulder widths apart in the picture. */
+function palmsApart(gap: number): Pose {
+  const half = (gap * WIDTH) / 2;
+  return pose(
+    {
+      [J.leftElbow]: [0.5 - half, 0.4], [J.leftWrist]: [0.5 - half, 0.4],
+      [J.rightElbow]: [0.5 + half, 0.4], [J.rightWrist]: [0.5 + half, 0.4],
+    },
+    {
+      [J.leftElbow]: [-0.2 * gap, -0.45, -0.3], [J.leftWrist]: [-0.2 * gap, -0.45, -0.58],
+      [J.rightElbow]: [0.2 * gap, -0.45, -0.3], [J.rightWrist]: [0.2 * gap, -0.45, -0.58],
+    },
+  );
+}
 const onePalmOut = pose(
   { [J.leftElbow]: [0.43, 0.4], [J.leftWrist]: [0.45, 0.4], [J.rightElbow]: [0.62, 0.5], [J.rightWrist]: [0.56, 0.42] },
   {
@@ -250,10 +264,16 @@ interface Gesture {
   readonly at: number;
   /**
    * Other moves the same motion sets off. Each is an overlap we accept, so no style or weak spot should
-   * offer both moves of a pair:
-   * - overhead_strike is the right-hand thunderbolt, and aegis_push is a spear thrust with open palms.
+   * offer both moves of a pair. The fight only looks for the move it prompted, so an extra move costs nothing.
+   * - overhead_strike is the right-hand thunderbolt and hammer_fist the left-hand one: the same motion by design.
+   * - aegis_push is a spear thrust with the palms close together, and double_palm is the same push by design.
    * - spear_thrust does not check that the arms went forward, so arms flung wide count too.
    * - hook reads any bent left arm crossing the body at shoulder height.
+   * - knife_hand reads the right arm alone: across the body at chest height or above, then straight out to the
+   *   right. That is the right arm of a chest-high sweep to the right; a belly-high sweep starts too low for it.
+   * - uppercut and rising_palm share risingHand (handSignals.ts), which reads a hand brought up from the waist
+   *   with a bent elbow. Drawing the bow does that with the string hand: the right hand is an uppercut, the left
+   *   a rising palm. Both fire on the draw, before the arrow is loosed.
    * - a dash is also a dodge.
    */
   readonly also: readonly string[];
@@ -261,21 +281,27 @@ interface Gesture {
 
 const GESTURES: readonly Gesture[] = [
   { move: "thunderbolt", how: "right hand", poses: thunderbolt, at: 8, also: ["overhead_strike"] },
-  { move: "thunderbolt", how: "left hand", poses: thunderbolt.map(mirrored), at: 8, also: [] },
+  { move: "thunderbolt", how: "left hand", poses: thunderbolt.map(mirrored), at: 8, also: ["hammer_fist"] },
   { move: "trident_sweep", how: "left to right", poses: sweep(BELLY), at: 13, also: [] },
   { move: "trident_sweep", how: "right to left", poses: sweep(BELLY).map(mirrored), at: 13, also: [] },
-  { move: "trident_sweep", how: "left to right at chest height", poses: sweep(CHEST), at: 13, also: ["hook"] },
-  { move: "aegis_push", how: "both palms", poses: aegisPush, at: 8, also: ["spear_thrust"] },
+  {
+    move: "trident_sweep",
+    how: "left to right at chest height",
+    poses: sweep(CHEST),
+    at: 13,
+    also: ["hook", "knife_hand"],
+  },
+  { move: "aegis_push", how: "both palms", poses: aegisPush, at: 8, also: ["double_palm", "spear_thrust"] },
   { move: "swift_dash", how: "to the right", poses: swiftDash, at: 2, also: ["dodge_right"] },
   { move: "swift_dash", how: "to the left", poses: swiftDash.map(mirrored), at: 2, also: ["dodge_left"] },
-  { move: "moon_arrow", how: "left bow arm", poses: moonArrow, at: 10, also: [] },
-  { move: "moon_arrow", how: "right bow arm", poses: moonArrow.map(mirrored), at: 10, also: [] },
+  { move: "moon_arrow", how: "left bow arm", poses: moonArrow, at: 10, also: ["uppercut"] },
+  { move: "moon_arrow", how: "right bow arm", poses: moonArrow.map(mirrored), at: 10, also: ["rising_palm"] },
   {
     move: "moon_arrow",
     how: "a small release",
     poses: [...hold(bowDrawn, 10), ...hold(bowEased, 8), ...hold(stand, 20)],
     at: 10,
-    also: [],
+    also: ["uppercut"],
   },
   { move: "sun_burst", how: "both arms", poses: sunBurst, at: 8, also: ["spear_thrust"] },
   { move: "jump", how: "a hop", poses: jump, at: 4, also: [] },
@@ -425,6 +451,33 @@ test("trident sweep ignores a side-step and hands swept above the head or below 
   // A chop from over the head on one side down to the belly on the other.
   const chop = [...hold(handsLeft(0.1), 12), ...hold(mirrored(handsLeft(BELLY)), 14), ...hold(stand, 20)];
   expect(struck(chop)).not.toContain("trident_sweep");
+});
+
+test("aegis push needs the hands closer together than the shoulders, so a wide spear thrust is not a push", () => {
+  const pushed = (gap: number): string[] =>
+    seen(play([...hold(palmsAtChest, 8), ...hold(palmsApart(gap), 10), ...hold(stand, 20)]));
+  // Hands a full shoulder width apart: a spear thrust and nothing else.
+  expect(pushed(1)).toEqual(["spear_thrust"]);
+  expect(pushed(1.5)).toEqual(["spear_thrust"]);
+  // Hud.tsx draws the shoulders 24 apart. The push still reads with the hands as wide as its own prompt card
+  // draws them, which is wider than double_palm allows.
+  const diagram = MOVES.get("aegis_push")?.diagram;
+  const drawn = ((diagram?.rightWrist[0] ?? 0) - (diagram?.leftWrist[0] ?? 0)) / 24;
+  expect(drawn).toBeGreaterThan(0.8);
+  expect(pushed(drawn)).toEqual(["aegis_push", "spear_thrust"]);
+});
+
+test("swift dash also reads a fast dodge, and reads again on a fast step back to the middle", () => {
+  const struck = (poses: readonly Pose[]): string[] => play(poses).flatMap(struckIds);
+  // 0.7 shoulder widths to the right in 200 ms: enough to hold dodge_right, and fast enough for a dash.
+  const aside = shifted(stand, 0.7 * WIDTH, 0);
+  const dodge = [...ease(stand, aside, 6), ...hold(aside, 20)];
+  expect(seen(play(dodge))).toEqual(["dodge_right", "swift_dash"]);
+  expect(struck(dodge)).toEqual(["swift_dash"]);
+  // The detector reads speed, not direction or where the step ends, so coming back as fast is a second dash.
+  expect(struck([...dodge, ...ease(aside, stand, 6), ...hold(stand, 20)])).toEqual(["swift_dash", "swift_dash"]);
+  // Coming back over 800 ms is not.
+  expect(struck([...dodge, ...ease(aside, stand, 24), ...hold(stand, 20)])).toEqual(["swift_dash"]);
 });
 
 test("jump is held from the top of a hop until just after landing, then let go", () => {
