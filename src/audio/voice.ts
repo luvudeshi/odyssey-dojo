@@ -224,7 +224,10 @@ export function speakLine(id: string): boolean {
   return shared.speak(id);
 }
 
-/** Has the monster taunt the player, if it has a taunt recorded and the voice is free. Works for every stop of the quest. */
+/**
+ * Has the monster taunt the player, if it has a taunt recorded and the voice is free. Works for every stop of the quest.
+ * In the frame a phase changes, Athena's phase line cuts this off: there, use speakMonsterTaunt in storyVoice.ts.
+ */
 export function speakTaunt(enemyId: string): boolean {
   const id = pickTaunt(enemyId, Math.random);
   return id !== null && shared.speak(id);
