@@ -4,5 +4,5 @@ export const style: FightingStyle = {
   id: "boxer",
   name: "Boxer",
   blurb: "Fists, as Odysseus fought the beggar Irus in his own hall.",
-  strikes: ["jab", "cross", "hook"],
+  strikes: ["jab", "cross", "hook", "uppercut"],
 };
