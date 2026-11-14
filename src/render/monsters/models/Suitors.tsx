@@ -55,7 +55,6 @@ function Antinous(props: MonsterProps) {
       state={props}
       anchors={anchors}
       yaw={turnFor(attackId)}
-      fallen={props.defeated}
       standInGear={<Helm palette={palette} plume={look.plume} metal={palette.trim} />}
     />
   );
@@ -86,7 +85,6 @@ function Other({ extra, props }: { extra: Extra; props: MonsterProps }) {
       x={extra.x}
       z={extra.z}
       yaw={extra.yaw}
-      fallen={isFallen(extra, props.phaseIndex, props.defeated)}
       lite
       standInGear={<Helm palette={palette} plume={0.5} metal={BRONZE} />}
     />

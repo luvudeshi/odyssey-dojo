@@ -19,6 +19,19 @@ Cost, measured in headless Chrome at 1440 by 810 in the real fight: 174 draw cal
 (shadow pass included), 122 and 55k with `q` low. The cave mouth is 124 and 30k on high, 54 and 17k on low. Draw calls
 run higher because five dressed figures carry about eight gear meshes each.
 
+## Review fixes
+
+- Defeat pose (confirmed): the knockback clip already lays the body on its back, and the code added a further quarter
+  turn about x on top, which pushed the torso under the floor and left only the bent legs showing. The extra turn and
+  lift are gone; the clip alone lies every figure down (`b-death-b`, `docs/screenshots/suitors-defeated.png`).
+- Weak-spot ring drift (partly true, not changed): the ring is a fixed point in the monster's space. It sits on the
+  helm and throat in the idle and guard poses (checked at phase 1 and 2). It only drifts while the hit flinch plays,
+  which is under a second after a landed hit. A ring that tracked the head bone would need a change in the shared
+  Scene, so it is left.
+- Frame cost: still not timed on a real laptop; the draw-call figures above stand.
+- Licence: both itch.io pages were read on 2026-11-14. Base Characters says "Creative Commons Zero v1.0 Universal"
+  and "(CC0 License)"; Animation Library 2 says "CC0 License".
+
 ## CREDITS.md line to add
 
 | Mannequin and animations (Quaternius, Universal Base Characters and Universal Animation Library 2), trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.itch.io/universal-animation-library-2 | CC0 |
