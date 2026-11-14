@@ -1,4 +1,5 @@
 // Replay sharing end to end against a temporary data folder: create, page, card, QR, video, bad ids and the cap.
+import { once } from "node:events";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -40,7 +41,8 @@ async function serve(publicBaseUrl: string | null = null): Promise<Call> {
     timeouts: { levelMs: 80, revealMs: 80, portraitMs: 80, speechMs: 80 },
   };
   const app = await createApp({ config, ai: NO_AI });
-  const server = app.listen(0);
+  const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
   close = () => { server.close(); };
   const { port } = server.address() as AddressInfo;
   return (path, init) => fetch(`http://127.0.0.1:${String(port)}${path}`, init);
