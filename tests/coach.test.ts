@@ -128,6 +128,14 @@ const pools = (enemy: EnemySpec): EnemyAttack[][] =>
   (enemy.phases ?? [null]).map((phase) => enemy.attacks.filter((a) => !phase || phase.attackIds.includes(a.id)));
 const share = (pool: readonly EnemyAttack[], grown: ReadonlySet<string>): number =>
   pool.reduce((sum, a) => sum + (grown.has(a.id) ? (a.weight ?? 1) : 0), 0) / pool.reduce((sum, a) => sum + (a.weight ?? 1), 0);
+/**
+ * What leaning can do in one phase: nothing to lean toward ("none": no attack there has the counter or its stand-in),
+ * nothing to lean away from ("all": every attack there is a grown one, so its share is 1 already), or a real gain.
+ */
+const reach = (pool: readonly EnemyAttack[], grown: ReadonlySet<string>): "none" | "all" | "some" => {
+  const hit = pool.filter((a) => grown.has(a.id)).length;
+  return hit === 0 ? "none" : hit === pool.length ? "all" : "some";
+};
 const grownIds = (enemy: EnemySpec, trained: EnemySpec): Set<string> =>
   new Set(trained.attacks.filter((a, i) => (a.weight ?? 1) > (enemy.attacks[i]?.weight ?? 1)).map((a) => a.id));
 
@@ -150,7 +158,12 @@ test("trainOn changes only weights, on every enemy, and helps in every phase", (
       const grown = grownIds(enemy, trained);
       for (const [p, pool] of pools(enemy).entries()) {
         const trainedPool = pools(trained)[p] ?? [];
-        expect(share(trainedPool, grown), `${enemy.id} ${defense} phase ${String(p)}`).toBeGreaterThan(share(pool, grown) * 1.2);
+        const label = `${enemy.id} ${defense} phase ${String(p)}`;
+        const kind = reach(pool, grown);
+        if (kind === "some") expect(share(trainedPool, grown), label).toBeGreaterThan(share(pool, grown) * 1.2);
+        // A phase with no attack to lean toward is left exactly as it was.
+        if (kind === "none") expect(trainedPool, label).toEqual(pool);
+        if (kind === "all") expect(share(trainedPool, grown), label).toBeCloseTo(1);
       }
       const mild = trainOn(enemy, [habit(defense, 0.2)]);
       const hit = mild.attacks.find((attack) => attack.counter === defense);
@@ -182,9 +195,18 @@ test("in the real engine a trained monster throws the targeted attacks more ofte
       const trained = trainOn(enemy, [habit(defense)]);
       const grown = grownIds(enemy, trained);
       for (const p of pools(enemy).keys()) {
+        const label = `${enemy.id} ${defense} phase ${String(p)}`;
+        const kind = reach(pools(enemy)[p] ?? [], grown);
         const before = thrown(enemy, p, grown);
-        expect(before).toBeGreaterThan(0);
-        expect(thrown(trained, p, grown), `${enemy.id} ${defense} phase ${String(p)}`).toBeGreaterThan(before * 1.2);
+        const after = thrown(trained, p, grown);
+        if (kind === "some") {
+          expect(before, label).toBeGreaterThan(0);
+          expect(after, label).toBeGreaterThan(before * 1.2);
+        } else {
+          // Nothing to lean toward (never thrown) or nothing else to throw (always thrown): the same either way.
+          expect(before, label).toBe(kind === "all" ? 2000 : 0);
+          expect(after, label).toBe(before);
+        }
       }
     }
   }
