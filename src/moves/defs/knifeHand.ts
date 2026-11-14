@@ -11,7 +11,7 @@ export const move: MoveDef = {
   hint: "Bring your right hand across to your left shoulder, then chop it out to the right at neck height",
   key: "h",
   diagram: { leftElbow: [34, 44], leftWrist: [42, 30], rightElbow: [77, 31], rightWrist: [93, 30] },
-  teaches: "The edge of the hand is harder to hurt than your knuckles, and a sideways swing reaches around a guard.",
+  teaches: "A sweep of your open hand across and out knocks a reaching arm aside before it lands",
   detect(history) {
     const frame = latest(history);
     if (!frame) return 0;

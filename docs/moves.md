@@ -16,6 +16,13 @@ Each line is our own wording, checked against the source next to it. The sources
 | Overhead strike (`overhead_strike`) | An arm raised over your head shields you from a blow coming down from above | [Physical Self-Defense Strategies][aaf], "Roof Block" | A forearm lifted level with the forehead covers the head against a strike from the front or from overhead. |
 | Spear thrust (`spear_thrust`) | Two open hands out front keep someone at arm's length while you back away | [Physical Self-Defense Strategies][aaf], "Safety Stance"; [Safety Tips][mu] | Hands up with open palms, at least an arm's length from the other person, backing away. Keep your distance and tell the person to get back. |
 | Stake thrust (`stake_thrust`) | Use your body weight, not just arm strength, to break a grip and get free | [Self Defense handout][asu], "Wrist Hold" and "Leverage your weight"; [Staying Safe][hpd], "When Physical Defense is Necessary" | Drop into a strong stance and lean in to break a hold; using your weight works whatever your size. Shift your weight to break free of a grab. |
+| Uppercut (`uppercut`) | Up close a blow can come up from below, out of sight, so keep your chin down and hands up | [England Boxing Coaching Handbook, Part 1][eb], p. 78 "The rear hand uppercut" and p. 67 "Guard" | The uppercut belongs to close-quarter work and, like the hook, arrives from outside the defender's field of vision. A lifted chin is left exposed; the guard keeps the chin down and the hands up. |
+| Chain punch (`chain_punch`) | Straight is quicker than a swing, so hands kept in front of you can hold off a rush | [What is Wing Chun?][iwca], "Centreline Theory"; [England Boxing Coaching Handbook, Part 1][eb], p. 73 "The straight lead hand" | A straight line is the shortest path, so a punch down the middle arrives sooner than a curved one. A straight hand from the front holds up someone rushing in. |
+| Double palm (`double_palm`) | A firm push with both open hands opens a gap, and a gap is your chance to leave | [Basic Attack Defense][ova], "Braced Choke Defense"; [Physical Self-Defense Strategies][aaf], "Safety Stance" | Once a hold is broken, shove the person away to make room, because room to move is what lets you get away. Hands up with open palms, an arm's length away, backing off. |
+| Hammer fist (`hammer_fist`) | The padded bottom of your fist is safer for your hand than knuckles if you must break free | [Safer Strikes][pm] | Bare-knuckle punches put the hand at risk of injury. A strike with the bottom of the closed fist lands on the soft, fleshy part of the hand instead. |
+| Knife hand (`knife_hand`) | A sweep of your open hand across and out knocks a reaching arm aside before it lands | [Fundamentals][sk], "Shuto-uke"; [Self Defense handout][asu], "Front and Back Choke Holds" | The open hand starts above the opposite shoulder and is thrust outward to meet and catch an arm that is striking. Swinging one arm across breaks a hold. |
+| Reverse punch (`reverse_punch`) | Knees a little bent and back straight give you a steady base, so you stay on your feet | [The Mechanics of the Reverse Punch][yk]; [England Boxing Coaching Handbook, Part 1][eb], p. 72 "Principles of punching" | The stance is the foundation: knees slightly bent to lower the body and steady it, back straight, shoulders relaxed. Every punch is driven from a good base. |
+| Rising palm (`rising_palm`) | The heel of your open hand, pushed up and in, can loosen a grip so you can get away | [Self Defense handout][asu], "Nose"; [Physical Self-Defense Strategies][aaf], "Palm Heel Strike"; [Safer Strikes][pm] | Up close, the heel of the palm driven upward with your weight behind it makes someone loosen their grip. Fingers back, thumb tucked in. A palm strike is unlikely to break the hand. |
 
 ## Sources
 
@@ -24,11 +31,18 @@ Each line is our own wording, checked against the source next to it. The sources
 3. Marquette University Police Department, *Safety Tips*. https://www.marquette.edu/university-safety/guides/safety-tips.php
 4. City of Hialeah Police Department, *Staying Safe: Tips to Protect Yourself at Home, on the Road, and In Public*. https://www.hialeahfl.gov/844/Personal-Safety-Self-Defense
 5. Albany State University Police Department, *Self Defense: Moves for Getting Out of or Defending Against Common Holds or Attacks*. https://www.asurams.edu/docs/asu-police/forms/S.D..pdf
+6. Police Magazine, *Safer Strikes*, by Det. Mike Siegfried, academy instructor with the San Bernardino County Sheriff's Department (5 August 2010). https://www.policemag.com/articles/safer-strikes
+7. Officer.com Virtual Academy (training for police officers), *Basic Attack Defense* handout (2021). https://virtualacademy.officer.com/wp-content/uploads/2021/10/Basic-Attack-Defense-Handout.pdf
+8. Nihon Karate-do Shotokai (a karate organisation based in Tokyo), *Fundamentals*, sections on stances, striking and blocking. https://www.shotokai.jp/en_keiko/en_fundamentals/
+9. Yoshukai Karate International, *The Mechanics of the Reverse Punch: Platform, Delivery, Power*, essay by Ricky Copeland, Kyoshi (5 April 2025). https://www.yoshukai.org/?p=3034
+10. International Wing Chun Academy (Australia), *What is Wing Chun?*. https://wingchun.edu.au/wing-chun
 
 ## Notes
 
-- Sources 2, 4 and 5 are written for people already under attack, so they also describe strikes and the parts of the body to aim at. None of that is used here. We took only their points about keeping distance, covering the head, shifting body weight and getting away, and wrote them in our own words.
+- Sources 2, 4 and 5 are written for people already under attack, and sources 6 and 7 for police officers, so they also describe strikes and the parts of the body to aim at. None of that is used here. We took only their points about keeping distance, covering the head, shifting body weight, protecting your own hand, breaking a grip and getting away, and wrote them in our own words.
 - The spear thrust, overhead strike and stake thrust are stage moves with a spear and a stake. Their lines name the nearest real idea: hands out to hold distance, an arm raised to cover the head, and body weight against a grip. They do not claim the game's motion is a taught technique.
+- The Karate and Kung Fu moves are strikes in the game. Their lines name the protective idea behind each one. The knife hand line describes the knife-hand block (shuto-uke), which makes the same sweep from the opposite shoulder as the strike.
+- We found no governing body that publishes Wing Chun technique in words: the Ving Tsun Athletic Association's site has none. The chain punch line therefore rests on a Wing Chun school's page (source 10), backed by the boxing handbook on straight punches.
 - This is a game, not a self-defense class. The lines point at ideas a real course teaches with a partner and an instructor.
 
 [eb]: https://www.englandboxing.org/wp-content/uploads/2022/03/EB_Boxing-Coaching-Handbook-Part-1_v8-002.pdf
@@ -36,3 +50,8 @@ Each line is our own wording, checked against the source next to it. The sources
 [mu]: https://www.marquette.edu/university-safety/guides/safety-tips.php
 [hpd]: https://www.hialeahfl.gov/844/Personal-Safety-Self-Defense
 [asu]: https://www.asurams.edu/docs/asu-police/forms/S.D..pdf
+[pm]: https://www.policemag.com/articles/safer-strikes
+[ova]: https://virtualacademy.officer.com/wp-content/uploads/2021/10/Basic-Attack-Defense-Handout.pdf
+[sk]: https://www.shotokai.jp/en_keiko/en_fundamentals/
+[yk]: https://www.yoshukai.org/?p=3034
+[iwca]: https://wingchun.edu.au/wing-chun
