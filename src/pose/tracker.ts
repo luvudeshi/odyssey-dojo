@@ -1,6 +1,7 @@
 // Webcam + MediaPipe pose tracking. Runs fully in the browser from files in public/mediapipe.
 import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 import type { Landmark, PoseFrame } from "../core/types";
+import { createFreshFrame, watchCameraFrames } from "./freshFrame";
 
 export interface PoseTracker {
   readonly video: HTMLVideoElement;
@@ -30,12 +31,19 @@ export async function startTracker(): Promise<PoseTracker> {
     numPoses: 1,
   });
 
+  const camera = createFreshFrame();
+  const byCallback = watchCameraFrames(video, camera.mark);
   let lastVideoTime = -1;
   return {
     video,
     read() {
-      if (video.currentTime === lastVideoTime) return null;
-      lastVideoTime = video.currentTime;
+      if (byCallback) {
+        if (!camera.take()) return null;
+      } else {
+        // Older browsers: currentTime still changes more often than the camera sends pictures, but it is all there is.
+        if (video.currentTime === lastVideoTime) return null;
+        lastVideoTime = video.currentTime;
+      }
       const t = performance.now();
       const result = landmarker.detectForVideo(video, t);
       const image = result.landmarks[0];
