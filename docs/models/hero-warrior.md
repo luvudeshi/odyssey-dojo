@@ -25,7 +25,7 @@ whole body, feet included, is in frame and the hero stands on the cave floor fac
 | idle | Sword_Idle | |
 | block | Guard_Hold | baked: last frame of Punch_Enter held over 1 s, so the loop never pops. Fists at the face, shield raised beside it |
 | duck | Crouch_Idle_Loop | loops; no hold scrub |
-| dodge left / right | Sword_Idle + code lean | STAND-IN: the pack has no side-step. The whole body leans 0.42 rad about the feet while the key is held. Lean sign checked by eye only |
+| dodge left / right | Walk_Loop + small code lean | STAND-IN: the pack has no side-step. Walk_Loop steps the legs while the body slides sideways, with a 0.16 rad lean toward the dodge (was a rigid 0.42 rad lean on Sword_Idle that read as toppling). Checked by eye only |
 | punch (jab, cross, uppercut) | Punch_Jab, Punch_Cross | scrubbed by the fight clock |
 | thrust (spear moves) | Punch_Cross with a code-built spear | STAND-IN: the spear appears only for spear moves and finishers and is aimed at the giant whatever the wrist does |
 | hook, overhead strike | Sword_Attack | |

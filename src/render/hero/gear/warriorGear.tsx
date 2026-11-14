@@ -225,9 +225,9 @@ function Spear() {
   );
 }
 
-const LEAN = 0.42;
+const LEAN = 0.16;
 
-/** No side-step clip in the pack: while a dodge key is held the whole body leans that way about the feet. */
+/** The pack has no side-step clip: dodges play Walk_Loop (the legs really step) and add this small lean toward the dodge. */
 function Lean() {
   const root = useRef<Group>(null);
   useFrame((_, delta) => {
