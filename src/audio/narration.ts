@@ -1,6 +1,7 @@
 // Spoken lines that are written at run time: Homer's narration and the monster's taunts in generated fights.
 // The server makes each line once and caches it. With no server or no key this stays silent and never throws.
 import { log } from "../core/log";
+import { getSettings } from "../settings/store";
 
 export type Speaker = "athena" | "homer" | "monster";
 
@@ -39,7 +40,7 @@ export async function speakLine(speaker: Speaker, text: string): Promise<boolean
   const url = await prepareLine(speaker, text);
   if (url === null || typeof Audio === "undefined") return false;
   stopNarration();
-  const audio = new Audio(url);
+  const audio = Object.assign(new Audio(url), { volume: getSettings().voiceVolume });
   current = audio;
   return new Promise((resolve) => {
     const finish = (played: boolean): void => {

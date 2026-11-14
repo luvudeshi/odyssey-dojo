@@ -2,7 +2,9 @@
 // An enemy with no model gets the placeholder, so data and art can land in separate PRs.
 import type { ComponentType } from "react";
 import type { MonsterProps } from "../../core/types";
-import { candidateLoader } from "../models/candidates";
+import { polyphemusChoice, candidateLoader } from "../models/candidates";
+import { GiantPolyphemus } from "../models/giantPolyphemus";
+import { preloadGiant } from "../models/giantClips";
 
 export interface MonsterModel {
   readonly enemyId: string;
@@ -15,6 +17,11 @@ export const MONSTER_MODELS: ReadonlyMap<string, ComponentType<MonsterProps>> = 
   Object.values(modules).map((module) => [module.model.enemyId, module.model.Component]),
 );
 
-// ?model=<id> swaps Polyphemus for a candidate (dev, giant, classic; see ../models/candidates).
-const load = candidateLoader(new URLSearchParams(window.location.search).get("model"));
-if (load) void load().then((component) => (MONSTER_MODELS as Map<string, ComponentType<MonsterProps>>).set("polyphemus", component));
+// The Quaternius giant is the default Polyphemus (no flag). ?model=classic keeps the code-built one, ?model=dev the test robot.
+// The GLB is requested at import, and the giant shows the code-built model until it has loaded or if it fails, so there is no blank or T-pose.
+const choice = polyphemusChoice(new URLSearchParams(window.location.search).get("model"));
+const table = MONSTER_MODELS as Map<string, ComponentType<MonsterProps>>;
+if (choice === "giant") {
+  preloadGiant();
+  table.set("polyphemus", GiantPolyphemus);
+} else if (choice === "dev") void candidateLoader("dev")?.().then((component) => table.set("polyphemus", component));

@@ -23,7 +23,7 @@ export function Effects() {
       <Bloom
         ref={bloom}
         mipmapBlur
-        luminanceThreshold={0.85}
+        luminanceThreshold={1.0}
         luminanceSmoothing={0.2}
         intensity={BLOOM_BASE}
         resolutionScale={high ? 1 : 0.5}

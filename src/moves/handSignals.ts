@@ -44,3 +44,50 @@ export function risingHand(history: PoseHistory, side: Side, bentBelow: number):
   if (rise < -0.15 || rise > 1.3 || wristOut(frame, side) > 1 || elbowAngle(frame, side) > bentBelow) return false;
   return recent(history, 400).some((old) => wristRise(old, side) < -1);
 }
+
+const STRAIGHT = 145;
+const NEARLY_STRAIGHT = 135;
+const BENT = 115;
+/** A punch snaps: the elbow goes from bent to straight inside this many milliseconds. A reach takes longer. */
+const SNAP_MS = 200;
+const OPENING_MS = 100;
+const OPENING_DEGREES = 20;
+
+/** True when the hand was higher than the nose at some point in the last `ms` milliseconds. */
+export function handWasOverhead(history: PoseHistory, side: Side, ms: number): boolean {
+  return recent(history, ms).some((old) => wrist(old, side).y < joint(old.image, JOINT.nose).y);
+}
+
+/** True while the elbow is straightening fast: the arm is on its way out, whether or not it has arrived. */
+export function armOpening(history: PoseHistory, side: Side): boolean {
+  const frame = latest(history);
+  if (!frame) return false;
+  const tightest = Math.min(...recent(history, OPENING_MS).map((old) => elbowAngle(old, side)));
+  return elbowAngle(frame, side) - tightest > OPENING_DEGREES;
+}
+
+/** True when the fist is far out to its own side of the body, the way a flung arm ends, not in front of it. */
+export function flungWide(frame: PoseFrame, side: Side): boolean {
+  return wristOut(frame, side) > 1.2;
+}
+
+/**
+ * How sure we are that this fist has just been punched at the camera: 1 when the arm has snapped straight,
+ * 0.5 while it hangs a little short of straight. The 0.5 keeps a punch already thrown from being counted
+ * again when the tracker's elbow reading wobbles; on its own it is too low to throw one.
+ * Not a punch: a slow reach, or a hand that came down from over the head (a chop).
+ * It does not check that the fist went forward: one-handed punches add `flungWide` for that.
+ */
+export function punch(history: PoseHistory, side: Side): number {
+  const frame = latest(history);
+  if (!frame) return 0;
+  const bend = elbowAngle(frame, side);
+  if (bend <= NEARLY_STRAIGHT) return 0;
+  const left = side === "left";
+  const shoulder = joint(frame.world, left ? JOINT.leftShoulder : JOINT.rightShoulder);
+  const fist = joint(frame.world, left ? JOINT.leftWrist : JOINT.rightWrist);
+  if (Math.abs(fist.y - shoulder.y) >= 0.3) return 0;
+  if (!recent(history, SNAP_MS).some((old) => elbowAngle(old, side) < BENT)) return 0;
+  if (handWasOverhead(history, side, 500)) return 0;
+  return bend > STRAIGHT ? 1 : 0.5;
+}

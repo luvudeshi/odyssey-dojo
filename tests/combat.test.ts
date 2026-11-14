@@ -60,5 +60,5 @@ test("a missed opening resets the combo", () => {
 });
 
 test("prompts fade as a move is mastered", () => {
-  expect([0, 2, 5].map(promptLevel)).toEqual(["full", "word", "glow"]);
+  expect([0, 2, 5].map(promptLevel)).toEqual(["full", "word", "mini"]);
 });

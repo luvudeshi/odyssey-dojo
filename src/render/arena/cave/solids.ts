@@ -150,14 +150,19 @@ export function floorGeometry(): BufferGeometry {
 
 function sheepPart(parts: BufferGeometry[], piece: Piece): void {
   const [x, , z] = piece.position;
-  const wool = new Color("#f2e6c8"), shade = new Color("#b49a78"), dark = new Color("#3b3030");
+  // Earth-toned wool, a dark face and legs: pale wool just clips to white under the low orange sun.
+  const wool = new Color("#b5a088"), shade = new Color("#6e5e54"), dark = new Color("#2a2224");
   const at = (px: number, py: number, pz: number): Matrix4 =>
-    new Matrix4().makeTranslation(x, 0, z).multiply(new Matrix4().makeRotationY(piece.yaw)).multiply(new Matrix4().makeScale(1.4, 1.4, 1.4)).multiply(new Matrix4().makeTranslation(px, py, pz));
-  const body = jitter(new IcosahedronGeometry(0.5, 1), 0.12, x + z).applyMatrix4(at(0, 0.62, 0).multiply(new Matrix4().makeScale(0.95, 0.8, 1.35)));
-  parts.push(paint(body, shade, wool, (_x, y, _z, i) => 0.5 + y * 0.3 + noise2(i, 4) * 0.2));
-  parts.push(paint(new BoxGeometry(0.26, 0.3, 0.36).applyMatrix4(at(0, 0.8, 0.68)), dark, dark, () => 0));
-  for (const [lx, lz] of [[-0.2, -0.38], [0.2, -0.38], [-0.2, 0.38], [0.2, 0.38]] as const) {
-    parts.push(paint(new CylinderGeometry(0.05, 0.05, 0.38, 5).applyMatrix4(at(lx, 0.19, lz)), dark, dark, () => 0));
+    new Matrix4().makeTranslation(x, 0, z).multiply(new Matrix4().makeRotationY(piece.yaw)).multiply(new Matrix4().makeScale(1.5, 1.5, 1.5)).multiply(new Matrix4().makeTranslation(px, py, pz));
+  // Three overlapping fleece lumps make a lumpy back instead of one egg.
+  for (const [px, py, pz, size] of [[0, 0.62, 0.22, 0.34], [0, 0.66, -0.12, 0.36], [0, 0.6, -0.42, 0.3]] as const) {
+    const lump = jitter(new IcosahedronGeometry(size, 0), 0.14, x + z + pz).applyMatrix4(at(px, py, pz).multiply(new Matrix4().makeScale(1.05, 0.95, 1.1)));
+    parts.push(paint(lump, shade, wool, (_x, y, _z, i) => 0.3 + y * 0.5 + noise2(i, 4) * 0.4));
+  }
+  parts.push(paint(new BoxGeometry(0.2, 0.22, 0.3).applyMatrix4(at(0, 0.72, 0.62)), dark, dark, () => 0));
+  for (const ex of [-0.13, 0.13]) parts.push(paint(new BoxGeometry(0.1, 0.05, 0.14).applyMatrix4(at(ex, 0.8, 0.54)), dark, dark, () => 0));
+  for (const [lx, lz] of [[-0.17, -0.45], [0.17, -0.45], [-0.17, 0.3], [0.17, 0.3]] as const) {
+    parts.push(paint(new CylinderGeometry(0.05, 0.045, 0.42, 5).applyMatrix4(at(lx, 0.21, lz)), dark, dark, () => 0));
   }
 }
 
