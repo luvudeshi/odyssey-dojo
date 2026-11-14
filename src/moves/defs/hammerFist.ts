@@ -1,4 +1,5 @@
 // Karate's tettsui-uchi: the bottom of the fist brought down like a hammer, with the left hand.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { latest, recent } from "../../pose/signals";
 import { wristRise } from "../handSignals";
@@ -17,5 +18,8 @@ export const move: MoveDef = {
     if (!frame || wristRise(frame, "left") > 0) return 0;
     // The nose sits about one shoulder width above the shoulder line.
     return recent(history, 500).some((old) => wristRise(old, "left") > 1) ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left"], rise: -0.6, tolerance: 1 });
   },
 };
