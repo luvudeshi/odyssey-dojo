@@ -18,7 +18,8 @@ export function createKeyboard(moves: ReadonlyMap<string, MoveDef>): Keyboard {
   const down = (event: KeyboardEvent): void => {
     const move = byKey.get(event.key);
     if (!move) return;
-    event.preventDefault();
+    // Leave Space on a focused button alone so the result overlay stays keyboard-operable.
+    if (!(event.target instanceof HTMLButtonElement)) event.preventDefault();
     if (move.kind === "defend") held.add(move.id);
     else if (!event.repeat) struck.push({ move: move.id, quality: KEY_QUALITY, player: 0 });
   };

@@ -18,12 +18,22 @@ export interface Arm {
   readonly wrist3: P3;
 }
 
+/** One leg in left-side coordinates: knee and ankle in the image (0..1) and in the world (meters from the hips). */
+export interface Leg {
+  readonly knee: P2;
+  readonly ankle: P2;
+  readonly knee3: P3;
+  readonly ankle3: P3;
+}
+
 /** Both arms plus how far the whole upper body has moved in the image (dodge: dx, duck: dy). */
 export interface Pose {
   readonly left: Arm;
   readonly right: Arm;
   readonly dx: number;
   readonly dy: number;
+  /** Only when the camera sees the whole body. Without it the knees and ankles are out of the picture. */
+  readonly legs?: { readonly left: Leg; readonly right: Leg };
 }
 
 // Shoulders sit at image x .42 / .58, y .35 and world (-+.2, -.5, 0): see tests/poseFixture.ts.
@@ -55,10 +65,27 @@ export const STAKE_CHEST: Arm = { elbow: [0.38, 0.47], wrist: [0.48, 0.42], elbo
 /** One hand of the stake driven forward and down, arm straight. */
 export const STAKE_DOWN: Arm = { elbow: [0.45, 0.46], wrist: [0.48, 0.56], elbow3: [-0.12, -0.33, -0.25], wrist3: [-0.03, -0.15, -0.5] };
 
+// Hips sit at image x .45 / .55, y .65 and world (-+.1, 0, 0); the floor is near image y .95.
+/** Standing leg: knee under the hip, foot on the floor. */
+export const LEG_DOWN: Leg = { knee: [0.45, 0.8], ankle: [0.45, 0.95], knee3: [-0.1, 0.45, 0], ankle3: [-0.1, 0.88, 0] };
+/** Knee lifted only a little, foot just off the floor: too low to be a knee strike. */
+export const LEG_HALF: Leg = { knee: [0.45, 0.76], ankle: [0.45, 0.9], knee3: [-0.1, 0.35, -0.2], ankle3: [-0.1, 0.75, -0.1] };
+/** Kick chamber: thigh level, lower leg folded under the knee. */
+export const LEG_CHAMBER: Leg = { knee: [0.45, 0.67], ankle: [0.45, 0.8], knee3: [-0.1, 0.05, -0.4], ankle3: [-0.1, 0.4, -0.3] };
+/** Front kick finish: leg straight out toward the camera, foot at hip height. */
+export const LEG_KICK: Leg = { knee: [0.45, 0.66], ankle: [0.45, 0.68], knee3: [-0.1, 0.05, -0.42], ankle3: [-0.1, 0, -0.85] };
+/** Knee strike: knee driven above the hip, foot tucked under it. */
+export const LEG_KNEE: Leg = { knee: [0.45, 0.62], ankle: [0.45, 0.78], knee3: [-0.1, -0.05, -0.42], ankle3: [-0.1, 0.3, -0.35] };
+
 export function pose(left: Arm, right: Arm = left, dx = 0, dy = 0): Pose {
   return { left, right, dx, dy };
 }
 export const NEUTRAL: Pose = pose(DOWN);
+
+/** The same pose with the legs in view. */
+export function withLegs(p: Pose, left: Leg = LEG_DOWN, right: Leg = LEG_DOWN): Pose {
+  return { ...p, legs: { left, right } };
+}
 
 const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
 const mix2 = (a: P2, b: P2, k: number): P2 => [lerp(a[0], b[0], k), lerp(a[1], b[1], k)];
@@ -69,17 +96,33 @@ const mixArm = (a: Arm, b: Arm, k: number): Arm => ({
   elbow3: mix3(a.elbow3, b.elbow3, k),
   wrist3: mix3(a.wrist3, b.wrist3, k),
 });
+const mixLeg = (a: Leg, b: Leg, k: number): Leg => ({
+  knee: mix2(a.knee, b.knee, k),
+  ankle: mix2(a.ankle, b.ankle, k),
+  knee3: mix3(a.knee3, b.knee3, k),
+  ankle3: mix3(a.ankle3, b.ankle3, k),
+});
+const STANDING_LEGS = { left: LEG_DOWN, right: LEG_DOWN };
+/** Legs stay out of the picture only when neither pose has them; otherwise a missing pair counts as standing. */
+const mixLegs = (a: Pose, b: Pose, k: number): Pick<Pose, "legs"> => {
+  if (!a.legs && !b.legs) return {};
+  const from = a.legs ?? STANDING_LEGS;
+  const to = b.legs ?? STANDING_LEGS;
+  return { legs: { left: mixLeg(from.left, to.left, k), right: mixLeg(from.right, to.right, k) } };
+};
 const mixPose = (a: Pose, b: Pose, k: number): Pose => ({
   left: mixArm(a.left, b.left, k),
   right: mixArm(a.right, b.right, k),
   dx: lerp(a.dx, b.dx, k),
   dy: lerp(a.dy, b.dy, k),
+  ...mixLegs(a, b, k),
 });
 
 export function frameOf(t: number, p: Pose): PoseFrame {
   const at = (x: number, y: number): P2 => [x + p.dx, y + p.dy];
   const mirror = (point: P2): P2 => at(1 - point[0], point[1]);
   const flip = (point: P3): P3 => [-point[0], point[1], point[2]];
+  const legs = p.legs;
   return frameAt(
     t,
     {
@@ -88,10 +131,19 @@ export function frameOf(t: number, p: Pose): PoseFrame {
       [J.leftHip]: at(0.45, 0.65), [J.rightHip]: at(0.55, 0.65),
       [J.leftElbow]: at(...p.left.elbow), [J.rightElbow]: mirror(p.right.elbow),
       [J.leftWrist]: at(...p.left.wrist), [J.rightWrist]: mirror(p.right.wrist),
+      ...(legs && {
+        [J.leftKnee]: at(...legs.left.knee), [J.rightKnee]: mirror(legs.right.knee),
+        [J.leftAnkle]: at(...legs.left.ankle), [J.rightAnkle]: mirror(legs.right.ankle),
+      }),
     },
     {
       [J.leftElbow]: p.left.elbow3, [J.rightElbow]: flip(p.right.elbow3),
       [J.leftWrist]: p.left.wrist3, [J.rightWrist]: flip(p.right.wrist3),
+      ...(legs && {
+        [J.leftHip]: [-0.1, 0, 0], [J.rightHip]: [0.1, 0, 0],
+        [J.leftKnee]: legs.left.knee3, [J.rightKnee]: flip(legs.right.knee3),
+        [J.leftAnkle]: legs.left.ankle3, [J.rightAnkle]: flip(legs.right.ankle3),
+      }),
     },
   );
 }

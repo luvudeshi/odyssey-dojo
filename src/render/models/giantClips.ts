@@ -1,8 +1,14 @@
 // Clip names and fit for the Quaternius Giant candidate. Plain data, so a test can check it against the real file.
+import { useGLTF } from "@react-three/drei";
 import type { MonsterClipConfig } from "./clipMap";
 import type { ModelFit } from "./fitModel";
 
 export const GIANT_URL = "/models/polyphemus/giant.glb";
+
+/** Starts the download at import, so the file is usually cached before the fight opens. */
+export function preloadGiant(): void {
+  useGLTF.preload(GIANT_URL);
+}
 
 /** About 2.6 hero heights (the hero is 1.8 m); the bone box puts his head at the weak spot's height. */
 export const GIANT_FIT: ModelFit = { targetHeight: 4.6, rotationY: 0 };
