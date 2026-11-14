@@ -45,7 +45,7 @@ export const ATTACK_POSES: Readonly<Record<string, Target>> = {
   // Wand arm swept across the body to the right of the screen.
   wand_right: { wandOut: -1.0, wandFwd: 1.35, wandElbow: 0.3, lean: -0.14, twist: 0.3, arcRight: 1, wandGlow: 1 },
   // The cup raised over her head, and a green ring above: the throw comes high.
-  cup: { cupOut: 2.55, cupFwd: 0.25, cupElbow: 0.45, bow: -0.1, halo: 1, cupGlow: 1, wandGlow: 0.3 },
+  cup: { cupOut: 2.9, cupFwd: 0.1, cupElbow: 0.15, bow: -0.1, halo: 1, cupGlow: 1, wandGlow: 0.3 },
   // Both hands forward and wide, an orb of swine-magic gathering between them and a sigil on the floor.
   spell: { wandOut: 0.5, wandFwd: 1.5, wandElbow: 0.25, cupOut: 0.5, cupFwd: 1.5, cupElbow: 0.25, orb: 1, ring: 1, wandGlow: 1, cupGlow: 0.6, nod: 0.15 },
 };

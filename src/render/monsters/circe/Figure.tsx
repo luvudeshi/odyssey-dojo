@@ -241,7 +241,7 @@ export function CirceFigure(props: MonsterProps) {
               <mesh geometry={hairGeo} position={[0, -1.35, 0]} material={mats.hair} castShadow />
             </group>
           </group>
-          <mesh ref={halo} position={[0, 3.75, 0.2]} rotation={[Math.PI / 2, 0, 0]} visible={false}>
+          <mesh ref={halo} position={[0, 3.1, 0.05]} rotation={[Math.PI / 2, 0, 0]} visible={false}>
             <torusGeometry args={[0.6, 0.05, 6, 20]} />
             <primitive object={MAGIC} attach="material" />
           </mesh>
