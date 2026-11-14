@@ -3,7 +3,8 @@
 import type { Material } from "three";
 import { Color } from "three";
 import type { HeroCandidate } from "../candidates";
-import { SPARTAN_ANCHORS, THRUST_TIMING } from "../gear/spartanGear";
+import { SPARTAN_ANCHORS } from "../gear/anchors";
+import { TIMING } from "../gear/timing";
 
 const SKIN = new Color("#b87a52");
 const JOINT = new Color("#8a5636");
@@ -40,8 +41,6 @@ export const candidate: HeroCandidate = {
       defeat: ["Death01"],
     },
     byMove: { cross: "Punch_Cross", hook: "Melee_Hook", overhead_strike: "Sword_Regular_A" },
-    punch: { seconds: 0.5, hit: 0.4 },
-    thrust: THRUST_TIMING,
-    hurt: { seconds: 0.5 },
+    ...TIMING,
   },
 };

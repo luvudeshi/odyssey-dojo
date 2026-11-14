@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { HERO_CANDIDATES } from "../src/render/hero/candidates";
+import { candidate as spartan } from "../src/render/hero/defs/spartan";
 import { CONTACT_LEAD, chooseHeroPose, decideHeroPose, strikeStart, strikeWindow } from "../src/render/hero/heroClips";
 import type { HeroInput, HeroRig } from "../src/render/hero/heroClips";
 import { newDecision } from "../src/render/models/clipMap";
@@ -80,9 +80,9 @@ describe("decideHeroPose", () => {
   });
 });
 
-describe("hero candidates", () => {
-  test("each has an idle clip and a clip for every pose or an explicit stand-in", () => {
-    for (const candidate of HERO_CANDIDATES.values()) {
+describe("the hero", () => {
+  test("it has an idle clip and a clip for every pose or an explicit stand-in", () => {
+    for (const candidate of [spartan]) {
       expect(candidate.rig.idle).toBeTruthy();
       for (const pose of ["block", "duck", "dodgeLeft", "dodgeRight", "punch", "thrust", "hurt", "victory", "defeat"] as const) {
         expect(candidate.rig.poses[pose]?.length, `${candidate.id} ${pose}`).toBeGreaterThan(0);

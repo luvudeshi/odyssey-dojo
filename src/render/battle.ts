@@ -21,11 +21,13 @@ export interface Battle {
   held: ReadonlySet<string>;
   struckMove: string;
   struckAt: number;
+  /** The fighting style in play, set by FightScreen. resetBattle leaves it: the style outlives one fight. */
+  styleId: string;
 }
 
 export const battle: Battle = {
   state: null, enemyHitAt: -Infinity, playerHitAt: -Infinity, phaseAt: -Infinity, wonAt: -Infinity,
-  lostAt: -Infinity, heroX: 0, heroZ: 0, shakeX: 0, shakeY: 0, held: new Set(), struckMove: "", struckAt: -Infinity,
+  lostAt: -Infinity, heroX: 0, heroZ: 0, shakeX: 0, shakeY: 0, held: new Set(), struckMove: "", struckAt: -Infinity, styleId: "",
 };
 
 export function resetBattle(target: Battle = battle): void {
