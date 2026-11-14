@@ -93,3 +93,5 @@ The tool writes both `index.json` files. It does not touch the lines recorded fi
 - `speakResult(enemyId, won)`: on a win, the stop's "after" line (or `homer_win` for a fight with none). On a loss, `homer_loss`. It waits for Athena's own result line to end.
 - `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It waits up to 2.5 seconds, so it follows Athena's phase line. Athena's next call cuts a taunt short.
 - `stopStory()`: drops a line that is still waiting and cuts off a story line that is playing. Athena's lines are left alone.
+
+Asking for a line that is already waiting or playing joins it, so it is heard once. Asking again after it is over speaks it again, so call these from an effect that runs once per screen, not on every frame.
