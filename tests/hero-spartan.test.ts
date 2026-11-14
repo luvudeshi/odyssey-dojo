@@ -17,7 +17,7 @@ describe("spartan hero", () => {
 
   test("every clip the rig names is in the shipped file", () => {
     const wanted = [rig.idle, ...Object.values(rig.poses).flat(), ...Object.values(rig.byMove ?? {})];
-    for (const name of wanted) expect(names.has(name as string), String(name)).toBe(true);
+    for (const name of wanted) expect(names.has(name), name).toBe(true);
   });
 
   test("the shipped file holds nothing the rig does not use", () => {
