@@ -78,7 +78,7 @@ export function promptedMove(phase: CombatPhase | undefined): string | null {
 }
 
 /** How visible the ghost is with no webcam, by how well the move is learned (the same steps as the prompt card). */
-const BASE_OPACITY = { full: 0.5, word: 0.32, glow: 0.18 } as const;
+const BASE_OPACITY = { full: 0.5, word: 0.32, mini: 0.18 } as const;
 const BRIGHT_OPACITY = 0.9;
 
 /** Closeness 0..1 lifts the ghost from its base opacity to BRIGHT_OPACITY. Null (keyboard, no live pose) leaves the base. */
