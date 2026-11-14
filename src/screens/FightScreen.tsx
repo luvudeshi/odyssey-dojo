@@ -17,6 +17,11 @@ import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
+import { battle } from "../render/battle";
+import { useSettings } from "../settings/store";
+import { PauseMenu } from "../ui/PauseMenu";
+import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
+import type { PauseView } from "../ui/pauseState";
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -26,9 +31,16 @@ export function FightScreen(props: {
   /** Set by calibration; null for keyboard play. */
   baseline?: Baseline | null;
   /** Buttons shown once the fight is over. */
+  /** Pause menu: start this fight again, or leave it for the quest map. */
+  onRestart?: () => void;
+  onQuit?: () => void;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, baseline = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null } = props;
+  const { mirror } = useSettings();
+  const [view, setView] = useState<PauseView>("off");
+  const pausedRef = useRef(false);
+  const overRef = useRef(false);
   const [lost, setLost] = useState(false);
   const [state, setState] = useState(() => startFight(enemy, seed));
   const poseRef = useRef<PoseFrame | null>(null);
@@ -52,6 +64,13 @@ export function FightScreen(props: {
       }
       const dt = Math.min(now - last, 100);
       const keys = keyboard.read();
+      if (pausedRef.current) {
+        // Paused: the clock, the gate and the keys stand still; keys pressed meanwhile are dropped.
+        keyboard.read();
+        last = now;
+        handle = requestAnimationFrame(tick);
+        return;
+      }
       keyboardMode = keyboardTakesOver(keyboardMode, gate.paused, keys);
       if (tracker && !keyboardMode) {
         gate = gateStep(gate, presenceAt(history, now).ok, dt);
@@ -76,6 +95,25 @@ export function FightScreen(props: {
     };
   }, [enemy, style, tracker, seed, baseline]);
 
+  const over = state.phase.kind === "won" || state.phase.kind === "lost";
+  const running = view === "off";
+  useEffect(() => { overRef.current = over; pausedRef.current = !running; }, [over, running]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || event.repeat || event.defaultPrevented) return;
+      setView((current) => pressEscape(current, overRef.current));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
+  }, []);
+
+  useEffect(() => {
+    if (running) return;
+    const since = performance.now();
+    return () => { shiftBattleTimes(battle, performance.now() - since); };
+  }, [running]);
+
   useEffect(() => {
     const holder = preview.current;
     if (!tracker || !holder) return;
@@ -83,13 +121,22 @@ export function FightScreen(props: {
     return () => { tracker.video.remove(); };
   }, [tracker]);
 
-  const over = state.phase.kind === "won" || state.phase.kind === "lost";
   return (
     <div className="fight">
-      <Scene enemy={enemy} state={state} poseRef={poseRef} />
+      <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <Hud enemy={enemy} state={state} />
-      <div className="preview" ref={preview} />
+      <div className={mirror ? "preview mirror" : "preview"} ref={preview} />
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
+      {view !== "off" && !over && (
+        <PauseMenu
+          view={view}
+          onResume={() => { setView("off"); }}
+          onRestart={() => { onRestart?.(); }}
+          onSettings={() => { setView("settings"); }}
+          onBackToMenu={() => { setView("menu"); }}
+          onQuit={() => { onQuit?.(); }}
+        />
+      )}
       {over && (
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
