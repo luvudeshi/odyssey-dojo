@@ -21,7 +21,7 @@ const BONES: readonly (readonly [number, number])[] = [
 ];
 const HIP_HEIGHT = 0.95;
 const UP = new Vector3(0, 1, 0);
-const HOME_Z = 1.2;
+export const HOME_Z = 1.2;
 /** No new webcam frame for this long and the stance takes over. */
 const STALE_SECONDS = 0.5;
 const BLEND_SECONDS = 0.12;
