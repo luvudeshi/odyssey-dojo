@@ -30,3 +30,15 @@ Three people work in this repo, each with a coding agent. This is how the agents
 - `make dev` starts the game and a full keyboard fight works with no camera, no network and no server.
 - `make check` passes on `main` at all times and needs no server and no keys.
 - Nothing after the 1 AM Sunday freeze changes the Polyphemus fight unless it fixes a bug in it.
+
+## The board
+
+https://github.com/users/toyeshhm/projects/2 shows every issue in four columns: Todo, In Progress, Blocked, Done. Closing an issue moves its card to Done. The other moves are yours, right after your `CLAIM:` or `BLOCKED:` comment. Your `gh` needs the board permission once: `gh auth refresh -s project`.
+
+```bash
+# move issue N to a column: In Progress = b22618d6, Blocked = 3b8c64c7, Todo = 71c036b4
+ITEM=$(gh project item-list 2 --owner toyeshhm --limit 100 --format json --jq '.items[] | select(.content.number == N) | .id')
+gh project item-edit --id "$ITEM" --project-id PVT_kwHOCwRNec4BrpBb --field-id PVTSSF_lAHOCwRNec4BrpBbzhp6y5o --single-select-option-id b22618d6
+```
+
+If your agent cannot move cards, the issue's assignee, labels and comments are still the truth; the lead's agent keeps the board in step.
