@@ -1,4 +1,4 @@
-// Issue #115: three made-up players fight every stop 200 times each, with a fixed seed.
+// Issues #115 and #127: three made-up players fight every stop 200 times each, with a fixed seed.
 // The tables in docs/balance.md come from this run. To rewrite them after a retune:
 //   UPDATE_BALANCE=1 npx vitest run tests/balance
 import { readFileSync, writeFileSync } from "node:fs";
@@ -7,10 +7,9 @@ import { expect, test, vi } from "vitest";
 
 // 3,600 simulated fights take about 1.5 s alone and far longer when other agents load the machine.
 vi.setConfig({ testTimeout: 60_000 });
-import type { EnemyAttack, EnemySpec } from "../../src/core/types";
 import { ENEMIES } from "../../src/enemies/registry";
 import { STYLES } from "../../src/styles/registry";
-import { FIGHTS, measure, measureRoute, PLAYERS, type Player, type Row, table } from "./simulate";
+import { FIGHTS, measureRoute, PLAYERS, type Row, table } from "./simulate";
 
 const DOC = "docs/balance.md";
 
@@ -20,29 +19,6 @@ function boxer() {
   return style;
 }
 
-function polyphemus(): EnemySpec {
-  const enemy = ENEMIES.find((candidate) => candidate.id === "polyphemus");
-  if (!enemy) throw new Error("Polyphemus is missing");
-  return enemy;
-}
-
-/**
- * The Polyphemus that meets #115, which tests/content.test.ts does not allow today (see NEEDS in docs/balance.md):
- * less than half the health, and attacks that hurt a little less.
- */
-const PROPOSED_HP = 160;
-const PROPOSED_DAMAGE: Readonly<Record<string, number>> = { club_left: 6, club_right: 6, grab: 6, boulder: 7 };
-
-function proposedPolyphemus(): EnemySpec {
-  const now = polyphemus();
-  const softer = (attack: EnemyAttack): EnemyAttack => ({ ...attack, damage: PROPOSED_DAMAGE[attack.id] ?? attack.damage });
-  const [first, ...rest] = now.attacks;
-  return { ...now, hp: PROPOSED_HP, attacks: [softer(first), ...rest.map(softer)] };
-}
-
-/** The player tests/content.test.ts pins to 90 to 150 seconds on Polyphemus, at its best strike quality. */
-const PINNED: Player = { id: "pinned", label: "85% of prompts right, perfect strikes", defend: 0.85, land: 0.85, reactMs: 800, quality: 1 };
-
 let route: Row[] | undefined;
 const rows = (): Row[] => (route ??= measureRoute(ENEMIES, boxer()));
 const row = (stop: string, player: string): Row => {
@@ -50,9 +26,6 @@ const row = (stop: string, player: string): Row => {
   if (!found) throw new Error(`no fights for ${player} at ${stop}`);
   return found;
 };
-
-let proposal: Row[] | undefined;
-const proposed = (): Row[] => (proposal ??= [...PLAYERS, PINNED].map((player) => measure(proposedPolyphemus(), boxer(), player)));
 
 /** Puts `body` between the `<!-- name -->` and `<!-- /name -->` lines of the document. */
 function withBlock(doc: string, name: string, body: string): string {
@@ -66,9 +39,8 @@ function withBlock(doc: string, name: string, body: string): string {
 
 test("docs/balance.md shows the numbers this simulation gives", () => {
   const now = table(ENEMIES, rows());
-  const after = table([proposedPolyphemus()], proposed(), [...PLAYERS, PINNED]);
   const doc = readFileSync(DOC, "utf8").replaceAll("\r\n", "\n");
-  const fresh = withBlock(withBlock(doc, "table:now", now), "table:proposed", after);
+  const fresh = withBlock(doc, "table:now", now);
   if (env.UPDATE_BALANCE) writeFileSync(DOC, fresh);
   else expect(doc, "run UPDATE_BALANCE=1 npx vitest run tests/balance to rewrite the tables").toBe(fresh);
 });
@@ -106,24 +78,31 @@ test("the route gets harder stop by stop for every player", () => {
   }
 });
 
-test("the good player wins everywhere, and the average player wins the first stop most of the time", () => {
+test("the good player wins everywhere", () => {
   for (const enemy of ENEMIES) expect(row(enemy.id, "good").wins, enemy.id).toBeGreaterThanOrEqual(FIGHTS * 0.95);
-  expect(row("polyphemus", "average").wins).toBeGreaterThanOrEqual(FIGHTS * 0.75);
 });
 
-test("the proposed Polyphemus: the beginner wins most fights in under 90 seconds, which the 90 second floor forbids", () => {
-  const of = (id: string): Row => {
-    const found = proposed().find((candidate) => candidate.player === id);
-    if (!found) throw new Error(`no fights for ${id}`);
-    return found;
-  };
-  const beginner = of("beginner");
-  expect(beginner.wins, "beginner wins").toBeGreaterThanOrEqual(FIGHTS * 0.6);
-  expect(beginner.seconds, "beginner, all fights").toBeLessThan(90);
-  expect(beginner.winSeconds, "beginner, fights won").toBeLessThan(90);
-  expect(of("average").wins).toBe(FIGHTS);
-  // Still the easiest stop on the route for everyone.
-  for (const player of PLAYERS) expect(of(player.id).hpLeft, player.id).toBeGreaterThan(row("circe", player.id).hpLeft);
-  // The conflict: the player tests/content.test.ts holds to 90 s or more is done in about half that.
-  expect(of("pinned").seconds).toBeLessThan(90);
+// Issue #127: the first fight is often the only one a new player gets, so it is tuned to be won.
+// If one of these fails after a retune, docs/balance.md says which way `hp` and `damage` in polyphemus.ts move each number.
+test("Polyphemus: the beginner wins at least 85% of fights, and those wins take 90 seconds or less", () => {
+  const beginner = row("polyphemus", "beginner");
+  expect(beginner.wins, "beginner, fights won").toBeGreaterThanOrEqual(FIGHTS * 0.85);
+  expect(beginner.winSeconds, `beginner, fights won: ${beginner.winSeconds.toFixed(1)} s`).toBeLessThanOrEqual(90);
+});
+
+test("Polyphemus: the average player always wins", () => {
+  expect(row("polyphemus", "average").wins).toBe(FIGHTS);
+});
+
+test("Polyphemus: the good player's fight still lasts at least 30 seconds", () => {
+  const good = row("polyphemus", "good");
+  // If this fails, raise `hp` and lower `damage` together: health alone would push the beginner's wins past 90 s.
+  expect(good.seconds, `good: ${good.seconds.toFixed(1)} s`).toBeGreaterThanOrEqual(30);
+});
+
+test("Polyphemus: every fight a beginner wins goes through all three phases", () => {
+  const enemy = ENEMIES.find((candidate) => candidate.id === "polyphemus");
+  expect(enemy?.phases?.length).toBe(3);
+  // A phase counts as seen when the player had to defend at least one attack in it.
+  for (const player of PLAYERS) expect(row("polyphemus", player.id).fewestPhasesInAWin, player.id).toBe(3);
 });
