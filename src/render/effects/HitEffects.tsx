@@ -1,11 +1,12 @@
 // What a hit feels like: sparks and a flash of light where the monster is struck, a bigger burst when it falls,
-// and a camera shake with a red flash at the screen's edge when the player is struck.
+// and a camera shake (handed to the camera rig) with a red flash at the screen's edge when the player is struck.
 // Mount it inside the monster's group. It only reads combat state; it never changes fight rules.
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending } from "three";
-import type { PointLight, Points, Vector3 } from "three";
+import type { PointLight, Points } from "three";
 import type { CombatState } from "../../core/types";
+import { battle, calmMotion } from "../battle";
 import { fxBetween } from "./events";
 import { markHit } from "./pulse";
 import { createPool, emit, stepPool } from "./sparks";
@@ -15,10 +16,6 @@ const SHAKE_SECONDS = 0.25;
 const SHAKE_REACH = 0.13;
 const FLASH_SECONDS = 0.22;
 
-function calmMotion(): boolean {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
 export function HitEffects({ state }: { state: CombatState }) {
   const gl = useThree((three) => three.gl);
   const pool = useMemo(() => createPool(POOL_SIZE), []);
@@ -26,7 +23,7 @@ export function HitEffects({ state }: { state: CombatState }) {
   const previous = useRef<CombatState | null>(null);
   const light = useRef<PointLight>(null);
   const overlay = useRef<HTMLDivElement | null>(null);
-  const live = useRef({ shake: 0, shakeScale: 1, flash: 0, flashPower: 0, sparking: false, home: null as Vector3 | null });
+  const live = useRef({ shake: 0, shakeScale: 1, flash: 0, flashPower: 0, sparking: false });
 
   // The red edge flash is a plain element laid over the canvas, styled by `.hurt-flash` in index.css.
   useEffect(() => {
@@ -66,10 +63,9 @@ export function HitEffects({ state }: { state: CombatState }) {
     }
   }, [state, pool]);
 
-  useFrame(({ camera }, delta) => {
+  useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const now = live.current;
-    now.home ??= camera.position.clone();
 
     // Upload on the frame the last spark dies too, or it would stay frozen on screen.
     const alive = stepPool(pool, dt);
@@ -83,25 +79,18 @@ export function HitEffects({ state }: { state: CombatState }) {
       now.flash = Math.max(0, now.flash - dt);
       light.current.intensity = now.flashPower * (now.flash / FLASH_SECONDS);
     }
-    if (now.shake > 0) {
-      now.shake = Math.max(0, now.shake - dt);
-      const reach = calmMotion() ? 0 : SHAKE_REACH * now.shakeScale * (now.shake / SHAKE_SECONDS);
-      camera.position.set(
-        now.home.x + (Math.random() - 0.5) * 2 * reach,
-        now.home.y + (Math.random() - 0.5) * 2 * reach,
-        now.home.z,
-      );
-    }
+    // The camera rig owns the camera; the shake is only an offset it adds on top.
+    now.shake = Math.max(0, now.shake - dt);
+    const reach = calmMotion() ? 0 : SHAKE_REACH * now.shakeScale * (now.shake / SHAKE_SECONDS);
+    battle.shakeX = (Math.random() - 0.5) * 2 * reach;
+    battle.shakeY = (Math.random() - 0.5) * 2 * reach;
   });
 
-  // Put the camera back if the fight ends mid-shake.
-  const camera = useThree((three) => three.camera);
-  useEffect(() => {
-    const now = live.current;
-    return () => {
-      if (now.home) camera.position.copy(now.home);
-    };
-  }, [camera]);
+  // Clear the shake if the fight ends mid-shake.
+  useEffect(() => () => {
+    battle.shakeX = 0;
+    battle.shakeY = 0;
+  }, []);
 
   return (
     <>
