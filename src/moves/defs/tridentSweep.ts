@@ -1,3 +1,4 @@
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseFrame } from "../../core/types";
 import { JOINT, clamp01, joint, latest, recent, shoulderCenter, shoulderWidth } from "../../pose/signals";
 
@@ -39,5 +40,8 @@ export const move: MoveDef = {
     if (from * to >= 0 || Math.min(Math.abs(from), Math.abs(to)) < 0.3) return 0;
     // Reaches 0.7 when the slower wrist has crossed one shoulder width.
     return clamp01((Math.min(Math.abs(left), Math.abs(right)) / width) * 0.7);
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left", "right"], tolerance: 1, straight: false });
   },
 };
