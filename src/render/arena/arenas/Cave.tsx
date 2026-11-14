@@ -209,4 +209,5 @@ function Cave() {
   );
 }
 
-export const arena: ArenaDef = { enemyId: "polyphemus", Component: Cave };
+/** The old torch-lit cave. Kept as the fallback for the cave mouth (see ArenaFor). */
+export const arena: ArenaDef = { enemyId: "polyphemus-classic", Component: Cave };

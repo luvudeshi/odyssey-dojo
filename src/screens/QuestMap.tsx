@@ -1,0 +1,78 @@
+// Sea chart of Odysseus's route home. The stops come from the enemy registry; ones with no 3D model yet are locked.
+import type { EnemySpec } from "../core/types";
+
+const W = 1000;
+const H = 420;
+
+type Point = readonly [number, number];
+
+/** Points along a wandering line from Troy (first) to Ithaca (last), one between for each stop. */
+export function routePoints(stops: number): readonly Point[] {
+  const total = stops + 2;
+  return Array.from({ length: total }, (_, i): Point => [
+    70 + (i * (W - 140)) / (total - 1),
+    H / 2 + Math.sin(i * 1.7) * 105,
+  ]);
+}
+
+function pathThrough(points: readonly Point[]): string {
+  const [first, ...rest] = points;
+  if (!first) return "";
+  const curves = rest.map(([x, y], i) => {
+    const [px, py] = points[i] ?? first;
+    return `Q ${String((px + x) / 2)} ${String((py + y) / 2 + (i % 2 === 0 ? -60 : 60))} ${String(x)} ${String(y)}`;
+  });
+  return `M ${String(first[0])} ${String(first[1])} ${curves.join(" ")}`;
+}
+
+export function QuestMap(props: {
+  enemies: readonly EnemySpec[];
+  cleared: readonly string[];
+  open: (index: number) => boolean;
+  onEnter: (index: number) => void;
+  onStyle: () => void;
+}) {
+  const { enemies, cleared } = props;
+  const points = routePoints(enemies.length);
+  const pos = (i: number): Point => points[i] ?? [0, 0];
+  const at = (p: Point) => ({ left: `${String(p[0] / 10)}%`, top: `${String((p[1] / H) * 100)}%` });
+  return (
+    <main className="menu">
+      <h1>The Road Home</h1>
+      <p>Choose your next stop on the sea.</p>
+      <div className="chart">
+        <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
+          <path className="route" d={pathThrough(points)} />
+          {[0, points.length - 1].map((i) => (
+            <circle key={i} className="harbour" cx={pos(i)[0]} cy={pos(i)[1]} r="12" />
+          ))}
+        </svg>
+        <span className="port" style={at(pos(0))}>Troy</span>
+        <span className="port" style={at(pos(points.length - 1))}>Ithaca</span>
+        {enemies.map((enemy, i) => {
+          const open = props.open(i);
+          const state = cleared.includes(enemy.id) ? "cleared" : open ? "open" : "locked";
+          return (
+            <button
+              key={enemy.id}
+              className={`stop ${state} ${i % 2 === 0 ? "above" : "below"}`}
+              style={at(pos(i + 1))}
+              disabled={!open}
+              onClick={() => { props.onEnter(i); }}
+            >
+              <span className="dot">{state === "cleared" ? "✓" : i + 1}</span>
+              <span className="lbl">
+                {enemy.place ?? enemy.name}
+                <small>
+                  {enemy.book ? `Book ${String(enemy.book)}` : ""}
+                  {state === "locked" ? " (ahead)" : ""}
+                </small>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <button onClick={props.onStyle}>Change style</button>
+    </main>
+  );
+}
