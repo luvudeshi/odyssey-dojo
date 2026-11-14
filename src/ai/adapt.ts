@@ -1,4 +1,5 @@
 // Turns a generated level into a fight the engine can run: a registered enemy re-dressed with the level's attacks, phases and pacing.
+import { PLAYER_HP } from "../combat/engine";
 import type { EnemyAttack, EnemyPhase, EnemySpec, MoveDef } from "../core/types";
 import { LIMITS } from "./contracts";
 import type { LevelAttack, LevelSpec } from "./contracts";
@@ -7,6 +8,7 @@ import { clamp } from "./repair";
 type Range = readonly [number, number];
 type NonEmpty<T> = readonly [T, ...T[]];
 type Base = LevelSpec["monster"]["base"];
+type Side = LevelAttack["direction"];
 type Moves = ReadonlyMap<string, MoveDef>;
 
 /** The registered enemy whose 3D model plays each generated monster. */
@@ -19,15 +21,16 @@ const STAND_INS: Readonly<Record<Base, string>> = {
   suitor_horde: "polyphemus",
 };
 
-/** The defence that answers an attack from each side. Low attacks are jumped when the game has a jump, else ducked. */
-const COUNTERS: Readonly<Record<Exclude<LevelAttack["direction"], "low">, string>> = {
+/** The defence that answers an attack from each side. */
+const COUNTERS: Readonly<Record<Side, string>> = {
   left: "dodge_right",
   right: "dodge_left",
   high: "duck",
   center: "block",
+  low: "jump",
 };
 
-const SIDE_NAMES: Readonly<Record<LevelAttack["direction"], string>> = {
+const SIDE_NAMES: Readonly<Record<Side, string>> = {
   left: "Left",
   right: "Right",
   high: "High",
@@ -60,6 +63,10 @@ const DAMAGE: Range = [6, 30];
 const STRIKE_WINDOW_MS: Range = [1600, 3200];
 const HP: Range = [60, 600];
 const MIN_WEIGHT = 0.05;
+// A fight has to make the player read its prompts: below this many different defences the stand-in's own attacks fill in.
+const MIN_COUNTERS = 3;
+// How often each filled-in attack comes up, as a share of the level's own attacks together.
+const TOP_UP_SHARE = 0.15;
 
 // Mirrors of the engine's private timings and damage (src/combat/engine.ts), used only to pace the fight.
 const INTRO_MS = 1500;
@@ -68,6 +75,13 @@ const STRIKE_DAMAGE = 12;
 // The player the fight is paced for: the same one tests/content.test.ts paces Polyphemus for.
 const SKILL = 0.85;
 const REACT_MS = 800;
+// A strike lands when the defence and then the strike are both right. Each one does 12 * (1 + 0.1 * combo), the combo
+// capped at 5 and reset by any miss, so it averages landed + landed^2 + ... + landed^5: about 2.1, so 14.5 a hit and 10.5 an exchange.
+const LANDED = SKILL * SKILL;
+const MEAN_COMBO = [1, 2, 3, 4, 5].reduce((sum, hits) => sum + LANDED ** hits, 0);
+const DAMAGE_PER_EXCHANGE = LANDED * STRIKE_DAMAGE * (1 + 0.1 * MEAN_COMBO);
+// The most health that player should expect to lose over the whole fight, whichever stand-in plays the level.
+const DAMAGE_BUDGET = 0.4 * PLAYER_HP;
 
 /** Where `value` sits in `range`, 0..1. */
 function unit(value: number, [low, high]: Range): number {
@@ -119,7 +133,9 @@ function standIn(base: Base, enemies: readonly EnemySpec[], moves: Moves): Enemy
 /** Level attacks that share a defence, added up. */
 interface Merged {
   readonly counter: string;
-  /** The heaviest attack in the group: it gives the group its name and its kind of blow. */
+  /** Where the player is told the blow comes from: always the side its defence answers. */
+  readonly side: Side;
+  /** The heaviest attack in the group: it gives the group its kind of blow. */
   readonly lead: LevelAttack;
   readonly weight: number;
   readonly weightedMs: number;
@@ -131,11 +147,14 @@ function mergeByCounter(level: LevelSpec, moves: Moves): Merged[] {
   const groups = new Map<string, Merged>();
   for (const attack of level.attack_pool) {
     if (attack.type === "feint") continue;
-    const counter = attack.direction === "low" ? (defends(moves, "jump") ? "jump" : "duck") : COUNTERS[attack.direction];
+    // Until the game has a jump, a low blow is ducked, so it is merged, named and animated as a high one.
+    const side = attack.direction === "low" && !defends(moves, COUNTERS.low) ? "high" : attack.direction;
+    const counter = COUNTERS[side];
     if (!defends(moves, counter)) continue;
     const group = groups.get(counter);
     groups.set(counter, {
       counter,
+      side,
       lead: group && group.lead.weight >= attack.weight ? group.lead : attack,
       weight: (group?.weight ?? 0) + attack.weight,
       weightedMs: (group?.weightedMs ?? 0) + attack.weight * attack.telegraph_ms,
@@ -157,7 +176,7 @@ function toAttack(group: Merged, level: LevelSpec, stand: EnemySpec): EnemyAttac
   const fury = 1 + 0.2 * unit(level.monster.aggression, LIMITS.aggression);
   return {
     id: own?.id ?? `gen_${group.counter}`,
-    name: `${SIDE_NAMES[group.lead.direction]} ${TYPE_NAMES[group.lead.type]}`,
+    name: `${SIDE_NAMES[group.side]} ${TYPE_NAMES[group.lead.type]}`,
     telegraphMs: Math.round(clamp((short + (long - short) * unit(levelMs, LIMITS.telegraphMs)) * quickness, WARNING_MS)),
     damage: clamp(Math.round(baseDamage * fury * TYPE_DAMAGE[group.lead.type]), DAMAGE),
     counter: group.counter,
@@ -165,10 +184,31 @@ function toAttack(group: Merged, level: LevelSpec, stand: EnemySpec): EnemyAttac
   };
 }
 
-function toPhases(level: LevelSpec, attacks: NonEmpty<EnemyAttack>): NonEmpty<EnemyPhase> {
+/**
+ * A level that attacks from one or two sides only would be won by holding a single pose, so the stand-in's own
+ * attacks (with their ids, names and warnings) fill in the missing defences at a low weight.
+ */
+function toppedUp(generated: NonEmpty<EnemyAttack>, stand: EnemySpec, moves: Moves): NonEmpty<EnemyAttack> {
+  const levelWeight = generated.reduce((sum, attack) => sum + weightOf(attack), 0);
+  const weight = Math.max(MIN_WEIGHT, hundredths(TOP_UP_SHARE * levelWeight));
+  const attacks: [EnemyAttack, ...EnemyAttack[]] = [...generated];
+  for (const own of stand.attacks) {
+    // Generated attacks have one defence each, so the length is the number of different defences.
+    if (attacks.length >= MIN_COUNTERS) break;
+    if (!defends(moves, own.counter)) continue;
+    if (attacks.some((attack) => attack.counter === own.counter || attack.id === own.id)) continue;
+    attacks.push({ ...own, weight });
+  }
+  return attacks;
+}
+
+/** `fromLevel` are the attacks the level itself asked for, as opposed to any the stand-in filled in. */
+function toPhases(level: LevelSpec, attacks: NonEmpty<EnemyAttack>, fromLevel: readonly EnemyAttack[]): NonEmpty<EnemyPhase> {
   const everything = nonEmpty(attacks.map((attack) => attack.id)) ?? [attacks[0].id];
-  // The opening phase teaches with the slower-warning half of the attacks.
-  const slowFirst = [...attacks].sort((a, b) => b.telegraphMs - a.telegraphMs);
+  // The opening phase teaches with the slower-warning half of the attacks, the level's own before any filled in.
+  const slowFirst = [...attacks].sort(
+    (a, b) => Number(fromLevel.includes(b)) - Number(fromLevel.includes(a)) || b.telegraphMs - a.telegraphMs,
+  );
   const slow = slowFirst.slice(0, Math.max(Math.ceil(attacks.length / 2), Math.min(2, attacks.length)));
   const openers = nonEmpty(everything.filter((id) => slow.some((attack) => attack.id === id))) ?? everything;
 
@@ -190,13 +230,17 @@ function toPhases(level: LevelSpec, attacks: NonEmpty<EnemyAttack>): NonEmpty<En
   return nonEmpty(phases) ?? [{ name: level.monster.name, belowHp: 1, attackIds: everything, telegraphScale: 1 }];
 }
 
-/** The average warning over the whole fight: each phase's weighted mix, scaled, for the share of health it covers. */
-function meanWarningMs(attacks: NonEmpty<EnemyAttack>, phases: NonEmpty<EnemyPhase>): number {
+/** The average of `value` over the whole fight: each phase's weighted mix of attacks, for the share of health it covers. */
+function fightMean(
+  attacks: NonEmpty<EnemyAttack>,
+  phases: NonEmpty<EnemyPhase>,
+  value: (attack: EnemyAttack, phase: EnemyPhase) => number,
+): number {
   return phases.reduce((sum, phase, index) => {
     const pool = attacks.filter((attack) => phase.attackIds.includes(attack.id));
     const weight = pool.reduce((total, attack) => total + weightOf(attack), 0);
-    const warning = pool.reduce((total, attack) => total + weightOf(attack) * attack.telegraphMs, 0) / weight;
-    return sum + (phase.belowHp - (phases[index + 1]?.belowHp ?? 0)) * warning * phase.telegraphScale;
+    const mean = pool.reduce((total, attack) => total + weightOf(attack) * value(attack, phase), 0) / weight;
+    return sum + (phase.belowHp - (phases[index + 1]?.belowHp ?? 0)) * mean;
   }, 0);
 }
 
@@ -204,40 +248,57 @@ function meanWarningMs(attacks: NonEmpty<EnemyAttack>, phases: NonEmpty<EnemyPha
  * Health that makes the fight last about `fightMs` for a player who gets SKILL of the prompts right.
  * One exchange is the warning, then (if defended) the strike beat, then the engine's 700 ms recovery.
  * The strike beat costs REACT_MS when the strike is thrown and the whole strike window when it is missed, so
- *   exchangeMs = warning + 700 + SKILL * (SKILL * REACT_MS + (1 - SKILL) * strikeWindowMs).
- * A strike lands in SKILL * SKILL of exchanges and does 12 * (1 + 0.1 * combo), the combo capped at 5 and reset by
- * any miss, so the combo averages landed + landed^2 + ... + landed^5 (about 2.1, so about 14.5 a hit and 10.5 an exchange).
- *   hp = (fightMs - intro) / exchangeMs * damage per exchange.
+ *   exchangeMs = warning + 700 + SKILL * (SKILL * REACT_MS + (1 - SKILL) * strikeWindowMs)
+ *   hp = (fightMs - intro) / exchangeMs * DAMAGE_PER_EXCHANGE.
  * Check against Polyphemus: 1825 ms warnings and a 2600 ms window give 3.4 s exchanges, so 400 hp is about 130 s.
+ *
+ * `warningMs` is the warning of an engine that honours weights, phase attackIds and telegraphScale, as the contract in
+ * src/core/types.ts describes. Until the phases engine (issues 5 and 6) merges, src/combat/engine.ts picks attacks
+ * evenly at their unscaled warnings, so fights run 10 to 15 percent longer than planned. That engine also multiplies
+ * strike damage by (0.5 + quality), 1.2 at the default quality, which this arithmetic leaves out, so there they run
+ * 5 to 10 percent shorter. tests/ai/adapt.test.ts holds the played length to 0.8..1.25 of the plan, which fits both;
+ * once the phases engine is the only one, fold its quality factor into DAMAGE_PER_EXCHANGE and retune against that test.
  */
 function pacedHp(fightMs: number, warningMs: number, strikeWindowMs: number): number {
-  const landed = SKILL * SKILL;
   const exchangeMs = warningMs + RECOVER_MS + SKILL * (SKILL * REACT_MS + (1 - SKILL) * strikeWindowMs);
-  const combo = [1, 2, 3, 4, 5].reduce((sum, hits) => sum + landed ** hits, 0);
-  const damagePerExchange = landed * STRIKE_DAMAGE * (1 + 0.1 * combo);
-  return Math.round(clamp(((fightMs - INTRO_MS) / exchangeMs) * damagePerExchange, HP));
+  return Math.round(clamp(((fightMs - INTRO_MS) / exchangeMs) * DAMAGE_PER_EXCHANGE, HP));
+}
+
+/**
+ * The attacks, softened until the paced player expects to lose no more than DAMAGE_BUDGET over the whole fight:
+ *   expected = exchanges * share of warnings missed * average damage = hp / DAMAGE_PER_EXCHANGE * (1 - SKILL) * damage.
+ * A stand-in's blows were tuned for its own health. Scylla hits for 12 to 14 over 110 hp; left alone at a generated
+ * 250 hp she would take about 55 of the player's 100, and the same level would be far deadlier on her than on Polyphemus.
+ */
+function softened(attacks: NonEmpty<EnemyAttack>, phases: NonEmpty<EnemyPhase>, hp: number): NonEmpty<EnemyAttack> {
+  const expected = (hp / DAMAGE_PER_EXCHANGE) * (1 - SKILL) * fightMean(attacks, phases, (attack) => attack.damage);
+  if (expected <= DAMAGE_BUDGET) return attacks;
+  const scale = DAMAGE_BUDGET / expected;
+  return nonEmpty(attacks.map((attack) => ({ ...attack, damage: clamp(Math.round(attack.damage * scale), DAMAGE) }))) ?? attacks;
 }
 
 /** The generated level as an enemy: the stand-in's id, model, weak spots and finisher, with the level's attacks and pacing. */
 export function fightFromLevel(level: LevelSpec, enemies: readonly EnemySpec[], moves: Moves): EnemySpec {
   const stand = standIn(level.monster.base, enemies, moves);
-  const generated = mergeByCounter(level, moves).map((group) => toAttack(group, level, stand));
-  const attacks = nonEmpty(generated) ?? stand.attacks;
-  const phases = toPhases(level, attacks);
+  const generated = nonEmpty(mergeByCounter(level, moves).map((group) => toAttack(group, level, stand)));
+  const attacks = generated ? toppedUp(generated, stand, moves) : stand.attacks;
+  const phases = toPhases(level, attacks, generated ?? attacks);
 
   // Quick, aggressive monsters close their openings sooner: 15 percent longer than the stand-in's down to 15 percent shorter.
   const haste = 1.15 - 0.2 * unit(level.monster.speed, LIMITS.speed) - 0.1 * unit(level.monster.aggression, LIMITS.aggression);
   const strikeWindowMs = Math.round(clamp(stand.strikeWindowMs * haste, STRIKE_WINDOW_MS));
   const fightS = clamp(level.phases.reduce((sum, phase) => sum + phase.duration_s, 0), LIMITS.fightSeconds);
+  const warningMs = fightMean(attacks, phases, (attack, phase) => attack.telegraphMs * phase.telegraphScale);
+  const hp = pacedHp(fightS * 1000, warningMs, strikeWindowMs);
 
   return {
     ...stand,
     name: level.monster.name,
     title: level.title,
     taunts: level.taunts,
-    hp: pacedHp(fightS * 1000, meanWarningMs(attacks, phases), strikeWindowMs),
+    hp,
     strikeWindowMs,
-    attacks,
+    attacks: softened(attacks, phases, hp),
     phases,
   };
 }
