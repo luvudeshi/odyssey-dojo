@@ -12,6 +12,21 @@ const INTRO_MS = 1500;
 const RECOVER_MS = 700;
 const STRIKE_DAMAGE = 12;
 const FINISHER_MS = 6000;
+/** Divine power: each defend fills a fifth of the meter, a GREAT or better strike a twentieth. */
+const POWER_PER_DEFEND = 0.2;
+const POWER_PER_GREAT = 0.05;
+const GREAT_QUALITY = 0.8;
+/** Spending a full meter hits as hard as three plain strikes. */
+export const POWER_DAMAGE = STRIKE_DAMAGE * 3;
+/** The god gesture moves (src/moves/defs). A strike with one of these ids spends a full meter. */
+export const POWER_MOVES: ReadonlySet<string> = new Set([
+  "thunderbolt",
+  "trident_sweep",
+  "aegis_push",
+  "swift_dash",
+  "moon_arrow",
+  "sun_burst",
+]);
 
 export interface StepResult {
   readonly state: CombatState;
@@ -118,6 +133,29 @@ function beginStrike(
   };
 }
 
+function fill(state: CombatState, amount: number): CombatState {
+  return { ...state, power: Math.min(1, state.power + amount) };
+}
+
+/** Spend a full meter on the enemy. Health stops at zero so a finisher still follows. */
+function unleash(state: CombatState, enemy: EnemySpec): StepResult {
+  const enemyHp = Math.max(0, state.enemyHp - POWER_DAMAGE);
+  const damage = state.enemyHp - enemyHp;
+  const phaseIndex = phaseIndexFor(enemy, enemyHp);
+  const next = { ...state, power: 0, enemyHp, phaseIndex, score: state.score + damage * 10 };
+  const events: CombatEvent[] = [{ type: "powerUnleashed", damage }];
+  const changed = enemy.phases?.[phaseIndex];
+  if (phaseIndex !== state.phaseIndex && changed) {
+    events.push({ type: "phaseChanged", index: phaseIndex, name: changed.name });
+  }
+  if (enemyHp > 0) return { state: next, events };
+  if (enemy.finisher) {
+    const finisher = { kind: "finisher", move: enemy.finisher, msLeft: FINISHER_MS, totalMs: FINISHER_MS } as const;
+    return { state: { ...next, phase: finisher }, events };
+  }
+  return { state: { ...next, phase: { kind: "won" } }, events: [...events, { type: "won" }] };
+}
+
 const RECOVER = { kind: "recover", msLeft: RECOVER_MS } as const;
 
 /** Advance the fight by dtMs. A defense counts if it is held at the moment the attack lands. */
@@ -128,6 +166,13 @@ export function step(
   input: CombatInput,
   dtMs: number,
 ): StepResult {
+  const open = state.phase.kind === "defend" || state.phase.kind === "strike";
+  if (open && state.power >= 1 && input.struck.some((thrown) => POWER_MOVES.has(thrown.move))) {
+    const spent = unleash(state, enemy);
+    if (spent.state.phase.kind !== "defend" && spent.state.phase.kind !== "strike") return spent;
+    const rest = step(spent.state, enemy, style, input, dtMs);
+    return { state: rest.state, events: [...spent.events, ...rest.events] };
+  }
   const phase = state.phase;
   switch (phase.kind) {
     case "won":
@@ -157,7 +202,7 @@ export function step(
       if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft } }, events: [] };
       const attack = phase.attack;
       if (input.held.has(attack.counter)) {
-        const blocked = { ...learned(state, attack.counter), score: state.score + 50 };
+        const blocked = fill({ ...learned(state, attack.counter), score: state.score + 50 }, POWER_PER_DEFEND);
         return beginStrike(blocked, enemy, style, [{ type: "defended", attack }]);
       }
       const playerHp = Math.max(0, state.playerHp - attack.damage);
@@ -184,7 +229,7 @@ export function step(
         const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality };
         const phaseIndex = phaseIndexFor(enemy, enemyHp);
         const next = {
-          ...learned(state, phase.move),
+          ...fill(learned(state, phase.move), quality >= GREAT_QUALITY ? POWER_PER_GREAT : 0),
           enemyHp,
           phaseIndex,
           combo: state.combo + 1,
