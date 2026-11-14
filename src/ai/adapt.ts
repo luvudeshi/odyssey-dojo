@@ -146,7 +146,7 @@ function trusted(level: LevelSpec): LevelSpec {
 
 /**
  * The damage a blow may do on this stand-in. The floor is 6, or the stand-in's own lightest blow when that is lower:
- * an enemy tuned to hit softly (the first fight is) must not have its blows lifted above its own tuning.
+ * an enemy tuned to hit softly (the first fight is, since issue #127) must not have its blows lifted above its own tuning.
  */
 function damageRange(stand: EnemySpec): Range {
   const lightest = Math.min(...stand.attacks.map((attack) => attack.damage));
