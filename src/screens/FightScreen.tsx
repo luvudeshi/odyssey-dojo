@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
 import { startFight, step } from "../combat/engine";
-import type { EnemySpec, FightingStyle, PoseFrame } from "../core/types";
+import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { Hud } from "../hud/Hud";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
-import { EMPTY_HISTORY, pushFrame } from "../pose/signals";
+import { GATE_START, gateStep, presenceAt } from "../pose/presence";
+import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { Scene } from "../render/Scene";
 
@@ -19,10 +20,13 @@ export function FightScreen(props: {
   style: FightingStyle;
   tracker: PoseTracker | null;
   seed: number;
+  /** Set by calibration; null for keyboard play. */
+  baseline?: Baseline | null;
   /** Buttons shown once the fight is over. */
   renderEnd: (won: boolean, score: number) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd } = props;
+  const { enemy, style, tracker, seed, renderEnd, baseline = null } = props;
+  const [lost, setLost] = useState(false);
   const [state, setState] = useState(() => startFight(enemy, seed));
   const [confidences, setConfidences] = useState<readonly (readonly [string, number])[]>([]);
   const poseRef = useRef<PoseFrame | null>(null);
@@ -32,7 +36,8 @@ export function FightScreen(props: {
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     let current = startFight(enemy, seed);
-    let history = EMPTY_HISTORY;
+    let history: PoseHistory = { frames: [], baseline };
+    let gate = GATE_START;
     let last = performance.now();
     let handle = 0;
 
@@ -42,8 +47,14 @@ export function FightScreen(props: {
         poseRef.current = frame;
         history = pushFrame(history, frame);
       }
+      const dt = Math.min(now - last, 100);
+      if (tracker) {
+        gate = gateStep(gate, presenceAt(history, now).ok, dt);
+        setLost(gate.paused);
+        if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
+      }
       const input = mergeInputs(keyboard.read(), readPose(history));
-      const result = step(current, enemy, style, input, Math.min(now - last, 100));
+      const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
       result.events.forEach(playEvent);
@@ -56,7 +67,7 @@ export function FightScreen(props: {
       cancelAnimationFrame(handle);
       keyboard.dispose();
     };
-  }, [enemy, style, tracker, seed]);
+  }, [enemy, style, tracker, seed, baseline]);
 
   useEffect(() => {
     const holder = preview.current;
@@ -76,6 +87,7 @@ export function FightScreen(props: {
           {confidences.map(([id, value]) => `${id.padEnd(16)} ${value.toFixed(2)}`).join("\n")}
         </pre>
       )}
+      {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1></div>}
       {over && (
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
