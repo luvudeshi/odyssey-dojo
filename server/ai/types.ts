@@ -13,6 +13,8 @@ export interface JsonRequest {
   /** A plain JSON Schema object the answer must match. */
   readonly schema: unknown;
   readonly signal: AbortSignal;
+  /** Told which model gave the answer. The preflight check prints it. */
+  readonly onModel?: (model: string) => void;
 }
 
 export interface ImageRequest {
