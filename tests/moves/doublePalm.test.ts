@@ -3,6 +3,7 @@
 // This holds the pair to the real limit instead: under the 0.7 the game needs to hold a defend
 // (ON in src/input/poseInput.ts), or every double palm would also raise a block.
 import { expect, test } from "vitest";
+import type { PoseHistory } from "../../src/core/types";
 import { MOVES } from "../../src/moves/registry";
 import type { Key } from "../helpers/poses";
 import { COCKED, DOWN, PALM, peak, pose, sequence } from "../helpers/poses";
@@ -16,10 +17,10 @@ const DOUBLE_PALM: Key[] = [
   { t: 300, pose: pose(PALM, PALM) },
 ];
 
-function detectorOf(id: string) {
+function detectorOf(id: string): (history: PoseHistory) => number {
   const move = MOVES.get(id);
   if (!move) throw new Error(`no move ${id}`);
-  return move.detect;
+  return (history) => move.detect(history);
 }
 
 test("the sequence is a double palm", () => {
