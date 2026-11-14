@@ -4,6 +4,7 @@ import { startFight, step } from "../src/combat/engine";
 import type { StepResult } from "../src/combat/engine";
 import type {
   CombatInput,
+  CombatPhase,
   CombatState,
   EnemyAttack,
   EnemySpec,
@@ -42,7 +43,7 @@ const DEFENSES = [...MOVES.values()].filter((move) => move.kind === "defend").ma
 const NO_SUCH_MOVE = "no_such_move";
 const THROWN: readonly string[] = [...MOVES.keys(), NO_SUCH_MOVE];
 const STEP_SIZES: readonly number[] = [0, 0, 0.001, 0.25, 1, 16, 16.667, 33, 50, 100, 100];
-/** How often a random player holds the right defense; fight number N uses entry N, so every matchup gets them all. */
+/** How often a random player holds the right defense; each fight draws one of these from its seed. */
 const GUARDS: readonly number[] = [0, 0.25, 0.5, 0.75, 1];
 /** Seeds at the ends of the 32-bit range, which every matchup also fights with. */
 const EDGE_SEEDS: readonly number[] = [0, 1, 4294967295];
@@ -55,7 +56,7 @@ const KEPT_PER_RULE = 5;
 /** No fight should run longer than this, however it is played. */
 const FIGHT_LIMIT_MS = 600_000;
 
-/** A small seeded generator (mulberry32): no Math.random, so any fight here can be replayed from its seed. */
+/** A small seeded generator (mulberry32): no Math.random, so a fight can be replayed from its matchup and seed. */
 function seeded(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -85,6 +86,20 @@ function ownAttack(enemy: EnemySpec, attack: EnemyAttack): boolean {
 
 function ownSpot(enemy: EnemySpec, spot: WeakSpot): boolean {
   return enemy.weakSpots.some((own) => own.id === spot.id);
+}
+
+/** The strike a prompt asks for, if it asks for one. */
+function prompted(phase: CombatPhase): string | undefined {
+  return phase.kind === "strike" || phase.kind === "finisher" ? phase.move : undefined;
+}
+
+function threw(frame: Frame, move: string): boolean {
+  return frame.input.struck.some((thrown) => thrown.move === move);
+}
+
+/** Names one step of one fight; `randomFight(matchup, seed, ...)` plays the same fight again up to that step. */
+function place({ enemy, style }: Matchup, seed: number, stepNumber: number, dtMs: number): string {
+  return `${enemy.id} vs ${style.id}, seed ${String(seed)}, step ${String(stepNumber)} (${String(dtMs)} ms)`;
 }
 
 function seedsFor(matchupIndex: number): number[] {
@@ -139,18 +154,19 @@ function randomStepMs(random: () => number): number {
 }
 
 /**
- * Plays one seeded random fight, handing every step to `seen`. It keeps stepping for a while after the fight
- * ends, so the caller can see that nothing more happens.
+ * Plays one seeded random fight, handing every step to `seen`. The matchup and seed decide everything about it.
+ * It keeps stepping for a while after the fight ends, so the caller can see that nothing more happens. A step
+ * that throws is thrown on with the matchup, seed and step it happened on.
  */
 function randomFight(
-  { enemy, style }: Matchup,
+  matchup: Matchup,
   seed: number,
-  fightNumber: number,
   seen: (before: CombatState, frame: Frame, after: StepResult, stepNumber: number) => void,
 ): CombatState {
+  const { enemy, style } = matchup;
   const random = seeded(seed);
   const habits: Habits = {
-    guard: GUARDS[fightNumber % GUARDS.length] ?? 1,
+    guard: GUARDS[Math.floor(random() * GUARDS.length)] ?? 1,
     reflex: random() ** 3,
     noise: random() * 0.3,
   };
@@ -158,7 +174,13 @@ function randomFight(
   let afterTheEnd = 0;
   for (let stepNumber = 0; stepNumber < MAX_STEPS && afterTheEnd < STEPS_AFTER_THE_END; stepNumber++) {
     const frame: Frame = { input: randomInput(state, random, habits), dtMs: randomStepMs(random) };
-    const after = step(state, enemy, style, frame.input, frame.dtMs);
+    let after: StepResult;
+    try {
+      after = step(state, enemy, style, frame.input, frame.dtMs);
+    } catch (error) {
+      const why = error instanceof Error ? error.message : String(error);
+      throw new Error(`${place(matchup, seed, stepNumber, frame.dtMs)}: step threw "${why}"`, { cause: error });
+    }
     seen(state, frame, after, stepNumber);
     if (over(state)) afterTheEnd++;
     state = after.state;
@@ -208,7 +230,15 @@ function checkState(
   }
 }
 
-function checkEvents(before: CombatState, after: StepResult, { enemy, style }: Matchup, complain: Complain): void {
+function checkEvents(
+  before: CombatState,
+  frame: Frame,
+  after: StepResult,
+  { enemy, style }: Matchup,
+  complain: Complain,
+): void {
+  const asked = prompted(before.phase);
+  const thrown = frame.input.struck.map((strike) => strike.move).join(", ");
   for (const event of after.events) {
     switch (event.type) {
       case "telegraph":
@@ -229,6 +259,10 @@ function checkEvents(before: CombatState, after: StepResult, { enemy, style }: M
         break;
       case "enemyHit":
         if (!isStrike(event.move)) complain("names", `enemyHit names ${event.move}`);
+        if (event.move !== asked || !threw(frame, event.move)) {
+          const prompt = asked ?? `none (${before.phase.kind})`;
+          complain("names", `enemyHit names ${event.move}; the prompt was ${prompt} and the player threw [${thrown}]`);
+        }
         if (!within(event.quality, 0, 1)) complain("names", `enemyHit has quality ${String(event.quality)}`);
         if (!(event.damage >= 0)) complain("health", `enemyHit does ${String(event.damage)} damage`);
         break;
@@ -239,6 +273,10 @@ function checkEvents(before: CombatState, after: StepResult, { enemy, style }: M
         break;
       case "finished":
         if (event.move !== enemy.finisher || !isStrike(event.move)) complain("names", `finished names ${event.move}`);
+        if (before.phase.kind !== "finisher" || event.move !== asked || !threw(frame, event.move)) {
+          const prompt = asked ?? `none (${before.phase.kind})`;
+          complain("names", `finished names ${event.move}; the prompt was ${prompt} and the player threw [${thrown}]`);
+        }
         break;
       case "powerUnleashed":
         if (!(event.damage >= 0)) complain("health", `powerUnleashed does ${String(event.damage)} damage`);
@@ -267,18 +305,17 @@ function runRandomFights(): Tally {
     lost: 0,
   };
   MATCHUPS.forEach((matchup, matchupIndex) => {
-    seedsFor(matchupIndex).forEach((seed, fightNumber) => {
+    for (const seed of seedsFor(matchupIndex)) {
       const start = startFight(matchup.enemy, seed);
-      const final = randomFight(matchup, seed, fightNumber, (before, frame, after, stepNumber) => {
+      const final = randomFight(matchup, seed, (before, frame, after, stepNumber) => {
         const complain: Complain = (rule, what) => {
-          const where = `${matchup.enemy.id} vs ${matchup.style.id}, seed ${String(seed)}, step ${String(stepNumber)}`;
           if (tally.broken[rule].length < KEPT_PER_RULE) {
-            tally.broken[rule].push(`${where} (${String(frame.dtMs)} ms): ${what}`);
+            tally.broken[rule].push(`${place(matchup, seed, stepNumber, frame.dtMs)}: ${what}`);
           }
         };
         tally.steps++;
         checkState(before, after.state, start, matchup, complain);
-        checkEvents(before, after, matchup, complain);
+        checkEvents(before, frame, after, matchup, complain);
         if (!over(before)) return;
         if (after.events.length > 0) {
           const sent = after.events.map((event) => event.type).join(", ");
@@ -290,17 +327,24 @@ function runRandomFights(): Tally {
       });
       if (final.phase.kind === "won") tally.won++;
       if (final.phase.kind === "lost") tally.lost++;
-    });
+    }
   });
   return tally;
 }
 
-let tally: Tally | undefined;
+let played: Tally | Error | undefined;
 
-/** Every rule below reads the same set of random fights, so they are only played once. */
+/** Every rule below reads the same set of random fights, so they are only played once, even when a step throws. */
 function randomFights(): Tally {
-  tally ??= runRandomFights();
-  return tally;
+  if (played === undefined) {
+    try {
+      played = runRandomFights();
+    } catch (error) {
+      played = error instanceof Error ? error : new Error(String(error));
+    }
+  }
+  if (played instanceof Error) throw played;
+  return played;
 }
 
 /** Replays recorded frames from a fresh fight. Each state is frozen first, so a step that edits it throws. */
@@ -375,22 +419,39 @@ test("a finished fight never changes again and sends no more events", () => {
 
 test("the same seed and inputs always give the same result, and a step never edits the state it is given", () => {
   MATCHUPS.forEach((matchup, matchupIndex) => {
-    seedsFor(matchupIndex)
-      .slice(0, EDGE_SEEDS.length + 2)
-      .forEach((seed, fightNumber) => {
-        const frames: Frame[] = [];
-        const first: string[] = [];
-        randomFight(matchup, seed, fightNumber, (_before, frame, after) => {
-          frames.push(frame);
-          first.push(JSON.stringify(after));
-        });
-        const label = `${matchup.enemy.id} vs ${matchup.style.id}, seed ${String(seed)}: first step that differs`;
-        for (const again of [replay(matchup, seed, frames), replay(matchup, seed, frames)]) {
-          expect(again.length, label).toBe(first.length);
-          expect(again.findIndex((result, index) => result !== first[index]), label).toBe(-1);
-        }
+    for (const seed of seedsFor(matchupIndex).slice(0, EDGE_SEEDS.length + 2)) {
+      const frames: Frame[] = [];
+      const first: string[] = [];
+      randomFight(matchup, seed, (_before, frame, after) => {
+        frames.push(frame);
+        first.push(JSON.stringify(after));
       });
+      // The matchup and seed alone must be enough to play the same fight again, as a failure message promises.
+      const fromSeed: string[] = [];
+      randomFight(matchup, seed, (_before, _frame, after) => {
+        fromSeed.push(JSON.stringify(after));
+      });
+      const label = `${matchup.enemy.id} vs ${matchup.style.id}, seed ${String(seed)}: first step that differs`;
+      for (const again of [fromSeed, replay(matchup, seed, frames), replay(matchup, seed, frames)]) {
+        expect(again.length, label).toBe(first.length);
+        expect(again.findIndex((result, index) => result !== first[index]), label).toBe(-1);
+      }
+    }
   });
+});
+
+test("a step that throws is reported with the matchup, seed and step it happened on", () => {
+  for (const { enemy, style } of MATCHUPS.slice(0, 1)) {
+    const broken: EnemySpec = {
+      ...enemy,
+      get attacks(): EnemySpec["attacks"] {
+        throw new Error("boom");
+      },
+    };
+    const fight = (): CombatState => randomFight({ enemy: broken, style }, 17, () => undefined);
+    expect(fight).toThrow(`${enemy.id} vs ${style.id}, seed 17, step `);
+    expect(fight).toThrow('step threw "boom"');
+  }
 });
 
 test("a player who answers every prompt wins well inside ten minutes", () => {
