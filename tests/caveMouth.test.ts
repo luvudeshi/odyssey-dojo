@@ -1,7 +1,7 @@
 // The cave mouth's layout is data: repeatable, and nothing solid stands in the fight or on the camera's path.
 import { expect, test } from "vitest";
 import {
-  CAMERA_ZONE, FIGHT_ZONE, FIRE, MOUTH, boulders, floorPieces, hallRadii, homestead, nearFire, noise2, roofHeight,
+  CAMERA_ZONE, FIGHT_ZONE, FIRE, MOUTH, SUN, boulders, floorPieces, hallRadii, homestead, nearFire, noise2, roofHeight,
   stalactites, touchesZone, wallInset,
 } from "../src/render/arena/cave/mouthLayout";
 import { ARENAS, ARENA_SKIES } from "../src/render/arena/registry";
@@ -42,7 +42,7 @@ test("stalactites hang from the roof and stay out of the fighters' reach", () =>
     const length = tooth.scale[1];
     expect(y + length / 2).toBeGreaterThan(roofHeight(x, z));
     // Over the fight the lowest tip stays above the giant's raised arm.
-    if (touchesZone(FIGHT_ZONE, x, z, 0.1)) expect(y - length / 2).toBeGreaterThan(5);
+    if (touchesZone(FIGHT_ZONE, x, z, 0.1)) expect(y - length / 2).toBeGreaterThan(6.9);
   }
 });
 
@@ -67,4 +67,17 @@ test("Polyphemus fights in the cave mouth at dusk, with the old cave kept as its
   expect(ARENAS.get("polyphemus")).not.toBe(ARENAS.get("polyphemus-classic"));
   expect(ARENA_SKIES.get("polyphemus")?.hdri).toContain("qwantani_dusk_2_puresky_1k.hdr");
   expect(ARENA_SKIES.has("polyphemus-classic")).toBe(false);
+});
+
+test("the painted sun is low enough to be seen through the mouth from the camera, and sits left of the giant", () => {
+  const [x, y, z] = SUN.visual;
+  const camera = { y: 2.2, z: 5.2 };
+  const horizontal = Math.hypot(x, z);
+  const sunSlope = y / horizontal;
+  // Slope from the camera to the top of the opening at the lip.
+  const lipSlope = (MOUTH.lip.ry - camera.y) / (camera.z - MOUTH.lipZ);
+  expect(sunSlope).toBeLessThan(lipSlope);
+  expect(sunSlope).toBeGreaterThan(0.05);
+  expect(x).toBeLessThan(0);
+  expect(Math.hypot(...SUN.visual)).toBeCloseTo(1, 1);
 });

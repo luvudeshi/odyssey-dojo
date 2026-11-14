@@ -11,7 +11,7 @@ export const enemy: EnemySpec = {
   order: 1.7,
   place: "The meadow of the Sirens",
   book: 12,
-  hp: 340,
+  hp: 370,
   strikeWindowMs: 2300,
   attacks: [
     { id: "song", name: "The song", telegraphMs: 1900, damage: 12, counter: "block" },
