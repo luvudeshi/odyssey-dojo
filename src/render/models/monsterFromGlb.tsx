@@ -1,6 +1,5 @@
 // Turns a GLB plus a clip config into a component with the MonsterModel signature.
 // A missing or broken file shows the primitive model instead, so the fight never blanks.
-import { useGLTF } from "@react-three/drei";
 import { Suspense } from "react";
 import type { ComponentType, ReactNode } from "react";
 import type { MonsterProps } from "../../core/types";
@@ -19,7 +18,6 @@ export interface MonsterGlbConfig {
 }
 
 export function monsterFromGlb(config: MonsterGlbConfig, Fallback: ComponentType<MonsterProps>): ComponentType<MonsterProps> {
-  useGLTF.preload(config.url);
   return function GlbMonster(props: MonsterProps) {
     return (
       <ErrorBoundary label={`monster-glb:${config.url}`} fallback={<Fallback {...props} />}>
@@ -50,7 +48,6 @@ export interface HeroProps {
 
 /** Same idea for the player character, driven by an action name. Not wired into the scene yet. */
 export function heroFromGlb(config: HeroGlbConfig, Fallback: ComponentType<HeroProps>): ComponentType<HeroProps> {
-  useGLTF.preload(config.url);
   return function GlbHero(props: HeroProps) {
     return (
       <ErrorBoundary label={`hero-glb:${config.url}`} fallback={<Fallback {...props} />}>

@@ -2,7 +2,7 @@
 
 Any rigged, animated GLB can stand in for a monster or the hero. Code is in `src/render/models/`.
 
-Files go under `public/models/` (never a CDN). Each GLB under 5 MB; Draco is not required. Every model you ship gets a row in `CREDITS.md` (name, author, URL, licence). Only licences that allow use in a game (CC0, CC-BY with credit) are fine.
+Files go under `public/models/` (never a CDN). Each GLB under 5 MB; Draco works: the decoder is served from `public/draco/` (copied from three), never gstatic. Every model you ship gets a row in `CREDITS.md` (name, author, URL, licence). Only licences that allow use in a game (CC0, CC-BY with credit) are fine.
 
 ## A monster
 
@@ -36,7 +36,7 @@ export const model: MonsterModel = {
 ```
 
 - Clip names are the GLB's animation names. A missing clip falls back to idle; a missing or broken file shows the fallback model.
-- `fit` scales the model to `targetHeight`, centres it and puts the feet on the floor. `rotationY` turns a model that does not face +Z.
+- `fit` scales the model to `targetHeight`, centres it and puts the feet on the floor. `rotationY` turns a model that does not face +Z, about its centre. The height comes from bone positions, so feet can sit slightly low; add `footOffset` (model units) to lift them.
 - A windup clip is not played by the clock: its time is `props.windup * duration`, so the swing lands when the engine says the attack lands.
 - Anchors inherit the model's scale; size anything you parent accordingly.
 - Hit flash tints the model's emissive red.
