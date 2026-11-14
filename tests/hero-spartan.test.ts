@@ -29,4 +29,9 @@ describe("spartan hero", () => {
     expect(THRUST_TIMING.hit).toBeLessThanOrEqual(THRUST_TIMING.seconds);
     expect(rig.thrust).toBe(THRUST_TIMING);
   });
+
+  test("the figure is stepped back from the camera so feet and a crouch stay in frame", () => {
+    // offset sits inside the turned group, so +z is away from the camera.
+    expect(candidate.fit.offset?.[2]).toBeGreaterThan(0);
+  });
 });

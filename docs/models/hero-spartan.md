@@ -7,7 +7,7 @@
 | Licence | CC0 1.0 (License.txt in both packs) |
 | File | `public/models/hero/spartan.glb`, 757 KB |
 | Rig | UAL2 mannequin, flat-shaded in code to matte skin; gear built in code (`src/render/hero/gear/spartanGear.tsx`) |
-| Fit | `targetHeight` 1.544 (bone box), renders the 1.83 m mesh at about 1.8 m; `rotationY` pi |
+| Fit | `targetHeight` 1.544 (bone box), renders the 1.83 m mesh at about 1.8 m; `rotationY` pi; `offset` z 0.8 (away from the camera) |
 | Proportion | adult, head about 1/7.5 of the height |
 
 ## Clips per pose
@@ -31,7 +31,7 @@ Stand-ins were authored in code from the pack's poses (the pack has no shield-bl
 
 ## Verdict
 
-Reads as a hoplite from behind: Corinthian helmet and crest, crimson cape, round bronze shield on the left arm, spear in the right hand, cuirass, chiton and greaves. The spear points at the giant's gut on a thrust and does not cover the eye. Weak points: the mannequin has no face or hands detail, the idle stance is a crouched, three-quarter turn, and the feet sit very near the bottom edge of the frame.
+Reads as a hoplite from behind: Corinthian helmet and crest, crimson cape, round bronze shield on the left arm, spear in the right hand, cuirass, chiton and greaves. The spear points at the giant's gut on a thrust and does not cover the eye. Weak points: the mannequin has no face or hands detail, the idle stance is a crouched, three-quarter turn, and the hero is a small figure at the bottom of the frame. Review fix: the figure is stepped 0.8 m back, so at idle and in a duck the feet and the ground contact are inside the frame (feet at about y 745 of 810, `docs/screenshots/hero-spartan-fix-idle.png`, `-fix-duck.png`). In the strike camera shot (cameraShots.ts, lead-owned, shared by every hero) the camera looks up at the weak spot and the hero is still cropped at the bottom; that needs a camera change, not a model change (`-fix-strike.png`). A spear thrust caught mid-extension was not verified.
 
 ## CREDITS line
 
