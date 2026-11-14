@@ -32,17 +32,18 @@ export async function startTracker(): Promise<PoseTracker> {
   });
 
   const camera = createFreshFrame();
-  const byCallback = watchCameraFrames(video, () => { camera.mark(); });
-  let lastVideoTime = -1;
+  const stopWatching = watchCameraFrames(video, () => { camera.mark(); });
+  let lastFrameCount = -1;
   return {
     video,
     read() {
-      if (byCallback) {
+      if (stopWatching) {
         if (!camera.take()) return null;
       } else {
-        // Older browsers: currentTime still changes more often than the camera sends pictures, but it is all there is.
-        if (video.currentTime === lastVideoTime) return null;
-        lastVideoTime = video.currentTime;
+        // No frame callback: the decoder's frame count goes up once per real picture, unlike currentTime.
+        const count = video.getVideoPlaybackQuality().totalVideoFrames;
+        if (count === lastFrameCount) return null;
+        lastFrameCount = count;
       }
       const t = performance.now();
       const result = landmarker.detectForVideo(video, t);
@@ -52,6 +53,7 @@ export async function startTracker(): Promise<PoseTracker> {
       return { t, image: mirrored(image, (x) => 1 - x), world: mirrored(world, (x) => -x) };
     },
     stop() {
+      stopWatching?.();
       for (const track of stream.getTracks()) track.stop();
       landmarker.close();
     },
