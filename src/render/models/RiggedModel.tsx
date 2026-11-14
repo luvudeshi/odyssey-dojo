@@ -21,11 +21,11 @@ export interface RiggedModelProps {
   /** 0..1; tints emissive red while above 0. */
   readonly hitFlash?: number;
   /** Children parented to the bone of that name (a weak-spot marker, a glowing eye). They inherit the model's scale. */
-  readonly anchors?: Readonly<Record<string, ReactNode>>;
+  readonly anchors?: Readonly<Record<string, ReactNode>> | undefined;
   /** Runs once on the cloned model (materials already per-instance), to tint or hide parts. */
   readonly prepare?: (root: Object3D) => void;
   /** Runs once on this instance's own copy of each material, to recolour or flat-shade a pack that does not match the look. Keep it a stable function. */
-  readonly tweakMaterial?: (material: Material) => void;
+  readonly tweakMaterial?: ((material: Material) => void) | undefined;
 }
 
 // Draco GLBs decode from our own files, never gstatic, so venue wifi cannot break them.
