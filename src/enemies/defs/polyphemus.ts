@@ -7,6 +7,8 @@ export const enemy: EnemySpec = {
   name: "Polyphemus",
   title: "The Cyclops of the Cave",
   order: 1,
+  place: "The land of the Cyclopes",
+  book: 9,
   hp: 400,
   strikeWindowMs: 2600,
   attacks: [

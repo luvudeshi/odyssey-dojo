@@ -5,6 +5,8 @@ export const enemy: EnemySpec = {
   name: "Scylla",
   title: "Six Heads Above the Strait",
   order: 2,
+  place: "The strait, under the cliff of Scylla",
+  book: 12,
   hp: 110,
   strikeWindowMs: 2200,
   attacks: [
