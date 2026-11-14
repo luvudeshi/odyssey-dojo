@@ -4,13 +4,14 @@
 //   npx tsx server/tools/genClips.ts story           Homer's lines   -> public/audio/narration/<id>.mp3
 //                                                    monster taunts  -> public/audio/taunts/<id>.mp3
 //   npx tsx server/tools/genClips.ts sfx             sound effects   -> public/audio/sfx/<event>.mp3
+//   npx tsx server/tools/genClips.ts music           music, ambience -> public/audio/music/<scene>.mp3
 // Existing clips are kept (add --force to redo them). Each folder's index.json lists what exists.
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { NARRATION_LINES, TAUNT_LINES } from "../../src/audio/narrationLines";
 import { log } from "../../src/core/log";
-import { createElevenLabs } from "../ai/elevenlabs";
+import { createElevenLabs, ElevenLabsError } from "../ai/elevenlabs";
 import type { AiClients } from "../ai/types";
 import { forcedMonsterVoice, forcedVoice, pickMonsterVoice, pickVoice } from "../ai/voices";
 import { loadConfig } from "../env";
@@ -44,6 +45,43 @@ const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]
   won: ["A short triumphant ancient Greek fanfare of brass horns and drums", 3],
   lost: ["A dark low descending drone with distant thunder, the sound of defeat", 3],
 };
+
+interface Track {
+  /** "music" is made by the music endpoint; "ambience" by the sound-effects endpoint, asked to loop. */
+  readonly kind: "music" | "ambience";
+  readonly prompt: string;
+  readonly seconds: number;
+}
+
+/** One clip per music scene in src/audio/music.ts. Prompts describe the sound only: no artist, film, game or existing piece. */
+const MUSIC: Readonly<Record<string, Track>> = {
+  menu: {
+    kind: "ambience",
+    prompt:
+      "Ambience inside a huge stone sea cave: water drips echoing off the rock, a low wind drone through the tunnels, surf rolling outside the cave mouth. Continuous and even, no music, no voices",
+    seconds: 30,
+  },
+  fight: {
+    kind: "music",
+    prompt:
+      "Instrumental battle music with an ancient Greek feel, for a fight against a giant in a cave. Driving frame drums and low war drums at a steady fast tempo, a plucked lyre ostinato, a shrill aulos reed melody, a low drone underneath. Tense and heroic. Full intensity from the first beat to the last, with no intro, no outro and no fade out, so it can loop. No vocals.",
+    seconds: 48,
+  },
+  win: {
+    kind: "music",
+    prompt:
+      "A short victory sting with an ancient Greek feel: a bright lyre flourish, an aulos fanfare and one final frame drum hit that rings out. Triumphant. Instrumental, no vocals.",
+    seconds: 6,
+  },
+  loss: {
+    kind: "music",
+    prompt:
+      "A short defeat sting with an ancient Greek feel: a slow descending lyre phrase over a dark low drone, then one deep drum hit that dies away. Mournful. Instrumental, no vocals.",
+    seconds: 6,
+  },
+};
+/** The HTTP statuses that mean this key or plan may not use an endpoint at all. */
+const REFUSED: ReadonlySet<number> = new Set([401, 402, 403]);
 
 const PUBLIC = resolve(process.cwd(), "public/audio");
 
@@ -86,8 +124,47 @@ async function main(): Promise<void> {
   const config = loadConfig();
   if (config.elevenLabsKey === null) throw new Error("ELEVENLABS_API_KEY is not set in .env");
   const eleven = createElevenLabs(config.elevenLabsKey);
-  const { speech, sound, voices } = eleven;
+  const { speech, sound, voices, music } = eleven;
   if (!speech || !sound || !voices) throw new Error("the ElevenLabs client is incomplete");
+
+  if (command === "music") {
+    const folder = join(PUBLIC, "music");
+    mkdirSync(folder, { recursive: true });
+    // Once the music endpoint refuses this plan, the rest of the clips go straight to the sound-effects endpoint.
+    let refused = false;
+    for (const [scene, { kind, prompt, seconds }] of Object.entries(MUSIC)) {
+      const target = join(folder, `${scene}.mp3`);
+      if (existsSync(target) && !force) continue;
+      const asSound = (): Promise<Buffer> =>
+        withTimeout(120000, (signal) => sound({ prompt, seconds, loop: kind === "ambience", signal }));
+      try {
+        let endpoint = "sound-generation";
+        let bytes: Buffer;
+        if (kind === "ambience" || refused) {
+          bytes = await asSound();
+        } else {
+          try {
+            bytes = await withTimeout(240000, (signal) => music({ prompt, seconds, signal }));
+            endpoint = "music";
+          } catch (error) {
+            if (!(error instanceof ElevenLabsError) || !REFUSED.has(error.httpStatus)) throw error;
+            log("warn", "music_refused", { scene, error: error.message });
+            refused = true;
+            bytes = await asSound();
+          }
+        }
+        writeFileSync(target, bytes);
+        log("info", "clip_written", { id: scene, endpoint, bytes: bytes.length });
+      } catch (error) {
+        log("warn", "clip_failed", { id: scene, error: error instanceof Error ? error.message : String(error) });
+        // A request the API calls malformed will fail the same way for every clip, so stop instead of spending more calls.
+        if (error instanceof ElevenLabsError && error.httpStatus === 422) throw error;
+      }
+    }
+    writeIndex(folder);
+    return;
+  }
+
   const available = await withTimeout(15000, (signal) => voices(signal));
 
   if (command === "voices") {
@@ -148,7 +225,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error("usage: genClips.ts voices | athena | story | sfx [--force]");
+  throw new Error("usage: genClips.ts voices | athena | story | sfx | music [--force]");
 }
 
 main().catch((error: unknown) => {
