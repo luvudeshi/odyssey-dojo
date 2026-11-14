@@ -3,7 +3,11 @@ import { afterEach, expect, test, vi } from "vitest";
 import { ATHENA_LINES } from "../src/audio/athenaLines";
 import { audioPlayer, createVoice, lineFor, parseClipIndex, playVoice, speakLine } from "../src/audio/voice";
 import type { ClipAudio } from "../src/audio/voice";
-import type { CombatEvent, EnemyAttack, WeakSpot } from "../src/core/types";
+import { startFight, step } from "../src/combat/engine";
+import type { CombatEvent, EnemyAttack, EnemySpec, FightingStyle, WeakSpot } from "../src/core/types";
+import { enemy as polyphemus } from "../src/enemies/defs/polyphemus";
+import { enemy as scylla } from "../src/enemies/defs/scylla";
+import { ENEMIES } from "../src/enemies/registry";
 
 const ALL_IDS = ATHENA_LINES.map((line) => line.id);
 const attack: EnemyAttack = { id: "grab", name: "Grab", telegraphMs: 1600, damage: 20, counter: "duck" };
@@ -14,49 +18,107 @@ const opening: CombatEvent = { type: "opening", weakSpot, move: "jab" };
 const enemyHit: CombatEvent = { type: "enemyHit", move: "jab", damage: 10 };
 const playerHit: CombatEvent = { type: "playerHit", attack, damage: 20 };
 
+const style: FightingStyle = { id: "s", name: "S", blurb: "", strikes: ["jab", "cross", "hook", "overhead_strike"] };
+const STEP_MS = 50;
+
 /** A voice whose clips are recorded instead of played; `end` finishes the clip started most recently. */
 function fakeVoice(available: readonly string[] = ALL_IDS) {
   const started: string[] = [];
   const stopped: string[] = [];
+  /** Starts and stops in the order they happened, as "start:<id>" and "stop:<id>". */
+  const order: string[] = [];
   const ends: (() => void)[] = [];
   const voice = createVoice({
     available: (id) => available.includes(id),
     play: (id, done) => {
       started.push(id);
+      order.push(`start:${id}`);
       ends.push(done);
       return () => {
         stopped.push(id);
+        order.push(`stop:${id}`);
       };
     },
     random: () => 0,
   });
-  return { voice, started, stopped, end: (index = ends.length - 1) => ends[index]?.() };
+  return { voice, started, stopped, order, end: (index = ends.length - 1) => ends[index]?.() };
 }
 
-/** A stand-in audio element: records calls and lets the test fire "ended" or "error". */
+/** A stand-in audio element: records calls in order and lets the test fire "ended" or "error". */
 function fakeAudio(play: () => Promise<void>) {
   const listeners = new Map<string, () => void>();
   const urls: string[] = [];
-  let paused = 0;
+  /** "play <url>" and "pause <url>" in the order they happened. */
+  const calls: string[] = [];
   const open = (url: string): ClipAudio => {
     urls.push(url);
     return {
-      play,
+      play: () => {
+        calls.push(`play ${url}`);
+        return play();
+      },
       pause: () => {
-        paused += 1;
+        calls.push(`pause ${url}`);
       },
       addEventListener: (type, listener) => {
         listeners.set(type, listener);
       },
     };
   };
-  return { open, urls, fire: (type: "ended" | "error") => listeners.get(type)?.(), paused: () => paused };
+  const paused = (): number => calls.filter((call) => call.startsWith("pause")).length;
+  return { open, urls, calls, fire: (type: "ended" | "error") => listeners.get(type)?.(), paused };
 }
 
 function audioVoice(play: () => Promise<void>) {
   const audio = fakeAudio(play);
   const voice = createVoice({ available: () => true, play: audioPlayer(audio.open), random: () => 0 });
   return { voice, audio };
+}
+
+function words(id: string): number {
+  return (ATHENA_LINES.find((line) => line.id === id)?.text ?? "").split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * A whole fight through the real engine, with every clip lasting msPerWord per word of its line.
+ * The player defends every attack and strikes strikeAfterMs into each opening.
+ * Returns the calls the fight asked for and the lines the voice spoke.
+ */
+function coachedFight(enemy: EnemySpec, strikeAfterMs: number, msPerWord: number) {
+  const asked: string[] = [];
+  const spoken: string[] = [];
+  let now = 0;
+  let clip: { readonly endsAt: number; readonly done: () => void } | null = null;
+  const voice = createVoice({
+    available: () => true,
+    play: (id, done) => {
+      spoken.push(id);
+      clip = { endsAt: now + words(id) * msPerWord, done };
+      return () => {
+        clip = null;
+      };
+    },
+    random: () => 0,
+  });
+  let state = startFight(enemy, 7);
+  for (let tick = 0; tick < 5000 && state.phase.kind !== "won" && state.phase.kind !== "lost"; tick += 1) {
+    now += STEP_MS;
+    const playing = clip as { readonly endsAt: number; readonly done: () => void } | null;
+    if (playing && now >= playing.endsAt) {
+      clip = null;
+      playing.done();
+    }
+    const phase = state.phase;
+    const held = new Set(phase.kind === "defend" ? [phase.attack.counter] : []);
+    const struck = phase.kind === "strike" && phase.totalMs - phase.msLeft >= strikeAfterMs ? [phase.move] : [];
+    const result = step(state, enemy, style, { held, struck }, STEP_MS);
+    state = result.state;
+    for (const event of result.events) {
+      if (event.type === "telegraph" || event.type === "opening") asked.push(lineFor(event, () => 0) ?? "");
+    }
+    voice.handle(result.events);
+  }
+  return { asked, spoken, outcome: state.phase.kind };
 }
 
 afterEach(() => {
@@ -98,17 +160,17 @@ test("every line the mapping can produce for the current moves is in the script"
   }
 });
 
-test("a line arriving while another of the same urgency plays is skipped, then the voice is free again", () => {
+test("praise and warnings arriving while a line plays are skipped, then the voice is free again", () => {
   const { voice, started, stopped, end } = fakeVoice();
-  voice.handle([telegraph]);
-  voice.handle([opening]);
-  expect(voice.speak("call_block")).toBe(false);
-  expect(started).toEqual(["call_duck"]);
+  voice.handle([enemyHit]);
+  voice.handle([playerHit]);
+  expect(voice.speak("praise_2")).toBe(false);
+  expect(started).toEqual(["praise_1"]);
   expect(stopped).toEqual([]);
 
   end();
-  voice.handle([opening]);
-  expect(started).toEqual(["call_duck", "call_jab"]);
+  voice.handle([playerHit]);
+  expect(started).toEqual(["praise_1", "warn_1"]);
 });
 
 test("praise and warnings never cut in on a call or on each other", () => {
@@ -124,7 +186,24 @@ test("praise and warnings never cut in on a call or on each other", () => {
   expect(started).toEqual(["call_duck", "praise_1"]);
 });
 
-test("a call stops praise, and the result stops a call; nothing stops the result", () => {
+test("a new call replaces a call that is still playing: the old one is for a beat that has passed", () => {
+  const { voice, started, stopped, order } = fakeVoice();
+  voice.handle([telegraph]);
+  voice.handle([{ type: "defended", attack }, opening]);
+  expect(started).toEqual(["call_duck", "call_jab"]);
+  expect(stopped).toEqual(["call_duck"]);
+  expect(order).toEqual(["start:call_duck", "stop:call_duck", "start:call_jab"]);
+});
+
+test("the line playing is stopped before the next one starts, so two are never heard together", () => {
+  const { voice, order } = fakeVoice();
+  voice.handle([enemyHit]);
+  voice.handle([telegraph]);
+  voice.handle([{ type: "won" }]);
+  expect(order).toEqual(["start:praise_1", "stop:praise_1", "start:call_duck", "stop:call_duck", "start:win"]);
+});
+
+test("a call stops praise, and the result stops a call", () => {
   const { voice, started, stopped } = fakeVoice();
   voice.handle([enemyHit]);
   voice.handle([telegraph]);
@@ -134,10 +213,95 @@ test("a call stops praise, and the result stops a call; nothing stops the result
   voice.handle([{ type: "won" }]);
   expect(started).toEqual(["praise_1", "call_duck", "win"]);
   expect(stopped).toEqual(["praise_1", "call_duck"]);
+});
 
+test("a loss is as urgent as a win: it beats the warning in its own frame and stops a call", () => {
+  const frame = fakeVoice();
+  frame.voice.handle([playerHit, { type: "lost" }]);
+  expect(frame.started).toEqual(["loss"]);
+
+  const { voice, order } = fakeVoice();
   voice.handle([telegraph]);
   voice.handle([{ type: "lost" }]);
-  expect(started).toEqual(["praise_1", "call_duck", "win"]);
+  expect(order).toEqual(["start:call_duck", "stop:call_duck", "start:loss"]);
+});
+
+test("the result is not cut off by praise, warnings, phase lines or another result", () => {
+  for (const result of ["won", "lost"] as const) {
+    const { voice, started, stopped } = fakeVoice();
+    voice.handle([{ type: result }]);
+    voice.handle([enemyHit]);
+    voice.handle([playerHit]);
+    voice.handle([{ type: "won" }]);
+    voice.handle([{ type: "lost" }]);
+    expect(voice.speak("phase_1")).toBe(false);
+    expect(started).toHaveLength(1);
+    expect(stopped).toEqual([]);
+  }
+});
+
+test("a call or fight start heard over the result belongs to the next fight and replaces it", () => {
+  const { voice, started, stopped } = fakeVoice();
+  voice.handle([{ type: "won" }]);
+  voice.handle([telegraph]);
+  expect(started).toEqual(["win", "call_duck"]);
+  expect(stopped).toEqual(["win"]);
+
+  const retry = fakeVoice();
+  retry.voice.handle([{ type: "lost" }]);
+  expect(retry.voice.speak("fight_start")).toBe(true);
+  expect(retry.order).toEqual(["start:loss", "stop:loss", "start:fight_start"]);
+});
+
+test("fight start and phase lines replace praise and warnings, and are not refused behind them", () => {
+  const { voice, order } = fakeVoice();
+  voice.handle([enemyHit]);
+  expect(voice.speak("phase_1")).toBe(true);
+  expect(order).toEqual(["start:praise_1", "stop:praise_1", "start:phase_1"]);
+
+  const start = fakeVoice();
+  start.voice.handle([playerHit]);
+  expect(start.voice.speak("fight_start")).toBe(true);
+  expect(start.started).toEqual(["warn_1", "fight_start"]);
+});
+
+test("fight start and phase lines yield to calls and are not cut off by praise, warnings or each other", () => {
+  const { voice, started, stopped } = fakeVoice();
+  expect(voice.speak("phase_2")).toBe(true);
+  voice.handle([enemyHit]);
+  voice.handle([playerHit]);
+  expect(voice.speak("fight_start")).toBe(false);
+  expect(started).toEqual(["phase_2"]);
+
+  voice.handle([telegraph]);
+  expect(started).toEqual(["phase_2", "call_duck"]);
+  expect(stopped).toEqual(["phase_2"]);
+  expect(voice.speak("phase_1")).toBe(false);
+  expect(voice.speak("fight_start")).toBe(false);
+});
+
+test("every call of a real fight is spoken, however slowly the clips play or the player strikes", () => {
+  for (const enemy of [polyphemus, scylla]) {
+    for (const msPerWord of [300, 400]) {
+      for (const strikeAfterMs of [0, 700, 1500]) {
+        const { asked, spoken, outcome } = coachedFight(enemy, strikeAfterMs, msPerWord);
+        const label = `${enemy.id} ${String(msPerWord)}ms/word strike after ${String(strikeAfterMs)}ms`;
+        expect(outcome, label).toBe("won");
+        expect(asked.length, label).toBeGreaterThan(8);
+        expect(spoken.filter((id) => id.startsWith("call_")), label).toEqual(asked);
+        expect(spoken.at(-1), label).toBe("win");
+      }
+    }
+  }
+});
+
+test("every defend call fits inside the telegraph it announces", () => {
+  for (const enemy of ENEMIES) {
+    for (const each of enemy.attacks) {
+      expect(words(`call_${each.counter}`), `${enemy.id}/${each.id}`).toBeGreaterThan(0);
+      expect(words(`call_${each.counter}`) * 350, `${enemy.id}/${each.id}`).toBeLessThanOrEqual(each.telegraphMs);
+    }
+  }
 });
 
 test("one frame with several events speaks only the most urgent line", () => {
@@ -157,7 +321,7 @@ test("a stopped clip that reports its end late does not free the line that repla
   voice.handle([enemyHit]);
   voice.handle([telegraph]);
   end(0);
-  voice.handle([opening]);
+  voice.handle([enemyHit]);
   expect(started).toEqual(["praise_1", "call_duck"]);
 });
 
@@ -209,12 +373,13 @@ test("the audio player requests the clip's url and frees the voice when it ends"
   const { voice, audio } = audioVoice(() => Promise.resolve());
   expect(voice.speak("call_duck")).toBe(true);
   await Promise.resolve();
-  expect(voice.speak("call_jab")).toBe(false);
+  expect(voice.speak("praise_1")).toBe(false);
   expect(audio.urls).toEqual(["/audio/athena/call_duck.mp3"]);
 
   audio.fire("ended");
-  expect(voice.speak("call_jab")).toBe(true);
-  expect(audio.urls).toEqual(["/audio/athena/call_duck.mp3", "/audio/athena/call_jab.mp3"]);
+  expect(voice.speak("praise_1")).toBe(true);
+  expect(audio.urls).toEqual(["/audio/athena/call_duck.mp3", "/audio/athena/praise_1.mp3"]);
+  expect(audio.paused()).toBe(0);
 });
 
 test("a play() rejected by the autoplay policy frees the voice", async () => {
@@ -240,12 +405,17 @@ test("a clip that never ends is given up on, and a pre-empted clip is paused", (
   const { voice, audio } = audioVoice(() => Promise.resolve());
   voice.speak("praise_1");
   voice.speak("call_duck");
-  expect(audio.paused()).toBe(1);
-  expect(voice.speak("call_jab")).toBe(false);
+  expect(audio.calls).toEqual([
+    "play /audio/athena/praise_1.mp3",
+    "pause /audio/athena/praise_1.mp3",
+    "play /audio/athena/call_duck.mp3",
+  ]);
+  expect(voice.speak("praise_2")).toBe(false);
 
   vi.advanceTimersByTime(10_000);
+  expect(audio.calls.at(-1)).toBe("pause /audio/athena/call_duck.mp3");
   expect(audio.paused()).toBe(2);
-  expect(voice.speak("call_jab")).toBe(true);
+  expect(voice.speak("praise_2")).toBe(true);
 });
 
 test("the clip index accepts a list of ids and treats anything else as empty", () => {
@@ -278,10 +448,13 @@ test("the default voice loads index.json once and only requests the clips it lis
 
   const voice = createVoice();
   expect(voice.speak("call_duck")).toBe(false);
+  expect(urls).toEqual([]);
   await new Promise((resolve) => setTimeout(resolve, 0));
+  // Listed clips are fetched ahead of time, so the first call is not late.
+  expect(urls).toEqual(["/audio/athena/call_duck.mp3"]);
   expect(voice.speak("win")).toBe(false);
   expect(voice.speak("call_duck")).toBe(true);
-  expect(urls).toEqual(["/audio/athena/call_duck.mp3"]);
+  expect(urls).toEqual(["/audio/athena/call_duck.mp3", "/audio/athena/call_duck.mp3"]);
   expect(fetched.mock.calls).toEqual([["/audio/athena/index.json"]]);
   voice.dispose();
 });
@@ -297,6 +470,19 @@ test("an index that cannot be loaded leaves the default voice silent", async () 
   expect(voice.speak("win")).toBe(false);
   expect(opened).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledOnce();
+});
+
+test("an index answered with an error status is not trusted, whatever its body says", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const opened = vi.fn();
+  vi.stubGlobal("Audio", opened);
+  vi.stubGlobal("fetch", () => Promise.resolve({ ok: false, json: () => Promise.resolve(["win"]) }));
+
+  const voice = createVoice();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(voice.speak("win")).toBe(false);
+  expect(opened).not.toHaveBeenCalled();
+  expect(warn).not.toHaveBeenCalled();
 });
 
 test("the shared voice is silent, not broken, where there is no audio", () => {

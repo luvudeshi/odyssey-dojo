@@ -34,10 +34,25 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
   }
 }
 
-/** A more urgent line cuts off a less urgent one: the result beats everything, calls beat the rest. */
+/** Tiers of urgency, lowest first: praise and warnings, fight start and phase changes, calls, the result. */
+const SHORT = 0;
+const MOMENT = 1;
+const CALL = 2;
+const RESULT = 3;
+
 function urgency(id: string): number {
-  if (id === "win" || id === "loss") return 2;
-  return id.startsWith("call_") ? 1 : 0;
+  if (id === "win" || id === "loss") return RESULT;
+  if (id.startsWith("call_")) return CALL;
+  return id === "fight_start" || id.startsWith("phase_") ? MOMENT : SHORT;
+}
+
+/** Whether a new line cuts off the one playing. Otherwise the new line is skipped. */
+function interrupts(next: string, playing: string): boolean {
+  const tier = urgency(next);
+  // The engine emits nothing after the result, so a call or fight start heard over it belongs to the next fight.
+  if (urgency(playing) === RESULT) return tier === CALL || next === "fight_start";
+  // A newer call always wins: the one playing is for a beat that has already passed.
+  return tier === CALL || tier > urgency(playing);
 }
 
 export interface VoiceDeps {
@@ -62,7 +77,8 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
 
   const speak = (id: string): boolean => {
     if (disposed || !deps.available(id)) return false;
-    if (current && urgency(id) <= urgency(current.id)) return false;
+    if (current && !interrupts(id, current.id)) return false;
+    // Stop before starting, so two lines are never heard together.
     current?.stop();
     const line = { id, stop: (): void => undefined };
     const free = (): void => {
@@ -139,10 +155,13 @@ function browserDeps(): VoiceDeps {
     return { available: () => false, play: () => () => undefined, random: Math.random };
   }
   let clips: ReadonlySet<string> = new Set();
+  const warmed: HTMLAudioElement[] = [];
   fetch(INDEX_URL)
     .then((response): Promise<unknown> => (response.ok ? response.json() : Promise.resolve([])))
     .then((data) => {
       clips = parseClipIndex(data);
+      // Fetch every listed clip now, so a call is not late the first time it is spoken. Kept so the loads are not dropped.
+      for (const id of clips) warmed.push(new Audio(clipUrl(id)));
     })
     .catch((error: unknown) => {
       log("warn", "voice.index", error);
