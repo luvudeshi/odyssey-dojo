@@ -33,6 +33,15 @@ test("another device is refused on spending routes and allowed on replays, healt
   }
 });
 
+test("the room routes a second laptop needs are open to the network, and no spending route opened with them", () => {
+  for (const path of ["/api/rooms", "/api/rooms/KXTR/join", "/api/rooms/kxtr/events", "/API/Rooms/KXTR/send"]) {
+    expect(mayAnswer(path, LAN), path).toBe(true);
+  }
+  for (const path of ["/api/level", "/api/reveal", "/api/portrait/abc", "/api/speech", "/api/replays", "/api/room", "/api/roomsx", "/api/rooms-admin", "/api/level/rooms/"]) {
+    expect(mayAnswer(path, LAN), path).toBe(false);
+  }
+});
+
 test("a request from this machine is answered as before, whatever X-Forwarded-For claims", async () => {
   const app = await createApp({ config, ai: NO_AI });
   const server = app.listen(0, "127.0.0.1");
