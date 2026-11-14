@@ -1,14 +1,16 @@
 // POST /api/reveal: a webcam snapshot in, the player's god out. GET /api/portrait/:id: the stylised portrait once it is painted.
 // The snapshot and the portrait are held in memory only: never written to disk, never logged.
+import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { GOD_IDS, RevealRequestSchema, RevealSchema } from "../../src/ai/contracts";
-import type { RevealResponse, RevealWire } from "../../src/ai/contracts";
+import type { GodId, RevealResponse, RevealWire } from "../../src/ai/contracts";
 import { RIVALS } from "../../src/ai/rivals";
 import { log } from "../../src/core/log";
 import type { InlineImage } from "../ai/types";
 import type { Register } from "../app";
 import { createPortraitStore } from "../lib/portraits";
 import { withTimeout } from "../lib/timeout";
+import { SAFE_LINES, speaksOfThePlayer } from "../revealGuard";
 import { portraitPrompt, REVEAL_PROMPT } from "../revealPrompts";
 import { wireSchema } from "../schema";
 
@@ -29,8 +31,17 @@ const LooseSchema = z.object({
 
 const tidy = (text: string, max: number): string => text.replace(/\s+/g, " ").trim().slice(0, max).trim();
 
-/** Short and never the request itself, so a failure cannot put a snapshot in the log. */
-const why = (error: unknown): string => (error instanceof Error ? error.message.slice(0, 300) : "unknown error");
+// Any long run of base64 is cut out before logging, so an error that echoes the request cannot put a snapshot in the log.
+const BASE64_RUN = /[A-Za-z0-9+/=]{40,}/g;
+const why = (error: unknown): string =>
+  error instanceof Error ? error.message.replace(BASE64_RUN, "[data]").slice(0, 300) : "unknown error";
+
+/** The model's line, or the god's fixed line when the model spoke of the player's body, age, looks or gender. */
+function safe(god: GodId, field: "epithet" | "reason", text: string): string {
+  if (!speaksOfThePlayer(text)) return text;
+  log("warn", "reveal_reworded", field);
+  return SAFE_LINES[god][field];
+}
 
 function repairReveal(raw: unknown): RevealWire | null {
   const loose = LooseSchema.safeParse(raw);
@@ -38,8 +49,8 @@ function repairReveal(raw: unknown): RevealWire | null {
   const { god, rival_god: rival } = loose.data;
   const reveal = RevealSchema.safeParse({
     god,
-    epithet: tidy(loose.data.epithet, EPITHET_MAX),
-    reason: tidy(loose.data.reason, REASON_MAX),
+    epithet: safe(god, "epithet", tidy(loose.data.epithet, EPITHET_MAX)),
+    reason: safe(god, "reason", tidy(loose.data.reason, REASON_MAX)),
     rival_god: rival === undefined || rival === god ? RIVALS[god] : rival,
   });
   return reveal.success ? reveal.data : null;
@@ -100,5 +111,12 @@ export const register: Register = (router, { ai, config }) => {
     response.set("Cache-Control", "no-store");
     if (portrait === null) response.status(204).end();
     else response.type(portrait.type).send(portrait.bytes);
+  });
+
+  // A portrait request never answers 500: an id Express cannot decode, or any other error on this path, is "no portrait".
+  // Express only treats a handler as an error handler when it takes four arguments.
+  router.use("/api/portrait", (error: unknown, _request: Request, response: Response, next: NextFunction) => {
+    if (response.headersSent) next(error);
+    else response.set("Cache-Control", "no-store").status(204).end();
   });
 };
