@@ -5,6 +5,8 @@ export const enemy: EnemySpec = {
   name: "Scylla",
   title: "Six Heads Above the Strait",
   order: 2,
+  place: "The strait, under the cliff of Scylla",
+  book: 12,
   hp: 110,
   strikeWindowMs: 2200,
   attacks: [
@@ -14,8 +16,8 @@ export const enemy: EnemySpec = {
     { id: "head_center", name: "Snap", telegraphMs: 1100, damage: 14, counter: "block" },
   ],
   weakSpots: [
-    { id: "neck", label: "an outstretched neck", position: [0.8, 3, 0.8], moves: ["hook", "overhead_strike"] },
-    { id: "jaw", label: "a snapping jaw", position: [-0.6, 3.6, 1], moves: ["jab", "cross", "spear_thrust"] },
+    { id: "neck", label: "an outstretched neck", position: [0.8, 3, 0.8], moves: ["hook", "overhead_strike", "knife_hand", "hammer_fist", "rising_palm"] },
+    { id: "jaw", label: "a snapping jaw", position: [-0.6, 3.6, 1], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm"] },
   ],
   taunts: ["Six of your crew. That is the toll."],
 };
