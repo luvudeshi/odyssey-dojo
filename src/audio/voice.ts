@@ -24,6 +24,9 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
       return pick(PRAISE, random);
     case "playerHit":
       return pick(WARNINGS, random);
+    case "phaseChanged":
+      // Index 0 is where the fight starts; only later phases get a line.
+      return event.index > 0 ? `phase_${String(event.index)}` : null;
     case "won":
       return "win";
     case "lost":

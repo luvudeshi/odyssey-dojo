@@ -15,7 +15,7 @@ const weakSpot: WeakSpot = { id: "eye", label: "his one eye", position: [0, 4, 1
 
 const telegraph: CombatEvent = { type: "telegraph", attack };
 const opening: CombatEvent = { type: "opening", weakSpot, move: "jab" };
-const enemyHit: CombatEvent = { type: "enemyHit", move: "jab", damage: 10 };
+const enemyHit: CombatEvent = { type: "enemyHit", move: "jab", damage: 10, quality: 1 };
 const playerHit: CombatEvent = { type: "playerHit", attack, damage: 20 };
 
 const style: FightingStyle = { id: "s", name: "S", blurb: "", strikes: ["jab", "cross", "hook", "overhead_strike"] };
@@ -110,7 +110,8 @@ function coachedFight(enemy: EnemySpec, strikeAfterMs: number, msPerWord: number
     }
     const phase = state.phase;
     const held = new Set(phase.kind === "defend" ? [phase.attack.counter] : []);
-    const struck = phase.kind === "strike" && phase.totalMs - phase.msLeft >= strikeAfterMs ? [phase.move] : [];
+    const ready = (phase.kind === "strike" || phase.kind === "finisher") && phase.totalMs - phase.msLeft >= strikeAfterMs;
+    const struck = ready ? [{ move: phase.move, quality: 1, player: 0 as const }] : [];
     const result = step(state, enemy, style, { held, struck }, STEP_MS);
     state = result.state;
     for (const event of result.events) {
@@ -278,6 +279,13 @@ test("fight start and phase lines yield to calls and are not cut off by praise, 
   expect(stopped).toEqual(["phase_2"]);
   expect(voice.speak("phase_1")).toBe(false);
   expect(voice.speak("fight_start")).toBe(false);
+});
+
+test("a phase change is announced once the fight is past its first phase", () => {
+  expect(lineFor({ type: "phaseChanged", index: 0, name: "The Cave" }, () => 0)).toBeNull();
+  expect(lineFor({ type: "phaseChanged", index: 1, name: "The Club" }, () => 0)).toBe("phase_1");
+  expect(lineFor({ type: "phaseChanged", index: 2, name: "Blinded" }, () => 0)).toBe("phase_2");
+  expect(lineFor({ type: "finished", move: "stake_thrust" }, () => 0)).toBeNull();
 });
 
 test("every call of a real fight is spoken, however slowly the clips play or the player strikes", () => {
