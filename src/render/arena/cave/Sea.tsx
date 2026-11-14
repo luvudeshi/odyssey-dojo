@@ -6,6 +6,7 @@ import type { ShaderMaterial } from "three";
 import { Color, DoubleSide, Vector3 } from "three";
 import { useQualityLevel } from "../../quality";
 import { MOUTH, SUN } from "./mouthLayout";
+import { SKY_GLSL } from "./Sky";
 
 const VERTEX = /* glsl */ `
 varying vec3 vWorld;
@@ -20,10 +21,9 @@ uniform float uTime;
 uniform float uRipples;
 uniform vec3 uSun;
 uniform vec3 uNear;
-uniform vec3 uFar;
 uniform vec3 uGlow;
 varying vec3 vWorld;
-
+${SKY_GLSL}
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
 void main() {
@@ -40,7 +40,8 @@ void main() {
   float glitter = pow(sunDot, 90.0) * 2.4 + pow(sunDot, 10.0) * 0.5;
   float fresnel = pow(1.0 - max(view.y, 0.0), 3.0);
   float haze = smoothstep(30.0, 520.0, dist);
-  vec3 color = mix(uNear, uFar, clamp(fresnel * 0.55 + haze, 0.0, 1.0));
+  // The sea is a dark mirror: deep violet underfoot, the sunset sky itself toward the horizon.
+  vec3 color = mix(uNear, skyColor(mirrored, uSun), clamp(fresnel * 0.8 + haze * 0.6 + 0.08, 0.0, 1.0));
   color += uGlow * glitter;
   gl_FragColor = vec4(color, 1.0);
 }`;
@@ -51,9 +52,8 @@ export function Sea() {
     () => ({
       uTime: { value: 0 },
       uRipples: { value: 1 },
-      uSun: { value: new Vector3(...SUN.dir).normalize() },
+      uSun: { value: new Vector3(...SUN.visual).normalize() },
       uNear: { value: new Color("#2b2f6a") },
-      uFar: { value: new Color("#e69a80") },
       uGlow: { value: new Color("#ffb066") },
     }),
     [],
