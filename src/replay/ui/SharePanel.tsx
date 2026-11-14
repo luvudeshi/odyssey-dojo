@@ -51,9 +51,11 @@ export function SharePanel(props: SharePanelProps) {
   const [qr, setQr] = useState<HTMLImageElement | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const qrUrl = state.kind === "shared" ? state.links.qrUrl : null;
+  // A code the canvas cannot draw (an SVG with no size, in some browsers) is left off the card, and so is "Scan".
+  const qrOnCard = qr !== null && qr.naturalWidth > 0;
   const words = useMemo(
-    () => cardWords({ god, won, enemyName, fightTitle, score, style }, qr !== null),
-    [god, won, enemyName, fightTitle, score, style, qr],
+    () => cardWords({ god, won, enemyName, fightTitle, score, style }, qrOnCard),
+    [god, won, enemyName, fightTitle, score, style, qrOnCard],
   );
 
   // The portrait can arrive after the god does. Until then the card shows its placeholder emblem.
