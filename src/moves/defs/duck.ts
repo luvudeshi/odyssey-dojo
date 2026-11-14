@@ -9,6 +9,7 @@ export const move: MoveDef = {
   hint: "Bend your knees and drop your head",
   key: "ArrowDown",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftY: 16 },
+  teaches: "Bend your knees, not your waist, to drop under a swing and still see what is coming",
   detect(history) {
     const frame = latest(history);
     if (!frame || !history.baseline) return 0;

@@ -1,0 +1,78 @@
+/* The god power effect. Every class starts with "power-" so nothing here can collide with src/index.css. */
+/* Only transform and opacity are animated, and no effect has more than two bright flashes. */
+/* An effect that cuts a running one short gets "power-calm": no flash at all, and the dark veil stays down. */
+.power-effect { position: fixed; inset: 0; z-index: 1000; overflow: hidden; pointer-events: none; contain: layout paint; }
+.power-fx { position: absolute; inset: 0; }
+.power-layer { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; will-change: transform, opacity; }
+
+.power-name { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 6vw 0 calc(6vw + 0.18em); text-align: center; font-family: "Cinzel", "Trajan Pro", Georgia, serif; font-size: clamp(2rem, 6.5vw, 6rem); font-weight: 700; letter-spacing: 0.18em; line-height: 1.15; text-transform: uppercase; -webkit-text-stroke: 0.07em #140c22; paint-order: stroke fill; text-shadow: 0 0 0.35em #140c22, 0 0.04em 0.1em #000; opacity: 0; animation: power-name 1.5s both; will-change: transform, opacity; }
+@keyframes power-name { 0%, 14% { opacity: 0; transform: scale(1.18); } 30%, 74% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.04); } }
+@keyframes power-name-fade { 0%, 100% { opacity: 0; } 25%, 75% { opacity: 1; } }
+
+.power-veil { background: radial-gradient(ellipse at center, #140c2280, #140c22d9); animation: power-veil 1.5s both; }
+.power-poseidon .power-veil { background: #052733b3; }
+.power-artemis .power-veil { background: radial-gradient(ellipse at 50% 15%, #1b2a4ab3, #070b18e6); }
+.power-apollo .power-veil { background: radial-gradient(ellipse at center, #5a2f0880, #140c22d9); }
+@keyframes power-veil { 0%, 100% { opacity: 0; } 12%, 70% { opacity: 1; } }
+.power-calm .power-veil { animation-name: power-veil-calm; }
+@keyframes power-veil-calm { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+.power-calm .power-flash, .power-calm .power-bloom { animation: none; }
+
+/* Zeus: two flashes, the second dimmer, and bolts that strike once and fade without flickering. */
+.power-flash { background: radial-gradient(circle at 50% 20%, #fffdf0, #ffe9a8 60%, #e8b84a); animation: power-flash 1.5s both; }
+@keyframes power-flash { 0%, 28%, 36%, 62%, 100% { opacity: 0; } 4% { opacity: 0.7; } 40% { opacity: 0.4; } }
+.power-bolt { transform-origin: 50% 0; animation: power-bolt 0.7s both; }
+.power-late { animation-delay: 0.54s; }
+.power-bolt path { fill: none; stroke-linecap: round; stroke-linejoin: miter; vector-effect: non-scaling-stroke; }
+.power-bolt-glow { stroke: currentColor; stroke-width: 16px; opacity: 0.4; }
+.power-bolt-core { stroke: #fffdf0; stroke-width: 4px; }
+@keyframes power-bolt { 0% { opacity: 0; transform: scaleY(0); } 10%, 50% { opacity: 1; transform: scaleY(1); } 100% { opacity: 0; transform: scaleY(1); } }
+
+/* Poseidon: two wave sheets slide in from the left, hold over the screen, then run off to the right. */
+.power-wave { position: absolute; top: 0; left: 0; width: 170vw; height: 100%; animation: power-wave 1.4s both; will-change: transform; }
+.power-wave-back { opacity: 0.55; animation-delay: 0.06s; }
+.power-foam { fill: none; stroke: #f4fffc; stroke-width: 9px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.power-spray { stroke-width: 6px; stroke-dasharray: 1 24; opacity: 0.8; }
+@keyframes power-wave { 0% { transform: translateX(-170vw); animation-timing-function: cubic-bezier(0.2, 0.6, 0.3, 1); } 40% { transform: translateX(-45vw); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); } 100% { transform: translateX(100vw); } }
+
+/* Athena: the shield swells from the centre, a ring runs on past it, and the spear crosses once. */
+.power-shield { position: absolute; top: 50%; left: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; opacity: 0; animation: power-shield 1.5s cubic-bezier(0.2, 0.8, 0.3, 1) both; will-change: transform, opacity; }
+.power-shield circle { fill: none; stroke: #e8b84a; }
+.power-shield .power-stud { fill: #fff3c4; stroke: none; }
+@keyframes power-shield { 0% { opacity: 0; transform: scale(0.1); } 22% { opacity: 1; transform: scale(1); } 60% { opacity: 0.9; transform: scale(1.12); } 100% { opacity: 0; transform: scale(2.6); } }
+.power-ring { position: absolute; top: 50%; left: 50%; width: 64vmin; height: 64vmin; margin: -32vmin 0 0 -32vmin; border: 0.8vmin solid #fff3c4; border-radius: 50%; opacity: 0; animation: power-ring 1s 0.2s cubic-bezier(0.2, 0.7, 0.4, 1) both; will-change: transform, opacity; }
+@keyframes power-ring { 0% { opacity: 0; transform: scale(0.3); } 15% { opacity: 0.8; } 100% { opacity: 0; transform: scale(4); } }
+.power-spear { position: absolute; top: 50%; left: 50%; width: 120vmax; height: 6vmin; margin: -3vmin 0 0 -60vmax; opacity: 0; animation: power-spear 0.5s 0.5s cubic-bezier(0.5, 0, 0.2, 1) both; will-change: transform, opacity; }
+@keyframes power-spear { 0% { opacity: 0; transform: rotate(-20deg) translateX(-130vmax); } 15%, 85% { opacity: 1; } 100% { opacity: 0; transform: rotate(-20deg) translateX(130vmax); } }
+
+/* Hermes: speed lines cross at different times while the winged sandal dashes past trailing afterimages. */
+.power-streak { position: absolute; left: 0; border-radius: 2px; background: linear-gradient(90deg, transparent, currentColor 40%, #fffdf0 90%, transparent); opacity: 0; animation: power-streak 0.5s linear both; will-change: transform, opacity; }
+@keyframes power-streak { 0% { opacity: 0; transform: translateX(-100%); } 10%, 90% { opacity: 1; } 100% { opacity: 0; transform: translateX(100vw); } }
+.power-sandal { position: absolute; top: 8%; left: 50%; width: 40vmin; height: 24vmin; margin-left: -20vmin; opacity: 0; animation: power-dash 1.1s 0.15s both; will-change: transform, opacity; }
+@keyframes power-dash { 0% { opacity: 0; transform: translateX(-90vw) skewX(-18deg); animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1); } 12%, 88% { opacity: 1; } 40% { transform: translateX(-4vw) skewX(-6deg); animation-timing-function: linear; } 60% { transform: translateX(4vw) skewX(-6deg); animation-timing-function: cubic-bezier(0.7, 0, 0.9, 0.3); } 100% { opacity: 0; transform: translateX(90vw) skewX(-18deg); } }
+.power-ghost { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.power-ghost-1 { transform: translateX(-6vmin); opacity: 0.45; filter: blur(2px); }
+.power-ghost-2 { transform: translateX(-13vmin); opacity: 0.25; filter: blur(5px); }
+.power-ghost-3 { transform: translateX(-22vmin); opacity: 0.12; filter: blur(9px); }
+.power-wing { fill: #fffdf0; }
+.power-sole { fill: currentColor; }
+.power-strap { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Artemis: the crescent rises, then one arrow crosses beneath it. */
+.power-moon { position: absolute; top: 6%; left: 50%; width: 22vmin; height: 22vmin; margin-left: -11vmin; fill: #e9eef7; filter: drop-shadow(0 0 2vmin #cfd9ee99); opacity: 0; animation: power-moon 1.5s both; will-change: transform, opacity; }
+@keyframes power-moon { 0% { opacity: 0; transform: translateY(3vmin); } 20%, 75% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(0); } }
+.power-arrow { position: absolute; top: 30%; left: 0; width: 60vmin; height: 5vmin; opacity: 0; animation: power-arrow 0.6s 0.35s cubic-bezier(0.3, 0, 0.6, 1) both; will-change: transform, opacity; }
+@keyframes power-arrow { 0% { opacity: 0; transform: translateX(-60vmin); } 8% { opacity: 1; } 100% { opacity: 1; transform: translateX(100vw); } }
+
+/* Apollo: one warm bloom, then rays that burst out, turn slowly and fade. The ray layer is drawn at half size and scaled up to keep its texture small. */
+.power-bloom { background: radial-gradient(circle, #fffdf0, #ffd978 45%, #ffb34700 75%); animation: power-bloom 1.5s both; }
+@keyframes power-bloom { 0%, 36%, 100% { opacity: 0; } 8% { opacity: 0.6; } }
+.power-rays { position: absolute; top: 50%; left: 50%; width: 75vmax; height: 75vmax; margin: -37.5vmax 0 0 -37.5vmax; opacity: 0; animation: power-rays 1.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; will-change: transform, opacity; }
+@keyframes power-rays { 0% { opacity: 0; transform: scale(0.1) rotate(0deg); } 25% { opacity: 1; transform: scale(2) rotate(8deg); } 70% { opacity: 0.85; transform: scale(2.16) rotate(18deg); } 100% { opacity: 0; transform: scale(2.4) rotate(26deg); } }
+.power-sun { position: absolute; top: 50%; left: 50%; width: 26vmin; height: 26vmin; margin: -13vmin 0 0 -13vmin; border-radius: 50%; background: radial-gradient(circle, #fffdf0 30%, #ffd978 60%, #ffb34700 72%); opacity: 0; animation: power-sun 1.5s both; will-change: transform, opacity; }
+@keyframes power-sun { 0% { opacity: 0; transform: scale(0.2); } 15% { opacity: 1; transform: scale(1.15); } 35% { opacity: 0.35; transform: scale(1); } 100% { opacity: 0; transform: scale(1.6); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .power-fx { display: none; }
+  .power-name { animation-name: power-name-fade; }
+}

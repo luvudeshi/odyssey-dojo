@@ -86,7 +86,7 @@ export function armThrust(history: PoseHistory, side: "left" | "right"): boolean
   return recent(history, 450).some((frame) => elbowAngle(frame, side) < 115);
 }
 
-function baselineOf(frames: readonly PoseFrame[]): Baseline {
+export function baselineOf(frames: readonly PoseFrame[]): Baseline {
   const count = frames.length;
   const sum = frames.reduce(
     (total, frame) => {

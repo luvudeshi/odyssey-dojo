@@ -3,7 +3,12 @@ import { expect, test } from "vitest";
 import doc from "../docs/athena-lines.md?raw";
 import { ATHENA_LINES, clipUrl } from "../src/audio/athenaLines";
 
-const CALLS = ["block", "duck", "dodge_left", "dodge_right", "jump", "jab", "cross", "hook", "overhead_strike", "spear_thrust", "stake_thrust"];
+const CALLS = [
+  "block", "duck", "dodge_left", "dodge_right", "jump", "jab", "cross", "hook", "overhead_strike", "spear_thrust",
+  "uppercut", "reverse_punch", "knife_hand", "hammer_fist", "double_palm", "chain_punch", "rising_palm",
+  "thunderbolt", "trident_sweep", "aegis_push", "swift_dash", "moon_arrow", "sun_burst",
+  "any_defend", "any_strike", "stake_thrust",
+];
 const SHORT = ["praise_1", "praise_2", "praise_3", "warn_1", "warn_2", "warn_3"];
 const MOMENTS = ["phase_1", "phase_2", "fight_start", "win", "loss"];
 const POLYPHEMUS_ONLY = ["call_stake_thrust", "phase_1", "phase_2"];
