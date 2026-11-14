@@ -1,21 +1,32 @@
 // Makes the audio clips once, ahead of time, so the game plays them with no network:
 //   npx tsx server/tools/genClips.ts voices          list the voices this key can use
 //   npx tsx server/tools/genClips.ts athena          Athena's lines  -> public/audio/athena/<id>.mp3
+//   npx tsx server/tools/genClips.ts story           Homer's lines   -> public/audio/narration/<id>.mp3
+//                                                    monster taunts  -> public/audio/taunts/<id>.mp3
 //   npx tsx server/tools/genClips.ts sfx             sound effects   -> public/audio/sfx/<event>.mp3
 //   npx tsx server/tools/genClips.ts music           music, ambience -> public/audio/music/<scene>.mp3
 // Existing clips are kept (add --force to redo them). Each folder's index.json lists what exists.
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { NARRATION_LINES, TAUNT_LINES } from "../../src/audio/narrationLines";
 import { log } from "../../src/core/log";
 import { createElevenLabs, ElevenLabsError } from "../ai/elevenlabs";
-import { forcedVoice, pickVoice } from "../ai/voices";
+import type { AiClients } from "../ai/types";
+import { forcedMonsterVoice, forcedVoice, pickMonsterVoice, pickVoice } from "../ai/voices";
 import { loadConfig } from "../env";
 import { withTimeout } from "../lib/timeout";
 
 interface Line {
   readonly id: string;
   readonly text: string;
+}
+
+/** One clip to make: the line, the voice that speaks it and the file it goes to. */
+interface Job {
+  readonly line: Line;
+  readonly voiceId: string;
+  readonly target: string;
 }
 
 // Best first. The first model the key is allowed to use wins.
@@ -87,6 +98,26 @@ async function athenaLines(): Promise<readonly Line[]> {
   return module.ATHENA_LINES ?? [];
 }
 
+/** Speaks each line into its file, skipping files that exist unless `force`. The first model that works is kept for the rest. */
+async function speakClips(speech: NonNullable<AiClients["speech"]>, jobs: readonly Job[], force: boolean): Promise<void> {
+  let model: string | null = null;
+  for (const { line, voiceId, target } of jobs) {
+    if (existsSync(target) && !force) continue;
+    const models: readonly string[] = model === null ? SPEECH_MODELS : [model];
+    for (const candidate of models) {
+      try {
+        const bytes = await withTimeout(30000, (signal) => speech({ text: line.text, voiceId, model: candidate, signal }));
+        writeFileSync(target, bytes);
+        model = candidate;
+        log("info", "clip_written", { id: line.id, model: candidate, bytes: bytes.length });
+        break;
+      } catch (error) {
+        log("warn", "clip_failed", { id: line.id, model: candidate, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const [command = "", ...flags] = process.argv.slice(2);
   const force = flags.includes("--force");
@@ -147,26 +178,32 @@ async function main(): Promise<void> {
     const voice = pickVoice("athena", available, forcedVoice("athena"));
     if (voice === null) throw new Error("this key has no voices it can use through the API");
     log("info", "athena_voice", voice);
-    let model: string | null = null;
-    for (const line of await athenaLines()) {
-      const target = join(folder, `${line.id}.mp3`);
-      if (existsSync(target) && !force) continue;
-      const models: readonly string[] = model === null ? SPEECH_MODELS : [model];
-      for (const candidate of models) {
-        try {
-          const bytes = await withTimeout(30000, (signal) =>
-            speech({ text: line.text, voiceId: voice.id, model: candidate, signal }),
-          );
-          writeFileSync(target, bytes);
-          model = candidate;
-          log("info", "clip_written", { id: line.id, model: candidate, bytes: bytes.length });
-          break;
-        } catch (error) {
-          log("warn", "clip_failed", { id: line.id, model: candidate, error: error instanceof Error ? error.message : String(error) });
-        }
-      }
-    }
+    const jobs = (await athenaLines()).map((line) => ({ line, voiceId: voice.id, target: join(folder, `${line.id}.mp3`) }));
+    await speakClips(speech, jobs, force);
     writeIndex(folder);
+    return;
+  }
+
+  if (command === "story") {
+    const narration = join(PUBLIC, "narration");
+    const taunts = join(PUBLIC, "taunts");
+    mkdirSync(narration, { recursive: true });
+    mkdirSync(taunts, { recursive: true });
+    const jobs: Job[] = [];
+    const speakers: Record<string, string> = {};
+    for (const line of [...NARRATION_LINES, ...TAUNT_LINES]) {
+      const homer = line.speaker === "homer";
+      const voice = homer
+        ? pickVoice("homer", available, forcedVoice("homer"))
+        : pickMonsterVoice(line.enemyId, available, forcedMonsterVoice(line.enemyId));
+      if (voice === null) throw new Error("this key has no voices it can use through the API");
+      speakers[homer ? "homer" : line.enemyId] = voice.name;
+      jobs.push({ line, voiceId: voice.id, target: join(homer ? narration : taunts, `${line.id}.mp3`) });
+    }
+    log("info", "story_voices", speakers);
+    await speakClips(speech, jobs, force);
+    writeIndex(narration);
+    writeIndex(taunts);
     return;
   }
 
@@ -188,7 +225,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error("usage: genClips.ts voices | athena | sfx | music [--force]");
+  throw new Error("usage: genClips.ts voices | athena | story | sfx | music [--force]");
 }
 
 main().catch((error: unknown) => {

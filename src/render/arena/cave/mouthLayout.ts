@@ -9,6 +9,9 @@ export const SUN = {
   dir: [-0.29, 0.342, -0.894] as Vec3,
   /** Rotation that parks the HDRI's own sun (12 degrees up) in the same direction. */
   skyYaw: 2.449,
+  /** Where the painted sun sits, lower than the light so the camera sees it through the mouth (the light's own
+   *  direction is higher so its shafts reach the floor). The sea's glitter path points at this one. */
+  visual: [-0.3, 0.2, -0.93] as Vec3,
 } as const;
 
 export const MOUTH = {
@@ -143,6 +146,9 @@ export function boulders(seed = 5): Piece[] {
   );
 }
 
+/** Highest point the giant's raised club or arms reach over the fight, with a margin. */
+const REACH = 7;
+
 /** Stone teeth hanging from the roof, thickest around the mouth where the camera sees them against the sky. */
 export function stalactites(seed = 11): Piece[] {
   const random = mulberry(seed);
@@ -160,8 +166,8 @@ export function stalactites(seed = 11): Piece[] {
       footprint: radius,
     });
   }
-  // Over the fight the lowest tip stays above the giant's raised arm.
-  return out.filter((tooth) => !touchesZone(FIGHT_ZONE, tooth.position[0], tooth.position[2], 0.1) || tooth.position[1] - tooth.scale[1] / 2 > 5.4);
+  // Over the fight the lowest tip stays above the giant's raised club.
+  return out.filter((tooth) => !touchesZone(FIGHT_ZONE, tooth.position[0], tooth.position[2], 0.1) || tooth.position[1] - tooth.scale[1] / 2 > REACH);
 }
 
 /** The shepherd's pen on the right, sheep inside it, big clay jars along the left wall. */

@@ -48,7 +48,9 @@ export function createGemini(apiKey: string): Pick<AiClients, "json" | "image"> 
     if (interaction.status !== "completed" || !interaction.output_text) {
       throw new Error(`gemini ${model} ended ${interaction.status} with no text`);
     }
-    return JSON.parse(interaction.output_text) as unknown;
+    const answer = JSON.parse(interaction.output_text) as unknown;
+    request.onModel?.(model);
+    return answer;
   }
 
   async function imageOnce(model: string, request: ImageRequest): Promise<Buffer | null> {
