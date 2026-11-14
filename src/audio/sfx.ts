@@ -2,6 +2,7 @@
 // To add a real clip, drop <type>.mp3 into public/audio/sfx and add "<type>" to index.json there.
 import { log } from "../core/log";
 import type { CombatEvent } from "../core/types";
+import { getSettings } from "../settings/store";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
 
@@ -146,7 +147,7 @@ function start({ context, master }: Player, type: CombatEvent["type"]): void {
     source.buffer = buffer;
     if (VARIED.has(type)) source.playbackRate.value = 1 + (Math.random() * 2 - 1) * RATE_SPREAD;
     const level = context.createGain();
-    level.gain.value = LEVELS[type] ?? 1;
+    level.gain.value = (LEVELS[type] ?? 1) * getSettings().sfxVolume;
     source.connect(level).connect(master);
     source.start();
   } catch (error) {
@@ -154,14 +155,24 @@ function start({ context, master }: Player, type: CombatEvent["type"]): void {
   }
 }
 
-export function playEvent(event: CombatEvent): void {
-  const { type } = event;
-  if (!(type in EVENTS)) return;
+/** The player, made the first time any sound is wanted. Null where there is no audio. */
+function sharedPlayer(): Player | null {
   if (!tried) {
     tried = true;
     player = createPlayer();
   }
-  const active = player;
+  return player;
+}
+
+/** The game's one audio context. The music plays through it too, so the click that unlocks effects unlocks music. */
+export function sharedAudioContext(): AudioContext | null {
+  return sharedPlayer()?.context ?? null;
+}
+
+export function playEvent(event: CombatEvent): void {
+  const { type } = event;
+  if (!(type in EVENTS)) return;
+  const active = sharedPlayer();
   if (!active) return;
   if (active.context.state === "running") {
     start(active, type);

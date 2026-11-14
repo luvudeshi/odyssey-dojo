@@ -22,7 +22,7 @@ Every move also has a key, so the game runs with no camera and no network. That 
 
 **The judged demo is the Polyphemus fight.** It gets the polish. Everything else exists to make the quest real around it.
 
-## Status: where we are (updated Saturday 5:35 PM by the lead's agent)
+## Status: where we are (updated Saturday 5:19 PM by the lead's agent)
 
 The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. `main` is green at 829 tests.
 
@@ -46,16 +46,17 @@ The lead's agent keeps this section true after every batch of merges. The [board
 ### In progress
 | What | Who | Where |
 |---|---|---|
-| Hero round two: three hoplite candidates on human-proportion figures, `?hero=hoplite|spartan|warrior`; toyeshhm picks from real-fight screenshots | lead's agents, then toyeshhm | #53, #18, PR #108, #111, #114 |
+| The spartan as the default hero (toyeshhm's pick): shield slung on his back, hands empty for punches and blocks, spear in hand only for spear moves; the other candidates removed | lead's agent | #53, #18, branch `53-spartan-default` |
+| Black-figure pottery look (toyeshhm's pick) on the HUD, prompt card and every screen | lead's agent | #52, branch `52-pottery-look` |
 | The five later stops, each a monster and its world: Circe's hall, the Sirens' meadow, Scylla's strait, Charybdis's whirlpool, the hall of Ithaca. A stop opens on the map when its model merges | lead's agents | #27, #53, branches `stop-*` |
 | Ghost outline of the move to make (must-have 7) | lead's agent | #24, branch `24-move-ghost` |
-| Game menu, settings and pause (structure now, look after toyeshhm's pick) | lead's agent | #52, branch `52-menu-settings-pause` |
+| Game menu, settings and pause, then themed as black-figure pottery | lead's agent | #52, branch `52-menu-settings-pause` |
 | Webcam path run end to end on a fake camera fed from a video, ahead of the real-body test | lead's agent | #7, branch `7-webcam-smoke` |
 | Detector fixes, noisy-camera defends, then fight length check and a pose recorder for tonight's tuning | tagrawal029's agent | #81, #82, #115, #116 |
 | Music and ambience, then sound for the later stops and a licence report; AI-made fights, adaptive difficulty, online rooms relay (drafts) | luvudeshi's agent | #85, #117, #118, PR #76, #78, #92, #103 |
 
 ### Left
-- **Must:** toyeshhm picks the hero and the menu look. Every model re-shot in its world and logged as kept, resized or rejected (`docs/models.md`, `docs/models/`). Webcam fight on a real body and detector tuning on the three of us (#7, #17; toyeshhm does the real-body test; the 8 PM checkpoint is one full webcam fight on the demo laptop). Freeze tag at 1 AM. Devpost, demo video, backup recording (#21).
+- **Must:** Every model re-shot in its world and logged as kept, resized or rejected (`docs/models.md`, `docs/models/`). Webcam fight on a real body and detector tuning on the three of us (#7, #17; toyeshhm does the real-body test; the 8 PM checkpoint is one full webcam fight on the demo laptop). Freeze tag at 1 AM. Devpost, demo video, backup recording (#21).
 - **Should:** player dressed per style (#18), two players in the fight (#28), online rooms (#29).
 
 ### Art direction (toyeshhm, Saturday 4:15 PM)
@@ -63,6 +64,8 @@ The lead's agent keeps this section true after every batch of merges. The [board
 2. The Polyphemus fight is in the mouth of his cave at dusk: sunset sky and sea behind the giant, light shafts, a fire pit, boulders.
 3. The player is an animated rigged hero that plays real clips when a move is detected, plus a faint ghost outline of the live webcam pose.
 4. toyeshhm chooses the look and the models. Agents decide engineering only, and build model choices as candidates behind a URL flag.
+5. Hero (Saturday 5:20 PM): the spartan. His gear is not always out: the shield rides on his back and his hands are free to punch and block; the spear is drawn only for a spear move.
+6. Interface (Saturday 5:20 PM): black-figure pottery. Terracotta clay, black ink, Greek key bands, on the menu, the HUD, the prompt card and every screen. The mockup he chose from is `docs/screenshots/ui-look-pottery-mockup.png`.
 
 ## Features
 

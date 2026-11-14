@@ -33,6 +33,14 @@ export interface SpeechRequest {
 export interface SoundRequest {
   readonly prompt: string;
   readonly seconds: number;
+  /** Ask for a sound whose end runs into its start. Off unless set. */
+  readonly loop?: boolean;
+  readonly signal: AbortSignal;
+}
+
+export interface MusicRequest {
+  readonly prompt: string;
+  readonly seconds: number;
   readonly signal: AbortSignal;
 }
 
