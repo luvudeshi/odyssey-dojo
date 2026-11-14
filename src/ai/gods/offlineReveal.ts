@@ -1,6 +1,6 @@
 // The god scan with no network: names the god hiding in the player from their stance, then their colours, then chance.
-import type { PoseFrame } from "../core/types";
-import { log } from "../core/log";
+import type { PoseFrame } from "../../core/types";
+import { log } from "../../core/log";
 import { GODS, GOD_IDS } from "./gods";
 import type { GodId } from "./gods";
 import { STANCES, readStance } from "./stance";
