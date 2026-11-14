@@ -4,12 +4,13 @@ import { EMPTY_STATS, observe, skill, tune } from "../../src/ai/director";
 import type { DirectorStats } from "../../src/ai/director";
 import { startFight, step } from "../../src/combat/engine";
 import type { CombatEvent, EnemyAttack, EnemySpec, FightingStyle, Strike } from "../../src/core/types";
+import { ENEMIES } from "../../src/enemies/registry";
 
 const boss: EnemySpec = {
   id: "boss", name: "Boss", title: "", order: 0, hp: 1000, strikeWindowMs: 2000,
   attacks: [
-    { id: "swing", name: "Swing", telegraphMs: 1500, damage: 5, counter: "block" },
-    { id: "lunge", name: "Lunge", telegraphMs: 1400, damage: 5, counter: "duck", weight: 2 },
+    { id: "swing", name: "Swing", telegraphMs: 1900, damage: 5, counter: "block" },
+    { id: "lunge", name: "Lunge", telegraphMs: 1800, damage: 5, counter: "duck", weight: 2 },
     { id: "sweep", name: "Sweep", telegraphMs: 2000, damage: 6, counter: "dodge_left" },
   ],
   phases: [
@@ -62,7 +63,12 @@ test("observe counts each kind of event and ignores the rest", () => {
   const stats = observe(EMPTY_STATS, [
     defended("block"), landed, hit("block"), defended("duck"), whiffed, hit("duck"), hit("duck"), landed,
   ]);
-  expect(stats.defences).toEqual({ block: { defended: 1, hit: 1 }, duck: { defended: 1, hit: 2 } });
+  expect(Object.keys(stats.defences)).toEqual(["block", "duck"]);
+  expect(stats.defences.block).toMatchObject({ defended: 1, hit: 1 });
+  expect(stats.defences.duck).toMatchObject({ defended: 1, hit: 2 });
+  // Form leans on the latest attempts: a stop then a hit, and a stop then two hits.
+  expect(stats.defences.block?.form).toBeCloseTo(0.7);
+  expect(stats.defences.duck?.form).toBeCloseTo(0.49);
   expect(stats.landed).toBe(2);
   expect(stats.whiffed).toBe(1);
   expect(stats.recent).toEqual(["defended", "landed", "hit", "defended", "whiffed", "hit", "hit", "landed"]);
@@ -124,7 +130,7 @@ test("tune leaves a fresh fight alone", () => {
   expect(warningOf(fourth, "sweep")).toBeGreaterThan(warningOf(tune(boss, cruising), "sweep"));
 });
 
-test("a strong player gets shorter warnings, never below 800 ms in the fastest phase", () => {
+test("a strong player gets shorter warnings, never below a second in the fastest phase", () => {
   const tuned = tune(boss, cruising);
   tuned.attacks.forEach((attack, index) => {
     const base = boss.attacks[index]?.telegraphMs ?? 0;
@@ -136,10 +142,87 @@ test("a strong player gets shorter warnings, never below 800 ms in the fastest p
   for (const phase of tuned.phases ?? []) {
     for (const id of phase.attackIds) {
       const attack = tuned.attacks.find((candidate) => candidate.id === id);
-      expect(Math.round((attack?.telegraphMs ?? 0) * phase.telegraphScale), `${phase.name}/${id}`).toBeGreaterThanOrEqual(800);
+      expect(Math.round((attack?.telegraphMs ?? 0) * phase.telegraphScale), `${phase.name}/${id}`).toBeGreaterThanOrEqual(1000);
     }
   }
+  expect(warningOf(tuned, "swing")).toBe(1667);
+  expect(warningOf(tuned, "lunge")).toBe(1667);
   expect(tuned.strikeWindowMs).toBe(boss.strikeWindowMs);
+});
+
+test("a phase that names no real attack counts as using them all, as it does in the engine", () => {
+  const loose: EnemySpec = {
+    ...boss,
+    attacks: [
+      { id: "a", name: "A", telegraphMs: 2000, damage: 5, counter: "block" },
+      { id: "b", name: "B", telegraphMs: 1700, damage: 5, counter: "duck" },
+    ],
+    phases: [
+      { name: "One", belowHp: 1, attackIds: ["a"], telegraphScale: 1 },
+      { name: "Two", belowHp: 0.5, attackIds: ["typo"], telegraphScale: 0.7 },
+    ],
+  };
+  const tuned = tune(loose, cruising);
+  expect(warningOf(tuned, "a")).toBe(1600);
+  // b is named by no phase, but the second phase falls back to every attack at 0.7.
+  expect(warningOf(tuned, "b")).toBe(1429);
+
+  const served = new Map<string, number>();
+  let seed = 7;
+  for (let round = 0; round < 20; round++) {
+    const begun = step({ ...startFight(tuned, seed), phaseIndex: 1 }, tuned, style, { held: new Set(), struck: [] }, 5000);
+    const phase = begun.state.phase;
+    if (phase.kind === "defend") served.set(phase.attack.id, phase.totalMs);
+    seed = begun.state.seed;
+  }
+  expect([...served.keys()].sort()).toEqual(["a", "b"]);
+  for (const [id, ms] of served) expect(ms, id).toBeGreaterThanOrEqual(1000);
+});
+
+test("defence ids that are Object.prototype names are counted like any other", () => {
+  const names = ["constructor", "__proto__", "toString"] as const;
+  const [first, ...rest] = names.map((counter): EnemyAttack => ({ id: counter, name: counter, telegraphMs: 2000, damage: 5, counter }));
+  const odd: EnemySpec = {
+    ...boss,
+    attacks: [first ?? attackFor("block"), ...rest],
+    phases: [{ name: "Only", belowHp: 1, attackIds: [...names], telegraphScale: 1 }],
+  };
+  const all = (type: "defended" | "playerHit"): CombatEvent[] =>
+    times(3, ...odd.attacks.map((attack): CombatEvent => (type === "defended" ? { type, attack } : { type, attack, damage: 5 })));
+
+  const stopped = observe(EMPTY_STATS, all("defended"));
+  expect(Object.getPrototypeOf(stopped.defences)).toBe(Object.prototype);
+  for (const counter of names) {
+    expect(Object.getOwnPropertyDescriptor(stopped.defences, counter)?.value, counter).toEqual({ defended: 3, hit: 0, form: 1 });
+  }
+  for (const stats of [stopped, observe(EMPTY_STATS, all("playerHit")), observe(stopped, all("playerHit").slice(0, 4))]) {
+    const tuned = tune(odd, stats);
+    expect(tuned).not.toBe(odd);
+    expect(Number.isFinite(tuned.strikeWindowMs)).toBe(true);
+    for (const attack of tuned.attacks) {
+      expect(Number.isFinite(attack.telegraphMs), attack.id).toBe(true);
+      expect(Number.isFinite(attack.weight ?? 1), attack.id).toBe(true);
+      expect(attack.telegraphMs, attack.id).toBeGreaterThanOrEqual(1600);
+    }
+  }
+  expect(warnings(tune(odd, stopped))).toEqual([1600, 1600, 1600]);
+});
+
+test("no registered enemy is tuned under a second in any phase, however well the player does", () => {
+  expect(ENEMIES.length).toBeGreaterThan(0);
+  for (const enemy of ENEMIES) {
+    const tuned = tune(enemy, cruising);
+    const phases = enemy.phases ?? [{ name: "whole fight", attackIds: enemy.attacks.map((attack) => attack.id), telegraphScale: 1 }];
+    for (const phase of phases) {
+      for (const id of phase.attackIds) {
+        const served = Math.round(warningOf(tuned, id) * phase.telegraphScale);
+        const untuned = Math.round(warningOf(enemy, id) * phase.telegraphScale);
+        expect(served, `${enemy.id}/${phase.name}/${id}`).toBeGreaterThanOrEqual(Math.min(1000, untuned));
+        expect(served, `${enemy.id}/${phase.name}/${id}`).toBeLessThanOrEqual(untuned);
+      }
+    }
+    expect(warnings(tuned).some((ms, index) => ms < (warnings(enemy)[index] ?? 0)), enemy.id).toBe(true);
+  }
 });
 
 test("a warning already under the floor is left as it is", () => {
@@ -180,6 +263,17 @@ test("a strong player sees more of the attack whose counter is their weakest", (
   expect(tune(boss, cruising).attacks.map((attack) => attack.weight)).toEqual([undefined, 2, undefined]);
 });
 
+test("a weakness the player has since fixed stops being pressed", () => {
+  const start = observe(EMPTY_STATS, [...times(2, hit("duck")), ...times(3, defended("block")), ...times(3, defended("dodge_left"))]);
+  const learning = tune(boss, observe(start, times(2, defended("duck"))));
+  const learned = tune(boss, observe(start, times(10, defended("duck"))));
+  expect(weightOf(learning, "lunge")).toBeGreaterThan(3);
+  // Ducking is still the lowest lifetime tally (10 of 12), but ten in a row is no longer a weakness.
+  expect(weightOf(learned, "lunge")).toBeGreaterThanOrEqual(2);
+  expect(weightOf(learned, "lunge")).toBeLessThan(2.2);
+  expect(warningOf(learned, "sweep")).toBe(1600);
+});
+
 test("tune never changes ids, counters, damage, health, phases, weak spots or the finisher, and keeps weights positive", () => {
   const before = JSON.stringify(boss);
   for (const stats of [cruising, struggling, weakDuck, observe(cruising, times(2, hit("duck")))]) {
@@ -202,12 +296,15 @@ test("equal inputs give equal outputs", () => {
   const once = tune(boss, observe(EMPTY_STATS, events));
   const again = tune({ ...boss }, observe(EMPTY_STATS, [...events]));
   expect(again).toEqual(once);
+  // No memory between calls: the same stats give an equal enemy whatever was asked in between.
   const stats = observe(EMPTY_STATS, events);
-  expect(tune(boss, stats)).toBe(tune(boss, stats));
+  const before = tune(boss, stats);
+  tune(boss, cruising);
+  expect(tune(boss, stats)).toEqual(before);
 });
 
 /** Ten exchanges against the real engine as a player who defends `rate` of the attacks, with the director in the loop. */
-function fight(rate: number, seed: number): DirectorStats {
+function fight(rate: number, seed: number): { stats: DirectorStats; served: readonly EnemyAttack[] } {
   let chance = seed;
   const lucky = (): boolean => {
     chance = (Math.imul(chance, 1103515245) + 12345) >>> 0;
@@ -217,9 +314,14 @@ function fight(rate: number, seed: number): DirectorStats {
   let stats = EMPTY_STATS;
   let good = false;
   let exchanges = 0;
+  const served: EnemyAttack[] = [];
   for (let frame = 0; frame < 100_000 && exchanges < 10; frame++) {
     const phase = state.phase;
-    if (phase.kind === "defend" && phase.msLeft === phase.totalMs) good = lucky();
+    if (phase.kind === "defend" && phase.msLeft === phase.totalMs) {
+      good = lucky();
+      // What the engine really announced: the attack's id with the warning it was given.
+      served.push({ ...phase.attack, telegraphMs: phase.totalMs });
+    }
     const held = new Set<string>();
     const struck: Strike[] = [];
     if (phase.kind === "defend" && good) held.add(phase.attack.counter);
@@ -235,16 +337,33 @@ function fight(rate: number, seed: number): DirectorStats {
   }
   expect(exchanges).toBe(10);
   expect(state.phase.kind).not.toBe("lost");
-  return stats;
+  expect(served).toHaveLength(10);
+  return { stats, served };
 }
 
 test("with the real engine, a player who defends 90 percent faces shorter warnings than one who defends 30 percent", () => {
-  const total = (enemy: EnemySpec): number => warnings(enemy).reduce((sum, ms) => sum + ms, 0);
-  for (const seed of [3, 41, 977, 20260]) {
-    const strong = tune(boss, fight(0.9, seed));
-    const weak = tune(boss, fight(0.3, seed));
-    expect(total(strong), `seed ${String(seed)}`).toBeLessThan(total(boss));
-    expect(total(weak), `seed ${String(seed)}`).toBeGreaterThan(total(boss));
-    expect(weak.strikeWindowMs, `seed ${String(seed)}`).toBeGreaterThan(strong.strikeWindowMs);
+  const total = (attacks: readonly EnemyAttack[]): number => attacks.reduce((sum, attack) => sum + attack.telegraphMs, 0);
+  const untuned = (attacks: readonly EnemyAttack[]): number => attacks.reduce((sum, attack) => sum + warningOf(boss, attack.id), 0);
+  /** The warnings the engine served in the second half of the fight against the same attacks untuned: under 1 is faster. */
+  const pace = (served: readonly EnemyAttack[]): number => total(served.slice(5)) / untuned(served.slice(5));
+  const seeds = [3, 41, 977, 20260];
+  let weakPace = 0;
+  for (const seed of seeds) {
+    const strong = fight(0.9, seed);
+    const weak = fight(0.3, seed);
+    // Nothing is tuned until four attacks have resolved.
+    expect(total(strong.served.slice(0, 4)), `seed ${String(seed)}`).toBe(untuned(strong.served.slice(0, 4)));
+    expect(total(weak.served.slice(0, 4)), `seed ${String(seed)}`).toBe(untuned(weak.served.slice(0, 4)));
+    expect(pace(strong.served), `seed ${String(seed)}`).toBeLessThan(1);
+    expect(pace(strong.served), `seed ${String(seed)}`).toBeLessThan(pace(weak.served));
+    weakPace += pace(weak.served) / seeds.length;
+
+    const strongNext = tune(boss, strong.stats);
+    const weakNext = tune(boss, weak.stats);
+    expect(total(strongNext.attacks), `seed ${String(seed)}`).toBeLessThan(total(boss.attacks));
+    expect(total(weakNext.attacks), `seed ${String(seed)}`).toBeGreaterThan(total(boss.attacks));
+    expect(weakNext.strikeWindowMs, `seed ${String(seed)}`).toBeGreaterThan(strongNext.strikeWindowMs);
   }
+  // A 30 percent player can still string a few stops together, so their warnings are judged over all the fights.
+  expect(weakPace).toBeGreaterThan(1.02);
 });
