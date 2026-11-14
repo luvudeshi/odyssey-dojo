@@ -343,6 +343,8 @@ interface Browser {
   readonly settings: SettingsModule;
   /** Every URL asked for under /audio/stops. */
   readonly requested: string[];
+  /** Changes what the server answers from now on: the index and the missing clips, as for inBrowser. */
+  readonly serve: (index: unknown, missing?: readonly string[]) => void;
 }
 
 /**
@@ -350,8 +352,14 @@ interface Browser {
  * public/audio/stops/index.json holds (undefined: the request fails; null: the file is not there), and `missing`
  * lists clips whose files are not there.
  */
-async function inBrowser(index: unknown, missing: readonly string[] = []): Promise<Browser> {
+async function inBrowser(firstIndex: unknown, firstMissing: readonly string[] = []): Promise<Browser> {
   const requested: string[] = [];
+  let index = firstIndex;
+  let missing = firstMissing;
+  const serve = (nextIndex: unknown, nextMissing: readonly string[] = []): void => {
+    index = nextIndex;
+    missing = nextMissing;
+  };
   vi.useFakeTimers();
   vi.resetModules();
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
@@ -371,7 +379,7 @@ async function inBrowser(index: unknown, missing: readonly string[] = []): Promi
   const audio = await import("../src/audio/stopAudio");
   const settings = await import("../src/settings/store");
   settings.setSettings({ musicVolume: 1, sfxVolume: 1 });
-  return { audio, settings, requested };
+  return { audio, settings, requested, serve };
 }
 
 /** Lets the index and the clips finish loading. */
@@ -587,6 +595,108 @@ test("one missing file does not silence the rest of the stop", async () => {
   await loaded();
   expect(context().heard).toEqual([]);
   expect(audio.playStopEvent("circe", telegraph("circe", "spell"))).toBe(true);
+});
+
+/** How many times a URL was asked for. */
+function asked(requested: readonly string[], url: string): number {
+  return requested.filter((each) => each === url).length;
+}
+
+test("a clip that failed to load is asked for again when its stop starts again, and the clips that loaded are not", async () => {
+  const { audio, requested, serve } = await inBrowser(tableClips(), ["charybdis/hurt"]);
+  audio.startStopAmbience("charybdis");
+  await loaded();
+  expect(audio.playStopEvent("charybdis", ENEMY_HIT)).toBe(false);
+  expect(audio.playStopEvent("charybdis", telegraph("charybdis", "spout"))).toBe(true);
+
+  // The server is back, but nothing asks again until the stop starts again or ten seconds pass.
+  serve(tableClips());
+  expect(audio.playStopEvent("charybdis", ENEMY_HIT)).toBe(false);
+  await loaded();
+  expect(asked(requested, "/audio/stops/charybdis/hurt.mp3")).toBe(1);
+
+  audio.stopStopAmbience();
+  audio.startStopAmbience("charybdis");
+  await loaded();
+  expect(audio.playStopEvent("charybdis", ENEMY_HIT)).toBe(true);
+  expect(asked(requested, "/audio/stops/charybdis/hurt.mp3")).toBe(2);
+  for (const key of indexed("charybdis").filter((each) => each !== "charybdis/hurt")) {
+    expect(asked(requested, `/audio/stops/${key}.mp3`), key).toBe(1);
+  }
+  expect(asked(requested, "/audio/stops/index.json")).toBe(1);
+
+  // Everything is loaded now, so starting again asks for nothing.
+  audio.stopStopAmbience();
+  audio.startStopAmbience("charybdis");
+  await loaded();
+  expect(requested).toHaveLength(2 + indexed("charybdis").length);
+});
+
+test("during a fight a clip that failed to load is asked for again, at most once every ten seconds", async () => {
+  const { audio, requested, serve } = await inBrowser(tableClips(), ["circe/ambience", "circe/hurt"]);
+  audio.startStopAmbience("circe");
+  await loaded();
+  expect(context().heard).toEqual([]);
+  for (let count = 0; count < 5; count++) expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(false);
+  await vi.advanceTimersByTimeAsync(9_000);
+  for (let count = 0; count < 5; count++) expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(false);
+  await loaded();
+  expect(asked(requested, "/audio/stops/circe/hurt.mp3")).toBe(1);
+
+  // Still missing after ten seconds: asked for once more, however many events come.
+  await vi.advanceTimersByTimeAsync(1_000);
+  for (let count = 0; count < 5; count++) expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(false);
+  await loaded();
+  for (let count = 0; count < 5; count++) expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(false);
+  await loaded();
+  expect(asked(requested, "/audio/stops/circe/hurt.mp3")).toBe(2);
+  expect(asked(requested, "/audio/stops/circe/ambience.mp3")).toBe(2);
+  expect(asked(requested, "/audio/stops/circe/wand.mp3")).toBe(1);
+
+  // The server is back: the next try brings the event sound and the ambience, with no new start.
+  serve(tableClips());
+  await vi.advanceTimersByTimeAsync(10_000);
+  expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(false);
+  await loaded();
+  expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(true);
+  const [ambience] = context().heard;
+  expect(must(ambience).loop).toBe(true);
+  expect(asked(requested, "/audio/stops/circe/hurt.mp3")).toBe(3);
+  // Nothing failed on that try, so nothing more is asked for.
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(true);
+  await loaded();
+  expect(asked(requested, "/audio/stops/circe/hurt.mp3")).toBe(3);
+});
+
+test("an index that could not be fetched is asked for again, by the same stop starting again or by another stop", async () => {
+  for (const failure of [undefined, null]) {
+    const again = await inBrowser(failure);
+    again.audio.startStopAmbience("circe");
+    await loaded();
+    expect(context().heard).toEqual([]);
+    expect(again.requested).toEqual(["/audio/stops/index.json"]);
+    again.serve(tableClips());
+    again.audio.stopStopAmbience();
+    again.audio.startStopAmbience("circe");
+    await loaded();
+    expect(asked(again.requested, "/audio/stops/index.json")).toBe(2);
+    expect(context().heard).toHaveLength(1);
+    expect(again.audio.playStopEvent("circe", ENEMY_HIT)).toBe(true);
+
+    const other = await inBrowser(failure);
+    other.audio.startStopAmbience("circe");
+    await loaded();
+    other.serve(tableClips());
+    other.audio.startStopAmbience("sirens");
+    await loaded();
+    expect(asked(other.requested, "/audio/stops/index.json")).toBe(2);
+    expect(context().heard).toHaveLength(1);
+    // A fetched index is kept: the stop after that does not ask for it again.
+    other.audio.startStopAmbience("scylla");
+    await loaded();
+    expect(asked(other.requested, "/audio/stops/index.json")).toBe(2);
+  }
 });
 
 test("while the browser holds audio back nothing plays and no event is taken; the ambience starts once it is allowed", async () => {

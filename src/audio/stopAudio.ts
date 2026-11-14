@@ -15,8 +15,10 @@ const CLIP_DIR = "/audio/stops";
 const AMBIENCE_GAIN = 0.16;
 const AMBIENCE_LOUDNESS = 0.08;
 /**
- * No ambience is raised so far that its loudest moment passes this before AMBIENCE_GAIN. Only Circe's fire meets it:
- * a quiet bed with a few sharp pops, which would come out as loud as a blow if the bed were brought to full loudness.
+ * No ambience is raised so far that its loudest sample passes this before AMBIENCE_GAIN, which is 0.32 at the output.
+ * Measured on the committed clips: all five reach their loudness (RMS 0.013 at the output) under it. Circe's fire comes
+ * closest: a quiet bed where two pops in its 30 seconds pass 0.1 at the output (they peak at 0.21 and 0.32, where a hit
+ * sound peaks at 0.24 to 0.45). The other four peak at 0.14 or less. Nobody has listened to how the pops sit in the mix.
  */
 const AMBIENCE_PEAK = 2;
 /** A stop's event sounds sit where the usual effects do (sfx.ts plays through 0.5). */
@@ -30,6 +32,8 @@ const FADE_SECONDS = 1;
 const STOP_MARGIN_SECONDS = 0.05;
 /** How fast a volume change takes hold (a time constant). */
 const GLIDE_SECONDS = 0.05;
+/** During a fight, clips that failed to load are asked for again no more often than this. */
+const RETRY_MS = 10_000;
 /** Events that repeat often enough to need a slightly different pitch each time, as in sfx.ts. */
 const VARIED: ReadonlySet<string> = new Set(["enemyHit", "playerHit"]);
 const RATE_SPREAD = 0.04;
@@ -70,14 +74,23 @@ interface Playing {
   readonly since: number;
 }
 
+/** The loading of one stop's clips. */
+interface Load {
+  readonly enemyId: string;
+  /** True while requests are out. */
+  busy: boolean;
+  /** When the index or one of the clips last failed to load, by the clock. Null when the last try got everything. */
+  failedAt: number | null;
+}
+
 /** The loaded clips of one stop, by index name. */
 const clips = new Map<string, Clip>();
 /** Undefined until the first use; null where there is no audio. */
 let rig: Rig | null | undefined;
-/** What index.json lists, asked for once. */
-let index: Promise<ReadonlySet<string>> | null = null;
+/** What index.json lists. Asked for once, unless the request fails: then the next load asks again. */
+let index: Promise<ReadonlySet<string> | null> | null = null;
 /** The stop whose clips are loaded or on their way. */
-let loadedFor: string | null = null;
+let current: Load | null = null;
 /** The stop whose ambience should be heard, and the one that is. */
 let wanted: string | null = null;
 let playing: Playing | null = null;
@@ -189,45 +202,62 @@ function sync(active: Rig): void {
   }
 }
 
-function listed(): Promise<ReadonlySet<string>> {
-  index ??= (async (): Promise<ReadonlySet<string>> => {
+/** The clips index.json lists, or null when it could not be fetched or read. A failure is not kept: the next call asks again. */
+function listed(): Promise<ReadonlySet<string> | null> {
+  index ??= (async (): Promise<ReadonlySet<string> | null> => {
     try {
       const response = await fetch(`${CLIP_DIR}/index.json`);
-      if (!response.ok) return new Set();
+      if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
       return new Set(listedStopClips(await response.json()));
     } catch (error) {
-      log("warn", "stops.indexFailed", error);
-      return new Set();
+      log("warn", "stops.indexFailed", error instanceof Error ? error.message : String(error));
+      index = null;
+      return null;
     }
   })();
   return index;
 }
 
-async function loadClip(active: Rig, enemyId: string, clip: string): Promise<void> {
-  const key = stopClipKey(enemyId, clip);
+/** Fetches and decodes one clip. False when that failed. */
+async function loadClip(active: Rig, load: Load, clip: string): Promise<boolean> {
+  const key = stopClipKey(load.enemyId, clip);
   try {
     const response = await fetch(`${CLIP_DIR}/${key}.mp3`);
     if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
     const buffer = await active.context.decodeAudioData(await response.arrayBuffer());
     // The game moved on to another stop while this one was loading.
-    if (loadedFor !== enemyId) return;
-    clips.set(key, prepare(buffer, clip === stopAmbience(enemyId)));
+    if (current !== load) return true;
+    clips.set(key, prepare(buffer, clip === stopAmbience(load.enemyId)));
     sync(active);
+    return true;
   } catch (error) {
     log("warn", "stops.clipFailed", { key, reason: error instanceof Error ? error.message : String(error) });
+    return false;
   }
 }
 
-async function loadStop(active: Rig, enemyId: string): Promise<void> {
+/** Loads the listed clips of a stop that are not loaded yet, and notes on the load whether anything failed. */
+async function loadStop(active: Rig, load: Load): Promise<void> {
+  load.busy = true;
+  load.failedAt = null;
   try {
     const names = await listed();
-    await Promise.all(
-      stopClips(enemyId)
-        .filter((clip) => names.has(stopClipKey(enemyId, clip)))
-        .map((clip) => loadClip(active, enemyId, clip)),
-    );
+    if (names === null) {
+      load.failedAt = Date.now();
+      return;
+    }
+    if (current !== load) return;
+    const wanting = stopClips(load.enemyId).filter((clip) => {
+      const key = stopClipKey(load.enemyId, clip);
+      return names.has(key) && !clips.has(key);
+    });
+    const results = await Promise.all(wanting.map((clip) => loadClip(active, load, clip)));
+    if (results.includes(false)) load.failedAt = Date.now();
   } catch (error) {
+    load.failedAt = Date.now();
     log("warn", "stops.loadFailed", error);
+  } finally {
+    load.busy = false;
   }
 }
 
@@ -257,14 +287,20 @@ function createRig(): Rig | null {
   }
 }
 
-/** Sets the audio up on first use and starts loading this stop's clips. The clips of the stop before are let go. */
-function ready(enemyId: string): Rig | null {
+/**
+ * Sets the audio up on first use and starts loading this stop's clips. The clips of the stop before are let go.
+ * Clips that failed to load are asked for again: at once when `retryNow` (the stop is starting), otherwise once
+ * RETRY_MS has passed since the failure.
+ */
+function ready(enemyId: string, retryNow: boolean): Rig | null {
   if (rig === undefined) rig = createRig();
   if (!rig) return null;
-  if (loadedFor !== enemyId) {
-    loadedFor = enemyId;
+  if (current?.enemyId !== enemyId) {
+    current = { enemyId, busy: false, failedAt: null };
     clips.clear();
-    void loadStop(rig, enemyId);
+    void loadStop(rig, current);
+  } else if (!current.busy && current.failedAt !== null && (retryNow || Date.now() - current.failedAt >= RETRY_MS)) {
+    void loadStop(rig, current);
   }
   applyVolumes(rig);
   return rig;
@@ -272,14 +308,15 @@ function ready(enemyId: string): Rig | null {
 
 /**
  * Fades in the ambience of a stop and loops it until stopStopAmbience, or until another stop's is asked for. A stop
- * with no entry in the table gets silence. Asking for the stop already wanted does nothing.
+ * with no entry in the table gets silence. Asking for the stop already wanted does nothing. Starting a stop again
+ * after a stop asks again for any of its clips that failed to load.
  */
 export function startStopAmbience(enemyId: string): void {
   try {
     const next = stopAmbience(enemyId) === null ? null : enemyId;
     if (next === wanted) return;
     wanted = next;
-    const active = next === null ? rig : ready(next);
+    const active = next === null ? rig : ready(next, true);
     if (active) sync(active);
   } catch (error) {
     log("warn", "stops.startFailed", error);
@@ -299,12 +336,13 @@ export function stopStopAmbience(): void {
 /**
  * Plays a stop's own sound for a combat event. Returns true when it did. Returns false when the table has no sound for
  * it, or the clip is missing or not loaded yet, or audio is not running: the caller then plays the usual sound.
+ * A clip that failed to load is asked for again during the fight, no more than once every ten seconds.
  */
 export function playStopEvent(enemyId: string, event: CombatEvent): boolean {
   try {
     const name = stopClipFor(enemyId, event);
     if (name === null) return false;
-    const active = ready(enemyId);
+    const active = ready(enemyId, false);
     if (active?.context.state !== "running") return false;
     const clip = clips.get(stopClipKey(enemyId, name));
     if (!clip) return false;
