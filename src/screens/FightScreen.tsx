@@ -2,9 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
+import { playVoice } from "../audio/voice";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { Hud } from "../hud/Hud";
+import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
@@ -13,9 +15,8 @@ import { keyboardTakesOver } from "../pose/escape";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
 import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
+import { noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
-
-const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -30,7 +31,6 @@ export function FightScreen(props: {
   const { enemy, style, tracker, seed, renderEnd, baseline = null } = props;
   const [lost, setLost] = useState(false);
   const [state, setState] = useState(() => startFight(enemy, seed));
-  const [confidences, setConfidences] = useState<readonly (readonly [string, number])[]>([]);
   const poseRef = useRef<PoseFrame | null>(null);
   const preview = useRef<HTMLDivElement>(null);
 
@@ -60,12 +60,13 @@ export function FightScreen(props: {
       }
       setLost(false);
       const input = mergeInputs(keys, readPose(history));
+      noteInput(input, now / 1000);
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
-      result.events.forEach((event) => { playEvent(event); noteHit(event); });
+      result.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
+      playVoice(result.events, current.phase);
       setState(current);
-      if (DEBUG) setConfidences([...MOVES.values()].map((move) => [move.id, move.detect(history)]));
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
@@ -88,11 +89,6 @@ export function FightScreen(props: {
       <Scene enemy={enemy} state={state} poseRef={poseRef} />
       <Hud enemy={enemy} state={state} />
       <div className="preview" ref={preview} />
-      {DEBUG && (
-        <pre className="debug">
-          {confidences.map(([id, value]) => `${id.padEnd(16)} ${value.toFixed(2)}`).join("\n")}
-        </pre>
-      )}
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {over && (
         <div className="overlay">

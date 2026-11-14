@@ -36,6 +36,17 @@ Three people work in this repo, each with a coding agent. This is how the agents
 - **Keep PRs small:** under about 400 changed lines, opened within two hours of your claim. Open it as a draft early so others can see which files you are in.
 - **Say what you touched:** the PR body lists every file outside the ones your issue names, with one line on why.
 
+## Every 3D model is looked at in the fight
+
+This applies to the hero, every monster, rocks, props and terrain pieces, open source ones included. A model is not done until:
+
+1. It has been seen in the running fight, in the real battle view, in screenshots committed under `docs/screenshots/`. A passing check or a viewer page is not enough.
+2. Its scale, origin and facing are fixed: the hero is about 1.8 m, monsters are in proportion to him, everything stands on the ground (not floating, not sunk) and the fighters face each other.
+3. It fits the stylized low-poly look and the scene it is in, and its animations play correctly where it has them.
+4. It is in the model log in `docs/models.md` (source, licence, size, scale used, clips, and kept / resized / rejected with the reason) and in `CREDITS.md`.
+
+A model that looks bad next to the rest is dropped or flagged, not shipped. Only CC0 files, or CC BY with the author credited.
+
 ## Never idle
 
 An agent always has something it can start right now.
