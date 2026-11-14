@@ -14,3 +14,8 @@ export const CANDIDATES: Readonly<Record<string, Loader>> = {
 export function candidateLoader(id: string | null): Loader | undefined {
   return id !== null && Object.hasOwn(CANDIDATES, id) ? CANDIDATES[id] : undefined;
 }
+
+/** What ?model= means for Polyphemus. The giant is the default; an unknown value gets it too. */
+export function polyphemusChoice(id: string | null): "giant" | "classic" | "dev" {
+  return id === "classic" || id === "dev" ? id : "giant";
+}
