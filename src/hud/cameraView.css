@@ -1,0 +1,19 @@
+/* The camera panel: a small painted vase-frame in the bottom-left corner. Colours fall back until the pottery tokens land. */
+.camera-view {
+  position: absolute; left: 1rem; bottom: 1rem; margin: 0; width: clamp(9rem, 20vw, 20rem);
+  background: var(--ink, #170d08); border: 2px solid var(--clay, #c9602b);
+  box-shadow: 0 0 0 2px var(--ink, #170d08), 0 0 0 3px var(--clay-light, #e9a15f), 0 6px 16px #000a;
+  pointer-events: none;
+}
+.camera-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--ink, #170d08); }
+.camera-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+.camera-view.mirror .camera-frame video { transform: scaleX(-1); }
+.camera-frame canvas { z-index: 1; position: absolute; inset: 0; width: 100%; height: 100%; }
+.camera-view figcaption {
+  display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.2rem 0.5rem; min-height: 1.5em;
+  font-family: var(--font-display, Optima, "Gill Sans", sans-serif); font-size: clamp(0.5rem, 0.72vw, 0.72rem);
+  letter-spacing: 0.04em; white-space: nowrap; text-transform: uppercase; color: var(--white, #f1e6cf);
+  border-top: 1px solid var(--clay, #c9602b);
+}
+.camera-state[data-on="false"] { color: var(--clay-light, #e9a15f); opacity: 0.8; }
+.camera-move { color: var(--clay-light, #e9a15f); font-weight: 700; white-space: nowrap; }
