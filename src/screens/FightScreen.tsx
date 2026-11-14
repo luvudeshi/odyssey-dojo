@@ -5,6 +5,7 @@ import { playEvent } from "../audio/sfx";
 import { startFight, step } from "../combat/engine";
 import type { EnemySpec, FightingStyle, PoseFrame } from "../core/types";
 import { Hud } from "../hud/Hud";
+import { noteHit } from "../hud/RatingFlash";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
@@ -46,7 +47,7 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, Math.min(now - last, 100));
       last = now;
       current = result.state;
-      result.events.forEach(playEvent);
+      result.events.forEach((event) => { playEvent(event); noteHit(event); });
       setState(current);
       if (DEBUG) setConfidences([...MOVES.values()].map((move) => [move.id, move.detect(history)]));
       handle = requestAnimationFrame(tick);

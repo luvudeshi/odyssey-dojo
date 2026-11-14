@@ -1,4 +1,5 @@
 // Kung fu's rising palm: the heel of the left hand driven up under the chin.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { risingHand } from "../handSignals";
 
@@ -13,5 +14,8 @@ export const move: MoveDef = {
   teaches: "A palm heel under the chin tips the head back, and where the head goes the body follows.",
   detect(history) {
     return risingHand(history, "left", 150) ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left"], straight: false, rise: 0.5 });
   },
 };

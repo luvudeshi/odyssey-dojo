@@ -1,4 +1,5 @@
 // Kung fu's double palm push: both palms driven forward together from the chest.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { armThrust, latest } from "../../pose/signals";
 import { wristGap } from "../handSignals";
@@ -16,5 +17,8 @@ export const move: MoveDef = {
     const frame = latest(history);
     if (!frame || !armThrust(history, "left") || !armThrust(history, "right")) return 0;
     return wristGap(frame) < 0.8 ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left", "right"] });
   },
 };
