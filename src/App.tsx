@@ -49,6 +49,7 @@ export function App() {
           started.stop();
           return;
         }
+        setNotice("");
         setTracker(started);
         dispatch({ type: "ready" });
       },
