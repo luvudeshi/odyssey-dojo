@@ -62,6 +62,43 @@ describe("strikeQuality", () => {
   });
 });
 
+/** The same lazy 400 ms half-extension, sampled at `fps`, with deterministic wrist jitter. */
+function lazy(fps: number): PoseHistory {
+  const frames: PoseFrame[] = [];
+  for (let n = 0, t = 0; t <= 400; n++, t = Math.round((n * 1000) / fps)) {
+    const jitter = n % 2 === 0 ? 0.008 : -0.008;
+    frames.push(
+      frameAt(
+        t,
+        { [J.leftElbow]: [0.37, 0.35], [J.leftWrist]: [0.37 - 0.1 * (t / 400) + jitter, 0.35 + jitter] },
+        { [J.leftElbow]: [-0.3, -0.5, 0], [J.leftWrist]: [-0.3, -0.7, 0] },
+      ),
+    );
+  }
+  return history(frames);
+}
+
+describe("strikeQuality robustness", () => {
+  it("rates a lazy motion the same, and low, at any frame rate", () => {
+    const scores = [15, 30, 60, 120].map((fps) => strikeQuality(lazy(fps), { sides: ["left"] }));
+    expect(Math.max(...scores)).toBeLessThan(0.55);
+    expect(Math.max(...scores) - Math.min(...scores)).toBeLessThan(0.1);
+  });
+
+  it("ignores a one-frame wrist glitch", () => {
+    const glitch = armFrame(150, 0);
+    const bad = { ...glitch, image: glitch.image.map((p, i) => (i === J.leftWrist ? { ...p, x: 0.9, visibility: 0.1 } : p)) };
+    const calm = [armFrame(0, 0), armFrame(75, 0), bad, armFrame(225, 0), armFrame(300, 0)];
+    expect(strikeQuality(history(calm), { sides: ["left"] })).toBeLessThan(0.55);
+  });
+
+  it("does not saturate speed for a 300 ms full punch", () => {
+    const steady = history([0, 1, 2, 3, 4, 5].map((n) => armFrame(n * 60, n / 5)));
+    expect(strikeQuality(steady, { sides: ["left"] })).toBeLessThan(0.92);
+    expect(strikeQuality(steady, { sides: ["left"] })).toBeGreaterThan(0.55);
+  });
+});
+
 describe("rating", () => {
   it("names the tiers", () => {
     expect([0.3, 0.55, 0.8, 0.95].map(rating)).toEqual([null, "GOOD", "GREAT", "PERFECT"]);

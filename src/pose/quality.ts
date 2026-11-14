@@ -5,8 +5,11 @@ import { wristRise } from "../moves/handSignals";
 import type { Side } from "../moves/handSignals";
 
 const WINDOW_MS = 400;
-/** Wrist speed in shoulder widths per second that counts as a full-speed strike. A fast punch is about 8. */
-const FULL_SPEED = 5;
+/** Wrist speed in shoulder widths per second that counts as a full-speed strike. A full arm (about 2 widths) in 200 ms is 10. */
+const FULL_SPEED = 11;
+const MIN_VISIBILITY = 0.5;
+const MIN_SPAN_MS = 100;
+const MAX_SPAN_MS = 250;
 const BENT = 90;
 const STRAIGHT = 170;
 
@@ -21,17 +24,22 @@ export interface StrikeShape {
   readonly straight?: boolean;
 }
 
-/** Fastest wrist movement over the window, in shoulder widths per second. 0 with fewer than two frames. */
+/** Fastest wrist movement over the window, in shoulder widths per second. 0 with fewer than two usable frames. */
 function peakSpeed(history: PoseHistory, side: Side): number {
   const joints = side === "left" ? JOINT.leftWrist : JOINT.rightWrist;
-  const frames = recent(history, WINDOW_MS);
+  // Skip frames where the wrist or a shoulder was guessed, so one bad detection cannot spike the speed.
+  const frames = recent(history, WINDOW_MS).filter((frame) =>
+    [joints, JOINT.leftShoulder, JOINT.rightShoulder].every((index) => joint(frame.image, index).visibility >= MIN_VISIBILITY),
+  );
   let peak = 0;
-  for (let i = 1; i < frames.length; i++) {
-    const [a, b] = [frames[i - 1], frames[i]];
-    const dt = a && b ? (b.t - a.t) / 1000 : 0;
-    const width = b ? shoulderWidth(b) : 0;
-    if (!a || !b || dt <= 0 || width === 0) continue;
-    peak = Math.max(peak, distance2d(joint(a.image, joints), joint(b.image, joints)) / width / dt);
+  // Net displacement across MIN_SPAN_MS..MAX_SPAN_MS, never frame to frame: jitter / dt would grow with frame rate.
+  for (const [i, b] of frames.entries()) {
+    for (const a of frames.slice(0, i)) {
+      const dt = (b.t - a.t) / 1000;
+      const width = shoulderWidth(b);
+      if (dt * 1000 < MIN_SPAN_MS || dt * 1000 > MAX_SPAN_MS || width === 0) continue;
+      peak = Math.max(peak, distance2d(joint(a.image, joints), joint(b.image, joints)) / width / dt);
+    }
   }
   return peak;
 }
