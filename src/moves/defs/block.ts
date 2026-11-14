@@ -1,5 +1,6 @@
 import type { MoveDef, PoseFrame } from "../../core/types";
-import { JOINT, armThrust, clamp01, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { JOINT, clamp01, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { armThrust } from "../handSignals";
 
 /** A webcam's landmarks shake by about 1% of the frame; the guard is read from this many milliseconds of frames. */
 const STEADY_MS = 200;

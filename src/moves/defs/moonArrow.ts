@@ -1,5 +1,6 @@
 import type { MoveDef, PoseFrame, PoseHistory } from "../../core/types";
-import { JOINT, armOut, distance2d, elbowAngle, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { JOINT, distance2d, elbowAngle, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { armOut } from "../handSignals";
 
 type Side = "left" | "right";
 
