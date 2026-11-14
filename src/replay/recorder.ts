@@ -1,6 +1,8 @@
 // Records a canvas, and the game's audio when given, into a short replay video with MediaRecorder.
 // Nothing here throws: a browser that cannot record gets null, and the fight carries on.
 import { log } from "../core/log";
+import { attachAudio } from "./audioFeed";
+import type { AttachedAudio } from "./audioFeed";
 
 const MIME_TYPES = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"] as const;
 const DEFAULT_FPS = 30;
@@ -10,12 +12,18 @@ const DEFAULT_BITS_PER_SECOND = 2_500_000;
 const CHUNK_MS = 1000;
 /** How long stop() waits for the recorder's last chunk before giving back what it has. */
 const STOP_GRACE_MS = 2000;
-/** With audio attached, how long to wait for the first chunk before carrying on without the audio. */
+/** With audio attached, how long to wait for the first chunk before carrying on without the audio. A last resort. */
 const AUDIO_WAIT_MS = 2500;
 
 export interface RecordingOptions {
   readonly fps?: number;
-  /** Its audio tracks are copied into the video; the stream itself is left running. */
+  /**
+   * The game's sound, typically a MediaStreamAudioDestinationNode's stream. It is recorded through a private
+   * AudioContext that keeps the sound track fed while the game is quiet, so it may fall silent for as long as it
+   * likes. The stream itself is left running. Where that context cannot run (no Web Audio, or no click or key yet)
+   * the tracks are copied as they are, and a stream that delivers nothing in the first seconds is then dropped
+   * from the replay ("replay.audioSilent" in the log) so that the picture is still kept.
+   */
   readonly audio?: MediaStream | null;
   readonly maxSeconds?: number;
   readonly videoBitsPerSecond?: number;
@@ -50,22 +58,6 @@ function stopTracks(tracks: readonly MediaStreamTrack[]): void {
       log("warn", "replay.trackStopFailed", error);
     }
   }
-}
-
-/** Copies the audio tracks into `stream`, so stopping ours later leaves the game's own sound alone. Returns the copies. */
-function addAudio(stream: MediaStream, audio: MediaStream, owned: MediaStreamTrack[]): MediaStreamTrack[] {
-  const copies: MediaStreamTrack[] = [];
-  try {
-    for (const track of audio.getAudioTracks()) {
-      const copy = track.clone();
-      owned.push(copy);
-      copies.push(copy);
-      stream.addTrack(copy);
-    }
-  } catch (error) {
-    log("warn", "replay.audioSkipped", error);
-  }
-  return copies;
 }
 
 /**
@@ -130,8 +122,8 @@ function run(create: () => MediaRecorder, dropAudio: (() => void) | null, maxSec
     }, maxSeconds * 1000),
   );
   if (dropAudio) {
-    // Chrome writes nothing at all while an audio track delivers no sound (a suspended AudioContext, or a
-    // destination node with nothing connected). Better a silent replay missing its first seconds than none.
+    // Chrome writes nothing at all while an audio track delivers no data. The audio feed prevents that; this is for
+    // when there is no feed or its context is suspended. Better a silent replay missing its first seconds than none.
     timers.push(
       setTimeout(() => {
         if (chunks.length > 0 || stopping || ended) return;
@@ -155,11 +147,17 @@ function run(create: () => MediaRecorder, dropAudio: (() => void) | null, maxSec
 /** Starts recording `canvas`. Null when this browser cannot record a canvas. */
 export function startRecording(canvas: HTMLCanvasElement, options: RecordingOptions = {}): Recording | null {
   const owned: MediaStreamTrack[] = [];
+  let sound: AttachedAudio | null = null;
+  const release = (): void => {
+    stopTracks(owned);
+    sound?.close();
+  };
   try {
     if (typeof MediaRecorder === "undefined" || !("captureStream" in canvas)) return null;
     const stream = canvas.captureStream(positive(options.fps, DEFAULT_FPS));
     owned.push(...stream.getTracks());
-    const sound = options.audio ? addAudio(stream, options.audio, owned) : [];
+    sound = options.audio ? attachAudio(stream, options.audio, owned) : null;
+    const audioTracks = sound?.tracks ?? [];
     const mimeType = pickMimeType((type) => MediaRecorder.isTypeSupported(type));
     // With no type we know, the browser is left to pick its own default.
     const settings: MediaRecorderOptions = {
@@ -167,19 +165,18 @@ export function startRecording(canvas: HTMLCanvasElement, options: RecordingOpti
       ...(mimeType === null ? {} : { mimeType }),
     };
     const dropAudio = (): void => {
-      for (const track of sound) stream.removeTrack(track);
-      stopTracks(sound);
+      for (const track of audioTracks) stream.removeTrack(track);
+      stopTracks(audioTracks);
+      sound?.close();
     };
     return run(
       () => new MediaRecorder(stream, settings),
-      sound.length > 0 ? dropAudio : null,
+      audioTracks.length > 0 ? dropAudio : null,
       positive(options.maxSeconds, DEFAULT_MAX_SECONDS),
-      () => {
-        stopTracks(owned);
-      },
+      release,
     );
   } catch (error) {
-    stopTracks(owned);
+    release();
     log("warn", "replay.recorderUnavailable", error);
     return null;
   }
