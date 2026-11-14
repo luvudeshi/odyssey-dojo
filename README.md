@@ -36,6 +36,18 @@ Open http://localhost:5173. Choose "Fight with your body" and allow the camera, 
 | Jab, Cross, Left hook | J, K, L |
 | Spear thrust, Overhead strike | U, I |
 
+## AI server (optional)
+
+The game runs without it. With it, a phrase the player types becomes a generated fight, and (soon) the webcam picks which god they are.
+
+Copy `.env.example` to `.env`, add your `GEMINI_API_KEY` and `ELEVENLABS_API_KEY`, then run both the game and the server:
+
+```bash
+npm run dev:all
+```
+
+The keys stay on the server and never reach the browser. Every AI call has a timeout and a bundled fallback, so a slow or missing network only means a handcrafted level instead of a generated one. `GET /api/health` shows which services have a key.
+
 ## Before you open a PR
 
 ```bash
