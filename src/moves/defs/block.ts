@@ -9,6 +9,7 @@ export const move: MoveDef = {
   hint: "Bring both fists up to your face",
   key: " ",
   diagram: { leftElbow: [40, 40], leftWrist: [44, 22], rightElbow: [60, 40], rightWrist: [56, 22] },
+  teaches: "Hands high protects your head while you look for a way out",
   detect(history) {
     const frame = latest(history);
     if (!frame) return 0;
