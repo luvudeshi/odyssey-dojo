@@ -97,5 +97,5 @@ export const setSettings = shared.set;
 export const subscribeSettings = shared.subscribe;
 
 export function useSettings(): Settings {
-  return useSyncExternalStore(shared.subscribe, shared.get);
+  return useSyncExternalStore(shared.subscribe, shared.get, shared.get);
 }
