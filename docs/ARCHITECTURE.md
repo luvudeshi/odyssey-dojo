@@ -22,21 +22,23 @@ Every move also has a key, so the game runs with no camera and no network. That 
 
 **The judged demo is the Polyphemus fight.** It gets the polish. Everything else exists to make the quest real around it.
 
-## Status: where we are (updated Saturday 4:40 PM by the lead's agent)
+## Status: where we are (updated Saturday 5:35 PM by the lead's agent)
 
-The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. `main` is green at 743 tests.
+The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. `main` is green at 829 tests.
 
 ### Done, on `main`
 - Fight rules: phases, finishing move that cannot be lost, strike quality scaling damage, divine power meter and god moves (#4, #5, #6, #23, #30).
 - Calibration with a keyboard escape and the "step back" pause (#8).
 - Battle view: third-person camera behind our own character, camera and characters that move (#51).
-- The battle world for Polyphemus: the mouth of his cave at dusk, with sea, light shafts and a fire pit (#53, PR #101). The old cave is the fallback.
-- GLB model pipeline, with gear mounted on bones (PR #91, #100). Polyphemus candidates behind `?model=giant|classic` (PR #98). Hero candidates behind `?hero=knight|adventurer`, with the pose ghost (PR #97).
-- Title, style select, quest map in Odyssey order, intro line, win and loss screens (#26, #16, PR #60).
-- Athena's clips wired into the fight, the phase banner, the teaches line, real sound effects, story narration and taunts (#14, #15, #19, PR #93, #90).
+- The battle world for Polyphemus: the mouth of his cave at dusk, with a graded sunset sky, sea, light shafts and a fire pit (#53, PR #101, #106). The old cave is the fallback.
+- Polyphemus is the Quaternius giant by default (toyeshhm's pick), weak spots on his eye and gut; `?model=classic` still works (#11, PR #105).
+- The prompt card never drops the move word and its key, defends say HOLD, key hints are monospace (PR #105).
+- GLB model pipeline, with gear mounted on bones (PR #91, #100). Hero candidates behind `?hero=<id>`, with the pose ghost (PR #97).
+- Title, style select, quest map in Odyssey order, intro line, win and loss screens (#26, #16, PR #60). `/?stop=<enemy id>` jumps to a later stop (PR #112).
+- Athena's clips, the phase banner, the teaches line, real sound effects, story narration and monster taunts for every stop (#14, #15, #19, #86, PR #93, #90, #110).
 - Styles (Boxer, Hoplite, Karate, Kung Fu, Pankration with kicks), their mythic figures, what each move teaches (#45, #74, #36, #25).
-- Six quest stops as data (#37). Polyphemus data and pacing, the stake thrust (#12, #13).
-- AI server: god scan, god card, replay sharing (#43, #62, #64, #65).
+- Six quest stops as data, with pacing, phases and finishers for the later five (#37, #84). Polyphemus data and pacing, the stake thrust (#12, #13).
+- AI server: god scan, god card, replay sharing (#43, #62, #64, #65). Demo preflight check, sponsor sections (PR #104, #87).
 - Tests: random fights never break the rules, a pose sequence and a close miss per base move, the coach, which body is which for two players (#34, #35, #50 half, #83).
 - One prompt card at the right edge; no move list on the fight screen.
 - Pitch script and Devpost draft, the asset list, the playtest checklist (#39, #38, #40).
@@ -44,17 +46,17 @@ The lead's agent keeps this section true after every batch of merges. The [board
 ### In progress
 | What | Who | Where |
 |---|---|---|
-| Hero round two: the hoplite look on a figure with human proportions (toyeshhm found the knight bulky), three candidates `?hero=hoplite|spartan|warrior` | lead's agents | #53, #18, branches `53-hero-*` |
-| The Quaternius giant as the default Polyphemus (toyeshhm's pick), weak spots moved onto his body | lead's agents | #53, #11, branch `53-giant-default-prompt-fixes` |
-| Playtest fixes: the prompt never drops the word and key, "hold" on defends, key hints in monospace, favicon | lead's agents | same branch |
-| Cave mouth polish: sunset colour in the sky instead of white, sheep, the giant against the ceiling | lead's agents | branch `53-cave-mouth-polish` |
-| Detector fixes, noisy-camera defends, pacing for later stops | tagrawal029's agent | #81, #82, #84 |
-| Music and ambience, sponsor sections, AI-made fights and adaptive difficulty (drafts) | luvudeshi's agent | #85, #87, PR #76, #78, #92 |
+| Hero round two: three hoplite candidates on human-proportion figures, `?hero=hoplite|spartan|warrior`; toyeshhm picks from real-fight screenshots | lead's agents, then toyeshhm | #53, #18, PR #108, #111, #114 |
+| The five later stops, each a monster and its world: Circe's hall, the Sirens' meadow, Scylla's strait, Charybdis's whirlpool, the hall of Ithaca. A stop opens on the map when its model merges | lead's agents | #27, #53, branches `stop-*` |
+| Ghost outline of the move to make (must-have 7) | lead's agent | #24, branch `24-move-ghost` |
+| Game menu, settings and pause (structure now, look after toyeshhm's pick) | lead's agent | #52, branch `52-menu-settings-pause` |
+| Webcam path run end to end on a fake camera fed from a video, ahead of the real-body test | lead's agent | #7, branch `7-webcam-smoke` |
+| Detector fixes, noisy-camera defends, then fight length check and a pose recorder for tonight's tuning | tagrawal029's agent | #81, #82, #115, #116 |
+| Music and ambience, then sound for the later stops and a licence report; AI-made fights, adaptive difficulty, online rooms relay (drafts) | luvudeshi's agent | #85, #117, #118, PR #76, #78, #92, #103 |
 
 ### Left
-- **Must:** toyeshhm picks the hero from round-two screenshots, then it becomes the default (#53). Every model re-shot in the dusk cave and logged as kept, resized or rejected (`docs/models.md`). Webcam fight on a real body and detector tuning (#7, #17; toyeshhm does the real-body test). Devpost, demo video, backup recording (#21).
-- **Should:** player dressed per style (#18), ghost outline of the move (#24), Scylla (#27), two players in the fight (#28), online rooms (#29).
-- **Later, on toyeshhm's word:** complete UI redesign (#52).
+- **Must:** toyeshhm picks the hero and the menu look. Every model re-shot in its world and logged as kept, resized or rejected (`docs/models.md`, `docs/models/`). Webcam fight on a real body and detector tuning on the three of us (#7, #17; toyeshhm does the real-body test; the 8 PM checkpoint is one full webcam fight on the demo laptop). Freeze tag at 1 AM. Devpost, demo video, backup recording (#21).
+- **Should:** player dressed per style (#18), two players in the fight (#28), online rooms (#29).
 
 ### Art direction (toyeshhm, Saturday 4:15 PM)
 1. Stylized low-poly look with strong lighting.
@@ -103,13 +105,9 @@ The lead's agent keeps this section true after every batch of merges. The [board
 
 ### Later: agreed, not started (do not begin until toyeshhm says so)
 
-The direction is a fully fleshed-out game with action-RPG style battles.
+The direction is a fully fleshed-out game with action-RPG style battles. Nothing is waiting here now.
 
-| Feature | Issue |
-|---|---|
-| Complete UI redesign: HUD, prompt cards, menus, screens | #52 |
-
-Sophisticated graphics and real 3D models (#53) moved to "in progress" on Saturday afternoon: looks are now the top priority.
+The complete UI redesign (#52) was opened up by toyeshhm on Saturday at 5 PM: the menu, settings and pause are being built, and he picks the look. Sophisticated graphics and real 3D models (#53) moved to "in progress" on Saturday afternoon: looks are the top priority.
 
 ## How it fits together
 
