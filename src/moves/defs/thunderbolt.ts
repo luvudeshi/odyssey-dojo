@@ -1,3 +1,4 @@
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseHistory } from "../../core/types";
 import { JOINT, joint, latest, recent } from "../../pose/signals";
 
@@ -19,5 +20,12 @@ export const move: MoveDef = {
   detect(history) {
     const left = thrown(history, JOINT.leftWrist, JOINT.leftShoulder);
     return left || thrown(history, JOINT.rightWrist, JOINT.rightShoulder) ? 1 : 0;
+  },
+  quality(history) {
+    // Either hand may throw it: score the better one.
+    return Math.max(
+      strikeQuality(history, { sides: ["left"], rise: -0.6, tolerance: 1 }),
+      strikeQuality(history, { sides: ["right"], rise: -0.6, tolerance: 1 }),
+    );
   },
 };

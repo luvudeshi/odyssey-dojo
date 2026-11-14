@@ -18,4 +18,8 @@ export const move: MoveDef = {
     // Reaches 0.7 at 0.6 shoulder widths.
     return clamp01((moved / 0.6) * 0.7);
   },
+  // A dash has no arm to measure: any step fast enough to fire it counts as a good one.
+  quality() {
+    return 0.8;
+  },
 };

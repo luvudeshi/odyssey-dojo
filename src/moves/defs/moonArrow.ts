@@ -42,4 +42,8 @@ export const move: MoveDef = {
   detect(history) {
     return released(history, "left", "right") || released(history, "right", "left") ? 1 : 0;
   },
+  // The bow arm is held still, so arm speed says nothing: a clean draw and release counts as a good shot.
+  quality() {
+    return 0.8;
+  },
 };

@@ -1,3 +1,4 @@
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseFrame } from "../../core/types";
 import { JOINT, armOut, distance2d, joint, latest, recent, shoulderWidth } from "../../pose/signals";
 
@@ -28,5 +29,8 @@ export const move: MoveDef = {
     const frame = latest(history);
     if (!frame || !wide(frame, "left") || !wide(frame, "right")) return 0;
     return recent(history, 500).some(handsTogether) ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left", "right"] });
   },
 };

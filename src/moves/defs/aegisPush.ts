@@ -1,3 +1,4 @@
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseFrame } from "../../core/types";
 import { JOINT, clamp01, elbowAngle, joint, latest, recent } from "../../pose/signals";
 import { wristGap } from "../handSignals";
@@ -43,5 +44,8 @@ export const move: MoveDef = {
     if (!recent(history, 450).some(atChest)) return 0;
     // Reaches 0.7 when the nearer wrist is 0.35 m out.
     return clamp01(Math.min(reach(frame, "left"), reach(frame, "right")) / 0.5);
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left", "right"] });
   },
 };
