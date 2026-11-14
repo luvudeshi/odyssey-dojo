@@ -1,6 +1,7 @@
 // Athena's voice: turns combat events into spoken lines, one at a time, and stays silent when a clip is missing.
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
+import { getSettings } from "../settings/store";
 import { clipUrl } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
@@ -88,6 +89,18 @@ export interface Voice {
   dispose(): void;
 }
 
+/** Told true when a line starts and false when the voice falls quiet. */
+let onSpeaking: (speaking: boolean) => void = () => undefined;
+
+/**
+ * Lets one listener (the music) know when a line is being spoken, so it can dip under it.
+ * This assumes the app has a single Voice (the shared one below): with two, one falling quiet would report silence
+ * while the other still speaks.
+ */
+export function watchVoice(listener: (speaking: boolean) => void): void {
+  onSpeaking = listener;
+}
+
 export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
   let current: { readonly id: string; stop: () => void } | null = null;
   let disposed = false;
@@ -100,9 +113,12 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
     current?.stop();
     const line = { id, stop: (): void => undefined };
     const free = (): void => {
-      if (current === line) current = null;
+      if (current !== line) return;
+      current = null;
+      onSpeaking(false);
     };
     current = line;
+    onSpeaking(true);
     try {
       line.stop = deps.play(id, free);
     } catch (error) {
@@ -136,10 +152,12 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
       if (current?.id !== id) return;
       current.stop();
       current = null;
+      onSpeaking(false);
     },
     dispose() {
       disposed = true;
       current?.stop();
+      if (current) onSpeaking(false);
       current = null;
     },
   };
@@ -209,7 +227,7 @@ export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   };
   load(INDEX_URL, true);
   for (const url of storyIndexes) load(url, false);
-  return { available: (id) => clips.has(id), play: audioPlayer((url) => new Audio(url)), random: Math.random };
+  return { available: (id) => clips.has(id), play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume })), random: Math.random };
 }
 
 // Created with the module so the clip indexes are loaded before the first fight starts.
