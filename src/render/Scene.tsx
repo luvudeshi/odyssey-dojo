@@ -50,8 +50,8 @@ function Arena() {
   );
 }
 
-export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: RefObject<PoseFrame | null> }) {
-  const { enemy, state, poseRef } = props;
+export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: RefObject<PoseFrame | null>; paused?: boolean }) {
+  const { enemy, state, poseRef, paused = false } = props;
   const phase = state.phase;
   const weakSpot = phase.kind === "strike" ? phase.weakSpot : null;
   const quality = useQualityToggle();
@@ -64,6 +64,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
     <ErrorBoundary label="canvas" fallback={<p style={{ color: "#fff", padding: "1rem" }}>The 3D view failed to start. Reload the page.</p>}>
       <Canvas
         shadows={quality === "high" ? "percentage" : false}
+        frameloop={paused ? "never" : "always"}
         dpr={[1, 1.5]}
         gl={{ toneMapping: ACESFilmicToneMapping }}
         camera={{ position: [1.5, 2.2, 5.2], fov: 52 }}

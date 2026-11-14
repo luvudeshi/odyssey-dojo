@@ -2,6 +2,7 @@
 // To add a real clip, drop <type>.mp3 into public/audio/sfx and add "<type>" to index.json there.
 import { log } from "../core/log";
 import type { CombatEvent } from "../core/types";
+import { getSettings } from "../settings/store";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
 
@@ -146,7 +147,7 @@ function start({ context, master }: Player, type: CombatEvent["type"]): void {
     source.buffer = buffer;
     if (VARIED.has(type)) source.playbackRate.value = 1 + (Math.random() * 2 - 1) * RATE_SPREAD;
     const level = context.createGain();
-    level.gain.value = LEVELS[type] ?? 1;
+    level.gain.value = (LEVELS[type] ?? 1) * getSettings().sfxVolume;
     source.connect(level).connect(master);
     source.start();
   } catch (error) {
