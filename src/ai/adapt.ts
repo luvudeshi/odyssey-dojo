@@ -258,8 +258,8 @@ function fightMean(
  *
  * `warningMs` is the warning the engine gives: it honours weights, phase attackIds and telegraphScale.
  * The engine also multiplies strike damage by (0.5 + quality), which this arithmetic leaves out, so the played length
- * moves with how well the strikes are thrown. Measured on the five fallback levels over every registered enemy, for the
- * paced player: 0.91 to 0.95 of the plan at the default quality of 0.7, 1.02 to 1.06 at 0.55 and 0.73 to 0.78 at 1.
+ * moves with how well the strikes are thrown. Measured on the five fallback levels over the six registered enemies, for the
+ * paced player: 0.91 to 0.96 of the plan at the default quality of 0.7, 1.02 to 1.06 at 0.55 and 0.73 to 0.78 at 1.
  * tests/ai/adapt.test.ts holds the default to 0.8..1.25 of the plan. Divine power is not counted either: a player who
  * spends a full meter takes off three plain strikes' worth of health and finishes sooner.
  */
@@ -271,8 +271,8 @@ function pacedHp(fightMs: number, warningMs: number, strikeWindowMs: number): nu
 /**
  * The attacks, softened until the paced player expects to lose no more than DAMAGE_BUDGET over the whole fight:
  *   expected = exchanges * share of warnings missed * average damage = hp / DAMAGE_PER_EXCHANGE * (1 - SKILL) * damage.
- * A stand-in's blows were tuned for its own health. Scylla hits for 12 to 14 over 110 hp; left alone at a generated
- * 250 hp she would take about 55 of the player's 100, and the same level would be far deadlier on her than on Polyphemus.
+ * A stand-in's blows were tuned for its own fight: Polyphemus hits for 7 to 10, the suitors for 10 to 15.
+ * Left alone, the same level would be far deadlier on one stand-in than on another.
  */
 function softened(attacks: NonEmpty<EnemyAttack>, phases: NonEmpty<EnemyPhase>, hp: number): NonEmpty<EnemyAttack> {
   const expected = (hp / DAMAGE_PER_EXCHANGE) * (1 - SKILL) * fightMean(attacks, phases, (attack) => attack.damage);
