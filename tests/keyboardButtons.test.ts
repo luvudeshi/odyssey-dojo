@@ -3,7 +3,9 @@ import { afterEach, expect, test, vi } from "vitest";
 import { createKeyboard } from "../src/input/keyboard";
 import { MOVES } from "../src/moves/registry";
 
-class FakeButton {}
+class FakeButton {
+  readonly tag = "button";
+}
 
 afterEach(() => { vi.unstubAllGlobals(); });
 
