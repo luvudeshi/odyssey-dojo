@@ -59,7 +59,7 @@ export function cameraShot(out: Shot, b: Battle, now: number, calm: boolean): Sh
   } else if (phase?.kind === "won") {
     orbit(out, 0.6 + (now - b.wonAt) * 0.3, 2.8);
   } else if (phase?.kind === "lost") {
-    Object.assign(out, { px: 1.1, py: 0.45, pz: 2.8, lx: 0, ly: 2.4, lz: -3.2, fov: 58 });
+    Object.assign(out, { px: 1.5, py: 1.8, pz: 5.8, lx: -0.1, ly: 0.8, lz: 1.2, fov: 58 });
   }
 
   const wide = decay(now, b.phaseAt, 1.8);
