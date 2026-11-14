@@ -3,6 +3,14 @@ import type { CombatEvent } from "../core/types";
 
 type SfxType = CombatEvent["type"];
 
+/** A clip being rendered a slice at a time, so that a long one never holds up a frame of the fight. */
+export interface ClipRender {
+  /** The clip. Only complete, and only at its final level, once advance has returned true. */
+  readonly samples: Float32Array;
+  /** Renders up to `count` more samples and says whether the whole clip is now done. */
+  readonly advance: (count: number) => boolean;
+}
+
 /** `voice` sets up one render and returns its per-sample function; t is seconds from the start of the clip. */
 interface Design {
   readonly seconds: number;
@@ -101,8 +109,8 @@ const telegraph: Design = {
       const hz = glide(82, 147, x);
       const swell = (Math.expm1(3.5 * x) / Math.expm1(3.5)) * Math.min(1, (1 - x) / 0.1);
       const flutter = 0.75 + 0.25 * Math.sin(TAU * (12 + 20 * x) * t);
-      const voices = growl(hz, 1.4 - 0.6 * x) + 0.5 * tritone(hz * Math.SQRT2, 1.6);
-      return swell * (flutter * voices + 8 * quake(hiss(), 140 + 260 * x));
+      const voices = growl(hz, 0.9 - 0.4 * x) + 0.5 * tritone(hz * Math.SQRT2, 1);
+      return swell * (flutter * voices + 2 * quake(hiss(), 200 + 400 * x));
     };
   },
 };
@@ -138,22 +146,20 @@ const defended: Design = {
   },
 };
 
-// Taking a blow: a falling low sine and a knock, driven into soft clipping with a burst of crunch.
+// Taking a blow: dull, heavy and slow to die, so it cannot be mistaken for landing one. A deep falling sine and
+// low crunch are driven into soft clipping, with a muffled thud above them that small speakers can still play.
 const playerHit: Design = {
   seconds: 0.4,
   voice: (rate) => {
     const body = sine(rate);
-    const knock = sine(rate);
     const hiss = noise(37);
-    const crunch = lowpass(rate);
-    const tail = lowpass(rate);
+    const muffle = rumble(rate);
+    const thud = bandpass(rate, 0.7);
     return (t) => {
-      const white = hiss();
-      const hit =
-        1.1 * body(glide(170, 50, t / 0.25)) * decay(t, 0.11) +
-        0.8 * knock(glide(340, 110, t / 0.1)) * decay(t, 0.04) +
-        4 * crunch(white, glide(1600, 300, t / 0.15)) * decay(t, 0.05);
-      return Math.tanh(2.4 * hit) + 0.8 * tail(white, 420) * decay(t, 0.13);
+      // Every bit of noise in this clip is low-passed first, which is what keeps it dull.
+      const low = muffle(hiss(), 600);
+      const hit = 1.1 * body(glide(120, 40, t / 0.3)) * decay(t, 0.16) + 4 * low * decay(t, 0.07);
+      return 0.6 * Math.tanh(2.4 * hit) + 15 * thud(low, glide(520, 300, t / 0.2)) * decay(t, 0.1);
     };
   },
 };
@@ -187,7 +193,8 @@ const opening: Design = {
   },
 };
 
-// Landing a strike: a sharp snap, a low thump and a knock, with a short band of noise trailing off.
+// Landing a strike: bright, sharp and short, the opposite of taking one. A quick low thump is soft clipped, and
+// the snap, the knock and a band of high noise sit on top of it unclipped so that they stay crisp.
 const enemyHit: Design = {
   seconds: 0.3,
   voice: (rate) => {
@@ -198,12 +205,12 @@ const enemyHit: Design = {
     const tail = bandpass(rate, 0.9);
     return (t) => {
       const white = hiss();
-      const hit =
-        (white - dull(white, 1800)) * decay(t, 0.006) +
-        1.2 * thump(glide(190, 55, t / 0.14)) * decay(t, 0.075) +
-        knock(glide(520, 210, t / 0.05)) * decay(t, 0.03) +
-        3 * tail(white, 950) * decay(t, 0.055);
-      return Math.tanh(1.8 * hit);
+      return (
+        0.8 * Math.tanh(2.2 * thump(glide(190, 55, t / 0.14)) * decay(t, 0.05)) +
+        1.4 * (white - dull(white, 1800)) * decay(t, 0.015) +
+        0.7 * knock(glide(560, 320, t / 0.06)) * decay(t, 0.035) +
+        3 * tail(white, 2200) * decay(t, 0.06)
+      );
     };
   },
 };
@@ -271,12 +278,13 @@ const lost: Design = {
       const x = t / seconds;
       const hz = glide(147, 73, x);
       const voices =
-        drone(hz, 1 + 0.8 * x) +
-        0.6 * third(hz * 1.189, 1.3 + 0.7 * x) +
-        0.5 * beat(hz * 1.015) +
-        0.5 * wail(hz * 4) * decay(t, 0.6) +
-        8 * quake(hiss(), 160);
-      return attack(t, 0.03) * decay(t, 0.75) * (1 - x) * voices;
+        drone(hz, 0.6 + 0.6 * x) +
+        0.6 * third(hz * 1.189, 0.8 + 0.6 * x) +
+        0.4 * beat(hz * 1.015) +
+        0.7 * wail(hz * 4) * decay(t, 1.2) +
+        3 * quake(hiss(), 220);
+      // Held through the fall, then faded over the second half, so the whole octave drop is heard.
+      return attack(t, 0.03) * decay(t, 1.4) * Math.min(1, (1 - x) / 0.5) * voices;
     };
   },
 };
@@ -302,25 +310,45 @@ const BY_TYPE: ReadonlyMap<string, Design> = new Map(DESIGNS);
 /** Every event type that has a designed sound. */
 export const SFX_TYPES: readonly SfxType[] = DESIGNS.map(([type]) => type);
 
-function render(design: Design, rate: number, peak: number): Float32Array {
+function render(design: Design, rate: number, peak: number): ClipRender {
   const length = Math.max(2, Math.round(design.seconds * rate));
   const fade = Math.max(1, Math.round(FADE_SECONDS * rate));
   const sample = design.voice(rate, design.seconds);
   const samples = new Float32Array(length);
+  let next = 0;
   let loudest = 0;
-  for (let i = 0; i < length; i++) {
-    // Ramp both ends to silence so the clip never starts or stops with a click.
-    const value = sample(i / rate) * Math.min(1, i / fade, (length - 1 - i) / fade);
-    if (!Number.isFinite(value)) continue;
-    samples[i] = value;
-    loudest = Math.max(loudest, Math.abs(value));
-  }
-  return loudest > 0 ? samples.map((value) => (value * peak) / loudest) : samples;
+  const advance = (count: number): boolean => {
+    if (next >= length) return true;
+    const end = Math.min(length, next + (count >= 1 ? Math.floor(count) : 1));
+    for (; next < end; next++) {
+      // Ramp both ends to silence so the clip never starts or stops with a click.
+      const value = sample(next / rate) * Math.min(1, next / fade, (length - 1 - next) / fade);
+      if (!Number.isFinite(value)) continue;
+      samples[next] = value;
+      loudest = Math.max(loudest, Math.abs(value));
+    }
+    if (next < length) return false;
+    // The loudest sample is only known at the end, so the level is set on the last slice.
+    if (loudest > 0) {
+      samples.forEach((value, index) => {
+        samples[index] = (value * peak) / loudest;
+      });
+    }
+    return true;
+  };
+  return { samples, advance };
+}
+
+/** Starts a clip without rendering any of it: call advance until it returns true. Slices give the same samples as synthClip. */
+export function startClip(type: CombatEvent["type"], sampleRate: number): ClipRender {
+  const rate = Number.isFinite(sampleRate) && sampleRate >= MIN_RATE ? sampleRate : DEFAULT_RATE;
+  const design = BY_TYPE.get(type);
+  return design ? render(design, rate, PEAK) : render(click, rate, CLICK_PEAK);
 }
 
 /** The synthesised clip for an event type, peaking near 0.9. Types without a design get a short soft click. */
 export function synthClip(type: CombatEvent["type"], sampleRate: number): Float32Array {
-  const rate = Number.isFinite(sampleRate) && sampleRate >= MIN_RATE ? sampleRate : DEFAULT_RATE;
-  const design = BY_TYPE.get(type);
-  return design ? render(design, rate, PEAK) : render(click, rate, CLICK_PEAK);
+  const clip = startClip(type, sampleRate);
+  clip.advance(Number.POSITIVE_INFINITY);
+  return clip.samples;
 }
