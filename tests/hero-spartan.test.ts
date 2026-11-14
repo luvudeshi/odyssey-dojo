@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { candidate } from "../src/render/hero/defs/spartan";
-import { THRUST_TIMING } from "../src/render/hero/gear/spartanGear";
+import { THRUST_TIMING } from "../src/render/hero/gear/timing";
 
 /** Names of the animations in a .glb, read from its JSON chunk. */
 function clipNames(path: string): string[] {
