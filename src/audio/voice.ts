@@ -1,5 +1,5 @@
 // Athena's voice: turns combat events into spoken lines, one at a time, and stays silent when a clip is missing.
-import type { CombatEvent } from "../core/types";
+import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { clipUrl } from "./athenaLines";
 
@@ -66,9 +66,17 @@ export interface VoiceDeps {
   readonly random: () => number;
 }
 
+/** What to say when a move has no call of its own, so a move a teammate adds later is never met with silence. */
+export function anyCall(id: string, kind: "defend" | "strike"): string {
+  return kind === "defend" ? "call_any_defend" : "call_any_strike";
+}
+
 export interface Voice {
-  /** Speaks the most urgent line this frame's events call for, if the voice is free for it. */
-  handle(events: readonly CombatEvent[]): void;
+  /**
+   * Speaks the most urgent line this frame's events call for, if the voice is free for it.
+   * Pass the fight's phase too: the finishing move starts with no event of its own, so that is how its call is known.
+   */
+  handle(events: readonly CombatEvent[], phase?: CombatPhase): void;
   /** True when the line started playing. */
   speak(id: string): boolean;
   dispose(): void;
@@ -77,6 +85,7 @@ export interface Voice {
 export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
   let current: { readonly id: string; stop: () => void } | null = null;
   let disposed = false;
+  let finishing = false;
 
   const speak = (id: string): boolean => {
     if (disposed || !deps.available(id)) return false;
@@ -99,12 +108,21 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
 
   return {
     speak,
-    handle(events) {
-      let best: string | null = null;
+    handle(events, phase) {
+      const wanted: string[] = [];
       for (const event of events) {
         const id = lineFor(event, deps.random);
-        if (id !== null && (best === null || urgency(id) > urgency(best))) best = id;
+        if (id === null) continue;
+        const missing = id.startsWith("call_") && !deps.available(id);
+        wanted.push(missing ? anyCall(id, event.type === "telegraph" ? "defend" : "strike") : id);
       }
+      // The finisher is called when it begins, and again each time its window runs out.
+      if (phase?.kind === "finisher" && (!finishing || events.some((event) => event.type === "whiffed"))) {
+        const call = `call_${phase.move}`;
+        wanted.push(deps.available(call) ? call : anyCall(call, "strike"));
+      }
+      finishing = phase?.kind === "finisher";
+      const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
       if (best !== null) speak(best);
     },
     dispose() {
@@ -175,8 +193,8 @@ function browserDeps(): VoiceDeps {
 // Created with the module so the clip index is loaded before the first fight starts.
 const shared = createVoice();
 
-export function playVoice(events: readonly CombatEvent[]): void {
-  shared.handle(events);
+export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): void {
+  shared.handle(events, phase);
 }
 
 /** For lines no combat event triggers, such as "fight_start". */
