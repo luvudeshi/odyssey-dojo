@@ -8,6 +8,7 @@ import { Hud } from "../hud/Hud";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
+import { keyboardTakesOver } from "../pose/escape";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
 import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
@@ -38,6 +39,7 @@ export function FightScreen(props: {
     let current = startFight(enemy, seed);
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
+    let keyboardMode = false;
     let last = performance.now();
     let handle = 0;
 
@@ -48,12 +50,15 @@ export function FightScreen(props: {
         history = pushFrame(history, frame);
       }
       const dt = Math.min(now - last, 100);
-      if (tracker) {
+      const keys = keyboard.read();
+      keyboardMode = keyboardTakesOver(keyboardMode, gate.paused, keys);
+      if (tracker && !keyboardMode) {
         gate = gateStep(gate, presenceAt(history, now).ok, dt);
         setLost(gate.paused);
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
-      const input = mergeInputs(keyboard.read(), readPose(history));
+      setLost(false);
+      const input = mergeInputs(keys, readPose(history));
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
@@ -87,7 +92,7 @@ export function FightScreen(props: {
           {confidences.map(([id, value]) => `${id.padEnd(16)} ${value.toFixed(2)}`).join("\n")}
         </pre>
       )}
-      {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1></div>}
+      {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {over && (
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
