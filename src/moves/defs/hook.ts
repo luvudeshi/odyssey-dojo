@@ -10,6 +10,7 @@ export const move: MoveDef = {
   hint: "Swing your bent left arm across your body",
   key: "l",
   diagram: { leftElbow: [26, 32], leftWrist: [42, 28], rightElbow: [62, 42], rightWrist: [57, 26] },
+  teaches: "Swings come from the side, out of view, so always bring your hand back to your face",
   detect(history) {
     const frame = latest(history);
     const earlier = recent(history, 150)[0];

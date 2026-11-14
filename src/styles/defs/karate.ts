@@ -3,6 +3,6 @@ import type { FightingStyle } from "../../core/types";
 export const style: FightingStyle = {
   id: "karate",
   name: "Karate",
-  blurb: "One clean, committed blow. Odysseus strung the great bow once and did not miss.",
+  blurb: "The way of Heracles. Karate means empty hand: no weapon could pierce the Nemean lion, so he beat it bare-handed.",
   strikes: ["reverse_punch", "knife_hand", "hammer_fist"],
 };

@@ -12,7 +12,7 @@ export const move: MoveDef = {
   hint: "Raise your left fist above your head, then bring it straight down",
   key: "m",
   diagram: { leftElbow: [30, 20], leftWrist: [36, 6], rightElbow: [62, 42], rightWrist: [57, 26] },
-  teaches: "The bottom of the fist is padded, so you can hit hard downward without breaking your hand.",
+  teaches: "The padded bottom of your fist is safer for your hand than knuckles if you must break free",
   detect(history) {
     const frame = latest(history);
     if (!frame || wristRise(frame, "left") > 0) return 0;

@@ -12,7 +12,7 @@ export const move: MoveDef = {
   hint: "Push both open palms straight forward, side by side",
   key: "p",
   diagram: { leftElbow: [34, 40], leftWrist: [46, 29], rightElbow: [66, 40], rightWrist: [54, 29] },
-  teaches: "A two-handed shove makes space to get away, and an open palm will not break on a hard target.",
+  teaches: "A firm push with both open hands opens a gap, and a gap is your chance to leave",
   detect(history) {
     const frame = latest(history);
     if (!frame || !armThrust(history, "left") || !armThrust(history, "right")) return 0;
