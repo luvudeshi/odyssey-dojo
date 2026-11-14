@@ -1,0 +1,204 @@
+// Draws the god portrait in the browser: the webcam snapshot as a marble bust inside a gold ring and laurel wreath.
+// This is what the player sees when the AI portrait is slow, fails or there is no network, so it never throws.
+import { log } from "../core/log";
+import { marbleize, portraitCrop } from "./marble";
+
+export interface PortraitOptions {
+  /** The god's colour, as any CSS colour. The gilding is this blended toward gold. */
+  readonly accent: string;
+  /** Width and height of the result in pixels. 512 when left out. */
+  readonly size?: number;
+  /** Flip the picture sideways so it matches what the player sees. On unless set to false. */
+  readonly mirror?: boolean;
+  /** Landmarks, 0..1 of the picture as the player sees it: `frame.image` when mirrored, the raw source when not. */
+  readonly pose?: Parameters<typeof portraitCrop>[2];
+  readonly seed?: number;
+}
+
+type Rgb = readonly [number, number, number];
+
+const GOLD: Rgb = [232, 184, 74];
+const GOLD_CSS = "#e8b84a";
+const SHADOW_CSS = "rgba(20, 12, 34, 0.75)";
+/** How far the accent is pulled toward gold: enough that the wreath still reads as gold for a blue or red god. */
+const GOLD_SHARE = 0.7;
+const DEFAULT_SIZE = 512;
+const SMALLEST_SIZE = 32;
+const LARGEST_SIZE = 2048;
+
+/** Sizes as fractions of the portrait's width. */
+const RING_RADIUS = 0.478;
+const RING_WIDTH = 0.011;
+const WREATH_RADIUS = 0.405;
+const LEAF_LENGTH = 0.092;
+const LEAF_PAIRS = 12;
+/** Each branch runs from just beside the bottom of the circle up to this far short of the top, in radians. */
+const BRANCH_START = Math.PI / 2 - 0.1;
+const BRANCH_END = -Math.PI / 2 + 0.44;
+const LEAF_SPLAY = 0.5;
+
+function mix(from: Rgb, to: Rgb, amount: number): Rgb {
+  return [from[0] + (to[0] - from[0]) * amount, from[1] + (to[1] - from[1]) * amount, from[2] + (to[2] - from[2]) * amount];
+}
+
+function css(colour: Rgb, alpha = 1): string {
+  return `rgba(${colour.map((channel) => Math.round(channel).toFixed(0)).join(", ")}, ${alpha.toFixed(2)})`;
+}
+
+/** The accent blended toward gold. The canvas parses the CSS colour; one it does not know leaves plain gold. */
+function gilding(context: CanvasRenderingContext2D, accent: string): Rgb {
+  context.fillStyle = GOLD_CSS;
+  context.fillStyle = accent;
+  context.fillRect(0, 0, 1, 1);
+  const [r = GOLD[0], g = GOLD[1], b = GOLD[2]] = context.getImageData(0, 0, 1, 1).data;
+  context.clearRect(0, 0, 1, 1);
+  return mix([r, g, b], GOLD, GOLD_SHARE);
+}
+
+/** One pointed leaf from its stem end at (x, y), lit along its outer half, with a dark midrib. */
+function drawLeaf(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  length: number,
+  colours: { readonly body: string; readonly lit: string; readonly dark: string },
+): void {
+  const belly = length * 0.24;
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+  context.beginPath();
+  context.moveTo(0, 0);
+  context.bezierCurveTo(length * 0.25, -belly, length * 0.7, -belly * 0.8, length, 0);
+  context.bezierCurveTo(length * 0.7, belly * 0.8, length * 0.25, belly, 0, 0);
+  context.fillStyle = colours.body;
+  context.fill();
+
+  context.shadowColor = "transparent";
+  context.beginPath();
+  context.moveTo(0, 0);
+  context.bezierCurveTo(length * 0.25, -belly, length * 0.7, -belly * 0.8, length, 0);
+  context.closePath();
+  context.fillStyle = colours.lit;
+  context.fill();
+  context.beginPath();
+  context.moveTo(length * 0.08, 0);
+  context.lineTo(length * 0.94, 0);
+  context.strokeStyle = colours.dark;
+  context.lineWidth = Math.max(0.5, length * 0.035);
+  context.stroke();
+  context.restore();
+}
+
+/** A thin ring, then two laurel branches that meet at the bottom and stay open above the head. */
+function drawWreath(context: CanvasRenderingContext2D, size: number, gilt: Rgb): void {
+  const colours = {
+    body: css(mix(gilt, [70, 40, 10], 0.18)),
+    lit: css(mix(gilt, [255, 250, 225], 0.55), 0.85),
+    dark: css(mix(gilt, [45, 22, 8], 0.7), 0.7),
+  };
+  const radius = size * WREATH_RADIUS;
+  context.save();
+  context.translate(size / 2, size / 2);
+  context.lineCap = "round";
+
+  context.beginPath();
+  context.arc(0, 0, size * RING_RADIUS, 0, Math.PI * 2);
+  context.strokeStyle = colours.body;
+  context.lineWidth = size * RING_WIDTH;
+  context.stroke();
+  context.beginPath();
+  context.arc(0, 0, size * (RING_RADIUS - RING_WIDTH * 0.2), 0, Math.PI * 2);
+  context.strokeStyle = colours.lit;
+  context.lineWidth = size * RING_WIDTH * 0.25;
+  context.stroke();
+
+  context.shadowColor = SHADOW_CSS;
+  context.shadowBlur = size * 0.014;
+  for (const side of [1, -1]) {
+    context.save();
+    context.scale(side, 1);
+    context.beginPath();
+    context.arc(0, 0, radius, BRANCH_START + 0.1, BRANCH_END, true);
+    context.strokeStyle = colours.body;
+    context.lineWidth = size * 0.009;
+    context.stroke();
+    for (let pair = 0; pair < LEAF_PAIRS; pair++) {
+      const along = pair / (LEAF_PAIRS - 1);
+      const around = BRANCH_START + (BRANCH_END - BRANCH_START) * along;
+      const x = Math.cos(around) * radius;
+      const y = Math.sin(around) * radius;
+      const heading = around - Math.PI / 2;
+      const length = size * LEAF_LENGTH * (1 - 0.4 * along);
+      drawLeaf(context, x, y, heading - LEAF_SPLAY, length * 0.9, colours);
+      drawLeaf(context, x, y, heading + LEAF_SPLAY, length, colours);
+    }
+    drawLeaf(context, Math.cos(BRANCH_END) * radius, Math.sin(BRANCH_END) * radius, BRANCH_END - Math.PI / 2, size * LEAF_LENGTH * 0.6, colours);
+    context.restore();
+  }
+
+  // The knot where the branches are tied.
+  context.beginPath();
+  context.arc(0, radius, size * 0.017, 0, Math.PI * 2);
+  context.fillStyle = colours.body;
+  context.fill();
+  context.shadowColor = "transparent";
+  context.beginPath();
+  context.arc(-size * 0.004, radius - size * 0.004, size * 0.008, 0, Math.PI * 2);
+  context.fillStyle = colours.lit;
+  context.fill();
+  context.restore();
+}
+
+/**
+ * The player as a marble bust with a gold laurel wreath, as a PNG data URL.
+ * Returns null, with a warning in the log, when there is no canvas or anything goes wrong.
+ */
+export function renderPortrait(
+  source: CanvasImageSource,
+  sourceWidth: number,
+  sourceHeight: number,
+  options: PortraitOptions,
+): string | null {
+  try {
+    if (typeof document === "undefined") {
+      log("warn", "portrait.unavailable", "no document");
+      return null;
+    }
+    const requested = Math.round(options.size ?? DEFAULT_SIZE);
+    const size = Number.isFinite(requested) ? Math.min(LARGEST_SIZE, Math.max(SMALLEST_SIZE, requested)) : DEFAULT_SIZE;
+    const mirror = options.mirror ?? true;
+    const crop = portraitCrop(sourceWidth, sourceHeight, options.pose ?? null);
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context || crop.size <= 0) {
+      log("warn", "portrait.unavailable", context ? "empty source" : "no 2d canvas");
+      return null;
+    }
+
+    const gilt = gilding(context, options.accent);
+    // The crop is in the mirrored picture, so its left edge is measured from the source's right edge.
+    const sourceX = mirror ? Math.floor(sourceWidth) - crop.x - crop.size : crop.x;
+    context.save();
+    if (mirror) {
+      context.translate(size, 0);
+      context.scale(-1, 1);
+    }
+    context.imageSmoothingQuality = "high";
+    context.drawImage(source, sourceX, crop.y, crop.size, crop.size, 0, 0, size, size);
+    context.restore();
+
+    const photo = context.getImageData(0, 0, size, size);
+    const stone = marbleize(photo, options.seed === undefined ? { accent: gilt } : { accent: gilt, seed: options.seed });
+    photo.data.set(stone.data);
+    context.putImageData(photo, 0, 0);
+    drawWreath(context, size, gilt);
+    return canvas.toDataURL("image/png");
+  } catch (error) {
+    log("warn", "portrait.failed", error);
+    return null;
+  }
+}
