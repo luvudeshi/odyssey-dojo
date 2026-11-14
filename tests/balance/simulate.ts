@@ -30,6 +30,8 @@ export interface Fight {
   readonly won: boolean;
   /** Health the player has left at the end, out of 100. */
   readonly hpLeft: number;
+  /** How many of the monster's phases the player had to defend an attack in. */
+  readonly phasesSeen: number;
 }
 
 const STEP_MS = 20;
@@ -50,8 +52,10 @@ export function playFight(enemy: EnemySpec, style: FightingStyle, player: Player
   // The finishing move is offered again each time its window runs out, and each offer is a new try.
   let finisherTries = 0;
   let finisherLeft = 0;
+  const phasesSeen = new Set<number>();
   while (state.phase.kind !== "won" && state.phase.kind !== "lost" && ms < CAP_MS) {
     const phase = state.phase;
+    if (phase.kind === "defend") phasesSeen.add(state.phaseIndex);
     if (phase.kind === "finisher") {
       if (phase.msLeft > finisherLeft) finisherTries += 1;
       finisherLeft = phase.msLeft;
@@ -77,7 +81,7 @@ export function playFight(enemy: EnemySpec, style: FightingStyle, player: Player
     state = step(state, enemy, style, { held, struck }, STEP_MS).state;
     ms += STEP_MS;
   }
-  return { seconds: ms / 1000, won: state.phase.kind === "won", hpLeft: Math.max(0, state.playerHp) };
+  return { seconds: ms / 1000, won: state.phase.kind === "won", hpLeft: Math.max(0, state.playerHp), phasesSeen: phasesSeen.size };
 }
 
 export interface Row {
@@ -93,6 +97,8 @@ export interface Row {
   readonly longest: number;
   /** Mean health left at the end, out of 100. */
   readonly hpLeft: number;
+  /** The fewest phases the player defended an attack in, over the fights that were won; 0 if none were. */
+  readonly fewestPhasesInAWin: number;
 }
 
 export const FIGHTS = 200;
@@ -113,6 +119,7 @@ export function measure(enemy: EnemySpec, style: FightingStyle, player: Player, 
     winSeconds: mean(won, (fight) => fight.seconds),
     longest: Math.max(...played.map((fight) => fight.seconds)),
     hpLeft: mean(played, (fight) => fight.hpLeft),
+    fewestPhasesInAWin: won.length === 0 ? 0 : Math.min(...won.map((fight) => fight.phasesSeen)),
   };
 }
 
