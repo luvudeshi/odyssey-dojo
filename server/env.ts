@@ -29,7 +29,8 @@ export function loadConfig(root: string = process.cwd()): Config {
   const envFile = resolve(root, ".env");
   if (existsSync(envFile)) process.loadEnvFile(envFile);
   return {
-    port: Number(value("PORT") ?? 8787),
+    // Not PORT: hosts and dev tools set that for the web page, and the two must not collide.
+    port: Number(value("AI_SERVER_PORT") ?? 8787),
     geminiKey: value("GEMINI_API_KEY"),
     elevenLabsKey: value("ELEVENLABS_API_KEY"),
     dataDir: resolve(root, "server/data"),
