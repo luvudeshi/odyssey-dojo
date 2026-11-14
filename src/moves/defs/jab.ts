@@ -9,7 +9,7 @@ export const move: MoveDef = {
   hint: "Punch straight out with your left fist",
   key: "j",
   diagram: { leftElbow: [28, 30], leftWrist: [14, 26], rightElbow: [62, 42], rightWrist: [57, 26] },
-  teaches: "A quick lead hand keeps someone at arm's length so they cannot crowd you",
+  teaches: "A fast hand straight out in front holds someone at arm's length so they cannot crowd you",
   detect(history) {
     const frame = latest(history);
     return frame && armThrust(history, "left") && !armOut(frame, "right") ? 1 : 0;
