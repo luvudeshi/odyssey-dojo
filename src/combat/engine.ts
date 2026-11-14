@@ -11,6 +11,7 @@ export const PLAYER_HP = 100;
 const INTRO_MS = 1500;
 const RECOVER_MS = 700;
 const STRIKE_DAMAGE = 12;
+const FINISHER_MS = 6000;
 
 export interface StepResult {
   readonly state: CombatState;
@@ -52,13 +53,39 @@ export function startFight(enemy: EnemySpec, seed: number): CombatState {
   };
 }
 
+/** Index of the last phase whose belowHp the enemy's health has dropped to. */
+export function phaseIndexFor(enemy: EnemySpec, enemyHp: number): number {
+  const share = enemyHp / enemy.hp;
+  let index = 0;
+  enemy.phases?.forEach((phase, i) => {
+    if (share <= phase.belowHp) index = i;
+  });
+  return index;
+}
+
 function beginDefend(state: CombatState, enemy: EnemySpec): StepResult {
-  const { item: attack, seed } = pick(enemy.attacks, state.seed);
+  const phase = enemy.phases?.[state.phaseIndex];
+  const allowed = phase ? enemy.attacks.filter((a) => phase.attackIds.includes(a.id)) : enemy.attacks;
+  const pool = allowed.length > 0 ? allowed : enemy.attacks;
+  const weights = pool.map((a) => Math.max(0, a.weight ?? 1));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  const rolled = roll(state.seed);
+  let target = rolled.value * total;
+  let attack = pool[pool.length - 1] ?? enemy.attacks[0];
+  for (const [i, candidate] of pool.entries()) {
+    target -= weights[i] ?? 0;
+    if (target < 0) {
+      attack = candidate;
+      break;
+    }
+  }
+  const seed = rolled.seed;
+  const ms = Math.round(attack.telegraphMs * (phase?.telegraphScale ?? 1));
   return {
     state: {
       ...state,
       seed,
-      phase: { kind: "defend", attack, msLeft: attack.telegraphMs, totalMs: attack.telegraphMs },
+      phase: { kind: "defend", attack, msLeft: ms, totalMs: ms },
     },
     events: [{ type: "telegraph", attack }],
   };
@@ -105,8 +132,20 @@ export function step(
   switch (phase.kind) {
     case "won":
     case "lost":
-    case "finisher": // nothing enters this phase until the finishing move lands (issue 6)
       return { state, events: [] };
+    case "finisher": {
+      const strike = input.struck.find((thrown) => thrown.move === phase.move);
+      if (strike) {
+        return {
+          state: { ...learned(state, phase.move), phase: { kind: "won" } },
+          events: [{ type: "finished", move: phase.move }, { type: "won" }],
+        };
+      }
+      const msLeft = phase.msLeft - dtMs;
+      if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft } }, events: [] };
+      // The monster is down and the player cannot lose here: offer the finishing move again.
+      return { state: { ...state, phase: { ...phase, msLeft: phase.totalMs } }, events: [{ type: "whiffed" }] };
+    }
     case "intro":
     case "recover": {
       const msLeft = phase.msLeft - dtMs;
@@ -134,19 +173,36 @@ export function step(
     case "strike": {
       const strike = input.struck.find((thrown) => thrown.move === phase.move);
       if (strike) {
-        const damage = Math.round(STRIKE_DAMAGE * (1 + Math.min(state.combo, 5) * 0.1));
+        const landedBy = input.struck.filter((thrown) => thrown.move === phase.move);
+        const quality = Math.min(1, Math.max(0, ...landedBy.map((thrown) => thrown.quality)));
+        const together =
+          state.players === 2 && landedBy.some((t) => t.player === 0) && landedBy.some((t) => t.player === 1);
+        const damage = Math.round(
+          STRIKE_DAMAGE * (1 + Math.min(state.combo, 5) * 0.1) * (0.5 + quality) * (together ? 2 : 1),
+        );
         const enemyHp = Math.max(0, state.enemyHp - damage);
-        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality: strike.quality };
+        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality };
+        const phaseIndex = phaseIndexFor(enemy, enemyHp);
         const next = {
           ...learned(state, phase.move),
           enemyHp,
+          phaseIndex,
           combo: state.combo + 1,
           score: state.score + damage * 10,
         };
-        if (enemyHp === 0) {
-          return { state: { ...next, phase: { kind: "won" } }, events: [landed, { type: "won" }] };
+        const events: CombatEvent[] = [landed];
+        const changed = enemy.phases?.[phaseIndex];
+        if (phaseIndex !== state.phaseIndex && changed) {
+          events.push({ type: "phaseChanged", index: phaseIndex, name: changed.name });
         }
-        return { state: { ...next, phase: RECOVER }, events: [landed] };
+        if (enemyHp === 0) {
+          if (enemy.finisher) {
+            const finisher = { kind: "finisher", move: enemy.finisher, msLeft: FINISHER_MS, totalMs: FINISHER_MS } as const;
+            return { state: { ...next, phase: finisher }, events };
+          }
+          return { state: { ...next, phase: { kind: "won" } }, events: [...events, { type: "won" }] };
+        }
+        return { state: { ...next, phase: RECOVER }, events };
       }
       const msLeft = phase.msLeft - dtMs;
       if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft } }, events: [] };

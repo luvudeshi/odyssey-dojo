@@ -46,7 +46,7 @@ test("the prompted strike damages the enemy, and enough of them win", () => {
   const open = run(toDefend(), blocking, 1000).state;
   const hit = run(open, jabbing, 16);
   expect(hit.events).toEqual(["enemyHit"]);
-  expect(hit.state.enemyHp).toBe(8);
+  expect(hit.state.enemyHp).toBe(6); // 12 * (0.5 + 0.7) = 14
   expect(hit.state.combo).toBe(1);
   const reopened = run(run(run(hit.state, idle, 700).state, blocking, 1000).state, jabbing, 16);
   expect(reopened.events).toEqual(["enemyHit", "won"]);
