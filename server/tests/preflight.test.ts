@@ -42,19 +42,32 @@ test("clips pass when every listed id has a file and every file is listed", () =
   expect(checkClips(dir).detail).toBe("2 Athena, 1 effects, 1 music");
 });
 
-test("a listed clip with no file, an empty file, a bad index or a missing folder is a fail", () => {
+test("an Athena clip with no file, an empty file, a bad index or a missing folder is a fail", () => {
   goodClips();
   rmSync(join(dir, "athena/win.mp3"));
+  put("athena/loss.mp3", "");
   put("sfx/won.mp3", "");
   const broken = checkClips(dir);
   expect(broken.level).toBe("FAIL");
   expect(broken.detail).toContain("athena/win.mp3 is missing or empty");
+  expect(broken.detail).toContain("athena/loss.mp3 is missing or empty");
   expect(broken.detail).toContain("sfx/won.mp3 is missing or empty");
 
+  put("athena/index.json", '{"win":true}');
+  expect(checkClips(dir).detail).toContain("athena/index.json is missing or is not a list of ids");
+  rmSync(join(dir, "athena"), { recursive: true });
+  expect(checkClips(dir)).toMatchObject({ level: "FAIL", detail: expect.stringContaining("athena/ is missing") as unknown });
+});
+
+test("a missing effect clip, index or folder is only a warning, because the game synthesises that sound", () => {
+  const standIn = "the game plays its built-in synthesised sounds instead";
+  goodClips();
+  put("sfx/won.mp3", "");
+  expect(checkClips(dir)).toEqual({ level: "WARN", name: "clips", detail: `2 Athena, 1 effects; sfx/won.mp3 is missing or empty; ${standIn}` });
   put("sfx/index.json", '{"won":true}');
-  expect(checkClips(dir).detail).toContain("sfx/index.json is missing or is not a list of ids");
+  expect(checkClips(dir).detail).toBe(`2 Athena; sfx/index.json is missing or is not a list of ids; ${standIn}`);
   rmSync(join(dir, "sfx"), { recursive: true });
-  expect(checkClips(dir).detail).toContain("sfx/ is missing");
+  expect(checkClips(dir)).toEqual({ level: "WARN", name: "clips", detail: `2 Athena; sfx/ is missing; ${standIn}` });
 });
 
 test("a clip file that no index lists is only a warning", () => {
@@ -103,6 +116,16 @@ test("gemini with no key, an error or no answer in time is a warning that names 
   expect(lines[2].detail).toContain("timed out after 20 ms");
 });
 
+test("gemini refusing the request points at the key, not at the raw error", async () => {
+  const refused = Object.assign(new Error('400 API error occurred: {"httpMeta":{}}'), { status: 400 });
+  const line = await checkGemini(() => Promise.reject(refused), 50);
+  expect(line).toEqual({
+    level: "WARN",
+    name: "gemini",
+    detail: "refused with HTTP 400; check GEMINI_API_KEY; the game falls back to bundled fights and the browser god scan",
+  });
+});
+
 test("elevenlabs passes with a voice count, and warns on no key, no voices or an error", async () => {
   const voice = { id: "v1", name: "George" };
   const clock = [0, 300];
@@ -125,14 +148,26 @@ test("the AI server is up when /api/health answers ok, and down is a warning tha
     urls.push(typeof url === "string" ? url : "not a string");
     return Promise.resolve(Response.json({ ok: true, gemini: true, speech: false }));
   };
-  expect(await checkServer(8787, up)).toEqual({
+  const keys = { gemini: true, elevenLabs: false };
+  expect(await checkServer(8787, keys, up)).toEqual({
     level: "PASS", name: "ai server", detail: "up on port 8787 (gemini yes, speech no)",
   });
   expect(urls).toEqual(["http://127.0.0.1:8787/api/health"]);
 
   const down = { level: "WARN", name: "ai server", detail: "nothing answers on port 8787; start it with npm run dev:all" };
-  expect(await checkServer(8787, () => Promise.reject(new Error("ECONNREFUSED")))).toEqual(down);
-  expect(await checkServer(8787, () => Promise.resolve(new Response("<html>", { status: 404 })))).toEqual(down);
+  expect(await checkServer(8787, keys, () => Promise.reject(new Error("ECONNREFUSED")))).toEqual(down);
+  expect(await checkServer(8787, keys, () => Promise.resolve(new Response("<html>", { status: 404 })))).toEqual(down);
+});
+
+test("an AI server that started without a key we have here is a warning that says to restart it", async () => {
+  const keyless: typeof fetch = () => Promise.resolve(Response.json({ ok: true, gemini: false, speech: false }));
+  const both = await checkServer(8787, { gemini: true, elevenLabs: true }, keyless);
+  expect(both.level).toBe("WARN");
+  expect(both.detail).toContain("up on port 8787 but started without the Gemini and ElevenLabs keys; restart it with npm run dev:all");
+  const one = await checkServer(8787, { gemini: false, elevenLabs: true }, keyless);
+  expect(one.detail).toContain("started without the ElevenLabs key");
+  // With no keys here either, the server is as ready as it can be.
+  expect((await checkServer(8787, { gemini: false, elevenLabs: false }, keyless)).level).toBe("PASS");
 });
 
 test("the pose files pass when all are there, and one missing or empty file is a fail that names it", () => {
@@ -157,6 +192,19 @@ test("a line is plain text, and a key that slipped into a detail is hidden", () 
   expect(formatLine({ level: "PASS", name: "clips", detail: "45 Athena, 11 effects" })).toBe("PASS clips: 45 Athena, 11 effects");
   const leaked = formatLine({ level: "WARN", name: "gemini", detail: "no answer (bad key sk-secret-123)" }, ["sk-secret-123", null]);
   expect(leaked).toBe("WARN gemini: no answer (bad key [hidden])");
+});
+
+test("a long error is cut only after the key in it is hidden, so no part of a key is printed", async () => {
+  const key = "FAKEKEY-0123456789-abcdefghij";
+  // Every start position, so the key sits across the cut at some point whatever the text before it is.
+  for (let padding = 0; padding <= 420; padding += 1) {
+    const error = new Error(`${"x".repeat(padding)} key=${key} ${"y".repeat(400)}`);
+    const text = formatLine(await checkGemini(() => Promise.reject(error), 50), [key]);
+    expect(text).not.toMatch(/FAKE|0123|ghij/);
+    expect(text.endsWith("...")).toBe(true);
+    expect(text.length).toBeLessThanOrEqual(403);
+    expect(text).toContain("the game falls back to bundled fights and the browser god scan");
+  }
 });
 
 test("only a fail makes the exit code 1", () => {

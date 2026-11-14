@@ -1,4 +1,4 @@
-// Run this before the judges arrive. It prints one line per check and exits 1 only if the demo would break:
+// Run this before the judges arrive. It prints one line per check and exits 1 only on a FAIL (a missing Athena clip or pose file):
 //   npx tsx server/tools/preflight.ts             every check
 //   npx tsx server/tools/preflight.ts --offline   skip the two calls that need the internet
 // It never prints a key, and it spends no ElevenLabs credits.
@@ -15,17 +15,21 @@ import {
   checkPoseFiles,
   checkServer,
   formatLine,
+  hide,
   summary,
 } from "../lib/preflightChecks";
 
 /** How long the voices list may take. It is a small GET, so this is generous. */
 const VOICES_MS = 8000;
+/** The keys, kept here so the crash line below can hide them too. */
+let secrets: readonly (string | null)[] = [];
 
 async function main(): Promise<void> {
   const offline = process.argv.includes("--offline");
   const root = process.cwd();
   const config = loadConfig(root);
-  const secrets = [config.geminiKey, config.elevenLabsKey];
+  secrets = [config.geminiKey, config.elevenLabsKey];
+  const keys = { gemini: config.geminiKey !== null, elevenLabs: config.elevenLabsKey !== null };
   const results: Result[] = [];
   // A person reads this in a terminal, so it is plain lines on stdout, not the JSON lines log() writes.
   const say = (text: string): void => { process.stdout.write(`${text}\n`); };
@@ -36,7 +40,7 @@ async function main(): Promise<void> {
 
   report(checkClips(resolve(root, "public/audio")));
   report(checkPoseFiles(resolve(root, "public")));
-  report(checkKeys({ gemini: config.geminiKey !== null, elevenLabs: config.elevenLabsKey !== null }));
+  report(checkKeys(keys));
   if (offline) {
     report({ level: "SKIP", name: "gemini", detail: "--offline" });
     report({ level: "SKIP", name: "elevenlabs", detail: "--offline" });
@@ -51,7 +55,7 @@ async function main(): Promise<void> {
     report(gemini);
     report(eleven);
   }
-  report(await checkServer(config.port));
+  report(await checkServer(config.port, keys));
 
   const { line, exitCode } = summary(results);
   say(line);
@@ -59,6 +63,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  process.stdout.write(`FAIL preflight: it crashed (${error instanceof Error ? error.message : String(error)})\n`);
+  const message = error instanceof Error ? error.message : String(error);
+  process.stdout.write(`${hide(`FAIL preflight: it crashed (${message})`, secrets)}\n`);
   process.exitCode = 1;
 });
