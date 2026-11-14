@@ -1,7 +1,9 @@
 // Guards the background music: scenes start, crossfade and stop as asked, loops join cleanly, and nothing ever throws.
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { afterEach, expect, test, vi } from "vitest";
-import { duckMusic, listedScenes, seamLoop, startMusic, stopMusic } from "../src/audio/music";
+import {
+  clipLevel, duckMusic, listedScenes, pauseMusic, resumeMusic, seamLoop, setMusicVolume, startMusic, stopMusic,
+} from "../src/audio/music";
 
 type Music = typeof import("../src/audio/music");
 type VoiceModule = typeof import("../src/audio/voice");
@@ -58,7 +60,7 @@ class FakeSource {
   to: FakeGain | null = null;
   started: { readonly when: number; readonly offset: number } | null = null;
   stopped: number | null = null;
-  readonly playbackRate = { value: 1 };
+  readonly playbackRate = new FakeParam(1);
 
   connect(node: FakeGain): FakeGain {
     this.to = node;
@@ -78,10 +80,11 @@ class FakeSource {
 const RATE = 1000;
 const SECONDS = 60;
 const PADDING = 20;
+const AMPLITUDE = 0.5;
 
-function decoded(): FakeBuffer {
+function decoded(amplitude: number): FakeBuffer {
   const channels = [0, 1].map(() => {
-    const data = new Float32Array(RATE * SECONDS).fill(0.5);
+    const data = new Float32Array(RATE * SECONDS).fill(amplitude);
     data.fill(0, 0, PADDING);
     data.fill(0, data.length - PADDING);
     return data;
@@ -98,6 +101,8 @@ class FakeContext {
   static refuses = false;
   /** Makes every clip fail to decode. */
   static corrupt = false;
+  /** How loud the decoded clips are. */
+  static amplitude = AMPLITUDE;
   readonly sampleRate = 44100;
   readonly destination = {};
   readonly sources: FakeSource[] = [];
@@ -125,7 +130,7 @@ class FakeContext {
   }
 
   decodeAudioData(): Promise<FakeBuffer> {
-    return FakeContext.corrupt ? Promise.reject(new Error("not audio")) : Promise.resolve(decoded());
+    return FakeContext.corrupt ? Promise.reject(new Error("not audio")) : Promise.resolve(decoded(FakeContext.amplitude));
   }
 
   addEventListener(_type: string, listener: () => void): void {
@@ -198,13 +203,34 @@ function must<T>(value: T | null | undefined): T {
   return value;
 }
 
-/** The gain a source fades through, and the one gain all music shares after it. */
+/** The gain a source fades through. */
 function fader(source: FakeSource): FakeParam {
   return must(source.to).gain;
 }
 
+/** The gain a loop goes through next, which drops while a line is spoken. */
+function dip(loop: FakeSource): FakeParam {
+  return (must(loop.to).to as FakeGain).gain;
+}
+
+/** The one gain all music shares at the end: after the dip for a loop, straight after the fader for a sting. */
 function bus(source: FakeSource): FakeParam {
-  return (must(source.to).to as FakeGain).gain;
+  const next = must(source.to).to as FakeGain;
+  return (source.loop ? (next.to as FakeGain) : next).gain;
+}
+
+/** A stand-in for Athena that speaks when told and falls quiet when `finish` is called. */
+function fakeVoice(voice: VoiceModule): { readonly athena: ReturnType<VoiceModule["createVoice"]>; finish(): void } {
+  let done: () => void = () => undefined;
+  const athena = voice.createVoice({
+    available: () => true,
+    play: (_id, finished) => {
+      done = finished;
+      return () => undefined;
+    },
+    random: () => 0,
+  });
+  return { athena, finish: () => { done(); } };
 }
 
 afterEach(() => {
@@ -212,6 +238,7 @@ afterEach(() => {
   FakeContext.locked = false;
   FakeContext.refuses = false;
   FakeContext.corrupt = false;
+  FakeContext.amplitude = AMPLITUDE;
   vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -248,6 +275,9 @@ test("where there is no audio at all, every call does nothing", () => {
     duckMusic(true);
     startMusic("notAScene" as string as "menu");
     duckMusic(false);
+    setMusicVolume(0.5);
+    pauseMusic();
+    resumeMusic();
     stopMusic();
   }).not.toThrow();
 });
@@ -308,6 +338,39 @@ test("a clip that is empty, silent, tiny or malformed still gives usable loop po
     expect(points.loopEnd, label).toBeGreaterThan(points.loopStart);
     expect(points.loopStart, label).toBeGreaterThanOrEqual(points.start);
   }
+});
+
+test("a clip's level is worked out from how loud the clip is", () => {
+  const steady = (amplitude: number, length = 1000): Float32Array => new Float32Array(length).fill(amplitude);
+  expect(clipLevel([steady(0.5), steady(0.5)], 0.1)).toBeCloseTo(0.2, 6);
+  expect(clipLevel([steady(0.01)], 0.1)).toBeCloseTo(10, 4);
+  // Silence at the ends is not counted.
+  const padded = steady(0.5);
+  padded.fill(0, 0, 400);
+  padded.fill(0, 900);
+  expect(clipLevel([padded], 0.1)).toBeCloseTo(0.2, 6);
+  // A long clip is measured from a spread of its samples and comes out the same.
+  expect(clipLevel([steady(0.25, 1_000_003)], 0.1)).toBeCloseTo(0.4, 4);
+  // A near-silent clip is only raised so far, and nothing to measure or a bad target leaves the clip as it is.
+  expect(clipLevel([steady(0.001)], 0.1)).toBe(12);
+  expect(clipLevel([], 0.1)).toBe(1);
+  expect(clipLevel([new Float32Array(0)], 0.1)).toBe(1);
+  expect(clipLevel([new Float32Array(500)], 0.1)).toBe(1);
+  for (const target of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) expect(clipLevel([steady(0.5)], target)).toBe(1);
+});
+
+test("a quiet file and a loud file of the same scene come out equally loud", async () => {
+  const heard: number[] = [];
+  for (const amplitude of [0.01, 0.2, 0.9]) {
+    FakeContext.amplitude = amplitude;
+    const { music } = await inBrowser(["menu"]);
+    music.startMusic("menu");
+    await loaded();
+    heard.push(must(fader(must(context().music[0])).events[1]).value * amplitude);
+  }
+  expect(heard[1]).toBeCloseTo(must(heard[0]), 6);
+  expect(heard[2]).toBeCloseTo(must(heard[0]), 6);
+  expect(must(heard[0])).toBeGreaterThan(0);
 });
 
 test("starting a scene loops its clip and fades it in over a second, and only listed clips are requested", async () => {
@@ -528,12 +591,20 @@ test("a context that rejects what the music schedules does not break the caller"
   menu.stop = () => {
     throw new Error("invalid state");
   };
-  bus(menu).setTargetAtTime = () => {
+  for (const gain of [dip(menu), bus(menu)]) {
+    gain.setTargetAtTime = () => {
+      throw new Error("invalid state");
+    };
+  }
+  menu.playbackRate.setValueAtTime = () => {
     throw new Error("invalid state");
   };
   expect(() => {
-    music.startMusic("fight");
     music.duckMusic(true);
+    music.setMusicVolume(0.3);
+    music.pauseMusic();
+    music.resumeMusic();
+    music.startMusic("fight");
   }).not.toThrow();
   // The clip that would not stop does not keep the next scene from starting.
   expect(context().music.length).toBe(2);
@@ -542,33 +613,154 @@ test("a context that rejects what the music schedules does not break the caller"
   }).not.toThrow();
 });
 
-test("music sits well under the effects, and dips further while a line is spoken", async () => {
+test("music sits well under the effects, and a loop dips further while a line is spoken", async () => {
   const { music, voice } = await inBrowser(["fight"]);
   music.startMusic("fight");
   await loaded();
   const fight = must(context().music[0]);
-  const base = bus(fight).value;
-  // Effects play through a gain of 0.5, and the quietest of them at half of that.
-  expect(base * must(fader(fight).events[1]).value).toBeLessThan(0.25);
+  // Effects play through a gain of 0.5, and the quietest of them at half of that. The fake clip's samples are all 0.5.
+  expect(bus(fight).value * must(fader(fight).events[1]).value * AMPLITUDE).toBeLessThan(0.25 * AMPLITUDE);
+  expect(dip(fight).value).toBe(1);
 
-  let finish: () => void = () => undefined;
-  const athena = voice.createVoice({
-    available: () => true,
-    play: (_id, done) => {
-      finish = done;
-      return () => undefined;
-    },
-    random: () => 0,
-  });
+  const { athena, finish } = fakeVoice(voice);
   context().currentTime = 4;
   expect(athena.speak("fight_start")).toBe(true);
-  const dip = must(bus(fight).events.at(-1));
-  expect(dip.kind).toBe("target");
-  expect(dip.time).toBe(4);
-  expect(dip.value).toBeLessThan(base * 0.75);
-  expect(dip.value).toBeGreaterThan(0);
+  const dipped = must(dip(fight).events.at(-1));
+  expect(dipped.kind).toBe("target");
+  expect(dipped.time).toBe(4);
+  expect(dipped.value).toBeLessThan(0.75);
+  expect(dipped.value).toBeGreaterThan(0);
 
   context().currentTime = 6;
   finish();
-  expect(bus(fight).events.at(-1)).toEqual({ kind: "target", value: base, time: 6 });
+  expect(dip(fight).events.at(-1)).toEqual({ kind: "target", value: 1, time: 6 });
+
+  // A line that is cut off by name lifts the dip too.
+  context().currentTime = 8;
+  expect(athena.speak("homer_title")).toBe(true);
+  expect(dip(fight).events.at(-1)).toMatchObject({ value: dipped.value, time: 8 });
+  context().currentTime = 9;
+  athena.stop("homer_title");
+  expect(dip(fight).events.at(-1)).toEqual({ kind: "target", value: 1, time: 9 });
+});
+
+test("the dip holds until everyone speaking over the music has finished", async () => {
+  const { music } = await inBrowser(["fight"]);
+  music.duckMusic(true);
+  music.startMusic("fight");
+  await loaded();
+  const fight = must(context().music[0]);
+  // A line that began before the music did is still dipped under.
+  const low = dip(fight).value;
+  expect(low).toBeLessThan(0.75);
+
+  music.duckMusic(true, "narration");
+  music.duckMusic(false);
+  expect(must(dip(fight).events.at(-1)).value).toBe(low);
+  music.duckMusic(false, "narration");
+  expect(must(dip(fight).events.at(-1)).value).toBe(1);
+  // Lifting a dip nobody asked for changes nothing.
+  music.duckMusic(false, "nobody");
+  expect(must(dip(fight).events.at(-1)).value).toBe(1);
+});
+
+test("a sting is not dipped under the voice, and both stings come out equally loud", async () => {
+  const { music, voice } = await inBrowser(["fight", "win", "loss"]);
+  music.startMusic("fight");
+  await loaded();
+  const fight = must(context().music[0]);
+  const { athena } = fakeVoice(voice);
+  // The result line and the sting start on the same combat event.
+  expect(athena.speak("win")).toBe(true);
+  music.startMusic("win");
+  const win = must(context().music[1]);
+  music.startMusic("loss");
+  const loss = must(context().music[2]);
+
+  // The loop goes through the dip; a sting goes straight to the shared gain, which the voice never moves.
+  expect(must(fight.to).to).not.toBe(must(win.to).to);
+  expect((must(fight.to).to as FakeGain).to).toBe(must(win.to).to);
+  expect(must(loss.to).to).toBe(must(win.to).to);
+  expect(dip(fight).events.length).toBe(1);
+  expect(bus(win).events).toEqual([]);
+  expect(bus(win).value).toBeGreaterThan(0);
+  expect(must(fader(win).events[1]).value).toBe(must(fader(loss).events[1]).value);
+});
+
+test("the volume setting scales all music, is kept within 0 to 1, and applies to music started later", async () => {
+  const { music } = await inBrowser(["fight", "win"]);
+  music.setMusicVolume(0.5);
+  music.startMusic("fight");
+  await loaded();
+  const fight = must(context().music[0]);
+  const half = bus(fight).value;
+  expect(half).toBeGreaterThan(0);
+
+  context().currentTime = 3;
+  music.setMusicVolume(1);
+  expect(bus(fight).events.at(-1)).toEqual({ kind: "target", value: half * 2, time: 3 });
+  music.setMusicVolume(7);
+  expect(must(bus(fight).events.at(-1)).value).toBe(half * 2);
+  music.setMusicVolume(Number.NaN);
+  expect(bus(fight).events.length).toBe(2);
+  music.setMusicVolume(-2);
+  expect(must(bus(fight).events.at(-1)).value).toBe(0);
+  music.setMusicVolume(0.5);
+  expect(must(bus(fight).events.at(-1)).value).toBe(half);
+  // The sting shares the same gain, so the setting reaches it too.
+  music.startMusic("win");
+  expect(bus(must(context().music[1]))).toBe(bus(fight));
+});
+
+test("pausing silences the music and holds its place; resuming carries on", async () => {
+  const { music } = await inBrowser(["fight", "win"]);
+  music.startMusic("fight");
+  await loaded();
+  const fight = must(context().music[0]);
+  const full = bus(fight).value;
+
+  context().currentTime = 10;
+  music.pauseMusic();
+  music.pauseMusic();
+  expect(bus(fight).events).toEqual([{ kind: "target", value: 0, time: 10 }]);
+  const [held, ...more] = fight.playbackRate.events;
+  expect(more).toEqual([]);
+  expect(held).toMatchObject({ kind: "set", value: 0 });
+  expect(must(held).time).toBeGreaterThan(10);
+  expect(must(held).time).toBeLessThan(11);
+  expect(fight.stopped).toBeNull();
+
+  context().currentTime = 30;
+  music.resumeMusic();
+  music.resumeMusic();
+  expect(fight.playbackRate.events.slice(1)).toEqual([
+    { kind: "cancel", value: 0, time: 30 },
+    { kind: "set", value: 1, time: 30 },
+  ]);
+  expect(bus(fight).events.at(-1)).toEqual({ kind: "target", value: full, time: 30 });
+  expect(context().music.length).toBe(1);
+});
+
+test("a scene asked for during a pause starts on resume, and music first asked for while paused waits too", async () => {
+  const { music } = await inBrowser(["fight", "win"]);
+  music.pauseMusic();
+  music.startMusic("fight");
+  await loaded();
+  expect(context().music.length).toBe(0);
+  context().currentTime = 2;
+  music.resumeMusic();
+  const fight = must(context().music[0]);
+  expect(fight.started?.when).toBe(2);
+  expect(bus(fight).events.at(-1)).toMatchObject({ kind: "target", time: 2 });
+  expect(must(bus(fight).events.at(-1)).value).toBeGreaterThan(0);
+
+  context().currentTime = 5;
+  music.pauseMusic();
+  music.startMusic("win");
+  // The loop is let go, and the sting is held back so none of it is missed.
+  expect(fader(fight).events.at(-1)).toEqual({ kind: "ramp", value: 0, time: 6 });
+  expect(context().music.length).toBe(1);
+  context().currentTime = 9;
+  music.resumeMusic();
+  expect(must(context().music[1]).started).toEqual({ when: 9, offset: 0 });
 });
