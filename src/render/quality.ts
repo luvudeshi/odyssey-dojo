@@ -1,6 +1,7 @@
 // Graphics quality: "high" is the full look, "low" drops the costly effects for a weak laptop. Press `q` to switch.
-// Nothing is saved: every fight starts on high.
-import { createContext, useContext, useEffect, useState } from "react";
+// The choice is a saved setting (src/settings/store.ts).
+import { createContext, useContext, useEffect } from "react";
+import { setSettings, useSettings } from "../settings/store";
 
 export type Quality = "high" | "low";
 
@@ -15,13 +16,13 @@ export function useQualityLevel(): Quality {
 }
 
 export function useQualityToggle(): Quality {
-  const [quality, setQuality] = useState<Quality>("high");
+  const { quality } = useSettings();
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "q" && !event.repeat) setQuality(nextQuality);
+      if (event.key === "q" && !event.repeat) setSettings({ quality: nextQuality(quality) });
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
-  }, []);
+  }, [quality]);
   return quality;
 }
