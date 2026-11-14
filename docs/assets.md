@@ -6,18 +6,18 @@ A shortlist for the dark Greek cave and the sea (task #38). Nothing here is in t
 
 - **Licence** is what the asset's own page (or the site's own record for that asset) states. CC0 needs no credit. CC BY needs the credit line shown in [Credit lines to paste](#credit-lines-to-paste), in the README, the Devpost page and any credits screen.
 - **Size** is the download named in the Format column. "Not shown" means the page gives no size; it is not a guess.
-  - Sketchfab: the size of Sketchfab's converted GLB, as Sketchfab's public API reports it for that model. Sketchfab also offers glTF and the original upload. Downloading needs a free Sketchfab login.
+  - Sketchfab: the size of Sketchfab's converted GLB, as Sketchfab's public API reports it for that model. Where the API lists two GLBs, both sizes are given: one with 2k textures and a smaller one with 1k textures. Sketchfab also offers glTF and the original upload. Downloading needs a free Sketchfab login, so the download dialog itself was not opened: check that it offers the 1k GLB.
   - Poly Haven: sizes from Poly Haven's public file list for that asset.
-  - Poly Pizza and quaternius.com show no sizes.
+  - Poly Pizza and quaternius.com show no sizes. Quaternius's newer packs download from itch.io, which does show them.
 - **Looks were not inspected.** Entries were judged from titles, descriptions, tags and polygon counts. Open the page's 3D viewer before settling on one.
 - The game must run with no network, so anything we use has to be copied into `public/` and loaded from there, never hot-linked. `three` 0.187 already ships `GLTFLoader`, `HDRLoader` and `DRACOLoader` under `three/addons/loaders`, so no new dependency is needed.
 - Monster models plug in behind `MonsterProps` in `src/render/monsters/models/` (lead-owned). The current Polyphemus is posed from `windup`, so a rigged model whose bones we rotate in code fits better than one that only has canned clips.
 
 ## Best picks for the Polyphemus cave fight
 
-1. **The boss: [Cyclops Rig](https://sketchfab.com/3d-models/cyclops-rig-e5cc86878c314f5bae6d7268bb7541d9) by DM-913** (entry 2, CC BY 4.0, 14.0 MB GLB). The best original, rigged, one-eyed giant found. If a credit line or 14 MB is a problem, try the CC0 [Giant](https://poly.pizza/m/BldaiPtyJa) by Quaternius (entry 1) first.
-2. **The cave walls: [Rock Boulder Cracked](https://polyhaven.com/a/rock_boulder_cracked)** (entry 29, CC0, 2.6 MB for three 1k maps). Tagged "cave" by Poly Haven. Lower the roughness for wet stone.
-3. **Torch fire and hit sparks: [Kenney Particle Pack](https://kenney.nl/assets/particle-pack)** (entry 38, CC0, 80 sprites at 512 x 512). Small, tintable and made for additive particles. The Unity Labs flipbooks (entry 39) are the step up if we want realistic flame.
+1. **The boss: [Cyclops Rig](https://sketchfab.com/3d-models/cyclops-rig-e5cc86878c314f5bae6d7268bb7541d9) by DM-913** (entry 2, CC BY 4.0, GLB: 5.1 MB with 1k textures, 14.0 MB with 2k). The best original, rigged, one-eyed giant found. Take the 1k GLB: at 5.1 MB size is no longer a reason to pass on it. If the credit line is a problem, try the CC0 [Giant](https://poly.pizza/m/BldaiPtyJa) by Quaternius (entry 1) first.
+2. **The cave walls: [Rock Boulder Cracked](https://polyhaven.com/a/rock_boulder_cracked)** (entry 29, CC0, 2.6 MB for three 1k maps). Tagged "cave" by Poly Haven, but also "orange": darken or desaturate the diffuse map for a dark cave. Lower the roughness for wet stone.
+3. **Torch fire and hit sparks: [Kenney Particle Pack](https://kenney.nl/assets/particle-pack)** (entry 38, CC0, 80 sprites at 512 x 512). Small, tintable and made for additive particles. The Unity Labs flipbooks (entry 39, Flame02 or Flame03) are the step up if we want realistic flame.
 4. **The two props the fight is about: [Spiked Log Club](https://sketchfab.com/3d-models/spiked-log-club-66f77300b2b646ae9cb3d6efc197ee94)** (entry 14, 1.0 MB) for phase two and **[Wooden Stake](https://sketchfab.com/3d-models/wooden-stake-2e681ca0346249b382513278382ffba8)** (entry 15, 0.05 MB) for the finisher. Both CC BY 4.0.
 
 ## Giants and cyclops-like creatures
@@ -25,11 +25,11 @@ A shortlist for the dark Greek cave and the sea (task #38). Nothing here is in t
 | # | Asset | Licence | Format | Size | Rigged / animated | Credit |
 |---|---|---|---|---|---|---|
 | 1 | [Giant](https://poly.pizza/m/BldaiPtyJa) by Quaternius, on Poly Pizza | CC0 ("Public Domain (CC0)") | FBX, glTF | Not shown | Tagged Animated; clip list not shown | None required |
-| 2 | [Cyclops Rig](https://sketchfab.com/3d-models/cyclops-rig-e5cc86878c314f5bae6d7268bb7541d9) by DM-913 | CC BY 4.0 | GLB | 14.0 MB | Rigged, 1 animation clip, 11,316 faces | Required, line 2 |
-| 3 | [Mountain Orge](https://sketchfab.com/3d-models/mountain-orge-f18e6fb4a07b445095b5fcb5bec7fa7a) by SamThePie | CC BY 4.0 | GLB | 8.7 MB | Rigged, 13 clips (the author says Mixamo animations), 17,309 faces | Required, line 3 |
-| 4 | [Ultimate Monsters](https://quaternius.com/packs/ultimatemonsters.html) by Quaternius (also a [Poly Pizza bundle](https://poly.pizza/bundle/Ultimate-Monsters-Bundle-5oyGWAmOB6)) | CC0 | FBX, OBJ, Blend, glTF | Not shown | 50 animated monsters (attack, death, run, walk). Includes Yeti, Orc, Demon, Dragon. No cyclops | None required |
+| 2 | [Cyclops Rig](https://sketchfab.com/3d-models/cyclops-rig-e5cc86878c314f5bae6d7268bb7541d9) by DM-913 | CC BY 4.0 | GLB | 14.0 MB (2k textures), 5.1 MB (1k) | Rigged, 1 animation clip, 11,316 faces | Required, line 2 |
+| 3 | [Mountain Orge](https://sketchfab.com/3d-models/mountain-orge-f18e6fb4a07b445095b5fcb5bec7fa7a) by SamThePie | CC BY 4.0 | GLB | 8.7 MB (2k textures), 4.7 MB (1k) | Rigged, 13 clips (the author says Mixamo animations), 17,309 faces | Required, line 3 |
+| 4 | [Ultimate Monsters](https://quaternius.com/packs/ultimatemonsters.html) by Quaternius (also a [Poly Pizza bundle](https://poly.pizza/bundle/Ultimate-Monsters-Bundle-5oyGWAmOB6)) | CC0 | FBX, OBJ, Blend, glTF | Not shown | 50 animated monsters by the pack's own count (the Poly Pizza bundle lists 45) with attack, death, run and walk clips. Includes Yeti, Orc, Demon, Dragon. No cyclops | None required |
 
-- Entry 2 has a lighter sibling by the same author, also CC BY 4.0: [Lesser Cyclops Variant Rig](https://sketchfab.com/3d-models/lesser-cyclops-variant-rig-40d31731af1b46b59addd81ed5750db0), 6.1 MB GLB, rigged, 1 clip, 18,164 faces.
+- Entry 2 has a lighter sibling by the same author, also CC BY 4.0: [Lesser Cyclops Variant Rig](https://sketchfab.com/3d-models/lesser-cyclops-variant-rig-40d31731af1b46b59addd81ed5750db0), GLB 6.1 MB with 2k textures or 3.7 MB with 1k, rigged, 1 clip, 18,164 faces. Its credit is line 2b.
 - Entry 3 is an ogre with horns and two eyes: the best clip variety, but it needs its face reworked or hidden to read as Polyphemus.
 
 ## Serpents and sea monsters (Scylla)
@@ -42,7 +42,7 @@ A shortlist for the dark Greek cave and the sea (task #38). Nothing here is in t
 | 8 | [Tentacle](https://poly.pizza/m/BR1vpIvvvv) by Quaternius, on Poly Pizza | CC0 | FBX, glTF | Not shown | Tagged Animated | None required |
 
 - Six copies of entry 7 rising from one rock is the cheapest CC0 Scylla.
-- Entry 5 is the author's own model of a many-headed hydra; only the title borrows the game's name.
+- Entry 5 is presented as the Dungeons & Dragons hydra: the title, the tags (dnd, dungeons-dragons) and a link to the D&D wiki in the description. The mesh appears to be the author's own and a many-headed hydra is a mythological creature, but if we use it, do not use the D&D name anywhere except the credit line, which has to quote the title. Prefer entry 7 if in doubt.
 
 ## Greek warriors and animation sets
 
@@ -50,11 +50,12 @@ A shortlist for the dark Greek cave and the sea (task #38). Nothing here is in t
 |---|---|---|---|---|---|---|
 | 9 | [PS1/PSX Hoplite Chan](https://sketchfab.com/3d-models/ps1psx-hoplite-chan-996eed76879e45758babf2699a106704) by Seifert | CC BY 4.0 | GLB | 2.2 MB | Rigged, 14 clips, 1,357 faces. Spear, shield, xiphos, bow. Retro low-poly woman hoplite | Required, line 9 |
 | 10 | [Low poly - Spartan Soldier](https://sketchfab.com/3d-models/low-poly-spartan-soldier-2c2f5c6e24254636ad75f88d5a0282d9) by MariosTzavis | CC BY 4.0 | GLB | 2.7 MB | Mixamo skeleton, 1 clip, 20,669 faces. Armour and helmet | Required, line 10 |
-| 11 | [KayKit Character Pack: Adventurers](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg | CC0 | FBX, glTF | 12 MB ("Free 2.0") | 5 rigged, animated characters (Knight, Barbarian, Rogue, Mage, Ranger) with 25+ weapons and shields. Not Greek | None required |
+| 11 | [KayKit Character Pack: Adventurers](https://kaylousberg.itch.io/kaykit-adventurers) by Kay Lousberg | CC0 | FBX, glTF | 12 MB ("Free 2.0") | 5 rigged characters (Knight, Barbarian, Rogue, Mage, Ranger), each with "a handful" of weapons and shields (the page's 25+ figure is for the whole pack, part of which is paid); basic movement animations. Not Greek | None required |
 | 12 | [KayKit Character Animations](https://kaylousberg.itch.io/kaykit-character-animations) by Kay Lousberg | CC0 | FBX, glTF | 14 MB ("Free 1.1") | 150+ clips for the KayKit rigs: unarmed melee, blocking, dodging, getting hit, death | None required |
-| 13 | [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius | CC0 | FBX, GLB | Not shown | 120+ clips on a universal humanoid rig. The free tier is "60-70%" of the pack | None required |
+| 13 | [Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) by Quaternius, downloaded from [itch.io](https://quaternius.itch.io/universal-animation-library) | CC0 | Not stated for the free zip (the paid Pro zip is FBX and GLB) | 15 MB (free Standard zip) | 45 clips in the free Standard zip, on a universal humanoid rig. The 120+ clip Pro zip (41 MB) costs $9.99 or more | None required |
 
-- Entry 13 pairs with [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) (CC0, six rigged but unanimated bodies, FBX / OBJ / glTF, size not shown).
+- Entry 13 pairs with [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) (CC0, humanoid rig, no animations), downloaded from [itch.io](https://quaternius.itch.io/universal-base-characters). The free Standard zip has 2 base models and 5 hairstyles and is 122 MB; the rest is in the Source zip (600 MB, $19.99 or more). The itch.io page does not state the free zip's formats; quaternius.com names OBJ, FBX and glTF.
+- quaternius.com calls the free tier of both packs "60-70%" of the pack. The itch.io figures above are the ones to plan with.
 
 ## Club, spear, shield, helmet and stake
 
@@ -65,20 +66,20 @@ A shortlist for the dark Greek cave and the sea (task #38). Nothing here is in t
 | 16 | [Spear](https://poly.pizza/m/fH1zmvjPNx) by Quaternius, on Poly Pizza | CC0 | FBX, glTF | Not shown | Static | None required |
 | 17 | [Shield Round](https://poly.pizza/m/lWajrVXcnA) by Quaternius, on Poly Pizza | CC0 | FBX, glTF | Not shown | Static | None required |
 | 18 | [Aspis - Greek Shield](https://sketchfab.com/3d-models/aspis-greek-shield-5bf29485d55740ad8535dbd7d3d9c836) by Loch Greer | CC BY 4.0 | GLB | 0.07 MB | Static, 500 triangles, lambda emblem, normal map | Required, line 18 |
-| 19 | [PBR Spartan Shield](https://sketchfab.com/3d-models/pbr-spartan-shield-03b51fb57d4747deb71ca22f14971dfb) by Ferocious Industries | CC BY 4.0 | GLB | 10.4 MB | Static, 1,102 triangles, 2K PBR maps | Required, line 19 |
-| 20 | [PBR Hoplite Helmet](https://sketchfab.com/3d-models/pbr-hoplite-helmet-a20e96b821444a8d86eea4869fe4bc84) by Ferocious Industries | CC BY 4.0 | GLB | 16.0 MB | Static, 2,878 triangles, 2K PBR maps, bronze | Required, line 20 |
+| 19 | [PBR Spartan Shield](https://sketchfab.com/3d-models/pbr-spartan-shield-03b51fb57d4747deb71ca22f14971dfb) by Ferocious Industries | CC BY 4.0 | GLB | 10.4 MB (2k textures), 2.9 MB (1k) | Static, 1,102 triangles, 2K PBR maps | Required, line 19 |
+| 20 | [PBR Hoplite Helmet](https://sketchfab.com/3d-models/pbr-hoplite-helmet-a20e96b821444a8d86eea4869fe4bc84) by Ferocious Industries | CC BY 4.0 | GLB | 16.0 MB (2k textures), 5.2 MB (1k) | Static, 2,878 triangles, 2K PBR maps, bronze | Required, line 20 |
 
 - The CC0 [Ultimate RPG Items Bundle](https://poly.pizza/bundle/Ultimate-RPG-Items-Bundle-h8mhlZ0dG8) by Quaternius lists the same Spear and Shield Round names as entries 16 and 17 (55 models: five shields, a spear, swords, axes; FBX and GLB; size not shown). It has no club, helmet or torch.
 - Entry 15 is tagged as a vampire hunter's stake, so it is hand-sized: scale it up for the olive-wood stake.
-- Entries 19 and 20 are heavy only because of 2K textures; shrink the maps to 512 before shipping.
+- Entries 19 and 20 are heavy only because of 2K textures. Take the 1k GLB (2.9 MB and 5.2 MB); shrink the maps to 512 if that is still too much.
 
 ## Cave set dressing
 
 | # | Asset | Licence | Format | Size | Rigged / animated | Credit |
 |---|---|---|---|---|---|---|
 | 21 | [Stalagmites, Collums and Stalacites](https://sketchfab.com/3d-models/stalagmites-collums-and-stalacites-3e06d8e13be64faf85d6ba6a1049b769) by RBG_illustrations | CC BY 4.0 | GLB | 9.5 MB | Static, 4,060 faces | Required, line 21 |
-| 22 | [Modular caves](https://sketchfab.com/3d-models/modular-caves-66d33b65d4fc471db78a7e4da2232623) by ToxaGrom | CC BY 4.0 | GLB | 19.1 MB | Static, 13 modules plus an assembled example, 27,828 faces | Required, line 22 |
-| 23 | [[FREE] Lowpoly Volcanic Rocks [Asset Pack]](https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0) by SimplePolygon | CC BY 4.0. The author adds: do not resell the model | GLB | 0.39 MB | Static, 3,761 faces | Required, line 23 |
+| 22 | [Modular caves](https://sketchfab.com/3d-models/modular-caves-66d33b65d4fc471db78a7e4da2232623) by ToxaGrom | CC BY 4.0 | GLB | 19.1 MB (2k textures), 5.7 MB (1k) | Static, 13 modules plus an assembled example, 27,828 faces | Required, line 22 |
+| 23 | [[FREE] Lowpoly Volcanic Rocks [Asset Pack]](https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0) by SimplePolygon | CC BY 4.0. The author adds: do not resell the model | GLB | 0.39 MB | Static, 3,761 faces | Required, line 23 (the author supplies his own credit text, used there) |
 | 24 | [Rock Moss Set 01](https://polyhaven.com/a/rock_moss_set_01) by Kless Gyzen, Poly Haven | CC0 | glTF with 1k textures | 1.9 MB | Static, 63,127 polygons (decimate before use) | None required |
 | 25 | [Stone Fire Pit](https://polyhaven.com/a/stone_fire_pit) by Sebastian Platen, Poly Haven | CC0 | glTF with 1k textures | 2.5 MB | Static, 3,887 polygons. A hearth for the cave | None required |
 | 26 | [Dungeon Wall Torch - Low Poly Medieval, CC0](https://sketchfab.com/3d-models/dungeon-wall-torch-low-poly-medieval-cc0-156b8eca745549ee951abd8aa58f2d3f) by Avramania | CC0 | GLB | 0.05 MB | Static, 604 triangles | None required |
@@ -91,7 +92,7 @@ Poly Haven sizes are the sum of three 1k JPG maps: diffuse, OpenGL normal and th
 
 | # | Asset | Licence | Format | Size | Notes | Credit |
 |---|---|---|---|---|---|---|
-| 29 | [Rock Boulder Cracked](https://polyhaven.com/a/rock_boulder_cracked) by Dario Barresi and Dimitrios Savva, Poly Haven | CC0 | JPG maps (a glTF bundle is also offered) | 2.6 MB at 1k | Tagged cave, cliff, eroded | None required |
+| 29 | [Rock Boulder Cracked](https://polyhaven.com/a/rock_boulder_cracked) by Dario Barresi and Dimitrios Savva, Poly Haven | CC0 | JPG maps (a glTF bundle is also offered) | 2.6 MB at 1k | Tagged cave, cliff, eroded, and also orange: darken or desaturate the diffuse map for a dark cave | None required |
 | 30 | [Aerial Rocks 02](https://polyhaven.com/a/aerial_rocks_02) by Rob Tuytel, Poly Haven | CC0 | JPG maps | 2.2 MB at 1k | Tagged cave, cliff, moss. Covers 50 m, so it suits big walls | None required |
 | 31 | [Rock Wall 02](https://polyhaven.com/a/rock_wall_02) by Rob Tuytel, Poly Haven | CC0 | JPG maps | 0.7 MB at 1k | Tagged coastal, weather-beaten. The lightest set here | None required |
 | 32 | [Cobblestone Floor 04](https://polyhaven.com/a/cobblestone_floor_04) by Rob Tuytel, Poly Haven | CC0 | JPG maps | 1.6 MB at 1k | Tagged damp, wet, moss. For the cave floor | None required |
@@ -113,17 +114,19 @@ All from Poly Haven, CC0. Sizes are the 1k `.hdr`; the 2k file is about four tim
 | # | Asset | Licence | Format | Size | Notes | Credit |
 |---|---|---|---|---|---|---|
 | 38 | [Particle Pack](https://kenney.nl/assets/particle-pack) by Kenney | CC0 ("Creative Commons CC0") | Not stated on the page | Not shown | 80 files, 512 x 512 tiles, tagged particle and vfx. The page does not list the individual sprites, so confirm the flame and spark shapes after download | None required |
-| 39 | [VFX image sequences and flipbooks](https://unity.com/blog/engine-platform/free-vfx-image-sequences-flipbooks) by Unity Labs | CC0 ("we release some of these sequences under CC0 license") | Zips of flipbook sheets; EXR and TGA sequences also offered | Not shown | Realistic Flame02, Flame03, SmallFlame01, FireBall01 to 04, WispySmoke01 to 03, explosions. Download links not tested | None required |
+| 39 | [VFX image sequences and flipbooks](https://unity.com/blog/engine-platform/free-vfx-image-sequences-flipbooks) by Unity Labs | CC0 ("we release some of these sequences under CC0 license") | Zips of assembled flipbook sheets, image format not stated; EXR and TGA frame sequences also offered | Not shown on the page. The server reports, per flipbook zip: Flame02 8.8 MB, Flame03 2.5 MB, SmallFlame01 6.6 MB, FireBall01 5.9 MB, WispySmoke01 4.6 MB | Realistic Flame02, Flame03, FireBall01 to 04, WispySmoke01 to 03, explosions. SmallFlame01 comes only as "-temperature" variants, which the page does not explain: expect a greyscale heat sheet that needs a colour ramp in a shader, not a coloured flame. The five links sized here answer 200 to a header request; nothing was downloaded | None required |
 | 40 | [Brackeys' VFX Bundle](https://brackeysgames.itch.io/brackeys-vfx-bundle) by Brackeys | CC0 ("Attribution is not required") | Not stated on the page | 26 MB | Particle textures, flipbooks and sprite sheets; the previews show a flame with smoke and sparks | None required |
 
 - Kenney's [Smoke Particles](https://kenney.nl/assets/smoke-particles) (CC0, 70 files, size not shown) goes with entry 38.
+- None of the three pages states the image format inside its download. Confirm it after download and convert the sheets to PNG if they are TGA or EXR.
 
 ## Credit lines to paste
 
-Only the CC BY entries need these. The numbers match the tables.
+Only the CC BY entries need these. The numbers match the tables; 2b is the Lesser Cyclops named under the giants table. Line 23 uses the credit text its author asks for.
 
 ```text
 2.  "Cyclops Rig" (https://sketchfab.com/3d-models/cyclops-rig-e5cc86878c314f5bae6d7268bb7541d9) by DM-913 is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
+2b. "Lesser Cyclops Variant Rig" (https://sketchfab.com/3d-models/lesser-cyclops-variant-rig-40d31731af1b46b59addd81ed5750db0) by DM-913 is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 3.  "Mountain Orge" (https://sketchfab.com/3d-models/mountain-orge-f18e6fb4a07b445095b5fcb5bec7fa7a) by SamThePie is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 5.  "Animated Hydra (Dungeons & Dragons)" (https://sketchfab.com/3d-models/animated-hydra-dungeons-dragons-16bee345cce94a288015cfc38301b20f) by Yanez Designs is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 6.  "Yamata no Orochi" (https://sketchfab.com/3d-models/yamata-no-orochi-8f4c0e2c632e401eb5c5381acc3ce789) by tranb95 is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
@@ -136,7 +139,7 @@ Only the CC BY entries need these. The numbers match the tables.
 20. "PBR Hoplite Helmet" (https://sketchfab.com/3d-models/pbr-hoplite-helmet-a20e96b821444a8d86eea4869fe4bc84) by Ferocious Industries is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 21. "Stalagmites, Collums and Stalacites" (https://sketchfab.com/3d-models/stalagmites-collums-and-stalacites-3e06d8e13be64faf85d6ba6a1049b769) by RBG_illustrations is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 22. "Modular caves" (https://sketchfab.com/3d-models/modular-caves-66d33b65d4fc471db78a7e4da2232623) by ToxaGrom is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
-23. "[FREE] Lowpoly Volcanic Rocks [Asset Pack]" (https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0) by SimplePolygon is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
+23. "[FREE] Lowpoly Volcanic Rocks [Asset Pack]" (https://sketchfab.com/3d-models/free-lowpoly-volcanic-rocks-asset-pack-4fe6a72f8afa4bafbd03cf384add10f0). Models Created by SimplePolygon (Sketchfab - sketchfab.com/SimplePolygon, Artstation - artstation.com/simplepolygon, Discord - discord.gg/simplepolygon, Youtube - https://www.youtube.com/@SimplePolygon3D), licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 28. "Low Poly Bone Pile (Downloadable)" (https://sketchfab.com/3d-models/low-poly-bone-pile-downloadable-5ec580b41a934cea86d4297980d1378f) by 3dsauce is licensed under CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/).
 ```
 
