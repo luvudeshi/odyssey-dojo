@@ -11,14 +11,17 @@ type Base = LevelSpec["monster"]["base"];
 type Side = LevelAttack["direction"];
 type Moves = ReadonlyMap<string, MoveDef>;
 
-/** The registered enemy whose 3D model plays each generated monster. */
+/**
+ * The registered enemy that plays each generated monster when none is registered under the monster's own id.
+ * Charybdis and the Sirens are registered under theirs, so this table only decides for them when they are missing.
+ */
 const STAND_INS: Readonly<Record<Base, string>> = {
   cyclops: "polyphemus",
   laestrygonian: "polyphemus",
   scylla: "scylla",
   charybdis: "scylla",
   sirens: "scylla",
-  suitor_horde: "polyphemus",
+  suitor_horde: "suitors",
 };
 
 /** The defence that answers an attack from each side. */
@@ -147,7 +150,7 @@ function mergeByCounter(level: LevelSpec, moves: Moves): Merged[] {
   const groups = new Map<string, Merged>();
   for (const attack of level.attack_pool) {
     if (attack.type === "feint") continue;
-    // Until the game has a jump, a low blow is ducked, so it is merged, named and animated as a high one.
+    // A low blow is jumped. In a game with no jump move it is ducked, so it is merged, named and animated as a high one.
     const side = attack.direction === "low" && !defends(moves, COUNTERS.low) ? "high" : attack.direction;
     const counter = COUNTERS[side];
     if (!defends(moves, counter)) continue;
@@ -166,7 +169,8 @@ function mergeByCounter(level: LevelSpec, moves: Moves): Merged[] {
 }
 
 function toAttack(group: Merged, level: LevelSpec, stand: EnemySpec): EnemyAttack {
-  // Reusing the stand-in's own attack id keeps its model's wind-up animation.
+  // Reusing the stand-in's own attack id keeps its model's wind-up animation. A defence the stand-in has no attack for
+  // (today that is jump, for every registered enemy) gets a gen_ id no model animates: the prompt card is its only warning.
   const own = stand.attacks.find((attack) => attack.counter === group.counter);
   const levelMs = group.weight > 0 ? group.weightedMs / group.weight : group.plainMs / group.count;
   const [short, long] = PLAYABLE_WARNING_MS;
@@ -252,12 +256,12 @@ function fightMean(
  *   hp = (fightMs - intro) / exchangeMs * DAMAGE_PER_EXCHANGE.
  * Check against Polyphemus: 1825 ms warnings and a 2600 ms window give 3.4 s exchanges, so 400 hp is about 130 s.
  *
- * `warningMs` is the warning of an engine that honours weights, phase attackIds and telegraphScale, as the contract in
- * src/core/types.ts describes. Until the phases engine (issues 5 and 6) merges, src/combat/engine.ts picks attacks
- * evenly at their unscaled warnings, so fights run 10 to 15 percent longer than planned. That engine also multiplies
- * strike damage by (0.5 + quality), 1.2 at the default quality, which this arithmetic leaves out, so there they run
- * 5 to 10 percent shorter. tests/ai/adapt.test.ts holds the played length to 0.8..1.25 of the plan, which fits both;
- * once the phases engine is the only one, fold its quality factor into DAMAGE_PER_EXCHANGE and retune against that test.
+ * `warningMs` is the warning the engine gives: it honours weights, phase attackIds and telegraphScale.
+ * The engine also multiplies strike damage by (0.5 + quality), which this arithmetic leaves out, so the played length
+ * moves with how well the strikes are thrown. Measured on the five fallback levels over every registered enemy, for the
+ * paced player: 0.91 to 0.95 of the plan at the default quality of 0.7, 1.02 to 1.06 at 0.55 and 0.73 to 0.78 at 1.
+ * tests/ai/adapt.test.ts holds the default to 0.8..1.25 of the plan. Divine power is not counted either: a player who
+ * spends a full meter takes off three plain strikes' worth of health and finishes sooner.
  */
 function pacedHp(fightMs: number, warningMs: number, strikeWindowMs: number): number {
   const exchangeMs = warningMs + RECOVER_MS + SKILL * (SKILL * REACT_MS + (1 - SKILL) * strikeWindowMs);
