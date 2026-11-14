@@ -21,6 +21,8 @@ export function App() {
   const [flow, dispatch] = useReducer(flowReducer, START);
 
   const starting = useRef(false);
+  // Set once the player picks "Keyboard only", so a late camera grant cannot hijack the fight.
+  const keyboardOnly = useRef(false);
 
   const useCamera = (): void => {
     if (starting.current) return;
@@ -28,6 +30,10 @@ export function App() {
     setNotice("Starting the camera...");
     startTracker().then(
       (started) => {
+        if (keyboardOnly.current) {
+          started.stop();
+          return;
+        }
         setTracker(started);
         dispatch({ type: "ready" });
       },
@@ -41,7 +47,7 @@ export function App() {
   };
 
   if (flow.screen === "title") {
-    return <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { dispatch({ type: "ready" }); }} />;
+    return <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { keyboardOnly.current = true; dispatch({ type: "ready" }); }} />;
   }
 
   if (flow.screen === "style") {
