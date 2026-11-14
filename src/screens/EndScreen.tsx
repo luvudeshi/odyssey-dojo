@@ -25,8 +25,8 @@ export function EndPanel(props: {
           <ul>{learned.map((move) => <li key={move.name}>{move.name} x{move.count}</li>)}</ul>
         )}
       </div>
-      {!props.won && <button onClick={props.onRetry}>Fight again</button>}
-      <button onClick={props.onMap}>{props.won ? "Back to the map" : "Map"}</button>
+      {!props.won && <button autoFocus onClick={props.onRetry}>Fight again</button>}
+      <button autoFocus={props.won} onClick={props.onMap}>{props.won ? "Back to the map" : "Map"}</button>
       <button onClick={props.onStyle}>Change style</button>
     </>
   );
