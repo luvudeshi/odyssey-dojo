@@ -21,6 +21,8 @@ export type FlowAction =
   | { readonly type: "begin"; readonly seed: number }
   | { readonly type: "ended"; readonly enemyId: string; readonly won: boolean }
   | { readonly type: "retry"; readonly seed: number }
+  | { readonly type: "restart"; readonly seed: number }
+  | { readonly type: "quit" }
   | { readonly type: "toMap" };
 
 export const START: Flow = { screen: "title", style: null, index: 0, seed: 0, cleared: [] };
@@ -52,6 +54,10 @@ export function flowReducer(flow: Flow, action: FlowAction): Flow {
       };
     case "retry":
       return flow.screen === "result" ? { ...flow, seed: action.seed, screen: "fight" } : flow;
+    case "restart":
+      return flow.screen === "fight" ? { ...flow, seed: action.seed } : flow;
+    case "quit":
+      return flow.screen === "fight" ? { ...flow, screen: "map" } : flow;
     case "toMap":
       return flow.screen === "result" || flow.screen === "intro" ? { ...flow, screen: "map" } : flow;
   }
