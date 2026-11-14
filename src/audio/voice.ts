@@ -91,7 +91,11 @@ export interface Voice {
 /** Told true when a line starts and false when the voice falls quiet. */
 let onSpeaking: (speaking: boolean) => void = () => undefined;
 
-/** Lets one listener (the music) know when a line is being spoken, so it can dip under it. */
+/**
+ * Lets one listener (the music) know when a line is being spoken, so it can dip under it.
+ * This assumes the app has a single Voice (the shared one below): with two, one falling quiet would report silence
+ * while the other still speaks.
+ */
 export function watchVoice(listener: (speaking: boolean) => void): void {
   onSpeaking = listener;
 }
@@ -147,6 +151,7 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
       if (current?.id !== id) return;
       current.stop();
       current = null;
+      onSpeaking(false);
     },
     dispose() {
       disposed = true;
