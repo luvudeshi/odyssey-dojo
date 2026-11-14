@@ -7,6 +7,7 @@ import type { Express, NextFunction, Request, Response, Router } from "express";
 import { log } from "../src/core/log";
 import type { AiClients } from "./ai/types";
 import type { Config } from "./env";
+import { localOnly } from "./lib/localOnly";
 
 export interface Deps {
   readonly config: Config;
@@ -24,6 +25,7 @@ function isRegister(value: unknown): value is Register {
 export async function createApp(deps: Deps): Promise<Express> {
   const app = express();
   app.disable("x-powered-by");
+  app.use(localOnly);
   // Webcam snapshots arrive as base64 inside JSON.
   app.use(express.json({ limit: "6mb" }));
 

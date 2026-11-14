@@ -55,6 +55,33 @@ test("no key, a failing model and a bad request all answer at once without a 500
   expect((await failing({ text: "x", voice: "zeus" })).status).toBe(400);
 });
 
+test("two requests for the same new line at the same moment make one speech call, and a failure is not remembered", async () => {
+  let calls = 0;
+  let fail = false;
+  const call = await serve({
+    voices: () => Promise.resolve(voices),
+    speech: async () => {
+      calls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (fail) throw new Error("quota");
+      return Buffer.from("mp3-bytes");
+    },
+  });
+  const line = { text: "Nobody is my name.", voice: "homer" };
+  const both = await Promise.all([call(line), call(line)]);
+  expect(both.map((response) => response.status)).toEqual([200, 200]);
+  for (const response of both) expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("mp3-bytes");
+  expect(calls).toBe(1);
+
+  fail = true;
+  const other = { text: "Wine-dark sea.", voice: "homer" };
+  expect((await Promise.all([call(other), call(other)])).map((response) => response.status)).toEqual([503, 503]);
+  expect(calls).toBe(2);
+  fail = false;
+  expect((await call(other)).status).toBe(200);
+  expect(calls).toBe(3);
+});
+
 test("voices are picked by forced id, then by preferred name, then whatever exists", () => {
   expect(pickVoice("homer", voices, "v1")?.id).toBe("v1");
   expect(pickVoice("homer", voices, undefined)?.id).toBe("v2");

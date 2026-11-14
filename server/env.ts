@@ -1,6 +1,9 @@
 // Server settings, read once from the environment (and from .env at the repo root when it exists).
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { log } from "../src/core/log";
+
+const DEFAULT_PORT = 8787;
 
 export interface Config {
   readonly port: number;
@@ -25,12 +28,21 @@ function value(name: string): string | null {
   return raw === undefined || raw === "" ? null : raw;
 }
 
+/** A whole number from 1 to 65535, or the default port with a warning. */
+export function parsePort(raw: string | null): number {
+  if (raw === null) return DEFAULT_PORT;
+  const port = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
+  if (port >= 1 && port <= 65535) return port;
+  log("warn", "bad_server_port", { value: raw, using: DEFAULT_PORT });
+  return DEFAULT_PORT;
+}
+
 export function loadConfig(root: string = process.cwd()): Config {
   const envFile = resolve(root, ".env");
   if (existsSync(envFile)) process.loadEnvFile(envFile);
   return {
     // Not PORT: hosts and dev tools set that for the web page, and the two must not collide.
-    port: Number(value("AI_SERVER_PORT") ?? 8787),
+    port: parsePort(value("AI_SERVER_PORT")),
     geminiKey: value("GEMINI_API_KEY"),
     elevenLabsKey: value("ELEVENLABS_API_KEY"),
     dataDir: resolve(root, "server/data"),

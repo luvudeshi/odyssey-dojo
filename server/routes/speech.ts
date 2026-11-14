@@ -18,6 +18,8 @@ const LIVE_BUDGET_MS = 8000;
 export const register: Register = (router, { ai, config }) => {
   const folder = join(config.dataDir, "speech");
   let voices: Promise<readonly Voice[]> | null = null;
+  // Lines being made right now, by cache file, so a second request for the same line waits instead of paying twice.
+  const making = new Map<string, Promise<Buffer>>();
 
   router.post("/api/speech", async (request, response) => {
     const parsed = SpeechRequest.safeParse(request.body);
@@ -37,18 +39,28 @@ export const register: Register = (router, { ai, config }) => {
         response.status(503).json({ error: "unavailable" });
         return;
       }
-      const bytes = await withTimeout(LIVE_BUDGET_MS, async (signal) => {
-        voices ??= listVoices(signal).catch((error: unknown) => {
-          voices = null;
-          throw error;
-        });
-        const voice = pickVoice(character, await voices, forcedVoice(character));
-        if (voice === null) throw new Error("no voice available");
-        return speech({ text, voiceId: voice.id, model: MODEL, signal });
-      });
-      mkdirSync(folder, { recursive: true });
-      writeFileSync(file, bytes);
-      response.type("audio/mpeg").send(bytes);
+      let job = making.get(file);
+      if (job === undefined) {
+        job = withTimeout(LIVE_BUDGET_MS, async (signal) => {
+          voices ??= listVoices(signal).catch((error: unknown) => {
+            voices = null;
+            throw error;
+          });
+          const voice = pickVoice(character, await voices, forcedVoice(character));
+          if (voice === null) throw new Error("no voice available");
+          return speech({ text, voiceId: voice.id, model: MODEL, signal });
+        })
+          .then((bytes) => {
+            mkdirSync(folder, { recursive: true });
+            writeFileSync(file, bytes);
+            return bytes;
+          })
+          .finally(() => {
+            making.delete(file);
+          });
+        making.set(file, job);
+      }
+      response.type("audio/mpeg").send(await job);
     } catch (error) {
       log("warn", "speech_failed", error);
       response.status(503).json({ error: "unavailable" });
