@@ -162,7 +162,11 @@ test("camera: pulls back and lower on a windup, pushes in on a strike window, or
   const b = cameraShot(makeShot(), inPhase("finisher"), 4, true);
   expect(a.px).not.toBeCloseTo(b.px);
   expect(cameraShot(makeShot(), inPhase("won"), 0, true).fov).toBeGreaterThan(rest.fov);
-  expect(cameraShot(makeShot(), inPhase("lost"), 0, true).py).toBeLessThan(1);
+  // The loss camera keeps the fallen hero (at z 1.2) in view: it looks toward the hero, not up at the monster.
+  const lost = cameraShot(makeShot(), inPhase("lost"), 0, true);
+  expect(lost.pz).toBeGreaterThan(1.2 + 2);
+  expect(lost.lz).toBeGreaterThan(-1);
+  expect(lost.ly).toBeLessThan(1.5);
 });
 
 test("camera: calm motion stops the sway; a hit punches in; a phase change goes wide", () => {
