@@ -4,6 +4,7 @@
 // The loop join and the loudness measure are the music's (music.ts); the audio context is the one the effects use (sfx.ts).
 import { log } from "../core/log";
 import type { CombatEvent } from "../core/types";
+import { getSettings, subscribeSettings } from "../settings/store";
 import type { LoopPoints } from "./music";
 import { clipLevel, seamLoop } from "./music";
 import { sharedAudioContext } from "./sfx";
@@ -40,12 +41,10 @@ export interface StopVolumes {
   readonly sfx: number;
 }
 
-/**
- * The one place the stop sounds read their volume. Until src/settings/store.ts is on main both are 1. Once it is, this
- * returns `{ music: getSettings().musicVolume, sfx: getSettings().sfxVolume }`.
- */
+/** The one place the stop sounds read their volume: the ambience follows the music setting, the event sounds the effects setting. */
 export function stopVolumes(): StopVolumes {
-  return { music: 1, sfx: 1 };
+  const { musicVolume, sfxVolume } = getSettings();
+  return { music: musicVolume, sfx: sfxVolume };
 }
 
 interface Rig {
@@ -247,6 +246,10 @@ function createRig(): Rig | null {
     context.addEventListener("statechange", () => {
       sync(active);
     });
+    // A volume slider moved in the pause menu is heard at once.
+    subscribeSettings(() => {
+      applyVolumes(active);
+    });
     return active;
   } catch (error) {
     log("warn", "stops.unavailable", error);
@@ -291,11 +294,6 @@ export function stopStopAmbience(): void {
   } catch (error) {
     log("warn", "stops.stopFailed", error);
   }
-}
-
-/** Picks up a changed volume setting at once. Without this call it is picked up at the next sound. */
-export function refreshStopVolume(): void {
-  if (rig) applyVolumes(rig);
 }
 
 /**

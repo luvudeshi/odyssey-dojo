@@ -6,8 +6,10 @@ import { listedStopClips, playStopEvent, startStopAmbience, stopClipLevel, stopS
 import { STOP_SOUNDS, stopAmbience, stopClipFor, stopClipKey, stopClips } from "../src/audio/stopSounds";
 import type { CombatEvent, EnemyAttack, EnemySpec } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
+import { getSettings, setSettings } from "../src/settings/store";
 
 type StopAudio = typeof import("../src/audio/stopAudio");
+type SettingsModule = typeof import("../src/settings/store");
 
 const FOLDER = "public/audio/stops";
 const MAX_BYTES = 400_000;
@@ -176,8 +178,12 @@ test("a clip is brought to its loudness, but never so far that its loudest sampl
   expect(stopClipLevel([new Float32Array(0)], 0.1, 0.9)).toBe(1);
 });
 
-test("until the settings store is on main, both volumes are full", () => {
-  expect(stopVolumes()).toEqual({ music: 1, sfx: 1 });
+test("the ambience takes the music volume setting and the event sounds the effects volume setting", () => {
+  const before = getSettings();
+  setSettings({ musicVolume: 0.3, sfxVolume: 0.6 });
+  expect(stopVolumes()).toEqual({ music: 0.3, sfx: 0.6 });
+  setSettings({ musicVolume: before.musicVolume, sfxVolume: before.sfxVolume });
+  expect(stopVolumes()).toEqual({ music: before.musicVolume, sfx: before.sfxVolume });
 });
 
 // ---- Playback, in a fake browser ----
@@ -333,13 +339,16 @@ class FakeContext {
 
 interface Browser {
   readonly audio: StopAudio;
+  /** The settings store that copy of the stop audio reads. */
+  readonly settings: SettingsModule;
   /** Every URL asked for under /audio/stops. */
   readonly requested: string[];
 }
 
 /**
- * Loads a fresh copy of the stop audio into a fake browser. `index` is what public/audio/stops/index.json holds
- * (undefined: the request fails; null: the file is not there), and `missing` lists clips whose files are not there.
+ * Loads a fresh copy of the stop audio into a fake browser, with both volume settings at full. `index` is what
+ * public/audio/stops/index.json holds (undefined: the request fails; null: the file is not there), and `missing`
+ * lists clips whose files are not there.
  */
 async function inBrowser(index: unknown, missing: readonly string[] = []): Promise<Browser> {
   const requested: string[] = [];
@@ -360,7 +369,9 @@ async function inBrowser(index: unknown, missing: readonly string[] = []): Promi
     return missing.some((key) => url === `/audio/stops/${key}.mp3`) ? notFound : ok(null);
   });
   const audio = await import("../src/audio/stopAudio");
-  return { audio, requested };
+  const settings = await import("../src/settings/store");
+  settings.setSettings({ musicVolume: 1, sfxVolume: 1 });
+  return { audio, settings, requested };
 }
 
 /** Lets the index and the clips finish loading. */
@@ -516,6 +527,28 @@ test("every sound the table gives a stop plays once that stop is loaded", async 
   }
 });
 
+test("the volume settings scale the ambience and the event sounds, at the start and when they change", async () => {
+  const { audio, settings } = await inBrowser(tableClips());
+  settings.setSettings({ musicVolume: 0.5, sfxVolume: 0.25 });
+  audio.startStopAmbience("circe");
+  await loaded();
+  const loop = must(context().heard[0]);
+  expect(bus(loop).value).toBeCloseTo(0.16 * 0.5, 6);
+  expect(audio.playStopEvent("circe", ENEMY_HIT)).toBe(true);
+  const hit = must(context().heard[1]);
+  expect(bus(hit).value).toBeCloseTo(0.5 * 0.25, 6);
+  expect(bus(loop).events).toEqual([]);
+
+  // A slider moved while the fight is paused is heard at once, with no new sound needed.
+  context().currentTime = 3;
+  settings.setSettings({ musicVolume: 0, sfxVolume: 1 });
+  expect(bus(loop).events).toEqual([{ kind: "target", value: 0, time: 3 }]);
+  expect(bus(hit).events).toEqual([{ kind: "target", value: 0.5, time: 3 }]);
+  // A setting that has nothing to do with sound schedules nothing more.
+  settings.setSettings({ mirror: false });
+  expect(bus(loop).events).toHaveLength(1);
+});
+
 test("a clip that index.json does not list is never requested, and its event keeps the usual sound", async () => {
   const { audio, requested } = await inBrowser(["circe/ambience", "circe/squeal", "sirens/note", 7, "circe/unused"]);
   audio.startStopAmbience("circe");
@@ -575,7 +608,7 @@ test("a browser that cannot make or start audio is handled without an error", as
   const first = await inBrowser(tableClips());
   expect(() => {
     first.audio.startStopAmbience("circe");
-    first.audio.refreshStopVolume();
+    first.settings.setSettings({ musicVolume: 0.5 });
     first.audio.stopStopAmbience();
   }).not.toThrow();
   expect(first.audio.playStopEvent("circe", ENEMY_HIT)).toBe(false);
