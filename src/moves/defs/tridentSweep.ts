@@ -23,6 +23,7 @@ export const move: MoveDef = {
   hint: "Sweep both arms across your body like pushing a wave",
   key: "2",
   diagram: { leftElbow: [24, 40], leftWrist: [10, 36], rightElbow: [48, 44], rightWrist: [30, 42] },
+  teaches: "Sweeping across your body moves a grab or a reaching arm off your center line.",
   detect(history) {
     const frame = latest(history);
     const earlier = recent(history, 350)[0];

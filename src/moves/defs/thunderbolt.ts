@@ -15,6 +15,7 @@ export const move: MoveDef = {
   hint: "Raise either hand over your head, then throw it down",
   key: "1",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [72, 18], rightWrist: [70, 4] },
+  teaches: "A downward strike gets its force from gravity and your body weight, not arm strength.",
   detect(history) {
     const left = thrown(history, JOINT.leftWrist, JOINT.leftShoulder);
     return left || thrown(history, JOINT.rightWrist, JOINT.rightShoulder) ? 1 : 0;

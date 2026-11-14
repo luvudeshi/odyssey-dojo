@@ -9,6 +9,7 @@ export const move: MoveDef = {
   hint: "Take one fast step to either side",
   key: "4",
   diagram: { leftElbow: [28, 42], leftWrist: [20, 52], rightElbow: [58, 46], rightWrist: [52, 58], shiftX: 18 },
+  teaches: "One quick step off the line gets you out of the way faster than backing straight up.",
   detect(history) {
     const frame = latest(history);
     const earlier = recent(history, 250)[0];

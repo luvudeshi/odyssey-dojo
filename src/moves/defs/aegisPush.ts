@@ -29,6 +29,7 @@ export const move: MoveDef = {
   hint: "Push both open palms straight out from your chest",
   key: "3",
   diagram: { leftElbow: [30, 44], leftWrist: [40, 36], rightElbow: [70, 44], rightWrist: [60, 36] },
+  teaches: "An open-palm push makes space to get away and is kinder to your hands than a fist.",
   detect(history) {
     const frame = latest(history);
     if (!frame || !handsUp(frame)) return 0;

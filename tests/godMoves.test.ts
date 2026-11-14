@@ -93,9 +93,14 @@ function play(poses: readonly Pose[], pause = 0): CombatInput[] {
   return inputs.slice(30);
 }
 
+/** Ids of the strikes thrown on one frame. */
+function struckIds(input: CombatInput): string[] {
+  return input.struck.map((strike) => strike.move);
+}
+
 /** Every move seen in a run, in id order: each one that was struck or held at least once. */
 function seen(inputs: readonly CombatInput[]): string[] {
-  return [...new Set(inputs.flatMap((input) => [...input.struck, ...input.held]))].sort();
+  return [...new Set(inputs.flatMap((input) => [...struckIds(input), ...input.held]))].sort();
 }
 
 function gods(inputs: readonly CombatInput[]): string[] {
@@ -318,6 +323,26 @@ test("the god moves are registered with their kinds, keys, prompts and names", (
   expect(registered).toEqual(GODS);
 });
 
+test("every god move says what it teaches in one line of at most 90 characters", () => {
+  for (const id of GOD_IDS) {
+    const teaches = MOVES.get(id)?.teaches ?? "";
+    expect(teaches.trim(), id).toBe(teaches);
+    expect(teaches, id).not.toContain("\n");
+    expect(teaches.length, id).toBeGreaterThan(0);
+    expect(teaches.length, id).toBeLessThanOrEqual(90);
+  }
+});
+
+test("a god strike read from the camera carries its move, a quality from 0 to 1 and player 0", () => {
+  for (const { move, poses } of GESTURES.filter((gesture) => gesture.move !== "jump")) {
+    const thrown = play(poses).flatMap((input) => input.struck).filter((strike) => strike.move === move);
+    expect(thrown, move).toHaveLength(1);
+    expect(thrown[0]?.player, move).toBe(0);
+    expect(thrown[0]?.quality, move).toBeGreaterThanOrEqual(0);
+    expect(thrown[0]?.quality, move).toBeLessThanOrEqual(1);
+  }
+});
+
 test("god move diagrams stay inside the prompt card's box", () => {
   for (const id of GOD_IDS) {
     const diagram = MOVES.get(id)?.diagram;
@@ -363,8 +388,8 @@ test.each(GESTURES.filter(({ move }) => move !== "jump"))(
   "$move ($how) fires exactly once, as the gesture ends",
   ({ move, poses, at }) => {
     const inputs = play(poses);
-    expect(inputs.flatMap((input) => input.struck).filter((id) => id === move)).toEqual([move]);
-    expect(inputs.findIndex((input) => input.struck.includes(move))).toBe(at);
+    expect(inputs.flatMap(struckIds).filter((id) => id === move)).toEqual([move]);
+    expect(inputs.findIndex((input) => struckIds(input).includes(move))).toBe(at);
   },
 );
 
@@ -389,7 +414,7 @@ test("a guard, a jab and a slow lean set off no god move", () => {
 });
 
 test("trident sweep ignores a side-step and hands swept above the head or below the hips", () => {
-  const struck = (poses: readonly Pose[]): string[] => play(poses).flatMap((input) => input.struck);
+  const struck = (poses: readonly Pose[]): string[] => play(poses).flatMap(struckIds);
   // In a dash both wrists cross more than a shoulder width of the picture, but not of the body.
   const left = shifted(stand, -0.1, 0);
   const acrossTheMiddle = [...ease(stand, left, 30), ...hold(left, 30), ...ease(left, shifted(stand, 0.11, 0), 6)];
