@@ -11,7 +11,7 @@ export function SettingsPanel(props: { onClose: () => void }) {
     <Dialog title="Settings" onEscape={props.onClose}>
       <div className="ui-rows">
         <Select label="Graphics quality" value={settings.quality} options={QUALITY} onChange={(quality) => { setSettings({ quality }); }} />
-        <Slider label="Music volume" value={settings.musicVolume} onChange={(musicVolume) => { setSettings({ musicVolume }); }} />
+        {/* No music exists yet, so no slider: a control that changes nothing reads as broken. Add it back with the music code; the setting is already stored. */}
         <Slider label="Effects volume" value={settings.sfxVolume} onChange={(sfxVolume) => { setSettings({ sfxVolume }); }} />
         <Slider label="Voice volume" value={settings.voiceVolume} onChange={(voiceVolume) => { setSettings({ voiceVolume }); }} />
         <Toggle label="Mirror webcam picture" checked={settings.mirror} onChange={(mirror) => { setSettings({ mirror }); }} />
