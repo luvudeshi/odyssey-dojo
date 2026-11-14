@@ -8,6 +8,7 @@ import {
   peak, pose, sequence, standing,
 } from "../helpers/poses";
 import type { Arm } from "../helpers/poses";
+import { GOD_GOOD } from "../godMoveSequences";
 
 function moveOf(id: string): MoveDef {
   const found = MOVES.get(id);
@@ -41,6 +42,7 @@ const GOOD: Record<string, Key[]> = {
   duck: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, 0, 0.12)], [500, pose(DOWN, DOWN, 0, 0.12)]),
   dodge_left: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, -0.12, 0)], [500, pose(DOWN, DOWN, -0.12, 0)]),
   dodge_right: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, 0.12, 0)], [500, pose(DOWN, DOWN, 0.12, 0)]),
+  ...GOD_GOOD,
 };
 
 /** Something close that must not count, per move. */
@@ -97,7 +99,9 @@ describe("defends are not confused with each other", () => {
 
 // double_palm reads as block at 0.35 for a few frames before the arms straighten (wrists near the nose).
 // That is under the 0.7 the game needs to hold a defend (src/input/poseInput.ts), so it is listed, not fixed.
-const KNOWN_CONFUSIONS = new Set(["double_palm>block"]);
+// swift_dash is one fast step to the side, which is a dodge by design, so dodge_right reads 1 on its sequence.
+// A held defend does nothing while the fight waits for a strike (src/combat/engine.ts), so it is listed too.
+const KNOWN_CONFUSIONS = new Set(["double_palm>block", "swift_dash>dodge_right"]);
 
 describe("a strike does not read as a defend", () => {
   const strikes = [...MOVES.values()].filter((move) => move.kind === "strike");

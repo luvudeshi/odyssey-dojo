@@ -1,17 +1,20 @@
 // The 3D view: arena, monster, weak-spot marker and the player figure. Reads combat state; never changes it.
 import { Canvas } from "@react-three/fiber";
 import { ACESFilmicToneMapping } from "three";
-import { Suspense, createElement } from "react";
+import { Suspense, createElement, useEffect } from "react";
 import type { RefObject } from "react";
 import type { CombatState, EnemySpec, MonsterProps, PoseFrame } from "../core/types";
 import { ArenaFor } from "./arena/ArenaFor";
 import { Atmosphere } from "./Atmosphere";
+import { battle, nowSeconds, resetBattle, syncBattle } from "./battle";
+import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { HitEffects } from "./effects/HitEffects";
 import { hitPulse } from "./effects/pulse";
+import { MonsterRig } from "./MonsterRig";
 import { MONSTER_MODELS } from "./monsters/registry";
-import { PlayerFigure } from "./PlayerFigure";
+import { Hero } from "./hero/Hero";
 import { QualityContext, useQualityToggle } from "./quality";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
@@ -51,15 +54,20 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
   const phase = state.phase;
   const weakSpot = phase.kind === "strike" ? phase.weakSpot : null;
   const quality = useQualityToggle();
+  useEffect(() => {
+    resetBattle();
+    return () => { resetBattle(); };
+  }, [enemy.id]);
+  useEffect(() => { syncBattle(battle, state, nowSeconds()); }, [state]);
   return (
     <ErrorBoundary label="canvas" fallback={<p style={{ color: "#fff", padding: "1rem" }}>The 3D view failed to start. Reload the page.</p>}>
       <Canvas
         shadows={quality === "high" ? "percentage" : false}
         dpr={[1, 1.5]}
         gl={{ toneMapping: ACESFilmicToneMapping }}
-        camera={{ position: [0, 2, 4.4], fov: 50 }}
+        camera={{ position: [1.5, 2.2, 5.2], fov: 52 }}
         onCreated={({ camera }) => {
-          camera.lookAt(0, 1.8, -3);
+          camera.lookAt(0.9, 1.7, -1.6);
         }}
       >
         <QualityContext.Provider value={quality}>
@@ -69,7 +77,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
             </Suspense>
           </ErrorBoundary>
           <Atmosphere />
-          <group position={[0, 0, -4]}>
+          <MonsterRig>
             {createElement(MONSTER_MODELS.get(enemy.id) ?? Placeholder, {
               windup: phase.kind === "defend" ? 1 - phase.msLeft / phase.totalMs : 0,
               attackId: phase.kind === "defend" ? phase.attack.id : null,
@@ -85,8 +93,9 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
                 <meshBasicMaterial color="#ffd54a" />
               </mesh>
             )}
-          </group>
-          <PlayerFigure poseRef={poseRef} />
+          </MonsterRig>
+          <CameraRig />
+          <Hero poseRef={poseRef} />
           <Effects />
         </QualityContext.Provider>
       </Canvas>

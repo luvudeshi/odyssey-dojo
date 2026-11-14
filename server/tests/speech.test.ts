@@ -1,4 +1,5 @@
 // Speech lines are made once, cached on disk, and never leave the caller waiting or with a 500.
+import { once } from "node:events";
 import { mkdtempSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -21,7 +22,8 @@ async function serve(ai: Partial<AiClients>): Promise<(json: unknown) => Promise
     timeouts: { levelMs: 80, revealMs: 80, portraitMs: 80, speechMs: 80 },
   };
   const app = await createApp({ config, ai: { ...NO_AI, ...ai } });
-  const server = app.listen(0);
+  const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
   close = () => { server.close(); };
   const { port } = server.address() as AddressInfo;
   return (json) => fetch(`http://127.0.0.1:${String(port)}/api/speech`, {
