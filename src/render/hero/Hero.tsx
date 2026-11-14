@@ -65,7 +65,10 @@ function Ready({ readyRef }: { readyRef: RefObject<boolean> }) {
 function GlbHero({ candidate, ready }: { candidate: HeroCandidate; ready: RefObject<boolean> }) {
   const group = useRef<Group>(null);
   const input = useRef<MutableInput>({ held: new Set(), struckMove: "", sinceStrike: Infinity, sinceHurt: Infinity, won: false, lost: false, finisherMove: null });
-  const prepare = useMemo(() => tinter(candidate.tint), [candidate.tint]);
+  const prepare = useMemo(() => {
+    const tint = tinter(candidate.tint);
+    return (root: Object3D): void => { tint(root); candidate.prepare?.(root); };
+  }, [candidate]);
   useEffect(() => { if (DEBUG) Object.assign(window, { __heroGroup: group.current, __battle: battle, __now: nowSeconds }); }, []);
   // PlayerFigure steps the hero about the arena and writes battle.heroX/Z; the model follows it.
   useFrame((_, delta) => {
@@ -80,6 +83,8 @@ function GlbHero({ candidate, ready }: { candidate: HeroCandidate; ready: RefObj
         url={candidate.url}
         fit={candidate.fit}
         prepare={prepare}
+        anchors={candidate.anchors}
+        tweakMaterial={candidate.tweakMaterial}
         decide={(available, out) => {
           const i = readInput(input.current, nowSeconds());
           return decideHeroPose(candidate.rig, chooseHeroPose(candidate.rig, i), i, available, out);
