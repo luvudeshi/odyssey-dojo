@@ -98,7 +98,7 @@ export function seamLoop(channels: readonly Float32Array[], sampleRate: number, 
   while (first < length && !loud(first)) first++;
   if (first === length) return whole;
   let end = length;
-  while (!loud(end - 1)) end--;
+  while (end > first + 1 && !loud(end - 1)) end--;
 
   const asked = Math.round(seam * sampleRate);
   let fade = asked > 0 ? asked : 0;
