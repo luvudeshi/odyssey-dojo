@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { GODS } from "../src/ai/gods/gods";
-import { MAX_VIDEO_BYTES, ReplayMetaSchema } from "../src/replay/contracts";
+import { MAX_CARD_BYTES, MAX_VIDEO_BYTES, ReplayMetaSchema } from "../src/replay/contracts";
 import { IDLE, canShare, cardFileName, cardWords, replayMeta, runShare, shareStep, statusLine } from "../src/replay/ui/shareFlow";
 import type { ShareEvent, ShareFight, ShareState } from "../src/replay/ui/shareFlow";
 import { SharePanel } from "../src/replay/ui/SharePanel";
@@ -23,6 +23,8 @@ const png = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 
 const video = new Blob([new Uint8Array(2_500_000)], { type: "video/webm" });
 const job = { meta: replayMeta(cardWords(fight)), card: png, video };
 const uploading: ShareState = { kind: "uploading", stage: "card" };
+const sendingVideo: ShareState = { kind: "uploading", stage: "video" };
+const shared: ShareState = { kind: "shared", links, videoFailed: false };
 
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -57,30 +59,34 @@ test("with no god the card is of Odysseus, and a broken score or name still make
 });
 
 test("before the press the line says what will be uploaded, and afterwards how it went", () => {
-  expect(statusLine(IDLE, null)).toBe("Share uploads this card to this game's server. Anyone with the link can see it.");
-  expect(statusLine(IDLE, video)).toContain("this card and the video of your fight (2.5 MB)");
-  // A video the upload would skip is not promised.
-  expect(statusLine(IDLE, new Blob([]))).toContain("uploads this card to");
-  expect(statusLine(IDLE, { size: MAX_VIDEO_BYTES + 1 } as Blob)).toContain("uploads this card to");
-  expect(statusLine(uploading, video)).toBe("Sending the card...");
-  expect(statusLine({ kind: "uploading", stage: "video" }, video)).toBe("Sending the fight video...");
-  expect(statusLine({ kind: "failed" }, video)).toContain("Sharing is unavailable");
-  expect(statusLine({ kind: "shared", links }, video)).toContain("Scan the code");
+  expect(statusLine(IDLE, png, null)).toBe("Share uploads this card to this game's server. Anyone with the link can see it.");
+  expect(statusLine(IDLE, png, video)).toContain("uploads this card and the video of your fight (2.5 MB) to");
+  // A video or a card the upload would skip is not promised.
+  expect(statusLine(IDLE, png, new Blob([]))).toContain("uploads this card to");
+  expect(statusLine(IDLE, png, { size: MAX_VIDEO_BYTES + 1 } as Blob)).toContain("uploads this card to");
+  expect(statusLine(IDLE, null, video)).toContain("uploads the video of your fight (2.5 MB) to");
+  expect(statusLine(IDLE, { size: MAX_CARD_BYTES + 1 } as Blob, video)).toContain("uploads the video of your fight (2.5 MB) to");
+  expect(statusLine(IDLE, null, null)).toBe("There is nothing to share yet.");
+  expect(statusLine(uploading, png, video)).toBe("Sending the card...");
+  expect(statusLine(uploading, null, video)).toBe("Making the replay page...");
+  expect(statusLine(sendingVideo, png, video)).toBe("Sending the fight video...");
+  expect(statusLine({ kind: "failed" }, png, video)).toContain("Sharing is unavailable");
+  expect(statusLine(shared, png, video)).toContain("Scan the code");
+  expect(statusLine({ ...shared, videoFailed: true }, png, video)).toBe("The fight video did not upload. The link opens the page without it.");
 });
 
 test("a share cannot start twice, can be tried again after a failure, and ignores events it is not waiting for", () => {
   expect(shareStep(IDLE, { type: "start" })).toEqual(uploading);
   expect(shareStep(uploading, { type: "start" })).toBe(uploading);
   expect(shareStep({ kind: "failed" }, { type: "start" })).toEqual(uploading);
-  const shared: ShareState = { kind: "shared", links };
   expect(shareStep(shared, { type: "start" })).toBe(shared);
-  expect(shareStep(shared, { type: "done", links: null })).toBe(shared);
-  expect(shareStep(IDLE, { type: "done", links })).toBe(IDLE);
+  expect(shareStep(shared, { type: "done", links: null, videoFailed: false })).toBe(shared);
+  expect(shareStep(IDLE, { type: "done", links, videoFailed: false })).toBe(IDLE);
   expect(shareStep(IDLE, { type: "video" })).toBe(IDLE);
   expect([IDLE, uploading, shared, { kind: "failed" } as const].map(canShare)).toEqual([true, false, false, true]);
   // A link that is not a web address is never put on the page.
-  expect(shareStep(uploading, { type: "done", links: { ...links, pageUrl: "javascript:alert(1)" } })).toEqual({ kind: "failed" });
-  expect(shareStep(uploading, { type: "done", links: { ...links, pageUrl: "/replays/x" } })).toEqual({ kind: "failed" });
+  expect(shareStep(uploading, { type: "done", videoFailed: false, links: { ...links, pageUrl: "javascript:alert(1)" } })).toEqual({ kind: "failed" });
+  expect(shareStep(uploading, { type: "done", videoFailed: false, links: { ...links, pageUrl: "/replays/x" } })).toEqual({ kind: "failed" });
 });
 
 test("a share that works goes from the card to the video to the links", async () => {
@@ -90,14 +96,25 @@ test("a share that works goes from the card to the video to the links", async ()
     return Promise.resolve(Response.json(init?.method === "POST" ? created : { ok: true }));
   };
   const seen = await states((send) => runShare(job, send, { fetcher }));
-  expect(seen).toEqual([uploading, { kind: "uploading", stage: "video" }, { kind: "shared", links }]);
+  expect(seen).toEqual([uploading, sendingVideo, shared]);
   expect(calls).toEqual(["POST /api/replays", "PUT /api/replays/abcdefghjk/video"]);
+});
+
+test("a video the server refuses, or that never arrives, still shares the page and says the video is missing", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const lost = [uploading, sendingVideo, { ...shared, videoFailed: true }];
+  const refused: typeof fetch = (_input, init) =>
+    Promise.resolve(init?.method === "PUT" ? new Response("no", { status: 500 }) : Response.json(created));
+  expect(await states((send) => runShare(job, send, { fetcher: refused }))).toEqual(lost);
+  const dropped: typeof fetch = (_input, init) =>
+    init?.method === "PUT" ? Promise.reject(new TypeError("Failed to fetch")) : Promise.resolve(Response.json(created));
+  expect(await states((send) => runShare(job, send, { fetcher: dropped }))).toEqual(lost);
 });
 
 test("with no video there is one request and no video stage", async () => {
   const upload = vi.fn<typeof uploadReplay>(() => Promise.resolve(links));
   const seen = await states((send) => runShare({ ...job, video: null }, send, { upload }));
-  expect(seen).toEqual([uploading, { kind: "shared", links }]);
+  expect(seen).toEqual([uploading, shared]);
   expect(upload).toHaveBeenCalledTimes(1);
   expect(upload.mock.calls[0]?.[0]).toEqual({ meta: job.meta, card: png, video: null });
 });
@@ -114,15 +131,16 @@ test("a server that is off, an upload that throws and a listener that throws all
   await expect(runShare(job, thrower, { upload: () => Promise.resolve(links) })).resolves.toBeUndefined();
 });
 
-test("the panel's first render makes no request, and says what Share would upload", () => {
-  const fetched = vi.spyOn(globalThis, "fetch");
+// A server render runs no effects, so this covers the first markup only. That nothing is fetched on mount is not tested here.
+test("before the card is painted the panel offers only what it could send", () => {
   const props = { god: null, won: true, enemyName: "Polyphemus", fightTitle: "The Cyclops of the Cave", score: 10, style: "Boxer" };
   const withVideo = renderToStaticMarkup(createElement(SharePanel, { ...props, video, onClose: () => undefined }));
   expect(withVideo).toContain("Painting your card...");
   expect(withVideo).toContain(">Share</button>");
-  expect(withVideo).toContain("this card and the video of your fight (2.5 MB)");
+  expect(withVideo).toContain("Share uploads the video of your fight (2.5 MB) to");
   expect(withVideo).toContain(">Close</button>");
-  // Before the card is painted, and with no video, there is nothing to share and so no button.
-  expect(renderToStaticMarkup(createElement(SharePanel, props))).not.toContain("<button");
-  expect(fetched).not.toHaveBeenCalled();
+  // With no card yet and no video there is nothing to share, so no button.
+  const bare = renderToStaticMarkup(createElement(SharePanel, props));
+  expect(bare).not.toContain("<button");
+  expect(bare).toContain("There is nothing to share yet.");
 });

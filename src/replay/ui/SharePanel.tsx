@@ -3,19 +3,13 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import type { GodReveal } from "../../ai/revealGod";
 import { godCardBlob } from "../godCard";
-import { IDLE, canShare, cardFileName, cardWords, replayMeta, runShare, shareStep, statusLine } from "./shareFlow";
+import { IDLE, canShare, cardFileName, cardWords, replayMeta, runShare, sendsCard, sendsVideo, shareStep, statusLine } from "./shareFlow";
+import type { ShareFight } from "./shareFlow";
 import "./sharePanel.css";
 
-export interface SharePanelProps {
+export interface SharePanelProps extends ShareFight {
   /** The god from the scan. Null (scan skipped) gives the card of Odysseus himself. */
   readonly god: GodReveal | null;
-  readonly won: boolean;
-  readonly enemyName: string;
-  /** The enemy's title, e.g. "The Cyclops of the Cave". */
-  readonly fightTitle: string;
-  readonly score: number;
-  /** The fighting style's name, e.g. "Boxer". */
-  readonly style: string;
   /** The recorded fight, when there is one. It is uploaded only if Share is pressed. */
   readonly video?: Blob | null;
   readonly onClose?: () => void;
@@ -88,8 +82,9 @@ export function SharePanel(props: SharePanelProps) {
     return () => { if (url !== undefined) URL.revokeObjectURL(url); };
   }, [card]);
 
+  const blob = card?.blob ?? null;
   const share = (): void => {
-    if (canShare(state)) void runShare({ meta: replayMeta(words), card: card?.blob ?? null, video }, send);
+    if (canShare(state)) void runShare({ meta: replayMeta(words), card: blob, video }, send);
   };
   const busy = state.kind === "uploading";
 
@@ -107,11 +102,11 @@ export function SharePanel(props: SharePanelProps) {
             <a className="share-link" href={state.links.pageUrl} target="_blank" rel="noreferrer">{state.links.pageUrl}</a>
           </>
         ) : (
-          // With no card and no video there is nothing to share.
-          (card !== null || video !== null) && <button onClick={share} disabled={busy}>{busy ? "Sharing..." : "Share"}</button>
+          // With no card and no video that the server would take, there is nothing to share.
+          (sendsCard(blob) || sendsVideo(video)) && <button onClick={share} disabled={busy}>{busy ? "Sharing..." : "Share"}</button>
         )}
         {busy && <div className={`share-progress share-${state.stage}`} role="progressbar" aria-label="Uploading"><span /></div>}
-        <p className="share-small" role="status">{statusLine(state, video)}</p>
+        <p className="share-small" role="status">{statusLine(state, blob, video)}</p>
         {card && <a className="share-save" href={card.url} download={cardFileName(words.godName)}>Save card</a>}
         {onClose && <button className="share-quiet" onClick={onClose}>Close</button>}
       </div>

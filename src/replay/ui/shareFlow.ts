@@ -4,7 +4,7 @@ import { GODS } from "../../ai/gods/gods";
 import type { GodReveal } from "../../ai/revealGod";
 import { log } from "../../core/log";
 import { GOLD } from "../cardPalette";
-import { MAX_VIDEO_BYTES } from "../contracts";
+import { MAX_CARD_BYTES, MAX_VIDEO_BYTES } from "../contracts";
 import type { ReplayMeta } from "../contracts";
 import type { GodCardData } from "../godCard";
 import { uploadReplay } from "../upload";
@@ -59,6 +59,11 @@ export function cardFileName(godName: string): string {
   return `odyssey-fighter-${slug === "" ? "card" : slug}.png`;
 }
 
+/** True when the upload would send this card: it has been painted, and it is not too big for the server. */
+export function sendsCard(card: Blob | null): boolean {
+  return card !== null && card.size > 0 && card.size <= MAX_CARD_BYTES;
+}
+
 /** True when the upload would send this video: there is one, and it is not too big for the server. */
 export function sendsVideo(video: Blob | null): video is Blob {
   return video !== null && video.size > 0 && video.size <= MAX_VIDEO_BYTES;
@@ -67,13 +72,14 @@ export function sendsVideo(video: Blob | null): video is Blob {
 export type ShareState =
   | { readonly kind: "idle" }
   | { readonly kind: "uploading"; readonly stage: "card" | "video" }
-  | { readonly kind: "shared"; readonly links: ReplayLinks }
+  // videoFailed: the video was sent and the server did not take it, so the phone page has no video.
+  | { readonly kind: "shared"; readonly links: ReplayLinks; readonly videoFailed: boolean }
   | { readonly kind: "failed" };
 
 export type ShareEvent =
   | { readonly type: "start" }
   | { readonly type: "video" }
-  | { readonly type: "done"; readonly links: ReplayLinks | null };
+  | { readonly type: "done"; readonly links: ReplayLinks | null; readonly videoFailed: boolean };
 
 export const IDLE: ShareState = { kind: "idle" };
 
@@ -95,18 +101,21 @@ export function shareStep(state: ShareState, event: ShareEvent): ShareState {
   if (state.kind !== "uploading") return state;
   if (event.type === "video") return { kind: "uploading", stage: "video" };
   // The link is put on the page as something to click, so only a web address counts as shared.
-  return event.links !== null && isWebLink(event.links.pageUrl) ? { kind: "shared", links: event.links } : { kind: "failed" };
+  if (event.links === null || !isWebLink(event.links.pageUrl)) return { kind: "failed" };
+  return { kind: "shared", links: event.links, videoFailed: event.videoFailed };
 }
 
-/** The one line under the Share button. Before the press it says exactly what will be uploaded. */
-export function statusLine(state: ShareState, video: Blob | null): string {
-  if (state.kind === "uploading") return state.stage === "video" ? "Sending the fight video..." : "Sending the card...";
-  if (state.kind === "shared") return "Scan the code, or open the link, to watch on a phone.";
+/** The one line under the Share button. Before the press it says exactly what will be uploaded: `card` and `video` as they stand. */
+export function statusLine(state: ShareState, card: Blob | null, video: Blob | null): string {
+  if (state.kind === "uploading" && state.stage === "video") return "Sending the fight video...";
+  if (state.kind === "uploading") return sendsCard(card) ? "Sending the card..." : "Making the replay page...";
+  if (state.kind === "shared" && state.videoFailed) return "The fight video did not upload. The link opens the page without it.";
+  if (state.kind === "shared") return "Scan the code, or open the link, to see it on a phone.";
   if (state.kind === "failed") return "Sharing is unavailable right now. You can still save the card.";
-  const what = sendsVideo(video)
-    ? `this card and the video of your fight (${(video.size / 1e6).toFixed(1)} MB)`
-    : "this card";
-  return `Share uploads ${what} to this game's server. Anyone with the link can see it.`;
+  const parts: string[] = sendsCard(card) ? ["this card"] : [];
+  if (sendsVideo(video)) parts.push(`the video of your fight (${(video.size / 1e6).toFixed(1)} MB)`);
+  if (parts.length === 0) return "There is nothing to share yet.";
+  return `Share uploads ${parts.join(" and ")} to this game's server. Anyone with the link can see it.`;
 }
 
 export interface ShareJob {
@@ -130,17 +139,23 @@ export async function runShare(job: ShareJob, send: (event: ShareEvent) => void,
     }
   };
   let links: ReplayLinks | null = null;
+  let videoFailed = false;
   tell({ type: "start" });
   try {
     const fetcher = deps.fetcher ?? fetch;
     // The video is the only PUT the upload makes, so seeing one is how the panel knows the card has gone.
     const staged: typeof fetch = (input, init) => {
-      if (init?.method === "PUT") tell({ type: "video" });
-      return fetcher(input, init);
+      if (init?.method !== "PUT") return fetcher(input, init);
+      tell({ type: "video" });
+      // The upload only logs a video the server did not take, so the answer is read here. Failed until it says ok.
+      videoFailed = true;
+      const sent = fetcher(input, init);
+      void sent.then((response) => { videoFailed = !response.ok; }, () => undefined);
+      return sent;
     };
     links = await (deps.upload ?? uploadReplay)(job, { fetcher: staged });
   } catch (error) {
     log("warn", "share_failed", error);
   }
-  tell({ type: "done", links });
+  tell({ type: "done", links, videoFailed });
 }
