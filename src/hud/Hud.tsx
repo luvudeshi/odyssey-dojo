@@ -1,6 +1,7 @@
 // Everything drawn over the 3D view: health bars, the prompt card and the end banner.
 import { PLAYER_HP, promptLevel } from "../combat/engine";
 import type { CombatState, EnemySpec, MoveDef, MoveDiagram } from "../core/types";
+import { RatingFlash } from "./RatingFlash";
 import { MOVES } from "../moves/registry";
 
 function StickFigure({ diagram }: { diagram: MoveDiagram }) {
@@ -65,6 +66,7 @@ export function Hud({ enemy, state }: { enemy: EnemySpec; state: CombatState }) 
       <div className="score">
         {state.score} {state.combo > 1 && <span>x{state.combo} combo</span>}
       </div>
+      <RatingFlash />
       {phase.kind === "intro" && <div className="banner">{enemy.name}<small>{enemy.title}</small></div>}
       {move && (phase.kind === "defend" || phase.kind === "strike" || phase.kind === "finisher") && (
         <PromptCard

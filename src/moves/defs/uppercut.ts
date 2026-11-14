@@ -1,4 +1,5 @@
 // Boxing's uppercut: the right fist rises fast from the waist with the elbow kept bent.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { risingHand } from "../handSignals";
 
@@ -13,5 +14,8 @@ export const move: MoveDef = {
   teaches: "Up close there is no room for a straight punch; an uppercut comes from below where it is hard to see.",
   detect(history) {
     return risingHand(history, "right", 135) ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["right"], straight: false, rise: 0.5 });
   },
 };

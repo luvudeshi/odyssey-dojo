@@ -1,3 +1,4 @@
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { armOut, armThrust, latest } from "../../pose/signals";
 
@@ -12,5 +13,8 @@ export const move: MoveDef = {
   detect(history) {
     const frame = latest(history);
     return frame && armThrust(history, "left") && !armOut(frame, "right") ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["left"] });
   },
 };

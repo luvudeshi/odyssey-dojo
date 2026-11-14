@@ -1,4 +1,5 @@
 // Wing Chun's chain punch: straight punches rolled out one hand after the other.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseHistory } from "../../core/types";
 import { armOut, armThrust, latest, recent } from "../../pose/signals";
 import { otherSide } from "../handSignals";
@@ -26,5 +27,9 @@ export const move: MoveDef = {
   teaches: "Fast straight punches down the middle keep an attacker busy and moving backward.",
   detect(history) {
     return followsOther(history, "left") || followsOther(history, "right") ? 1 : 0;
+  },
+  quality(history) {
+    const frame = latest(history);
+    return strikeQuality(history, { sides: [frame && armOut(frame, "left") ? "left" : "right"] });
   },
 };
