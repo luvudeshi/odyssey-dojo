@@ -86,8 +86,11 @@ test("Polyphemus: three phases that speed up, ducking from the second, and warni
   }
 });
 
-/** Plays one whole fight as a player who gets `skill` of the prompts right and takes `reactMs` to throw a strike. */
-function playPolyphemus(seed: number, skill: number, reactMs: number): { seconds: number; won: boolean } {
+/**
+ * Plays one whole fight as a player who gets `skill` of the prompts right, takes `reactMs` to throw a strike
+ * and throws every strike at `quality`.
+ */
+function playPolyphemus(seed: number, skill: number, reactMs: number, quality = 0.7): { seconds: number; won: boolean } {
   const polyphemus = ENEMIES.find((enemy) => enemy.id === "polyphemus");
   const boxer = STYLES.find((style) => style.id === "boxer");
   if (!polyphemus || !boxer) throw new Error("Polyphemus or the Boxer style is missing");
@@ -101,10 +104,17 @@ function playPolyphemus(seed: number, skill: number, reactMs: number): { seconds
   let decided = "";
   let good = false;
   let strikeAt = 0;
+  // The finishing move is offered again each time its window runs out, and each offer is a new try.
+  let finisherTries = 0;
+  let finisherLeft = 0;
   const STEP = 20;
   while (state.phase.kind !== "won" && state.phase.kind !== "lost" && ms < 600_000) {
     const phase = state.phase;
-    const key = `${phase.kind}:${String(state.seed)}:${String(state.playerHp)}:${String(state.enemyHp)}`;
+    if (phase.kind === "finisher") {
+      if (phase.msLeft > finisherLeft) finisherTries += 1;
+      finisherLeft = phase.msLeft;
+    }
+    const key = `${phase.kind}:${String(state.seed)}:${String(state.playerHp)}:${String(state.enemyHp)}:${String(finisherTries)}`;
     if (key !== decided) {
       decided = key;
       good = lucky();
@@ -114,7 +124,7 @@ function playPolyphemus(seed: number, skill: number, reactMs: number): { seconds
     const struck: Strike[] = [];
     if (phase.kind === "defend" && good) held.add(phase.attack.counter);
     if ((phase.kind === "strike" || phase.kind === "finisher") && good && ms >= strikeAt) {
-      struck.push({ move: phase.move, quality: 0.7, player: 0 });
+      struck.push({ move: phase.move, quality, player: 0 });
     }
     state = step(state, polyphemus, boxer, { held, struck }, STEP).state;
     ms += STEP;
@@ -130,6 +140,18 @@ test("Polyphemus: a player who gets most prompts right wins in 90 to 150 seconds
   expect(average, `average fight length ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(90);
   expect(average, `average fight length ${average.toFixed(0)} s`).toBeLessThanOrEqual(150);
   expect(wins, "fights won out of 30").toBeGreaterThanOrEqual(24);
+});
+
+test("Polyphemus: the fight stays in range however well the strikes are thrown", () => {
+  // Damage follows strike quality, so a webcam player's fight length moves with it. Rough, clean and perfect strikes.
+  for (const quality of [0.55, 0.8, 1]) {
+    const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(1000 + index * 7919, 0.85, 800, quality));
+    const average = fights.reduce((sum, fight) => sum + fight.seconds, 0) / fights.length;
+    expect(average, `quality ${String(quality)}: average ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(90);
+    expect(average, `quality ${String(quality)}: average ${average.toFixed(0)} s`).toBeLessThanOrEqual(150);
+    // No fight may hang: every one ends well inside the simulation's ten-minute cap.
+    expect(Math.max(...fights.map((fight) => fight.seconds)), `quality ${String(quality)}: longest fight`).toBeLessThan(300);
+  }
 });
 
 test("Polyphemus: a player who misses half the prompts loses", () => {

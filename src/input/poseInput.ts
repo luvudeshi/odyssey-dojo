@@ -1,4 +1,5 @@
 // Turns move detector confidences into combat input.
+import { clamp01 } from "../pose/signals";
 import type { CombatInput, MoveDef, PoseHistory, Strike } from "../core/types";
 
 const ON = 0.7;
@@ -18,7 +19,7 @@ export function createPoseInput(
         if (confidence >= ON) held.add(move.id);
       } else if (confidence >= ON && !active.has(move.id)) {
         active.add(move.id);
-        struck.push({ move: move.id, quality: move.quality?.(history) ?? 0.7, player: 0 });
+        struck.push({ move: move.id, quality: clamp01(move.quality?.(history) ?? 0.7), player: 0 });
       } else if (confidence < OFF) {
         active.delete(move.id);
       }

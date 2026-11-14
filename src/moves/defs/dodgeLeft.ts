@@ -9,6 +9,7 @@ export const move: MoveDef = {
   hint: "Lean or step to your left",
   key: "ArrowLeft",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftX: -14 },
+  teaches: "Step off the line of a rush: a moving target is hard to reach and free to get away",
   detect(history) {
     const frame = latest(history);
     if (!frame || !history.baseline) return 0;

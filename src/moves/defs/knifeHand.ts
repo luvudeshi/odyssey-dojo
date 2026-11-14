@@ -1,4 +1,5 @@
 // Karate's shuto-uchi: the edge of the open hand, swung from the opposite shoulder out to the side.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { elbowAngle, latest, recent } from "../../pose/signals";
 import { wristOut, wristRise } from "../handSignals";
@@ -11,7 +12,7 @@ export const move: MoveDef = {
   hint: "Bring your right hand across to your left shoulder, then chop it out to the right at neck height",
   key: "h",
   diagram: { leftElbow: [34, 44], leftWrist: [42, 30], rightElbow: [77, 31], rightWrist: [93, 30] },
-  teaches: "The edge of the hand is harder to hurt than your knuckles, and a sideways swing reaches around a guard.",
+  teaches: "A sweep of your open hand across and out knocks a reaching arm aside before it lands",
   detect(history) {
     const frame = latest(history);
     if (!frame) return 0;
@@ -23,5 +24,8 @@ export const move: MoveDef = {
       (old) => wristOut(old, "right") < 0.1 && wristRise(old, "right") > -0.6,
     );
     return chambered ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["right"], rise: 0, tolerance: 0.9 });
   },
 };
