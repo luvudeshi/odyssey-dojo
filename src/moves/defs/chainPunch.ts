@@ -23,7 +23,7 @@ export const move: MoveDef = {
   hint: "Punch straight with one fist, then the other right behind it",
   key: "c",
   diagram: { leftElbow: [28, 30], leftWrist: [14, 26], rightElbow: [66, 44], rightWrist: [56, 36] },
-  teaches: "Fast straight punches down the middle keep an attacker busy and moving backward.",
+  teaches: "Straight is quicker than a swing, so hands kept in front of you can hold off a rush",
   detect(history) {
     return followsOther(history, "left") || followsOther(history, "right") ? 1 : 0;
   },
