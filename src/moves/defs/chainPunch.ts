@@ -1,8 +1,8 @@
 // Wing Chun's chain punch: straight punches rolled out one hand after the other.
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseHistory } from "../../core/types";
-import { armOut, armThrust, latest, recent } from "../../pose/signals";
-import { otherSide } from "../handSignals";
+import { latest, recent } from "../../pose/signals";
+import { armOut, armThrust, otherSide } from "../handSignals";
 import type { Side } from "../handSignals";
 
 /** How soon the second punch must follow the first, in milliseconds. */

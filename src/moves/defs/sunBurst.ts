@@ -1,13 +1,17 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseFrame } from "../../core/types";
-import { JOINT, armOut, distance2d, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { JOINT, distance2d, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { armOut, bodyWidth } from "../handSignals";
+
+/** How far out to its own side of the shoulder the wrist must be, in 3D shoulder widths (0.35 m on a 0.4 m adult). */
+const WIDE = 0.875;
 
 /** True when the arm is straight out to its own side, not forward. */
 function wide(frame: PoseFrame, side: "left" | "right"): boolean {
   const left = side === "left";
   const shoulder = joint(frame.world, left ? JOINT.leftShoulder : JOINT.rightShoulder);
   const wrist = joint(frame.world, left ? JOINT.leftWrist : JOINT.rightWrist);
-  return armOut(frame, side) && (left ? shoulder.x - wrist.x : wrist.x - shoulder.x) > 0.35;
+  return armOut(frame, side) && (left ? shoulder.x - wrist.x : wrist.x - shoulder.x) > WIDE * bodyWidth(frame);
 }
 
 function handsTogether(frame: PoseFrame): boolean {
