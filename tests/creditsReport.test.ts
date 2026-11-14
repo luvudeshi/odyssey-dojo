@@ -242,7 +242,8 @@ describe("the report", () => {
     );
     // Columns line up: the size starts at the same place on every row.
     const sizeAt = text[0]?.indexOf("Size") ?? -1;
-    expect(text.find((line) => line.startsWith("public/models/nobody.glb"))?.slice(sizeAt)).toMatch(/^1 KB {2,}GAP: no credit/);
+    const nobody = text.find((line) => line.startsWith("public/models/nobody.glb"));
+    expect(nobody?.slice(sizeAt)).toMatch(/^1 KB {2,}GAP: no credit/);
 
     const markdown = formatMarkdown(report).split("\n");
     expect(markdown).toContain("| File | Size | Licence | Credited at |");
