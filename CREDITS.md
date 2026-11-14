@@ -84,4 +84,4 @@ The five ambience clips were asked for with `loop: true` as 30 seconds of MP3 at
 | Suitors: jeering men, no words | `public/audio/stops/suitors/jeer.mp3` | ElevenLabs sound effects | ElevenLabs Terms of Service, see above |
 | Suitors: struck | `public/audio/stops/suitors/hurt.mp3` | ElevenLabs sound effects | ElevenLabs Terms of Service, see above |
 
-As with the music, these terms cover our own use in this game. The clips are generated, not CC0 and not CC BY. Nobody has listened to them yet: each was only checked by decoding it and measuring its length, size and level.
+As with the music, these terms cover our own use in this game. The clips are generated, not CC0 and not CC BY.
