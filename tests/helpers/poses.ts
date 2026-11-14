@@ -31,9 +31,11 @@ export const DOWN: Arm = { elbow: [0.4, 0.5], wrist: [0.4, 0.62], elbow3: [-0.22
 /** Fist drawn back to the shoulder, elbow sharply bent: the start of a punch. */
 export const COCKED: Arm = { elbow: [0.38, 0.5], wrist: [0.44, 0.42], elbow3: [-0.25, -0.25, 0], wrist3: [-0.15, -0.45, -0.15] };
 /** Arm straight out at shoulder height: the end of a punch. */
-export const PUNCH: Arm = { elbow: [0.31, 0.35], wrist: [0.21, 0.35], elbow3: [-0.25, -0.5, -0.25], wrist3: [-0.3, -0.5, -0.5] };
+export const PUNCH: Arm = { elbow: [0.4, 0.36], wrist: [0.39, 0.33], elbow3: [-0.25, -0.5, -0.25], wrist3: [-0.3, -0.5, -0.5] };
+/** Arm straight out to the side at shoulder height: the end of a knife hand, wrist far from the shoulder in the picture. */
+export const LATERAL: Arm = { elbow: [0.31, 0.35], wrist: [0.21, 0.35], elbow3: [-0.25, -0.5, -0.25], wrist3: [-0.3, -0.5, -0.5] };
 /** Arm straight out in front with the wrist near the middle of the picture. */
-export const PALM: Arm = { elbow: [0.43, 0.38], wrist: [0.46, 0.35], elbow3: [-0.2, -0.5, -0.25], wrist3: [-0.2, -0.5, -0.5] };
+export const PALM: Arm = { elbow: [0.44, 0.36], wrist: [0.45, 0.33], elbow3: [-0.2, -0.5, -0.25], wrist3: [-0.2, -0.5, -0.5] };
 /** Fist guarding the face. */
 export const GUARD: Arm = { elbow: [0.4, 0.42], wrist: [0.45, 0.24], elbow3: [-0.25, -0.25, 0], wrist3: [-0.15, -0.45, -0.15] };
 /** Fist pulled back to the hip, elbow bent. */

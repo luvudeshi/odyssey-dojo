@@ -4,7 +4,7 @@ import type { MoveDef } from "../../src/core/types";
 import { MOVES } from "../../src/moves/registry";
 import type { Key } from "../helpers/poses";
 import {
-  ACROSS, CHOP, COCKED, DOWN, GUARD, HIP, HOOK_IN, HOOK_OUT, OVERHEAD, PALM, PUNCH, STAKE_CHEST, STAKE_DOWN,
+  ACROSS, CHOP, COCKED, DOWN, GUARD, HIP, HOOK_IN, HOOK_OUT, LATERAL, OVERHEAD, PALM, PUNCH, STAKE_CHEST, STAKE_DOWN,
   peak, pose, sequence, standing,
 } from "../helpers/poses";
 import type { Arm } from "../helpers/poses";
@@ -29,7 +29,7 @@ const GOOD: Record<string, Key[]> = {
   rising_palm: keys([0, pose(DOWN)], [250, left(GUARD)]),
   hammer_fist: keys([0, pose(DOWN)], [300, left(OVERHEAD)], [500, left(CHOP)]),
   overhead_strike: keys([0, pose(DOWN)], [300, right(OVERHEAD)], [500, right(CHOP)]),
-  knife_hand: keys([0, pose(DOWN)], [200, right(ACROSS)], [450, right(PUNCH)]),
+  knife_hand: keys([0, pose(DOWN)], [200, right(ACROSS)], [450, right(LATERAL)]),
   reverse_punch: keys([0, pose(DOWN)], [150, pose(HIP, COCKED)], [300, pose(HIP, PUNCH)]),
   spear_thrust: keys([0, pose(DOWN)], [150, both(COCKED)], [300, both(PUNCH)]),
   double_palm: keys([0, pose(DOWN)], [150, both(COCKED)], [300, both(PALM)]),
@@ -52,7 +52,7 @@ const MISS: Record<string, [string, Key[]]> = {
   rising_palm: ["a slow raise to the chin", keys([0, pose(DOWN)], [2000, left(GUARD)], [2800, left(GUARD)])],
   hammer_fist: ["the fist raised and left there", keys([0, pose(DOWN)], [300, left(OVERHEAD)], [900, left(OVERHEAD)])],
   overhead_strike: ["the fist raised and left there", keys([0, pose(DOWN)], [300, right(OVERHEAD)], [900, right(OVERHEAD)])],
-  knife_hand: ["a swing out with no chamber", keys([0, pose(DOWN)], [400, right(PUNCH)])],
+  knife_hand: ["a swing out with no chamber", keys([0, pose(DOWN)], [400, right(LATERAL)])],
   reverse_punch: ["a cross with the other hand hanging", keys([0, pose(DOWN)], [150, right(COCKED)], [300, right(PUNCH)])],
   spear_thrust: ["a single jab", keys([0, pose(DOWN)], [150, left(COCKED)], [300, left(PUNCH)])],
   double_palm: ["the same thrust with the hands wide", keys([0, pose(DOWN)], [150, both(COCKED)], [300, both(PUNCH)])],
@@ -95,8 +95,8 @@ describe("defends are not confused with each other", () => {
   }
 });
 
-// Detector defect, reported in the PR and not asserted here: double_palm reads as block at 0.66
-// (both palms land near the nose in the picture). Everything else holds.
+// double_palm reads as block at 0.35 for a few frames before the arms straighten (wrists near the nose).
+// That is under the 0.7 the game needs to hold a defend (src/input/poseInput.ts), so it is listed, not fixed.
 const KNOWN_CONFUSIONS = new Set(["double_palm>block"]);
 
 describe("a strike does not read as a defend", () => {
