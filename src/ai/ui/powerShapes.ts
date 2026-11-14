@@ -19,12 +19,14 @@ export interface Streak {
 
 const finite = (value: number): number => (Number.isFinite(value) ? value : 0);
 const whole = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, Math.floor(finite(value))));
-const round = (value: number): number => Math.round(finite(value) * 100) / 100;
+/** Holds a coordinate to a size that can be scaled and printed without becoming Infinity or an exponent. */
+const bounded = (value: number): number => Math.min(1e9, Math.max(-1e9, finite(value)));
+const round = (value: number): number => Math.round(bounded(value) * 100) / 100;
 
 /** Rounds to two decimals, then pulls the value inside min..max. */
 function fit(value: number, min: number, max: number): number {
-  const low = finite(min);
-  return Math.min(Math.max(round(value), low), Math.max(low, finite(max)));
+  const low = bounded(min);
+  return Math.min(Math.max(round(value), low), Math.max(low, bounded(max)));
 }
 
 const inBox = (x: number, y: number, box: Box): Point => [

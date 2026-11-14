@@ -143,3 +143,20 @@ test("bad numbers never throw and never leak into a path", () => {
   expect(speedStreaks(NaN, NaN)).toEqual([]);
   expect(speedStreaks(1000, 1)).toHaveLength(60);
 });
+
+test("numbers too large to scale are held to a plain size, not turned into Infinity", () => {
+  const huge = 1.7e308;
+  const vast: Box = { x: 0, y: huge, width: huge, height: 0 };
+  const paths = [
+    pathThrough([[huge, -huge]]),
+    boltPath([10, 0], [20, 100], 3, vast, 8),
+    boltPath([-huge, huge], [huge, -huge], 3, SCREEN, 8),
+    waveBody(vast, 3),
+    waveBody({ x: -huge, y: -huge, width: huge, height: huge }, 3),
+    sunRayPath([huge, -huge], 2, huge, 6, 3),
+  ];
+  for (const path of paths) {
+    for (const [x, y] of pointsOf(path)) expect(Math.max(Math.abs(x), Math.abs(y))).toBeLessThanOrEqual(1e9);
+  }
+  expect(pathThrough([[huge, -huge]])).toBe("M 1000000000 -1000000000");
+});

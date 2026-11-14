@@ -179,11 +179,19 @@ const LOOKS: Readonly<Record<PowerGod, (props: { seed: number }) => ReactNode>> 
   apollo: Apollo,
 };
 
-const Burst = memo(function Burst(props: { god: PowerGod; powerName: string; accent: string; seed: number }) {
-  const { god, powerName, accent, seed } = props;
+interface BurstProps {
+  readonly god: PowerGod;
+  readonly powerName: string;
+  readonly accent: string;
+  readonly seed: number;
+  /** True when this burst cut a running one short: it plays without the bright flashes. */
+  readonly calm: boolean;
+}
+
+const Burst = memo(function Burst({ god, powerName, accent, seed, calm }: BurstProps) {
   const Look = LOOKS[god];
   return (
-    <div className={`power-effect power-${god}`} style={{ color: accent }}>
+    <div className={`power-effect power-${god}${calm ? " power-calm" : ""}`} style={{ color: accent }}>
       <div className="power-fx" aria-hidden="true">
         <div className="power-layer power-veil" />
         <Look seed={seed} />
@@ -195,11 +203,15 @@ const Burst = memo(function Burst(props: { god: PowerGod; powerName: string; acc
 
 export function PowerEffect(props: { god: PowerGod | null; powerName: string; accent: string; trigger: number }) {
   const { god, powerName, accent, trigger } = props;
-  const [seen, setSeen] = useState(0);
+  const [seen, setSeen] = useState(trigger);
   const [playing, setPlaying] = useState(0);
+  const [calm, setCalm] = useState(false);
   if (!Object.is(trigger, seen)) {
     setSeen(trigger);
-    if (trigger !== 0 && Number.isFinite(trigger)) setPlaying(trigger);
+    if (trigger !== 0 && Number.isFinite(trigger)) {
+      setCalm(playing !== 0);
+      setPlaying(trigger);
+    }
   }
 
   useEffect(() => {
@@ -210,7 +222,7 @@ export function PowerEffect(props: { god: PowerGod | null; powerName: string; ac
 
   if (playing === 0 || god === null || !Object.hasOwn(LOOKS, god)) return null;
   return createPortal(
-    <Burst key={playing} god={god} powerName={powerName} accent={accent} seed={playing} />,
+    <Burst key={playing} god={god} powerName={powerName} accent={accent} seed={playing} calm={calm} />,
     document.body,
   );
 }
