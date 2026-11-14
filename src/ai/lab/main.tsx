@@ -5,7 +5,6 @@ import { createRoot } from "react-dom/client";
 import { log } from "../../core/log";
 import { startTracker } from "../../pose/tracker";
 import type { PoseTracker } from "../../pose/tracker";
-import { startRecording } from "../../replay/recorder";
 import { SharePanel } from "../../replay/ui/SharePanel";
 import { generateLevel } from "../client";
 import type { LevelResponse } from "../contracts";
@@ -14,34 +13,13 @@ import type { GodReveal } from "../revealGod";
 import { RevealScreen } from "../ui/RevealScreen";
 import "../../index.css";
 
-/** Two seconds of changing colour, recorded the way a fight would be. Null where the browser cannot record. */
-function sampleVideo(): Promise<Blob | null> {
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  const recording = context ? startRecording(canvas, { maxSeconds: 2 }) : null;
-  if (!context || !recording) return Promise.resolve(null);
-  const timer = setInterval(() => {
-    context.fillStyle = `hsl(${String((Date.now() / 5) % 360)} 60% 40%)`;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-  }, 33);
-  return new Promise((resolve) => {
-    setTimeout(() => { clearInterval(timer); void recording.stop().then(resolve); }, 2100);
-  });
-}
-
 /** The share panel with sample fight data. `god` null is a player who skipped the scan. */
 function ShareLab(props: { god: GodReveal | null }) {
   const [won, setWon] = useState(true);
-  const [video, setVideo] = useState<Blob | null>(null);
   return (
     <>
-      <SharePanel god={props.god} won={won} enemyName="Polyphemus" fightTitle="The Cyclops of the Cave" score={12340} style="Boxer" video={video} />
-      <p>
-        <button className="reveal-quiet" onClick={() => { setWon(!won); }}>{won ? "Show a defeat" : "Show a victory"}</button>
-        <button className="reveal-quiet" onClick={() => { void sampleVideo().then(setVideo); }}>
-          {video ? `Sample video ready (${String(Math.round(video.size / 1000))} kB)` : "Record a 2 second sample video"}
-        </button>
-      </p>
+      <SharePanel god={props.god} won={won} enemyName="Polyphemus" fightTitle="The Cyclops of the Cave" score={12340} style="Boxer" />
+      <button className="reveal-quiet" onClick={() => { setWon(!won); }}>{won ? "Show a defeat" : "Show a victory"}</button>
     </>
   );
 }
