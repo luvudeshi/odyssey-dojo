@@ -6,7 +6,7 @@ import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
 import { EndPanel } from "./screens/EndScreen";
-import { flowReducer, playable, START, unlocked } from "./screens/flow";
+import { flowReducer, playable, startAt, unlocked } from "./screens/flow";
 import { IntroScreen } from "./screens/IntroScreen";
 import { QuestMap } from "./screens/QuestMap";
 import { TitleScreen } from "./screens/TitleScreen";
@@ -18,7 +18,7 @@ const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
   const [notice, setNotice] = useState("");
-  const [flow, dispatch] = useReducer(flowReducer, START);
+  const [flow, dispatch] = useReducer(flowReducer, null, () => startAt(ENEMIES, new URLSearchParams(window.location.search).get("stop")));
 
   const starting = useRef(false);
   // Set once the player picks "Keyboard only", so a late camera grant cannot hijack the fight.
