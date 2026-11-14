@@ -13,6 +13,7 @@ import { keyboardTakesOver } from "../pose/escape";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
 import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
+import { noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
 
 export function FightScreen(props: {
@@ -57,6 +58,7 @@ export function FightScreen(props: {
       }
       setLost(false);
       const input = mergeInputs(keys, readPose(history));
+      noteInput(input, now / 1000);
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
