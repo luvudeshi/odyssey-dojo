@@ -28,7 +28,7 @@ export const enemy: EnemySpec = {
   ],
   weakSpots: [
     { id: "wand_hand", label: "her wand hand", position: [0.9, 2.6, 0.7], moves: ["hook", "cross", "overhead_strike", "knife_hand", "hammer_fist", "chain_punch"] },
-    { id: "guard", label: "her open guard", position: [0, 2.2, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm"] },
+    { id: "guard", label: "her open guard", position: [0, 2.2, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "front_kick", "knee", "uppercut"] },
   ],
   taunts: [
     "Drink, stranger. You have come a long way.",
