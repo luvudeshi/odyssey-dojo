@@ -41,15 +41,12 @@ export function createStoryVoice(deps: StoryVoiceDeps): StoryVoice {
   // Goes up with every request and every stop. A waiting line that sees a newer number gives up, so only the newest waits.
   let turn = 0;
 
-  /** `choose` runs inside the try, so nothing it throws can escape as a rejection. */
-  async function say(choose: () => string | null, waitMs: number): Promise<boolean> {
-    turn += 1;
-    const mine = turn;
-    // Anything that is not a real number of milliseconds means "do not wait".
-    const patience = Number.isFinite(waitMs) ? waitMs : 0;
+  // The line now waiting or playing. Asking for it again joins it, so a screen that asks twice is heard once.
+  let active: { readonly id: string; readonly over: Promise<boolean> } | null = null;
+
+  /** Waits for the voice, speaks the line, and resolves when it is over. Everything is inside the try, so it cannot reject. */
+  async function run(id: string, mine: number, patience: number): Promise<boolean> {
     try {
-      const id = choose();
-      if (id === null) return false;
       for (let waited = 0; !deps.speak(id); waited += POLL_MS) {
         if (waited >= patience) return false;
         await deps.sleep(POLL_MS);
@@ -63,6 +60,25 @@ export function createStoryVoice(deps: StoryVoiceDeps): StoryVoice {
     }
   }
 
+  function say(choose: () => string | null, waitMs: number): Promise<boolean> {
+    let id: string | null = null;
+    try {
+      id = choose();
+    } catch (error) {
+      log("warn", "story.choose", error);
+    }
+    if (id !== null && active?.id === id) return active.over;
+    turn += 1;
+    if (id === null) return Promise.resolve(false);
+    // Anything that is not a real number of milliseconds means "do not wait".
+    const line = { id, over: run(id, turn, Number.isFinite(waitMs) ? waitMs : 0) };
+    active = line;
+    void line.over.then(() => {
+      if (active === line) active = null;
+    });
+    return line.over;
+  }
+
   return {
     speakNarration: (enemyId, moment, waitMs = NARRATION_WAIT_MS) => say(() => narrationId(enemyId, moment), waitMs),
     speakResult: (enemyId, won, waitMs = NARRATION_WAIT_MS) =>
@@ -70,6 +86,8 @@ export function createStoryVoice(deps: StoryVoiceDeps): StoryVoice {
     speakMonsterTaunt: (enemyId, waitMs = TAUNT_WAIT_MS) => say(() => pickTaunt(enemyId, deps.random), waitMs),
     stopStory() {
       turn += 1;
+      // Forget the line too, so asking for it again after a stop starts it afresh.
+      active = null;
       try {
         const id = deps.playing();
         if (id !== null && isStoryLine(id)) deps.stop(id);

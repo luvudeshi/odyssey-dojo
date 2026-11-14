@@ -322,6 +322,40 @@ test("a line that waits too long gives up and resolves false without ever starti
   expect(vi.getTimerCount()).toBe(0);
 });
 
+test("asking for the same line again while it waits or plays joins it, so it is heard once", async () => {
+  const { voice, story, started, end } = fakeStory();
+  voice.speak("win");
+  const first = watch(story.speakResult("circe", true));
+  await vi.advanceTimersByTimeAsync(300);
+  const second = watch(story.speakResult("circe", true));
+  end();
+  await vi.advanceTimersByTimeAsync(100);
+  const third = watch(story.speakResult("circe", true));
+  await vi.advanceTimersByTimeAsync(3000);
+  expect(started).toEqual(["win", "homer_after_circe"]);
+  expect([first.settled, second.settled, third.settled]).toEqual(["pending", "pending", "pending"]);
+  end();
+  await vi.advanceTimersByTimeAsync(100);
+  expect([first.settled, second.settled, third.settled]).toEqual([true, true, true]);
+  // Once it is over, asking again speaks it again.
+  void story.speakResult("circe", true);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(started).toEqual(["win", "homer_after_circe", "homer_after_circe"]);
+});
+
+test("a line stopped and asked for again at once starts afresh, as when a screen mounts twice", async () => {
+  const { voice, story, started, stopped } = fakeStory();
+  const first = watch(story.speakNarration("circe", "before"));
+  story.stopStory();
+  const second = watch(story.speakNarration("circe", "before"));
+  await vi.advanceTimersByTimeAsync(100);
+  expect(started).toEqual(["homer_before_circe", "homer_before_circe"]);
+  expect(stopped).toEqual(["homer_before_circe"]);
+  expect(voice.playing()).toBe("homer_before_circe");
+  expect(first.settled).not.toBe("rejected");
+  expect(second.settled).toBe("pending");
+});
+
 test("a missing clip, an unknown stop and a monster with no taunts all resolve false quietly", async () => {
   const missing = fakeStory({ available: () => false });
   const noClip = watch(missing.story.speakNarration("circe", "before", 0));
