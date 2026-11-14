@@ -46,6 +46,9 @@ export function startFight(enemy: EnemySpec, seed: number): CombatState {
     score: 0,
     mastery: {},
     seed,
+    phaseIndex: 0,
+    power: 0,
+    players: 1,
   };
 }
 
@@ -102,6 +105,7 @@ export function step(
   switch (phase.kind) {
     case "won":
     case "lost":
+    case "finisher": // nothing enters this phase until the finishing move lands (issue 6)
       return { state, events: [] };
     case "intro":
     case "recover": {
@@ -128,10 +132,11 @@ export function step(
       return { state: { ...state, playerHp, combo: 0, phase: RECOVER }, events: [hit] };
     }
     case "strike": {
-      if (input.struck.includes(phase.move)) {
+      const strike = input.struck.find((thrown) => thrown.move === phase.move);
+      if (strike) {
         const damage = Math.round(STRIKE_DAMAGE * (1 + Math.min(state.combo, 5) * 0.1));
         const enemyHp = Math.max(0, state.enemyHp - damage);
-        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage };
+        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality: strike.quality };
         const next = {
           ...learned(state, phase.move),
           enemyHp,

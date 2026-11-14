@@ -11,7 +11,7 @@ const enemy: EnemySpec = {
 const style: FightingStyle = { id: "s", name: "S", blurb: "", strikes: ["jab"] };
 const idle: CombatInput = { held: new Set(), struck: [] };
 const blocking: CombatInput = { held: new Set(["block"]), struck: [] };
-const jabbing: CombatInput = { held: new Set(), struck: ["jab"] };
+const jabbing: CombatInput = { held: new Set(), struck: [{ move: "jab", quality: 0.7, player: 0 }] };
 
 function run(state: CombatState, input: CombatInput, ms: number): { state: CombatState; events: string[] } {
   const result = step(state, enemy, style, input, ms);

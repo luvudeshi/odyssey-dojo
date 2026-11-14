@@ -37,6 +37,11 @@ export interface MoveDiagram {
   readonly rightWrist: readonly [number, number];
   readonly shiftX?: number;
   readonly shiftY?: number;
+  /** Leg positions for kicks; standing legs are drawn when these are left out. */
+  readonly leftKnee?: readonly [number, number];
+  readonly leftFoot?: readonly [number, number];
+  readonly rightKnee?: readonly [number, number];
+  readonly rightFoot?: readonly [number, number];
 }
 
 /** A move the player can do. One file per move in src/moves/defs. */
@@ -51,9 +56,14 @@ export interface MoveDef {
   readonly hint: string;
   /** Keyboard fallback, as a KeyboardEvent.key value. */
   readonly key: string;
+  /** Drawn on the prompt card and as the ghost outline the player lines up with. */
   readonly diagram: MoveDiagram;
+  /** One line on what this move is for in real self-defense. */
+  readonly teaches?: string;
   /** 0..1: how sure we are the player is doing this move right now. */
   detect(history: PoseHistory): number;
+  /** 0..1: how well a strike that just fired was thrown (speed, extension, aim). Left out: 0.7. */
+  quality?(history: PoseHistory): number;
 }
 
 /** A fighting style: the strikes the game will ask this player for. One file per style in src/styles/defs. */
@@ -72,6 +82,19 @@ export interface EnemyAttack {
   readonly damage: number;
   /** Id of the defend move that stops it. */
   readonly counter: string;
+  /** How often it comes up next to the other attacks. Left out: 1. */
+  readonly weight?: number;
+}
+
+/** A stretch of the fight. The enemy is in the last phase whose `belowHp` its health has dropped to. */
+export interface EnemyPhase {
+  readonly name: string;
+  /** Share of full health, 0..1, at which this phase starts. The first phase is 1. */
+  readonly belowHp: number;
+  /** Ids from the enemy's `attacks` used in this phase. */
+  readonly attackIds: readonly [string, ...string[]];
+  /** Multiplies every warning time: below 1 is faster. */
+  readonly telegraphScale: number;
 }
 
 export interface WeakSpot {
@@ -95,6 +118,13 @@ export interface EnemySpec {
   readonly attacks: readonly [EnemyAttack, ...EnemyAttack[]];
   readonly weakSpots: readonly [WeakSpot, ...WeakSpot[]];
   readonly taunts: readonly string[];
+  /** Left out: one phase using every attack at normal speed. */
+  readonly phases?: readonly [EnemyPhase, ...EnemyPhase[]];
+  /** Id of the strike that ends the fight once health reaches zero. Left out: the fight ends at zero. */
+  readonly finisher?: string;
+  /** Where on Odysseus's route this fight happens, and the book of the Odyssey, for the quest map. */
+  readonly place?: string;
+  readonly book?: number;
 }
 
 export type CombatPhase =
@@ -107,6 +137,7 @@ export type CombatPhase =
       readonly msLeft: number;
       readonly totalMs: number;
     }
+  | { readonly kind: "finisher"; readonly move: string; readonly msLeft: number; readonly totalMs: number }
   | { readonly kind: "won" | "lost" };
 
 export interface CombatState {
@@ -118,12 +149,27 @@ export interface CombatState {
   /** Times each move has been done right; drives how much of the prompt is shown. */
   readonly mastery: Readonly<Record<string, number>>;
   readonly seed: number;
+  /** Index into the enemy's phases. */
+  readonly phaseIndex: number;
+  /** 0..1 divine power meter; spent by the god's gesture. */
+  readonly power: number;
+  readonly players: 1 | 2;
+}
+
+/** One strike thrown this frame. */
+export interface Strike {
+  readonly move: string;
+  /** 0..1: how well it was thrown. Scales damage. */
+  readonly quality: number;
+  /** Which player threw it. */
+  readonly player: 0 | 1;
 }
 
 /** What the player is doing this frame, from the webcam, the keyboard or both. */
 export interface CombatInput {
+  /** Defenses player 0 is holding. */
   readonly held: ReadonlySet<string>;
-  readonly struck: readonly string[];
+  readonly struck: readonly Strike[];
 }
 
 export type CombatEvent =
@@ -131,7 +177,10 @@ export type CombatEvent =
   | { readonly type: "defended"; readonly attack: EnemyAttack }
   | { readonly type: "playerHit"; readonly attack: EnemyAttack; readonly damage: number }
   | { readonly type: "opening"; readonly weakSpot: WeakSpot; readonly move: string }
-  | { readonly type: "enemyHit"; readonly move: string; readonly damage: number }
+  | { readonly type: "enemyHit"; readonly move: string; readonly damage: number; readonly quality: number }
+  | { readonly type: "phaseChanged"; readonly index: number; readonly name: string }
+  | { readonly type: "finished"; readonly move: string }
+  | { readonly type: "powerUnleashed"; readonly damage: number }
   | { readonly type: "whiffed" }
   | { readonly type: "won" }
   | { readonly type: "lost" };
@@ -143,4 +192,8 @@ export interface MonsterProps {
   readonly attackId: string | null;
   readonly weakSpotId: string | null;
   readonly defeated: boolean;
+  /** Index of the enemy's current phase, so the model can change its look. */
+  readonly phaseIndex: number;
+  /** 1 right after a hit lands, fading to 0. */
+  readonly hitFlash: number;
 }
