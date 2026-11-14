@@ -44,6 +44,8 @@ const FLOOR_MS = 1000;
 const FASTER = 0.2;
 const SLOWER = 0.3;
 const WIDER = 0.25;
+/** The judged fight. The director hands it back untouched, however it is wired in. */
+export const JUDGED_ENEMY_ID = "polyphemus";
 
 function remembered(recent: readonly DirectorResult[], result: DirectorResult): readonly DirectorResult[] {
   return [...recent.slice(1 - WINDOW), result];
@@ -155,6 +157,8 @@ function warning(enemy: EnemySpec, attack: EnemyAttack, factor: number): number 
 
 /** The enemy to hand the engine. Returns `enemy` itself when nothing should change. */
 export function tune(enemy: EnemySpec, stats: DirectorStats): EnemySpec {
+  // The types rule out an enemy with no attacks; one built outside them is handed back rather than thrown on.
+  if (enemy.id === JUDGED_ENEMY_ID || enemy.attacks.length === 0) return enemy;
   const strength = skill(stats) * trust(stats);
   if (!Number.isFinite(strength) || strength === 0) return enemy;
   const pressing = strength > 0;
