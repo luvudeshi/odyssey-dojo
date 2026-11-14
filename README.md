@@ -50,6 +50,19 @@ The keys stay on the server and never reach the browser. Every AI call has a tim
 
 Sound effects in `public/audio/sfx/` and Athena's voice in `public/audio/athena/` were generated for this project with ElevenLabs.
 
+### Online rooms (relay)
+
+Two laptops can share a fight through the server. It only passes JSON messages between a host and one guest; it never reads them and needs no key. Rooms live in memory, hold two members and are removed after 30 idle minutes.
+
+| Call | Answer |
+|---|---|
+| `POST /api/rooms` | `{ code, token }`: a four-letter code and the host's token. 503 when 50 rooms are open. |
+| `POST /api/rooms/:code/join` | `{ token }` for the guest. 404 unknown room, 409 room full. |
+| `GET /api/rooms/:code/events?token=` | An event stream (Server-Sent Events). It opens with `{ type: "peer", joined }`, sends that again whenever the other member's stream opens or closes, and otherwise carries each message the other member sent. |
+| `POST /api/rooms/:code/send` | Body `{ token, message }`. The message, a JSON object of at most 16 KB, goes to the other member as it is. Answers `{ delivered }`: a message sent while the other member has no stream open is dropped. 401 wrong token, 404 unknown room, 413 too big. |
+
+Codes are matched without regard to case. These routes answer any device on your network, like the replay pages. To play, the host runs `npm start` and the guest opens `http://<host laptop address>:8787`. The game screens that use the relay are not built yet (issue #29).
+
 ## Before you open a PR
 
 ```bash
