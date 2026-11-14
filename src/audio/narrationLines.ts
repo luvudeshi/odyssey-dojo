@@ -37,7 +37,7 @@ export const NARRATION_LINES: readonly QuestLine[] = [
     enemyId: "circe",
     speaker: "homer",
     when: "After the Circe fight is won",
-    text: "Circe cried out and swore the great oath. She made the swine men again, and feasted them a full year.",
+    text: "Circe cried out and swore the great oath. She turned the swine back into men, and feasted them a full year.",
   },
   {
     id: "homer_before_sirens",
@@ -72,7 +72,7 @@ export const NARRATION_LINES: readonly QuestLine[] = [
     enemyId: "charybdis",
     speaker: "homer",
     when: "Before the Charybdis fight",
-    text: "Across the strait Charybdis sucked the dark water down, and the sea boiled like a cauldron on a great fire.",
+    text: "Across the strait Charybdis drank the dark sea down, then spewed it up seething, like a cauldron on a great fire.",
   },
   {
     id: "homer_after_charybdis",
