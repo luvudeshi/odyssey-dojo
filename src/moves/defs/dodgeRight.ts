@@ -1,5 +1,5 @@
 import type { MoveDef } from "../../core/types";
-import { clamp01, latest, shoulderCenter } from "../../pose/signals";
+import { sideStep } from "./dodgeLeft";
 
 export const move: MoveDef = {
   id: "dodge_right",
@@ -11,9 +11,6 @@ export const move: MoveDef = {
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftX: 14 },
   teaches: "Moving sideways, not straight back, takes you out of an attack's path so you can get away",
   detect(history) {
-    const frame = latest(history);
-    if (!frame || !history.baseline) return 0;
-    const shift = (shoulderCenter(frame).x - history.baseline.centerX) / history.baseline.shoulderWidth;
-    return clamp01(shift / 0.6);
+    return sideStep(history, 1);
   },
 };
