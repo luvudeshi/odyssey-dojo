@@ -99,6 +99,8 @@ export function animate(rig: Rig, p: MonsterProps, delta: number): void {
   const active = p.attackId ? ATTACK_NECK[p.attackId] : undefined;
   const mesh = rig.necks, spikeMesh = rig.spikes;
   let deadAverage = 0;
+  // While one head winds up, the others sink back so it is the only one that visibly commits.
+  const lull = active === undefined ? 0 : (rig.blends[active]?.rear ?? 0);
   for (let i = 0; i < NECK_COUNT; i++) {
     const blend = rig.blends[i];
     if (!blend) continue;
@@ -117,6 +119,7 @@ export function animate(rig: Rig, p: MonsterProps, delta: number): void {
     pose.h[0] += Math.sin(now * 0.7 + i * 1.3) * 0.35 * live + Math.sin(now * 15 + i) * 0.5 * stagger;
     pose.h[1] += Math.sin(now * 0.9 + i * 2.1) * 0.22 * live + 0.5 * hit;
     pose.h[2] += Math.sin(now * 0.5 + i) * 0.3 * live - 1.1 * hit;
+    if (!isActive) pose.h[1] -= 0.9 * lull * (1 - blend.dead);
     const base = neckBase(i);
     for (let s = 0; s <= SEG; s++) {
       const out = points[s];
@@ -161,13 +164,13 @@ export function animate(rig: Rig, p: MonsterProps, delta: number): void {
       v.up.crossVectors(v.fwd, v.right);
       v.basis.makeBasis(v.right, v.up, v.fwd);
       head.quaternion.setFromRotationMatrix(v.basis);
-      head.scale.setScalar(HEAD_SCALE * (1 + 0.05 * ph));
+      head.scale.setScalar(HEAD_SCALE * (1 + 0.05 * ph) * (1 + 0.25 * blend.rear));
     }
     const jaw = rig.jaws[i];
     if (jaw) {
       const snap = 1 - smooth(0.93, 1, p.windup);
       const open = 0.18 + 0.1 * Math.sin(now * 1.7 + i) + 0.8 * blend.rear * (isActive ? snap : 1) +
-        blend.expose * (0.2 + 0.25 * Math.sin(now * 6 + i)) + 0.5 * blend.dead + 0.5 * hit;
+        blend.expose * (0.2 + 0.25 * Math.sin(now * 6 + i)) + 0.15 * blend.dead + 0.5 * hit;
       jaw.rotation.x = MathUtils.clamp(open, 0.05, 1.1);
     }
   }

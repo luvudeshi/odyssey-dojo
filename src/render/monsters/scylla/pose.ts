@@ -31,8 +31,8 @@ export function restPose(i: number, phase: number): Pose {
 const REAR: Readonly<Record<number, Pose>> = {
   0: { h: [-4.6, 5.0, -4.8], c1: [-0.5, 0.4, 3.4], c2: [0.6, -2.8, -0.4] },
   5: { h: [5.6, 4.9, -5.0], c1: [0.5, 0.4, 3.4], c2: [-0.6, -2.8, -0.4] },
-  2: { h: [0.3, 6.1, -6.2], c1: [0, 1.2, 2.4], c2: [0, -3.0, -0.3] },
-  3: { h: [1.0, 4.8, -6.4], c1: [0, 0.6, 2.8], c2: [0, -2.2, -0.8] },
+  2: { h: [-0.9, 7.4, -7.0], c1: [0, 1.6, 2.0], c2: [0, -3.4, -0.6] },
+  3: { h: [1.9, 7.0, -7.6], c1: [0, 1.4, 1.6], c2: [0, -3.2, -1.0] },
 };
 
 const STRIKE: Readonly<Record<number, Pose>> = {
@@ -48,9 +48,9 @@ const EXPOSED: Readonly<Record<number, Pose>> = {
   3: { h: [1.25, 2.5, -2.0], c1: [0, 0.4, 3.0], c2: [0.4, 2.0, -2.8] },
 };
 
-/** Defeated: the necks go slack and the heads hang down the cliff face toward the water. */
+/** Defeated: the necks go slack and the heads droop forward over the water, where the won camera orbit can see them. */
 export function deadPose(i: number): Pose {
-  return { h: [(REST_X[i] ?? 0) * 0.8 + 0.4, 1.4 + (i % 3) * 0.7, MOUTH.z + 1.5 + (i % 2) * 0.5], c1: [0, -0.6, 2.2], c2: [0, 3.2, 0.2] };
+  return { h: [(REST_X[i] ?? 0) * 0.9 + 0.3, 0.5 + (i % 3) * 0.5, -8.0 + (i % 2) * 0.9], c1: [0, 0.4, 3.4], c2: [0, 2.0, -1.2] };
 }
 
 const mix3 = (a: V3, b: V3, k: number): V3 => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
