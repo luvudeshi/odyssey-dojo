@@ -7,6 +7,8 @@ export type DirectorResult = "defended" | "hit" | "landed" | "whiffed";
 export interface DefenceTally {
   readonly defended: number;
   readonly hit: number;
+  /** Share stopped, 0..1, leaning on the latest attempts. */
+  readonly form: number;
 }
 
 export interface DirectorStats {
@@ -33,7 +35,12 @@ const MIN_RESOLVED = 4;
 const FULL_TRUST = 7;
 /** Resolved attacks needing one defence before it can be called the best or the weakest. */
 const MIN_SAMPLES = 2;
-const FLOOR_MS = 800;
+/** Each new attempt at a defence moves its form this far towards the result. */
+const FORM_STEP = 0.3;
+/** Gap between the best and the weakest defence that earns the whole weight boost. */
+const FULL_GAP = 0.5;
+/** Shortest warning a body can answer; the content tests hold every enemy to the same second. */
+const FLOOR_MS = 1000;
 const FASTER = 0.2;
 const SLOWER = 0.3;
 const WIDER = 0.25;
@@ -43,8 +50,16 @@ function remembered(recent: readonly DirectorResult[], result: DirectorResult): 
 }
 
 function resolved(stats: DirectorStats, counter: string, stopped: boolean): DirectorStats {
-  const tally = stats.defences[counter] ?? { defended: 0, hit: 0 };
-  const next = stopped ? { ...tally, defended: tally.defended + 1 } : { ...tally, hit: tally.hit + 1 };
+  // Own keys only: a counter called "constructor" must not read Object.prototype.
+  const before = Object.hasOwn(stats.defences, counter) ? stats.defences[counter] : undefined;
+  const result = stopped ? 1 : 0;
+  const next: DefenceTally = before
+    ? {
+        defended: before.defended + result,
+        hit: before.hit + 1 - result,
+        form: before.form + FORM_STEP * (result - before.form),
+      }
+    : { defended: result, hit: 1 - result, form: result };
   return {
     ...stats,
     defences: { ...stats.defences, [counter]: next },
@@ -100,15 +115,18 @@ function trust(stats: DirectorStats): number {
   return Math.min(1, Math.max(0, (count - MIN_RESOLVED + 1) / (FULL_TRUST - MIN_RESOLVED + 1)));
 }
 
-/** Share of the attacks needing this defence that the player stopped; null until there are enough to say. */
+/** How well the player is stopping attacks that need this defence lately; null until there are enough to say. */
 function successRate(stats: DirectorStats, counter: string): number | null {
-  const tally = stats.defences[counter];
+  const tally = Object.hasOwn(stats.defences, counter) ? stats.defences[counter] : undefined;
   if (!tally || tally.defended + tally.hit < MIN_SAMPLES) return null;
-  return tally.defended / (tally.defended + tally.hit);
+  return tally.form;
 }
 
-/** The success rate of the defence to lean on: the weakest when pressing, the best when easing. Null: none stands out. */
-function favouredRate(enemy: EnemySpec, stats: DirectorStats, pressing: boolean): number | null {
+/** The weakest and the best success rate among the defences this enemy asks for. Null: none stands out. */
+function extremes(
+  enemy: EnemySpec,
+  stats: DirectorStats,
+): { readonly lowest: number; readonly highest: number } | null {
   let lowest = Infinity;
   let highest = -Infinity;
   for (const attack of enemy.attacks) {
@@ -117,8 +135,7 @@ function favouredRate(enemy: EnemySpec, stats: DirectorStats, pressing: boolean)
     lowest = Math.min(lowest, rate);
     highest = Math.max(highest, rate);
   }
-  if (lowest >= highest) return null;
-  return pressing ? lowest : highest;
+  return lowest < highest ? { lowest, highest } : null;
 }
 
 /** The warning after scaling. Shortening stops where the fastest phase using this attack would drop under the floor. */
@@ -127,20 +144,25 @@ function warning(enemy: EnemySpec, attack: EnemyAttack, factor: number): number 
   if (factor >= 1) return scaled;
   let fastest = Infinity;
   for (const phase of enemy.phases ?? []) {
-    if (phase.attackIds.includes(attack.id) && phase.telegraphScale < fastest) fastest = phase.telegraphScale;
+    // The engine plays every attack in a phase that names none of them.
+    const uses = phase.attackIds.includes(attack.id) || !enemy.attacks.some((a) => phase.attackIds.includes(a.id));
+    if (uses && phase.telegraphScale < fastest) fastest = phase.telegraphScale;
   }
   if (fastest === Infinity) fastest = 1;
   const floor = fastest > 0 ? Math.ceil(FLOOR_MS / fastest) : Infinity;
   return Math.max(scaled, Math.min(attack.telegraphMs, floor));
 }
 
-function retune(enemy: EnemySpec, stats: DirectorStats): EnemySpec {
+/** The enemy to hand the engine. Returns `enemy` itself when nothing should change. */
+export function tune(enemy: EnemySpec, stats: DirectorStats): EnemySpec {
   const strength = skill(stats) * trust(stats);
-  if (strength === 0) return enemy;
+  if (!Number.isFinite(strength) || strength === 0) return enemy;
   const pressing = strength > 0;
   const factor = pressing ? 1 - FASTER * strength : 1 - SLOWER * strength;
-  const favoured = favouredRate(enemy, stats, pressing);
-  const boost = 1 + Math.abs(strength);
+  // Lean on the weakest defence when pressing and the best when easing, more the further it stands out.
+  const rates = extremes(enemy, stats);
+  const favoured = rates === null ? null : pressing ? rates.lowest : rates.highest;
+  const boost = rates === null ? 1 : 1 + Math.abs(strength) * Math.min(1, (rates.highest - rates.lowest) / FULL_GAP);
 
   const tuned = (attack: EnemyAttack): EnemyAttack => {
     const telegraphMs = warning(enemy, attack, factor);
@@ -156,14 +178,4 @@ function retune(enemy: EnemySpec, stats: DirectorStats): EnemySpec {
   const same = attacks.every((attack, index) => attack === enemy.attacks[index]);
   if (same && strikeWindowMs === enemy.strikeWindowMs) return enemy;
   return { ...enemy, strikeWindowMs, attacks };
-}
-
-let last: { readonly enemy: EnemySpec; readonly stats: DirectorStats; readonly tuned: EnemySpec } | null = null;
-
-/** The enemy to hand the engine this frame. Returns `enemy` itself when nothing should change. */
-export function tune(enemy: EnemySpec, stats: DirectorStats): EnemySpec {
-  if (last?.enemy === enemy && last.stats === stats) return last.tuned;
-  const tuned = retune(enemy, stats);
-  last = { enemy, stats, tuned };
-  return tuned;
 }
