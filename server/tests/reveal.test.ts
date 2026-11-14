@@ -1,4 +1,5 @@
 // The god scan: the server names a god or says "unavailable" quickly, and a portrait request never fails loudly.
+import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { afterEach, expect, test, vi } from "vitest";
 import { GOD_IDS, RevealResponseSchema } from "../../src/ai/contracts";
@@ -30,6 +31,7 @@ afterEach(() => { close?.(); close = null; vi.restoreAllMocks(); });
 async function serve(ai: Partial<AiClients>, portraitMs = config.timeouts.portraitMs): Promise<(path: string, json?: unknown) => Promise<Response>> {
   const app = await createApp({ config: { ...config, timeouts: { ...config.timeouts, portraitMs } }, ai: { ...NO_AI, ...ai } });
   const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
   close = () => { server.close(); };
   const { port } = server.address() as AddressInfo;
   return (path, json) =>

@@ -1,4 +1,5 @@
 // Routes that spend API credits answer only this machine; replays and health stay open to the network.
+import { once } from "node:events";
 import type { AddressInfo } from "node:net";
 import { afterEach, expect, test } from "vitest";
 import { NO_AI } from "../ai/types";
@@ -35,6 +36,7 @@ test("another device is refused on spending routes and allowed on replays, healt
 test("a request from this machine is answered as before, whatever X-Forwarded-For claims", async () => {
   const app = await createApp({ config, ai: NO_AI });
   const server = app.listen(0, "127.0.0.1");
+  await once(server, "listening");
   close = () => { server.close(); };
   const { port } = server.address() as AddressInfo;
   const post = (host: string): Promise<Response> => fetch(`http://${host}:${String(port)}/api/level`, {
