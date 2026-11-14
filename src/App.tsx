@@ -1,5 +1,5 @@
 // Screen flow (see screens/flow.ts): title -> style -> quest map -> intro -> fight -> result -> map.
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { log } from "./core/log";
 import { ENEMIES } from "./enemies/registry";
 import { startTracker } from "./pose/tracker";
@@ -20,7 +20,11 @@ export function App() {
   const [notice, setNotice] = useState("");
   const [flow, dispatch] = useReducer(flowReducer, START);
 
+  const starting = useRef(false);
+
   const useCamera = (): void => {
+    if (starting.current) return;
+    starting.current = true;
     setNotice("Starting the camera...");
     startTracker().then(
       (started) => {
@@ -28,6 +32,7 @@ export function App() {
         dispatch({ type: "ready" });
       },
       (error: unknown) => {
+        starting.current = false;
         log("warn", "tracker_failed", error);
         setNotice("No camera available, so you're on keyboard controls.");
         dispatch({ type: "ready" });
