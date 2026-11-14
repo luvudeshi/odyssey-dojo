@@ -5,6 +5,9 @@
 //                                                    monster taunts  -> public/audio/taunts/<id>.mp3
 //   npx tsx server/tools/genClips.ts sfx             sound effects   -> public/audio/sfx/<event>.mp3
 //   npx tsx server/tools/genClips.ts music           music, ambience -> public/audio/music/<scene>.mp3
+//   npx tsx server/tools/genClips.ts stops           each later stop's ambience and monster sounds
+//                                                    -> public/audio/stops/<enemy id>/<clip>.mp3
+//                                                    (--only=<enemy id>/<clip> makes just that one; --max=<n> caps the calls)
 // Existing clips are kept (add --force to redo them). Each folder's index.json lists what exists.
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -16,6 +19,7 @@ import type { AiClients } from "../ai/types";
 import { forcedMonsterVoice, forcedVoice, pickMonsterVoice, pickVoice } from "../ai/voices";
 import { loadConfig } from "../env";
 import { withTimeout } from "../lib/timeout";
+import { STOP_AMBIENCE_FORMAT, STOP_CLIP_MAX_BYTES, STOP_CLIPS } from "./stopClips";
 
 interface Line {
   readonly id: string;
@@ -87,6 +91,18 @@ const PUBLIC = resolve(process.cwd(), "public/audio");
 
 function writeIndex(folder: string): void {
   const ids = readdirSync(folder).filter((file) => file.endsWith(".mp3")).map((file) => file.slice(0, -4)).sort();
+  writeFileSync(join(folder, "index.json"), `${JSON.stringify(ids)}\n`);
+  log("info", "index_written", { folder, clips: ids.length });
+}
+
+/** Lists every clip under the stops folder as "<enemy id>/<clip>", the form the game asks for them in. */
+function writeStopsIndex(folder: string): void {
+  const ids = readdirSync(folder, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) =>
+      readdirSync(join(folder, entry.name)).filter((file) => file.endsWith(".mp3")).map((file) => `${entry.name}/${file.slice(0, -4)}`),
+    )
+    .sort();
   writeFileSync(join(folder, "index.json"), `${JSON.stringify(ids)}\n`);
   log("info", "index_written", { folder, clips: ids.length });
 }
@@ -165,6 +181,46 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "stops") {
+    const folder = join(PUBLIC, "stops");
+    const only = flags.filter((flag) => flag.startsWith("--only=")).map((flag) => flag.slice("--only=".length));
+    const unknown = only.filter((key) => !Object.hasOwn(STOP_CLIPS, key));
+    if (unknown.length > 0) throw new Error(`no such stop clip: ${unknown.join(", ")}`);
+    const cap = Number(flags.find((flag) => flag.startsWith("--max="))?.slice("--max=".length) ?? Number.POSITIVE_INFINITY);
+    let calls = 0;
+    for (const [key, { prompt, seconds, loop }] of Object.entries(STOP_CLIPS)) {
+      if (only.length > 0 && !only.includes(key)) continue;
+      const target = join(folder, `${key}.mp3`);
+      if (existsSync(target) && !force) continue;
+      // Not "calls >= cap": a cap that is not a number stops the run instead of lifting the limit.
+      if (!(calls < cap)) {
+        log("warn", "call_cap_reached", { calls, next: key });
+        break;
+      }
+      calls++;
+      try {
+        const bytes = await withTimeout(120000, (signal) =>
+          sound(loop ? { prompt, seconds, loop, format: STOP_AMBIENCE_FORMAT, signal } : { prompt, seconds, signal }),
+        );
+        if (bytes.length > STOP_CLIP_MAX_BYTES) {
+          log("warn", "clip_too_big", { id: key, bytes: bytes.length });
+          continue;
+        }
+        mkdirSync(join(target, ".."), { recursive: true });
+        writeFileSync(target, bytes);
+        log("info", "clip_written", { id: key, bytes: bytes.length });
+      } catch (error) {
+        log("warn", "clip_failed", { id: key, error: error instanceof Error ? error.message : String(error) });
+        // A refused key, a spent quota or a malformed request fails the same way for every clip, so stop spending calls.
+        if (error instanceof ElevenLabsError && (REFUSED.has(error.httpStatus) || error.httpStatus === 422 || error.httpStatus === 429)) throw error;
+      }
+    }
+    log("info", "stops_done", { calls });
+    mkdirSync(folder, { recursive: true });
+    writeStopsIndex(folder);
+    return;
+  }
+
   const available = await withTimeout(15000, (signal) => voices(signal));
 
   if (command === "voices") {
@@ -225,7 +281,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error("usage: genClips.ts voices | athena | story | sfx | music [--force]");
+  throw new Error("usage: genClips.ts voices | athena | story | sfx | music | stops [--force]");
 }
 
 main().catch((error: unknown) => {
