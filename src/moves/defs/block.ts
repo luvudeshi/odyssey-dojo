@@ -1,5 +1,5 @@
 import type { MoveDef } from "../../core/types";
-import { JOINT, clamp01, distance2d, joint, latest, shoulderWidth } from "../../pose/signals";
+import { JOINT, armThrust, clamp01, distance2d, joint, latest, shoulderWidth } from "../../pose/signals";
 
 export const move: MoveDef = {
   id: "block",
@@ -12,6 +12,8 @@ export const move: MoveDef = {
   detect(history) {
     const frame = latest(history);
     if (!frame) return 0;
+    // A punch toward the camera also ends with a fist near the face: not a guard.
+    if (armThrust(history, "left") || armThrust(history, "right")) return 0;
     const nose = joint(frame.image, JOINT.nose);
     const far = Math.max(
       distance2d(joint(frame.image, JOINT.leftWrist), nose),
