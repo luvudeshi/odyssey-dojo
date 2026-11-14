@@ -32,7 +32,13 @@ const WARM_UP_GAP_MS = 12;
 /** What counts as a user gesture for starting audio. */
 const GESTURES = ["pointerdown", "keydown"] as const;
 
-const KNOWN: ReadonlySet<string> = new Set(SFX_TYPES);
+/** Every combat event. A clip file can exist for any of them; only some also have a synthesised sound. */
+const EVENTS: Readonly<Record<CombatEvent["type"], true>> = {
+  telegraph: true, defended: true, playerHit: true, opening: true, enemyHit: true, phaseChanged: true,
+  finished: true, powerUnleashed: true, whiffed: true, won: true, lost: true,
+};
+const EVENT_TYPES = Object.keys(EVENTS) as CombatEvent["type"][];
+const SYNTHESISED: ReadonlySet<string> = new Set(SFX_TYPES);
 const clips = new Map<string, AudioBuffer>();
 const synths = new Map<string, AudioBuffer>();
 /** Synthesised clips that are partly rendered. */
@@ -44,7 +50,7 @@ let tried = false;
 export function listedClips(index: unknown): readonly CombatEvent["type"][] {
   if (!Array.isArray(index)) return [];
   const listed = new Set<unknown>(index);
-  return SFX_TYPES.filter((type) => listed.has(type));
+  return EVENT_TYPES.filter((type) => listed.has(type));
 }
 
 async function loadClip(context: AudioContext, type: string): Promise<void> {
@@ -133,8 +139,11 @@ function createPlayer(): Player | null {
 
 function start({ context, master }: Player, type: CombatEvent["type"]): void {
   try {
+    // An event with neither a clip file nor a synthesised design stays silent.
+    const buffer = clips.get(type) ?? (SYNTHESISED.has(type) ? synthBuffer(context, type, Number.POSITIVE_INFINITY) : null);
+    if (buffer === null) return;
     const source = context.createBufferSource();
-    source.buffer = clips.get(type) ?? synthBuffer(context, type, Number.POSITIVE_INFINITY);
+    source.buffer = buffer;
     if (VARIED.has(type)) source.playbackRate.value = 1 + (Math.random() * 2 - 1) * RATE_SPREAD;
     const level = context.createGain();
     level.gain.value = LEVELS[type] ?? 1;
@@ -147,7 +156,7 @@ function start({ context, master }: Player, type: CombatEvent["type"]): void {
 
 export function playEvent(event: CombatEvent): void {
   const { type } = event;
-  if (!KNOWN.has(type)) return;
+  if (!(type in EVENTS)) return;
   if (!tried) {
     tried = true;
     player = createPlayer();

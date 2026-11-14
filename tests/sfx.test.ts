@@ -269,7 +269,7 @@ test("a listed clip file replaces the synthesised sound once it has loaded, and 
 
 test("repeated hits vary in pitch by at most four percent, and other sounds do not vary", async () => {
   const { play } = await inBrowser([]);
-  for (let i = 0; i < 20; i++) play({ type: "enemyHit", move: "jab", damage: 1 });
+  for (let i = 0; i < 20; i++) play({ type: "enemyHit", move: "jab", damage: 1, quality: 1 });
   play({ type: "whiffed" });
   const rates = FakeContext.latest?.started.map((source) => source.playbackRate.value) ?? [];
   expect(rates.length).toBe(21);
@@ -289,7 +289,7 @@ test("on small speakers the warning to defend and the defeat sound sit close to 
     return level * rms(above(synthClip(event.type, 44100), 44100, 200));
   };
   const hit = Math.max(
-    loudness({ type: "enemyHit", move: "jab", damage: 1 }),
+    loudness({ type: "enemyHit", move: "jab", damage: 1, quality: 1 }),
     loudness({ type: "playerHit", attack: ATTACK, damage: 1 }),
   );
   expect(loudness({ type: "telegraph", attack: ATTACK }) / hit).toBeGreaterThan(0.5);
