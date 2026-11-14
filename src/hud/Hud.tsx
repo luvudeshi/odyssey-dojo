@@ -25,21 +25,27 @@ function StickFigure({ diagram }: { diagram: MoveDiagram }) {
   );
 }
 
-function PromptCard(props: { move: MoveDef; target: string; successes: number; left: number }) {
+/** Letters in upper case ("L", not a lower-case l that reads as 1); Space spelled out. */
+export function keyLabel(key: string): string {
+  return key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
+}
+
+export function PromptCard(props: { move: MoveDef; target: string; successes: number; left: number }) {
   const { move, target, successes, left } = props;
   const level = promptLevel(successes);
-  if (level === "glow") return <div className="timer" style={{ width: `${String(left * 100)}%` }} />;
+  const key = <kbd>{keyLabel(move.key)}</kbd>;
   return (
-    <div className={`prompt ${move.kind}`}>
+    <div className={`prompt ${move.kind} ${level}`}>
       {level === "full" && <StickFigure diagram={move.diagram} />}
       <div>
         <div className="prompt-word">{move.prompt}</div>
-        <div className="prompt-target">{target}</div>
-        {level === "full" && (
-          <div className="prompt-hint">
-            {move.hint} <kbd>{move.key === " " ? "Space" : move.key}</kbd>
-          </div>
-        )}
+        {level !== "mini" && <div className="prompt-target">{target}</div>}
+        {/* A defend only counts if it is still held when the attack lands. */}
+        <div className="prompt-hint">
+          {move.kind === "defend" && <strong className="prompt-hold">HOLD </strong>}
+          {level === "full" && `${move.hint} `}
+          {key}
+        </div>
         {level === "full" && move.teaches && <div className="prompt-teaches">{move.teaches}</div>}
         <div className="timer" style={{ width: `${String(left * 100)}%` }} />
       </div>

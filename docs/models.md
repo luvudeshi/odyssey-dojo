@@ -76,7 +76,7 @@ The cave and the primitive Polyphemus are untouched by this PR. Packing used `@g
 
 ## Polyphemus candidates
 
-Try each with the keyboard: `http://localhost:5173/?model=giant`, `?model=classic`, `?model=dev` (add `&debug` to read `window.__modelDebug`). Screenshots from a full keyboard fight (a bot played each one to the end) are in `docs/screenshots/polyphemus-<id>-{idle,attack,hit,blinded,death}.png`.
+The giant is the default. Try the others with the keyboard: `http://localhost:5173/?model=giant`, `?model=classic`, `?model=dev` (add `&debug` to read `window.__modelDebug`). Screenshots from a full keyboard fight (a bot played each one to the end) are in `docs/screenshots/polyphemus-<id>-{idle,attack,hit,blinded,death}.png`.
 
 Ranking: 1. `giant`, 2. `classic`. No other confirmed-CC0 giant is on disk (the Bestiary has only an Imp and a Puglin, and the sea-monster and tentacle files are for Scylla), so there is no third candidate.
 
@@ -88,7 +88,9 @@ Ranking: 1. `giant`, 2. `classic`. No other confirmed-CC0 giant is on disk (the 
 | classic (hand-built Polyphemus) | `src/render/monsters/models/Polyphemus.tsx`, restyled in `classicPolyphemus.tsx` | Ours | 0 KB | 5 m, no fit needed | none: arms swing by windup, falls over on defeat | Fallback, resized by hand. Flat-shaded, darker skin (the first tint was washed out by the cave light), cloth, club, stake. Weak-spot rings sit exactly on eye and gut. Looks like a doll next to the giant; arms are two capsules. |
 | polyphemusProps (eye, stake, club) | built in code | Ours | 0 KB | metres | none | Kept. The first club colour was invisible against the dark rock behind it; lightened. |
 
-Weak spots: the giant's body fits the existing positions (eye `[0, 4.1, 0.95]`, gut `[0, 2, 1.1]`) without a data edit: the gut ring lands on his belt and the eye ring on his face, slightly below the big eye (his eye centre is about 4.3 m). No data was changed.
+Weak spots (changed): measured on the scaled giant in the running fight (`window.__giantEye`, `window.__giantRoot` under `&debug`). The eye prop sits at about y 3.87, z 1.35 in the monster's frame, not 4.3, so the eye is `[0, 3.75, 1.45]` (ring just in front of the eye disc) and the gut is `[0, 2.5, 0.8]` (the torso front is at about z 0.55). Hit sparks use the same positions. Shots: `docs/screenshots/giant-default-strike-eye-p0.png`, `-strike-gut-p0.png`, `-strike-eye-p2.png`.
+
+The giant is now the default Polyphemus with no flag. `?model=classic` keeps the code-built one, `?model=dev` the test robot, anything else gets the giant (`polyphemusChoice`). The GLB is preloaded at import; until it has loaded, or if it fails, the code-built model shows, so there is no blank or T-pose. Checked with a full keyboard fight, all three phases, windups, hits, Blinded, the finisher and the fall (`docs/screenshots/giant-default-*.png`). The eye was a pale plate with a tiny hexagon pupil; it is now amber with a tall dark slit pupil and a lower glow (`docs/screenshots/giant-eye-slit.png`). Known: the giant looks pale and flat while the finisher camera is close and in death; the club is a thin stick from behind; the pack has one Attack clip, so left and right club swings look alike.
 
 ## Cave mouth at dusk: model log
 
