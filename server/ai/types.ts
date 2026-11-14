@@ -35,6 +35,8 @@ export interface SoundRequest {
   readonly seconds: number;
   /** Ask for a sound whose end runs into its start. Off unless set. */
   readonly loop?: boolean;
+  /** The audio format to ask for, as the API names it. Left out: MP3 at 128 kbps. */
+  readonly format?: string;
   readonly signal: AbortSignal;
 }
 
