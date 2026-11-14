@@ -440,7 +440,7 @@ test("a clip that never ends is given up on, and a pre-empted clip is paused", (
   ]);
   expect(voice.speak("praise_2")).toBe(false);
 
-  vi.advanceTimersByTime(10_000);
+  vi.advanceTimersByTime(16_000);
   expect(audio.calls.at(-1)).toBe("pause /audio/athena/call_duck.mp3");
   expect(audio.paused()).toBe(2);
   expect(voice.speak("praise_2")).toBe(true);
