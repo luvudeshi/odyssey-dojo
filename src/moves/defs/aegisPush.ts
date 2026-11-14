@@ -1,5 +1,9 @@
 import type { MoveDef, PoseFrame } from "../../core/types";
 import { JOINT, clamp01, elbowAngle, joint, latest, recent } from "../../pose/signals";
+import { wristGap } from "../handSignals";
+
+/** The widest the hands may be in the picture, in shoulder widths. Wider is a spear thrust, not a push from the chest. */
+const MAX_GAP = 0.9;
 
 /** Meters the wrist is in front of its shoulder. World z is negative toward the camera. */
 function reach(frame: PoseFrame, side: "left" | "right"): number {
@@ -35,6 +39,7 @@ export const move: MoveDef = {
     if (!frame || !handsUp(frame)) return 0;
     // The arms have to go from bent to straight, so lifting bent arms into a guard is not a push.
     if (elbowAngle(frame, "left") < 140 || elbowAngle(frame, "right") < 140) return 0;
+    if (wristGap(frame) >= MAX_GAP) return 0;
     if (!recent(history, 450).some(atChest)) return 0;
     // Reaches 0.7 when the nearer wrist is 0.35 m out.
     return clamp01(Math.min(reach(frame, "left"), reach(frame, "right")) / 0.5);
