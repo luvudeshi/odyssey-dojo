@@ -40,7 +40,7 @@ export const move: MoveDef = {
     leftElbow: [38, 42], leftWrist: [43, 26], rightElbow: [62, 42], rightWrist: [57, 26],
     rightKnee: [62, 64], rightFoot: [78, 58],
   },
-  teaches: "A front kick to the body keeps an attacker at leg's length, where his hands cannot reach you.",
+  teaches: "A front kick keeps someone at leg length, further away than their hands can reach.",
   detect(history) {
     return kickingSide(history) ? 1 : 0;
   },
