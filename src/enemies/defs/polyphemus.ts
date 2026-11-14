@@ -27,7 +27,7 @@ export const enemy: EnemySpec = {
   ],
   weakSpots: [
     { id: "eye", label: "his one eye", position: [0, 4.1, 0.95], moves: ["jab", "cross", "overhead_strike", "reverse_punch", "hammer_fist", "rising_palm"] },
-    { id: "gut", label: "his gut", position: [0, 2, 1.1], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm"] },
+    { id: "gut", label: "his gut", position: [0, 2, 1.1], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm", "front_kick", "knee"] },
   ],
   finisher: "stake_thrust",
   taunts: [
