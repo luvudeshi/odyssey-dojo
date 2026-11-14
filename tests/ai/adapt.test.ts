@@ -30,7 +30,7 @@ function enemyNamed(id: string): EnemySpec {
 
 /**
  * Polyphemus with numbers written down here, so the tests that expect exact values do not move when he is retuned.
- * These are his numbers on main when this file was written.
+ * These are his numbers from before PR #135: no blow below the adapter's usual damage floor of 6.
  */
 const CYCLOPS: EnemySpec = {
   ...enemyNamed("polyphemus"),
@@ -44,7 +44,7 @@ const CYCLOPS: EnemySpec = {
   ],
 };
 
-/** The same enemy as PR #135 retunes him: every blow at or below the adapter's usual damage floor of 6. */
+/** The same enemy with the numbers PR #135 gave him: every blow at or below the adapter's usual damage floor of 6. */
 const SOFT_CYCLOPS: EnemySpec = {
   ...CYCLOPS,
   hp: 162,
@@ -632,7 +632,7 @@ test("a stand-in whose blows are lighter than 6 keeps them: nothing is lifted ab
     // A strike does nine tenths of the boulder's 6.
     ["boulder", 5],
   ]);
-  // On the stand-in as main has it the same level is unchanged by the lower floor: 7, 7, 9 and 9.
+  // On the heavier stand-in the same level is unchanged by the lower floor: 7, 7, 9 and 9.
   expect(fightFromLevel(level, [CYCLOPS], MOVES).attacks.map((blow) => blow.damage)).toEqual([7, 7, 9, 9]);
 
   // An attack filled in from the stand-in keeps its own damage too.
