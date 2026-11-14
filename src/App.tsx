@@ -5,7 +5,7 @@ import type { FightingStyle } from "./core/types";
 import { ENEMIES } from "./enemies/registry";
 import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
-import { FightScreen } from "./screens/FightScreen";
+import { WebcamGate } from "./screens/WebcamGate";
 import { STYLES } from "./styles/registry";
 
 interface Fight {
@@ -65,7 +65,7 @@ export function App() {
 
   const go = (index: number): void => { setFight({ style: fight.style, index, seed: Date.now() }); };
   return (
-    <FightScreen
+    <WebcamGate
       key={fight.seed}
       enemy={enemy}
       style={fight.style}
