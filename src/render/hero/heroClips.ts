@@ -22,6 +22,8 @@ export interface HeroRig {
   readonly punch: Timed;
   readonly thrust: Timed;
   readonly hurt: Timed;
+  /** Duck has no crouch clip on every model: `hold` freezes a clip at that fraction, `squash` lowers the whole model. */
+  readonly duck?: { readonly hold?: number; readonly squash?: number };
 }
 
 /** What the fight store knows, as plain numbers: seconds since each event, and what is held. */
@@ -81,6 +83,7 @@ export function decideHeroPose(rig: HeroRig, pose: HeroPose, input: HeroInput, a
   if (pose === "punch" || pose === "thrust") {
     const timed = pose === "thrust" ? rig.thrust : rig.punch;
     scrub = Math.min(1, strikeStart(timed) + input.sinceStrike / timed.seconds);
-  } else if (pose === "hurt") scrub = Math.min(1, input.sinceHurt / rig.hurt.seconds);
+  } else if (pose === "duck") scrub = rig.duck?.hold ?? null;
+  else if (pose === "hurt") scrub = Math.min(1, input.sinceHurt / rig.hurt.seconds);
   return Object.assign(out, { clip, loop: LOOPING.has(pose), scrub, timeScale: 1 });
 }
