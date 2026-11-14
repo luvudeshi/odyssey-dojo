@@ -1,9 +1,12 @@
 // The share panel's logic: the words on the card, what the player is told before uploading, and the share state machine.
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { GODS } from "../src/ai/gods/gods";
 import { MAX_VIDEO_BYTES, ReplayMetaSchema } from "../src/replay/contracts";
 import { IDLE, canShare, cardFileName, cardWords, replayMeta, runShare, shareStep, statusLine } from "../src/replay/ui/shareFlow";
 import type { ShareEvent, ShareFight, ShareState } from "../src/replay/ui/shareFlow";
+import { SharePanel } from "../src/replay/ui/SharePanel";
 import type { ReplayLinks, uploadReplay } from "../src/replay/upload";
 
 const fight: ShareFight = {
@@ -109,4 +112,17 @@ test("a server that is off, an upload that throws and a listener that throws all
   expect(await states((send) => runShare(job, send, { upload: broken }))).toEqual([uploading, { kind: "failed" }]);
   const thrower = (): void => { throw new Error("listener"); };
   await expect(runShare(job, thrower, { upload: () => Promise.resolve(links) })).resolves.toBeUndefined();
+});
+
+test("the panel's first render makes no request, and says what Share would upload", () => {
+  const fetched = vi.spyOn(globalThis, "fetch");
+  const props = { god: null, won: true, enemyName: "Polyphemus", fightTitle: "The Cyclops of the Cave", score: 10, style: "Boxer" };
+  const withVideo = renderToStaticMarkup(createElement(SharePanel, { ...props, video, onClose: () => undefined }));
+  expect(withVideo).toContain("Painting your card...");
+  expect(withVideo).toContain(">Share</button>");
+  expect(withVideo).toContain("this card and the video of your fight (2.5 MB)");
+  expect(withVideo).toContain(">Close</button>");
+  // Before the card is painted, and with no video, there is nothing to share and so no button.
+  expect(renderToStaticMarkup(createElement(SharePanel, props))).not.toContain("<button");
+  expect(fetched).not.toHaveBeenCalled();
 });
