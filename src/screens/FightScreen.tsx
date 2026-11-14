@@ -9,6 +9,8 @@ import { CameraView } from "../hud/CameraView";
 import { Hud } from "../hud/Hud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
+import { forTwo } from "../net/host";
+import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
@@ -33,9 +35,11 @@ export function FightScreen(props: {
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
   onQuit?: () => void;
+  /** Online room: the guest's strikes join the fight and the state goes back to them. Left out in single play. */
+  link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, link = null } = props;
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
   const overRef = useRef(false);
@@ -47,7 +51,7 @@ export function FightScreen(props: {
     battle.styleId = style.id;
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
-    let current = startFight(enemy, seed);
+    let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
@@ -76,11 +80,14 @@ export function FightScreen(props: {
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
       setLost(false);
-      const input = mergeInputs(keys, readPose(history));
+      const own = mergeInputs(keys, readPose(history));
+      // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
+      const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
+      link?.publish(current, result.events, now);
       result.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
       playVoice(result.events, current.phase);
       setState(current);
@@ -91,7 +98,9 @@ export function FightScreen(props: {
       cancelAnimationFrame(handle);
       keyboard.dispose();
     };
-  }, [enemy, style, tracker, seed, baseline]);
+  }, [enemy, style, tracker, seed, baseline, link]);
+
+  useEffect(() => { link?.start(enemy.id, style.id, seed); }, [link, enemy, style, seed]);
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   const running = view === "off";
