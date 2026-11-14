@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { log } from "../../src/core/log";
 import { createElevenLabs } from "../ai/elevenlabs";
-import type { Voice } from "../ai/types";
+import { forcedVoice, pickVoice } from "../ai/voices";
 import { loadConfig } from "../env";
 import { withTimeout } from "../lib/timeout";
 
@@ -19,9 +19,6 @@ interface Line {
 
 // Best first. The first model the key is allowed to use wins.
 const SPEECH_MODELS = ["eleven_v4", "eleven_multilingual_v2"] as const;
-// Names tried in order for Athena: a clear, commanding woman's voice. Override with ATHENA_VOICE_ID.
-const ATHENA_VOICES = ["Alice", "Matilda", "Charlotte", "Sarah", "Lily", "Rachel", "Jessica", "Laura"] as const;
-
 /** What each combat event should sound like, and for how many seconds. */
 const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]>> = {
   telegraph: ["A giant winding up a heavy wooden club in a stone cave, low ominous whoosh rising in tension", 1],
@@ -52,16 +49,6 @@ async function athenaLines(): Promise<readonly Line[]> {
   return module.ATHENA_LINES ?? [];
 }
 
-function pickVoice(voices: readonly Voice[]): Voice {
-  const wanted = process.env.ATHENA_VOICE_ID;
-  const chosen =
-    voices.find((voice) => voice.id === wanted) ??
-    ATHENA_VOICES.flatMap((name) => voices.filter((voice) => voice.name.toLowerCase().startsWith(name.toLowerCase())))[0] ??
-    voices[0];
-  if (!chosen) throw new Error("this key has no voices it can use through the API");
-  return chosen;
-}
-
 async function main(): Promise<void> {
   const [command = "", ...flags] = process.argv.slice(2);
   const force = flags.includes("--force");
@@ -80,7 +67,8 @@ async function main(): Promise<void> {
   if (command === "athena") {
     const folder = join(PUBLIC, "athena");
     mkdirSync(folder, { recursive: true });
-    const voice = pickVoice(available);
+    const voice = pickVoice("athena", available, forcedVoice("athena"));
+    if (voice === null) throw new Error("this key has no voices it can use through the API");
     log("info", "athena_voice", voice);
     let model: string | null = null;
     for (const line of await athenaLines()) {
