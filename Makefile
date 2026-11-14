@@ -1,4 +1,4 @@
-.PHONY: setup dev lint test check ready fps
+.PHONY: setup dev lint test check ready credits fps
 
 setup:
 	npm install
@@ -20,6 +20,10 @@ ready:
 	@git merge-base --is-ancestor origin/main HEAD || (echo "Behind main: run git rebase origin/main first" && exit 1)
 	@git symbolic-ref --short HEAD | grep -qvx main || (echo "You are on main: work on a branch" && exit 1)
 	$(MAKE) check
+
+# Lists every shipped asset with its credit, licence and size. Fails when one has no credit. Not part of check.
+credits:
+	@node scripts/credits-report.mjs
 
 # Frame rate of every stop at each quality level, in headless Chrome. Writes docs/perf.md.
 fps:
