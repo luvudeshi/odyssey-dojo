@@ -9,3 +9,9 @@ All downloaded assets are CC0 (public domain) from Poly Haven, https://polyhaven
 | Rocky Trail (1K diffuse, normal GL, roughness) | Cave floor, `public/textures/rocky_trail_*` | https://polyhaven.com/a/rocky_trail | CC0 |
 
 The cave arena and hit effects start from work by tagrawal029 (branch `feat/arena-effects-screens`).
+
+## Development test model
+
+| Asset | Used for | URL | Licence |
+|---|---|---|---|
+| RobotExpressive.glb (Tomas Laule, Quaternius, via the three.js examples) | Development test model only, `public/models/dev/RobotExpressive.glb`, shown with `?model=dev` to test the GLB pipeline. Not game art | https://github.com/mrdoob/three.js/tree/r187/examples/models/gltf/RobotExpressive | CC0 |
