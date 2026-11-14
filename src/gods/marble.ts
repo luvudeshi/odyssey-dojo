@@ -1,4 +1,5 @@
-// Turns a photo into a carved marble bust lit in the dark, and picks the head-and-shoulders crop. Pure pixel maths: no DOM.
+// Turns a photo into a carved marble bust lit in the dark, and holds the portrait's other pure maths:
+// the head-and-shoulders crop, mirroring, the blank-frame check, the gilding colour and the wreath's leaves. No DOM.
 
 export interface Pixels {
   readonly data: Uint8ClampedArray;
@@ -9,8 +10,16 @@ export interface Pixels {
 export interface MarbleOptions {
   /** Colour of the gilded rim on strong edges, 0..255 per channel. Gold when left out. */
   readonly accent?: readonly [number, number, number];
-  /** Picks the veining. The same seed always gives the same stone. */
+  /** Picks the veining. The same seed always gives the same stone. Any finite number, fractions included. */
   readonly seed?: number;
+  /** Light most of the picture, not just a centred bust: for a crop that was not framed on the head. */
+  readonly wide?: boolean;
+}
+
+export interface Crop {
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
 }
 
 export interface PortraitPose {
@@ -26,29 +35,44 @@ const GOLD: Rgb = [232, 184, 74];
 const SHADOW_STONE: Rgb = [68, 76, 100];
 const LIGHT_STONE: Rgb = [248, 243, 230];
 
-const TONES = 1024;
+const TONES = 2048;
+/** The stone table covers tones up to here, so an overexposed face still has somewhere to go. */
+const TONE_TOP = 2;
+const TONE_SCALE = (TONES - 1) / TONE_TOP;
+/** Above this tone the highlights roll off toward white and never reach it, so a bright face keeps its shading. */
+const SHOULDER = 0.6;
 const POSTER_LEVELS = 6;
 const POSTER_MIX = 0.55;
 /** How much of the difference from the local average is added back, so features survive flat lighting. */
 const CONTRAST_LIFT = 0.7;
 const TARGET_BRIGHTNESS = 0.5;
+/** The face is the brightest thing in a dim room: this share of the centre may sit above HIGHLIGHT_LEVEL after the gain. */
+const HIGHLIGHT_SHARE = 0.08;
+const HIGHLIGHT_LEVEL = 0.72;
+const METER_BINS = 64;
 const VEIN_SHARPNESS = 13;
 const VEIN_DEPTH = 0.16;
 const MOTTLE = 0.05;
 const EDGE_START = 0.2;
 const EDGE_FULL = 0.6;
 const EDGE_TINT = 0.7;
-/** The lit ellipse, as fractions of half the picture; light fades between the inner and outer distance. */
-const ELLIPSE_X = 0.86;
+/**
+ * The lit ellipse, as fractions of half the picture; light fades between the inner and outer distance.
+ * The bust light is full on the head and neck and falls off across the shoulders; the wide light is for an unframed crop.
+ */
 const ELLIPSE_Y = 0.98;
-const FADE_INNER = 0.36;
 const FADE_OUTER = 1;
+const BUST_LIGHT = { ellipseX: 0.7, fadeInner: 0.25 } as const;
+const WIDE_LIGHT = { ellipseX: 0.86, fadeInner: 0.36 } as const;
 
-/** Stone colour for every tone 0..1: a lifted, softly stepped ramp from cool shadow to warm white. */
+/** Stone colour for every tone 0..TONE_TOP: a lifted, softly stepped ramp from cool shadow to warm white. */
 const STONE = ((): Uint8ClampedArray => {
   const table = new Uint8ClampedArray(TONES * 3);
   for (let i = 0; i < TONES; i++) {
-    const lifted = 1 - (1 - i / (TONES - 1)) ** 1.35;
+    const raw = i / TONE_SCALE;
+    // Same value and slope as the straight line at SHOULDER, then bending toward 1.
+    const soft = raw > SHOULDER ? 1 - (1 - SHOULDER) ** 2 / (raw - (2 * SHOULDER - 1)) : raw;
+    const lifted = 1 - (1 - soft) ** 1.35;
     const step = Math.floor(lifted * POSTER_LEVELS);
     const within = lifted * POSTER_LEVELS - step;
     const carved = (step + within * within * (3 - 2 * within)) / POSTER_LEVELS;
@@ -66,7 +90,8 @@ function wholeNumber(value: number): number {
 }
 
 function seededRandom(seed: number): () => number {
-  let state = seed >>> 0;
+  // The fraction is folded in, so Math.random() as a seed still picks a different stone each time.
+  let state = Number.isFinite(seed) ? (Math.floor(seed) ^ Math.floor((seed % 1) * 4294967296)) >>> 0 : 0;
   return () => {
     state = (state + 0x6d2b79f5) >>> 0;
     let mixed = Math.imul(state ^ (state >>> 15), state | 1);
@@ -156,23 +181,46 @@ function addNoise(
   }
 }
 
-/** Average of the middle half of the picture, where the face is. */
-function centreBrightness(light: Float32Array, width: number, height: number): number {
+/**
+ * Half-way exposure correction, metered on the middle half of the picture, where the face is:
+ * a dim room still gives pale stone, but a brighter photo stays brighter.
+ * The mean alone is mostly wall and shirt, so the gain is also capped by the brightest part, which is the face.
+ */
+function exposureGain(light: Float32Array, width: number, height: number): number {
   const left = width >> 2;
   const right = Math.max(left + 1, width - left);
   const top = height >> 2;
   const bottom = Math.max(top + 1, height - top);
+  const bins = new Uint32Array(METER_BINS);
   let sum = 0;
   for (let y = top; y < bottom; y++) {
     const row = y * width;
-    for (let x = left; x < right; x++) sum += light[row + x] ?? 0;
+    for (let x = left; x < right; x++) {
+      const value = light[row + x] ?? 0;
+      sum += value;
+      const bin = value >= 1 ? METER_BINS - 1 : Math.floor(value * METER_BINS);
+      bins[bin] = (bins[bin] ?? 0) + 1;
+    }
   }
-  return sum / ((right - left) * (bottom - top));
+  const count = (right - left) * (bottom - top);
+  const allowed = count * HIGHLIGHT_SHARE;
+  let above = 0;
+  let bright = 0;
+  for (let bin = METER_BINS - 1; bin >= 0; bin--) {
+    const here = bins[bin] ?? 0;
+    if (above + here >= allowed) {
+      bright = (bin + 1 - (allowed - above) / here) / METER_BINS;
+      break;
+    }
+    above += here;
+  }
+  const wanted = Math.min(Math.sqrt(TARGET_BRIGHTNESS / Math.max(0.001, sum / count)), HIGHLIGHT_LEVEL / Math.max(0.001, bright));
+  return Math.min(1.6, Math.max(0.75, wanted));
 }
 
 /**
  * Photo in, marble bust out: same size, alpha 255, the input untouched.
- * Brightness is smoothed and evened out, mapped onto stone colours with faint veins and soft carved steps,
+ * Brightness is smoothed and exposed for the face, mapped onto stone colours with faint veins and soft carved steps,
  * strong edges get a thin rim in the accent colour, and everything outside a centred ellipse falls to dark ink.
  */
 export function marbleize(pixels: Pixels, options: MarbleOptions = {}): Pixels {
@@ -202,20 +250,20 @@ export function marbleize(pixels: Pixels, options: MarbleOptions = {}): Pixels {
   boxBlur(light, average, scratch, width, height, wide);
   boxBlur(average, average, scratch, width, height, wide);
 
-  // Half-way exposure correction: a dim room still gives pale stone, but a brighter photo stays brighter.
-  const gain = Math.min(1.6, Math.max(0.75, Math.sqrt(TARGET_BRIGHTNESS / Math.max(0.001, centreBrightness(light, width, height)))));
+  const gain = exposureGain(light, width, height);
 
   const random = seededRandom(options.seed ?? 1);
   const noise = scratch.fill(0);
   addNoise(noise, width, height, Math.max(2, longer / 4.5), 0.7, random);
   addNoise(noise, width, height, Math.max(2, longer / 11), 0.3, random);
 
+  const { ellipseX, fadeInner } = options.wide === true ? WIDE_LIGHT : BUST_LIGHT;
   const fadeX = new Float32Array(width);
   for (let x = 0; x < width; x++) {
-    const offset = ((x + 0.5) / width - 0.5) * 2 / ELLIPSE_X;
+    const offset = ((x + 0.5) / width - 0.5) * 2 / ellipseX;
     fadeX[x] = offset * offset;
   }
-  const fadeScale = 1 / (FADE_OUTER - FADE_INNER);
+  const fadeScale = 1 / (FADE_OUTER - fadeInner);
   const edgeScale = (gain * EDGE_TINT) / (EDGE_FULL - EDGE_START);
   const edgeFloor = (EDGE_START * EDGE_TINT) / (EDGE_FULL - EDGE_START);
 
@@ -242,7 +290,7 @@ export function marbleize(pixels: Pixels, options: MarbleOptions = {}): Pixels {
       const vein = 1 - Math.abs(grain - 0.5) * VEIN_SHARPNESS;
       tone += (grain - 0.5) * MOTTLE;
       if (vein > 0) tone -= vein * vein * VEIN_DEPTH * tone;
-      const index = (tone <= 0 ? 0 : tone >= 1 ? TONES - 1 : Math.floor(tone * (TONES - 1))) * 3;
+      const index = (tone <= 0 ? 0 : tone >= TONE_TOP ? TONES - 1 : Math.floor(tone * TONE_SCALE)) * 3;
       let r = STONE[index] ?? 0;
       let g = STONE[index + 1] ?? 0;
       let b = STONE[index + 2] ?? 0;
@@ -265,8 +313,8 @@ export function marbleize(pixels: Pixels, options: MarbleOptions = {}): Pixels {
         }
       }
 
-      if (distance > FADE_INNER) {
-        const through = (distance - FADE_INNER) * fadeScale;
+      if (distance > fadeInner) {
+        const through = (distance - fadeInner) * fadeScale;
         const lit = 1 - through * through * (3 - 2 * through);
         r = inkR + (r - inkR) * lit;
         g = inkG + (g - inkG) * lit;
@@ -280,12 +328,17 @@ export function marbleize(pixels: Pixels, options: MarbleOptions = {}): Pixels {
   return result;
 }
 
-/** Shoulder widths and nose-to-shoulder drops that fit in the crop, and where the nose sits from its top. */
-const CROP_PER_SHOULDERS = 1.9;
-const CROP_PER_DROP = 3.3;
-const NOSE_FROM_TOP = 0.42;
+/**
+ * Shoulder widths and nose-to-shoulder drops that fit in the crop, and where the nose sits from its top.
+ * Tight enough that the head is over a quarter of the width and the bust, not the room, fills the light.
+ */
+const CROP_PER_SHOULDERS = 1.5;
+const CROP_PER_DROP = 2.5;
+const NOSE_FROM_TOP = 0.4;
 /** A pose smaller than this share of the picture is noise, not a person. */
 const SMALLEST_CROP = 0.12;
+/** How far, in crop widths, the nose may sit from its planned spot and still be under the wreath's opening. */
+const FRAMING_SLACK = 0.07;
 
 function within(value: number, low: number, high: number): number {
   return Math.min(high, Math.max(low, value));
@@ -296,11 +349,7 @@ function within(value: number, low: number, high: number): number {
  * headroom above the head, shoulders in the lower half, always inside the image.
  * A centred square when there is no usable pose.
  */
-export function portraitCrop(
-  imageWidth: number,
-  imageHeight: number,
-  pose: PortraitPose | null,
-): { readonly x: number; readonly y: number; readonly size: number } {
+export function portraitCrop(imageWidth: number, imageHeight: number, pose: PortraitPose | null): Crop {
   const width = wholeNumber(imageWidth);
   const height = wholeNumber(imageHeight);
   const side = Math.min(width, height);
@@ -325,4 +374,88 @@ export function portraitCrop(
     y: within(Math.round(noseY - size * NOSE_FROM_TOP), 0, height - size),
     size,
   };
+}
+
+/**
+ * Whether the crop really has the head where the wreath's opening and the bust light expect it.
+ * False with no pose, and when the crop had to be the centred square or was pushed aside by the picture's edge.
+ */
+export function headIsFramed(imageWidth: number, imageHeight: number, pose: PortraitPose | null): boolean {
+  if (!pose) return false;
+  const crop = portraitCrop(imageWidth, imageHeight, pose);
+  if (crop.size === 0) return false;
+  const across = (pose.nose.x * wholeNumber(imageWidth) - crop.x) / crop.size - 0.5;
+  const down = (pose.nose.y * wholeNumber(imageHeight) - crop.y) / crop.size - NOSE_FROM_TOP;
+  return Math.abs(across) <= FRAMING_SLACK && Math.abs(down) <= FRAMING_SLACK;
+}
+
+/** Left edge of the crop in the source. A mirrored crop is measured from the source's right edge. */
+export function sourceX(imageWidth: number, crop: Crop, mirror: boolean): number {
+  return mirror ? wholeNumber(imageWidth) - crop.x - crop.size : crop.x;
+}
+
+/** Luminance, 0..255, that a real frame reaches somewhere; a video with no data or a dead camera does not. */
+const BLANK_BELOW = 8;
+const BLANK_STRIDE = 17;
+
+/** True when a snapshot holds no picture: nothing was drawn, or it is black all over. Looks at every 17th pixel. */
+export function isBlank(pixels: Pixels): boolean {
+  const data = pixels.data;
+  for (let at = 0; at + 3 < data.length; at += BLANK_STRIDE * 4) {
+    if ((data[at + 3] ?? 0) === 0) continue;
+    if ((data[at] ?? 0) * 0.299 + (data[at + 1] ?? 0) * 0.587 + (data[at + 2] ?? 0) * 0.114 >= BLANK_BELOW) return false;
+  }
+  return true;
+}
+
+/** How far an accent is pulled toward gold: far enough that a blue or green god still gets warm gold, not olive. */
+const GOLD_SHARE = 0.85;
+
+/** The colour of the wreath, ring and rim for a god's accent, 0..255 per channel. */
+export function gilded(accent: Rgb): Rgb {
+  return [
+    accent[0] + (GOLD[0] - accent[0]) * GOLD_SHARE,
+    accent[1] + (GOLD[1] - accent[1]) * GOLD_SHARE,
+    accent[2] + (GOLD[2] - accent[2]) * GOLD_SHARE,
+  ];
+}
+
+/** One laurel leaf: where its stem end is and which way it points, in portrait widths from the centre, y down. */
+export interface LaurelLeaf {
+  readonly x: number;
+  readonly y: number;
+  readonly angle: number;
+  readonly length: number;
+}
+
+const WREATH_RADIUS = 0.405;
+const LEAF_LENGTH = 0.092;
+const LEAF_SPLAY = 0.5;
+const LEAF_PAIRS_PER_RADIAN = 4.2;
+/** Angles around the wreath, clockwise from three o'clock. A branch starts just beside the bottom of the circle. */
+const BRANCH_START = Math.PI / 2 - 0.1;
+/** A crown stops this far short of the top, leaving the opening above the head. */
+const CROWN_END = -Math.PI / 2 + 0.44;
+/** Without a framed head the branches stop at the horizontal, so no leaf can lie across a face. */
+const CRADLE_END = 0;
+
+/**
+ * The right-hand laurel branch; the left one is its mirror image.
+ * `crowned` takes it up and around the head, which is only safe when headIsFramed; otherwise it cradles the lower half.
+ */
+export function laurelBranch(crowned: boolean): { readonly radius: number; readonly end: number; readonly leaves: readonly LaurelLeaf[] } {
+  const end = crowned ? CROWN_END : CRADLE_END;
+  const pairs = Math.round((BRANCH_START - end) * LEAF_PAIRS_PER_RADIAN) + 1;
+  const leaves: LaurelLeaf[] = [];
+  for (let pair = 0; pair < pairs; pair++) {
+    const along = pair / (pairs - 1);
+    const around = BRANCH_START + (end - BRANCH_START) * along;
+    const x = Math.cos(around) * WREATH_RADIUS;
+    const y = Math.sin(around) * WREATH_RADIUS;
+    const heading = around - Math.PI / 2;
+    const length = LEAF_LENGTH * (1 - 0.4 * along);
+    leaves.push({ x, y, angle: heading - LEAF_SPLAY, length: length * 0.9 }, { x, y, angle: heading + LEAF_SPLAY, length });
+  }
+  leaves.push({ x: Math.cos(end) * WREATH_RADIUS, y: Math.sin(end) * WREATH_RADIUS, angle: end - Math.PI / 2, length: LEAF_LENGTH * 0.6 });
+  return { radius: WREATH_RADIUS, end, leaves };
 }
