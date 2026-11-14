@@ -7,10 +7,11 @@ import { AdditiveBlending } from "three";
 import type { PointLight, Points, Vector3 } from "three";
 import type { CombatState } from "../../core/types";
 import { fxBetween } from "./events";
+import { markHit } from "./pulse";
 import { createPool, emit, stepPool } from "./sparks";
 
 const POOL_SIZE = 220;
-const SHAKE_SECONDS = 0.4;
+const SHAKE_SECONDS = 0.25;
 const SHAKE_REACH = 0.13;
 const FLASH_SECONDS = 0.22;
 
@@ -58,11 +59,10 @@ export function HitEffects({ state }: { state: CombatState }) {
       emit(pool, effect.at, big ? 150 : 34, big ? 7.5 : 4.2);
       live.current.flash = FLASH_SECONDS * (big ? 2 : 1);
       live.current.flashPower = big ? 70 : 22;
+      markHit();
       light.current?.position.set(effect.at[0], effect.at[1], effect.at[2] + 0.4);
-      if (big) {
-        live.current.shake = SHAKE_SECONDS;
-        live.current.shakeScale = 0.6;
-      }
+      live.current.shake = SHAKE_SECONDS;
+      live.current.shakeScale = big ? 0.6 : 0.35;
     }
   }, [state, pool]);
 

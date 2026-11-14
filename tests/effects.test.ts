@@ -14,7 +14,7 @@ const enemy: EnemySpec = {
 const style: FightingStyle = { id: "s", name: "S", blurb: "", strikes: ["jab"] };
 const idle: CombatInput = { held: new Set(), struck: [] };
 const blocking: CombatInput = { held: new Set(["block"]), struck: [] };
-const jabbing: CombatInput = { held: new Set(), struck: ["jab"] };
+const jabbing: CombatInput = { held: new Set(), struck: [{ move: "jab", quality: 1, player: 0 }] };
 
 /** Steps the fight and reports the effects that step should cause. */
 function advance(state: CombatState, input: CombatInput, ms: number): { state: CombatState; fx: string[] } {
