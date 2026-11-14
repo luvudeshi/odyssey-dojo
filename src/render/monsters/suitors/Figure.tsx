@@ -25,25 +25,20 @@ export interface FigureProps {
   readonly z?: number;
   /** Turn about Y, radians. */
   readonly yaw?: number;
-  readonly fallen: boolean;
   /** Skip the joint spheres (8k of the mannequin's 13.7k triangles): for the small men in the back. */
   readonly lite?: boolean;
   /** Helm and gear for the stand-in, drawn in metres. */
   readonly standInGear?: ReactNode;
 }
 
-const FALL = -Math.PI / 2 + 0.06;
-
-/** Places the figure and eases it into a turn or onto its back. The mannequin's back is 0.2 units behind its origin, so lift it. */
-function Pose({ x, z, yaw, fallen, meshHeight, children }: { x: number; z: number; yaw: number; fallen: boolean; meshHeight: number; children: ReactNode }) {
+/** Places the figure and eases it into a turn. A fallen figure lies down through its knockback clip, so no extra tilt is added here. */
+function Pose({ x, z, yaw, children }: { x: number; z: number; yaw: number; children: ReactNode }) {
   const ref = useRef<Group>(null);
   useFrame((_, delta) => {
     const g = ref.current;
     if (!g) return;
     const dt = Math.min(delta, 0.05);
-    g.rotation.x = MathUtils.damp(g.rotation.x, fallen ? FALL : 0, fallen ? 5 : 8, dt);
     g.rotation.y = MathUtils.damp(g.rotation.y, yaw, 6, dt);
-    g.position.y = MathUtils.damp(g.position.y, fallen ? 0.16 * (meshHeight / 1.83) : 0, 6, dt);
   });
   return <group ref={ref} position={[x, 0, z]}>{children}</group>;
 }
@@ -87,7 +82,7 @@ function StandIn({ meshHeight, palette, state, gear }: { meshHeight: number; pal
   );
 }
 
-export function Figure({ meshHeight, palette, clips, state, anchors, x = 0, z = 0, yaw = 0, fallen, lite = false, standInGear }: FigureProps) {
+export function Figure({ meshHeight, palette, clips, state, anchors, x = 0, z = 0, yaw = 0, lite = false, standInGear }: FigureProps) {
   const tweak = useMemo(
     () => (material: Material): void => {
       const m = material as Material & { color?: { set: (c: string) => void }; metalness?: number; roughness?: number; flatShading?: boolean };
@@ -103,7 +98,7 @@ export function Figure({ meshHeight, palette, clips, state, anchors, x = 0, z = 
   const fit = useMemo(() => fitFor(meshHeight), [meshHeight]);
   const stand = <StandIn meshHeight={meshHeight} palette={palette} state={state} gear={standInGear} />;
   return (
-    <Pose x={x} z={z} yaw={yaw} fallen={fallen} meshHeight={meshHeight}>
+    <Pose x={x} z={z} yaw={yaw}>
       <ErrorBoundary label="suitor-glb" fallback={stand}>
         <Suspense fallback={stand}>
           <RiggedModel
