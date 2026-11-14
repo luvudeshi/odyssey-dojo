@@ -1,4 +1,5 @@
 // Guards the background music: scenes start, crossfade and stop as asked, loops join cleanly, and nothing ever throws.
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { afterEach, expect, test, vi } from "vitest";
 import { duckMusic, listedScenes, seamLoop, startMusic, stopMusic } from "../src/audio/music";
 
@@ -221,6 +222,22 @@ test("index.json only yields known scenes, whatever it contains", () => {
   expect(listedScenes(["win", "menu"])).toEqual(["menu", "win"]);
   expect(listedScenes(["fight", "fight", "../secret", 7, null, { scene: "loss" }])).toEqual(["fight"]);
   for (const junk of [null, undefined, "menu", 3, { menu: true }]) expect(listedScenes(junk)).toEqual([]);
+});
+
+test("every scene has a committed clip that is listed and credited, and together they stay under 6 MB", () => {
+  const folder = "public/audio/music";
+  const index: unknown = JSON.parse(readFileSync(`${folder}/index.json`, "utf8"));
+  expect(listedScenes(index)).toEqual(["menu", "fight", "win", "loss"]);
+  const credits = readFileSync("CREDITS.md", "utf8");
+  let bytes = 0;
+  for (const scene of listedScenes(index)) {
+    const file = `${folder}/${scene}.mp3`;
+    expect(existsSync(file), file).toBe(true);
+    expect(credits, file).toContain(file);
+    bytes += statSync(file).size;
+  }
+  expect(bytes).toBeGreaterThan(100_000);
+  expect(bytes).toBeLessThan(6_000_000);
 });
 
 test("where there is no audio at all, every call does nothing", () => {
