@@ -18,7 +18,8 @@ const EVEN = "Continuous and even from start to end, no music, no speech";
 
 export const STOP_CLIPS: Readonly<Record<string, StopClip>> = {
   "circe/ambience": {
-    prompt: `Inside a stone hall at night: a wood fire crackling steadily in a hearth close by, and through the open doors a forest at night, crickets and a soft wind in the trees. ${EVEN}`,
+    // A first take asked for a fire "crackling" and came back as a very quiet bed with a few sharp pops, so this asks for a soft one.
+    prompt: `Inside a stone hall at night: a low wood fire burning softly in a hearth, a steady gentle hiss and murmur of embers, and through the open doors a forest at night, crickets and a soft wind in the trees. ${EVEN}`,
     seconds: 30,
     loop: true,
   },
