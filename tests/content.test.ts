@@ -1,5 +1,7 @@
 // Guards the content teammates add: every id an enemy or style names must be a real move of the right kind.
 import { expect, test } from "vitest";
+import { startFight, step } from "../src/combat/engine";
+import type { Strike } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import { createPoseInput } from "../src/input/poseInput";
 import { MOVES } from "../src/moves/registry";
@@ -46,4 +48,91 @@ test("standing still triggers nothing; fists at the face is a block; bent-then-s
   const punched = pushFrame(pushFrame(history, bent), straight);
   expect(read(punched).struck.map((strike) => strike.move)).toEqual(["jab"]);
   expect(read(punched).struck).toEqual([]);
+});
+
+test("every enemy's phases start at full health and come in falling order", () => {
+  for (const enemy of ENEMIES) {
+    const phases = enemy.phases ?? [];
+    if (phases.length === 0) continue;
+    expect(phases[0]?.belowHp, enemy.id).toBe(1);
+    phases.forEach((phase, index) => {
+      const before = phases[index - 1];
+      if (before) expect(phase.belowHp, `${enemy.id}/${phase.name}`).toBeLessThan(before.belowHp);
+      expect(phase.belowHp, `${enemy.id}/${phase.name}`).toBeGreaterThan(0);
+      expect(phase.telegraphScale, `${enemy.id}/${phase.name}`).toBeGreaterThan(0);
+    });
+  }
+});
+
+test("Polyphemus: three phases that speed up, ducking from the second, and warnings a body can answer", () => {
+  const polyphemus = ENEMIES.find((enemy) => enemy.id === "polyphemus");
+  const phases = polyphemus?.phases ?? [];
+  expect(phases.map((phase) => phase.name)).toEqual(["The Cave", "The Club", "Blinded"]);
+  const scales = phases.map((phase) => phase.telegraphScale);
+  expect(scales).toEqual([...scales].sort((a, b) => b - a));
+
+  const counters = (index: number): string[] =>
+    (phases[index]?.attackIds ?? []).map((id) => polyphemus?.attacks.find((attack) => attack.id === id)?.counter ?? "");
+  expect(counters(0)).not.toContain("duck");
+  expect(counters(1)).toContain("duck");
+  expect(new Set(counters(1)).size).toBe(4);
+
+  // The fastest warning must still leave time to read the prompt and move: a full second at least.
+  for (const phase of phases) {
+    for (const id of phase.attackIds) {
+      const attack = polyphemus?.attacks.find((candidate) => candidate.id === id);
+      expect((attack?.telegraphMs ?? 0) * phase.telegraphScale, `${phase.name}/${id}`).toBeGreaterThanOrEqual(1000);
+    }
+  }
+});
+
+/** Plays one whole fight as a player who gets `skill` of the prompts right and takes `reactMs` to throw a strike. */
+function playPolyphemus(seed: number, skill: number, reactMs: number): { seconds: number; won: boolean } {
+  const polyphemus = ENEMIES.find((enemy) => enemy.id === "polyphemus");
+  const boxer = STYLES.find((style) => style.id === "boxer");
+  if (!polyphemus || !boxer) throw new Error("Polyphemus or the Boxer style is missing");
+  let chance = seed;
+  const lucky = (): boolean => {
+    chance = (Math.imul(chance, 1103515245) + 12345) >>> 0;
+    return chance / 4294967296 < skill;
+  };
+  let state = startFight(polyphemus, seed);
+  let ms = 0;
+  let decided = "";
+  let good = false;
+  let strikeAt = 0;
+  const STEP = 20;
+  while (state.phase.kind !== "won" && state.phase.kind !== "lost" && ms < 600_000) {
+    const phase = state.phase;
+    const key = `${phase.kind}:${String(state.seed)}:${String(state.playerHp)}:${String(state.enemyHp)}`;
+    if (key !== decided) {
+      decided = key;
+      good = lucky();
+      strikeAt = ms + reactMs;
+    }
+    const held = new Set<string>();
+    const struck: Strike[] = [];
+    if (phase.kind === "defend" && good) held.add(phase.attack.counter);
+    if ((phase.kind === "strike" || phase.kind === "finisher") && good && ms >= strikeAt) {
+      struck.push({ move: phase.move, quality: 0.7, player: 0 });
+    }
+    state = step(state, polyphemus, boxer, { held, struck }, STEP).state;
+    ms += STEP;
+  }
+  return { seconds: ms / 1000, won: state.phase.kind === "won" };
+}
+
+test("Polyphemus: a player who gets most prompts right wins in 90 to 150 seconds", () => {
+  const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(1000 + index * 7919, 0.85, 800));
+  const average = fights.reduce((sum, fight) => sum + fight.seconds, 0) / fights.length;
+  const wins = fights.filter((fight) => fight.won).length;
+  // If this fails after an engine change, retune `hp` in src/enemies/defs/polyphemus.ts: fight length follows it.
+  expect(average, `average fight length ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(90);
+  expect(average, `average fight length ${average.toFixed(0)} s`).toBeLessThanOrEqual(150);
+  expect(wins, "fights won out of 30").toBeGreaterThanOrEqual(24);
+});
+
+test("Polyphemus: a player who misses half the prompts loses", () => {
+  const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(500 + index * 104729, 0.5, 1100));
+  expect(fights.filter((fight) => fight.won).length).toBeLessThanOrEqual(6);
 });
