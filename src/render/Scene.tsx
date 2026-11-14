@@ -3,6 +3,8 @@ import { Canvas } from "@react-three/fiber";
 import { createElement } from "react";
 import type { RefObject } from "react";
 import type { CombatState, EnemySpec, MonsterProps, PoseFrame } from "../core/types";
+import { ArenaFor } from "./arena/ArenaFor";
+import { HitEffects } from "./effects/HitEffects";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { PlayerFigure } from "./PlayerFigure";
 
@@ -18,6 +20,10 @@ function Placeholder({ windup, defeated }: MonsterProps) {
 function Arena() {
   return (
     <>
+      <color attach="background" args={["#1b1030"]} />
+      <fog attach="fog" args={["#1b1030", 10, 26]} />
+      <ambientLight intensity={0.7} />
+      <directionalLight position={[3, 6, 4]} intensity={1.6} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[9, 48]} />
         <meshStandardMaterial color="#b89a6a" roughness={1} />
@@ -45,11 +51,7 @@ export function Scene(props: {
       camera={{ position: [0, 2, 4.4], fov: 50 }}
       onCreated={({ camera }) => { camera.lookAt(0, 1.8, -3); }}
     >
-      <color attach="background" args={["#1b1030"]} />
-      <fog attach="fog" args={["#1b1030", 10, 26]} />
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[3, 6, 4]} intensity={1.6} />
-      <Arena />
+      <ArenaFor enemyId={enemy.id} fallback={<Arena />} />
       <group position={[0, 0, -4]}>
         {createElement(MONSTER_MODELS.get(enemy.id) ?? Placeholder, {
           windup: phase.kind === "defend" ? 1 - phase.msLeft / phase.totalMs : 0,
@@ -57,6 +59,7 @@ export function Scene(props: {
           weakSpotId: weakSpot?.id ?? null,
           defeated: phase.kind === "won",
         })}
+        <HitEffects state={state} />
         {weakSpot && (
           <mesh position={[...weakSpot.position]}>
             <torusGeometry args={[0.45, 0.06, 8, 32]} />
