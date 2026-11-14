@@ -19,12 +19,11 @@ The cave mouth at dusk (`src/render/arena/cave/`) is built in code: no other fil
 |---|---|---|---|
 | RobotExpressive.glb (Tomas Laule, Quaternius, via the three.js examples) | Development test model only, `public/models/dev/RobotExpressive.glb`, shown with `?model=dev` to test the GLB pipeline. Not game art | https://github.com/mrdoob/three.js/tree/r187/examples/models/gltf/RobotExpressive | CC0 |
 
-## Hero candidates (`?hero=<id>`)
+## Hero
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Knight, KayKit Adventurers Character Pack 1.0 (Kay Lousberg), trimmed of unused accessories and clips | `public/models/hero/knight.glb` | https://kaylousberg.itch.io/kaykit-adventurers | CC0 |
-| Adventurer (Quaternius), trimmed of unused clips | `public/models/hero/adventurer.glb` | https://quaternius.com | CC0 |
+| Universal Animation Library 1 and 2 mannequin and clips (Quaternius), trimmed, with authored stand-in poses | `public/models/hero/spartan.glb`, the player's hero | https://quaternius.com/animviewer.html | CC0 |
 
 ## Polyphemus candidates
 
