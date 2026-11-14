@@ -1,7 +1,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
-import { armOut, latest } from "../../pose/signals";
-import { armOpening, flungWide, punch } from "../handSignals";
+import { latest } from "../../pose/signals";
+import { armOpening, armOut, flungWide, punch } from "../handSignals";
 
 export const move: MoveDef = {
   id: "cross",
