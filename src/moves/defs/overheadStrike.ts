@@ -9,6 +9,7 @@ export const move: MoveDef = {
   hint: "Raise your right hand over your head, then chop down",
   key: "i",
   diagram: { leftElbow: [38, 42], leftWrist: [43, 26], rightElbow: [70, 20], rightWrist: [64, 6] },
+  teaches: "The padded bottom of your fist protects your hand if you must strike to break away",
   detect(history) {
     const frame = latest(history);
     if (!frame) return 0;

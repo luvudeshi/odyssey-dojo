@@ -59,7 +59,7 @@ export const move: MoveDef = {
   hint: "Grip both hands together at your chest, then drive them forward and down",
   key: "o",
   diagram: { leftElbow: [36, 48], leftWrist: [47, 66], rightElbow: [64, 48], rightWrist: [53, 66], shiftY: 2 },
-  teaches: "A two-handed drive from the chest puts your whole body's weight behind it, not just your arms.",
+  teaches: "Use your body weight, not just arm strength, to break a grip and get free",
   detect(history) {
     const frame = latest(history);
     if (!frame || !driven(frame)) return 0;
