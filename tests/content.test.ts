@@ -88,16 +88,16 @@ test("Polyphemus: three phases that speed up, ducking from the second, and warni
 
 /**
  * Plays one whole fight as a player who gets `skill` of the prompts right, takes `reactMs` to throw a strike
- * and throws every strike at `quality`.
+ * and throws every strike at `quality`. `defends` is the share of his attacks the player defends, when it is not `skill`.
  */
-function playPolyphemus(seed: number, skill: number, reactMs: number, quality = 0.7): { seconds: number; won: boolean } {
+function playPolyphemus(seed: number, skill: number, reactMs: number, quality = 0.7, defends = skill): { seconds: number; won: boolean } {
   const polyphemus = ENEMIES.find((enemy) => enemy.id === "polyphemus");
   const boxer = STYLES.find((style) => style.id === "boxer");
   if (!polyphemus || !boxer) throw new Error("Polyphemus or the Boxer style is missing");
   let chance = seed;
-  const lucky = (): boolean => {
+  const lucky = (share: number): boolean => {
     chance = (Math.imul(chance, 1103515245) + 12345) >>> 0;
-    return chance / 4294967296 < skill;
+    return chance / 4294967296 < share;
   };
   let state = startFight(polyphemus, seed);
   let ms = 0;
@@ -117,7 +117,7 @@ function playPolyphemus(seed: number, skill: number, reactMs: number, quality = 
     const key = `${phase.kind}:${String(state.seed)}:${String(state.playerHp)}:${String(state.enemyHp)}:${String(finisherTries)}`;
     if (key !== decided) {
       decided = key;
-      good = lucky();
+      good = lucky(phase.kind === "defend" ? defends : skill);
       strikeAt = ms + reactMs;
     }
     const held = new Set<string>();
@@ -132,12 +132,13 @@ function playPolyphemus(seed: number, skill: number, reactMs: number, quality = 
   return { seconds: ms / 1000, won: state.phase.kind === "won" };
 }
 
-test("Polyphemus: a player who gets most prompts right wins in 90 to 150 seconds", () => {
+test("Polyphemus: a player who gets most prompts right wins in 40 to 150 seconds", () => {
   const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(1000 + index * 7919, 0.85, 800));
   const average = fights.reduce((sum, fight) => sum + fight.seconds, 0) / fights.length;
   const wins = fights.filter((fight) => fight.won).length;
   // If this fails after an engine change, retune `hp` in src/enemies/defs/polyphemus.ts: fight length follows it.
-  expect(average, `average fight length ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(90);
+  // The floor was 90 s until issue #127: the first fight is now short enough for a beginner to win inside 90 s.
+  expect(average, `average fight length ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(40);
   expect(average, `average fight length ${average.toFixed(0)} s`).toBeLessThanOrEqual(150);
   expect(wins, "fights won out of 30").toBeGreaterThanOrEqual(24);
 });
@@ -147,14 +148,16 @@ test("Polyphemus: the fight stays in range however well the strikes are thrown",
   for (const quality of [0.55, 0.8, 1]) {
     const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(1000 + index * 7919, 0.85, 800, quality));
     const average = fights.reduce((sum, fight) => sum + fight.seconds, 0) / fights.length;
-    expect(average, `quality ${String(quality)}: average ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(90);
+    expect(average, `quality ${String(quality)}: average ${average.toFixed(0)} s`).toBeGreaterThanOrEqual(40);
     expect(average, `quality ${String(quality)}: average ${average.toFixed(0)} s`).toBeLessThanOrEqual(150);
     // No fight may hang: every one ends well inside the simulation's ten-minute cap.
     expect(Math.max(...fights.map((fight) => fight.seconds)), `quality ${String(quality)}: longest fight`).toBeLessThan(300);
   }
 });
 
-test("Polyphemus: a player who misses half the prompts loses", () => {
-  const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(500 + index * 104729, 0.5, 1100));
-  expect(fights.filter((fight) => fight.won).length).toBeLessThanOrEqual(6);
+test("Polyphemus: a player who defends nothing loses", () => {
+  // The first fight is tuned to be won (issue #127), but not by standing still: with no defence there is no opening
+  // to strike in, however well the player would have thrown the strike.
+  const fights = Array.from({ length: 30 }, (_, index) => playPolyphemus(500 + index * 104729, 1, 600, 1, 0));
+  expect(fights.filter((fight) => fight.won).length).toBe(0);
 });
