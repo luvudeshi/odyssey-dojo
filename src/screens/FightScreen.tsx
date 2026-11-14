@@ -5,6 +5,7 @@ import { playEvent } from "../audio/sfx";
 import { playVoice } from "../audio/voice";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
+import { CameraView } from "../hud/CameraView";
 import { Hud } from "../hud/Hud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
@@ -17,7 +18,6 @@ import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { battle, noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
-import { useSettings } from "../settings/store";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
@@ -36,14 +36,12 @@ export function FightScreen(props: {
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
 }) {
   const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null } = props;
-  const { mirror } = useSettings();
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
   const overRef = useRef(false);
   const [lost, setLost] = useState(false);
   const [state, setState] = useState(() => startFight(enemy, seed));
   const poseRef = useRef<PoseFrame | null>(null);
-  const preview = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     battle.styleId = style.id;
@@ -114,18 +112,11 @@ export function FightScreen(props: {
     return () => { shiftBattleTimes(battle, performance.now() - since); };
   }, [running]);
 
-  useEffect(() => {
-    const holder = preview.current;
-    if (!tracker || !holder) return;
-    holder.append(tracker.video);
-    return () => { tracker.video.remove(); };
-  }, [tracker]);
-
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <Hud enemy={enemy} state={state} />
-      <div className={mirror ? "preview mirror" : "preview"} ref={preview} />
+      <CameraView tracker={tracker} poseRef={poseRef} />
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu
