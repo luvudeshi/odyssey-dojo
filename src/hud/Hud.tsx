@@ -5,6 +5,7 @@ import { PowerBar } from "./PowerBar";
 import { PhaseBanner } from "./PhaseBanner";
 import { RatingFlash } from "./RatingFlash";
 import { MOVES } from "../moves/registry";
+import { useSettings } from "../settings/store";
 
 function StickFigure({ diagram }: { diagram: MoveDiagram }) {
   const dx = diagram.shiftX ?? 0;
@@ -33,7 +34,8 @@ export function keyLabel(key: string): string {
 export function PromptCard(props: { move: MoveDef; target: string; successes: number; left: number }) {
   const { move, target, successes, left } = props;
   const level = promptLevel(successes);
-  const key = <kbd>{keyLabel(move.key)}</kbd>;
+  const { keyHints } = useSettings();
+  const key = keyHints ? <kbd>{keyLabel(move.key)}</kbd> : null;
   return (
     <div className={`prompt ${move.kind} ${level}`}>
       {level === "full" && <StickFigure diagram={move.diagram} />}
