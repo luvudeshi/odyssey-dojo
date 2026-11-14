@@ -13,3 +13,8 @@ const modules = import.meta.glob<{ model: MonsterModel }>("./models/*.tsx", { ea
 export const MONSTER_MODELS: ReadonlyMap<string, ComponentType<MonsterProps>> = new Map(
   Object.values(modules).map((module) => [module.model.enemyId, module.model.Component]),
 );
+
+// ?model=dev swaps Polyphemus for the CC0 test GLB to prove the pipeline. Imported only then, so default play loads nothing extra.
+if (new URLSearchParams(window.location.search).get("model") === "dev") {
+  void import("../models/devModel").then((m) => (MONSTER_MODELS as Map<string, ComponentType<MonsterProps>>).set("polyphemus", m.DEV_MODEL));
+}
