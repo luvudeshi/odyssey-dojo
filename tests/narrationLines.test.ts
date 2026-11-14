@@ -527,7 +527,7 @@ test("a taunt asked for in the frame the phase changes lets Athena's phase line 
   for (const tauntFirst of [true, false]) {
     const { voice, story, started, stopped, end } = fakeStory();
     const ask = (): { settled: boolean | "pending" | "rejected" } => watch(story.speakMonsterTaunt("circe"));
-    const events = [{ type: "phaseChanged", index: 1, name: "Enraged" }] as const;
+    const events = [{ type: "phaseChanged", index: 1, name: "The Club" }] as const;
     let taunt: ReturnType<typeof ask>;
     // The same tick, as in the fight loop: nothing runs between the two calls.
     if (tauntFirst) {
@@ -553,11 +553,11 @@ test("a taunt asked for in the frame the phase changes lets Athena's phase line 
   }
 });
 
-test("a taunt waits out Athena's longest phase line, which is 2.4 seconds", async () => {
+test("a taunt waits out Athena's longest phase line, which is 2.9 seconds", async () => {
   const { voice, story, started, end } = fakeStory();
   const taunt = watch(story.speakMonsterTaunt("suitors"));
-  voice.handle([{ type: "phaseChanged", index: 2, name: "Desperate" }]);
-  await vi.advanceTimersByTimeAsync(2500);
+  voice.handle([{ type: "phaseChanged", index: 2, name: "Blinded" }]);
+  await vi.advanceTimersByTimeAsync(2900);
   expect(started).toEqual(["phase_2"]);
   end();
   await vi.advanceTimersByTimeAsync(100);

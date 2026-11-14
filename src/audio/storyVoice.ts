@@ -12,7 +12,7 @@ import { speakLine, stopLine, voicePlaying } from "./voice";
 const POLL_MS = 100;
 /** How long Homer waits for the voice: long enough for Athena's result line to end, or for the clip indexes to load. */
 export const NARRATION_WAIT_MS = 6000;
-/** How long a taunt waits: longer than Athena's longest phase line (2.4 s), short enough that the taunt still fits the moment. */
+/** How long a taunt waits: longer than Athena's longest phase line (2.9 s), short enough that the taunt still fits the moment. */
 export const TAUNT_WAIT_MS = 3500;
 /** Longer than the voice lets any clip run, so a promise can never be left pending. */
 const MAX_HEARD_MS = 20000;
