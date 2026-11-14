@@ -2,12 +2,13 @@
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { clipUrl } from "./athenaLines";
+import { tauntFor } from "./storyLines";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
 const WARNINGS = ["warn_1", "warn_2", "warn_3"] as const;
 const INDEX_URL = "/audio/athena/index.json";
 /** Longer than any line: a clip that neither ends nor fails is given up on after this. */
-const MAX_CLIP_MS = 8000;
+const MAX_CLIP_MS = 15000;
 
 function pick(ids: readonly [string, ...string[]], random: () => number): string {
   return ids[Math.floor(random() * ids.length)] ?? ids[0];
@@ -46,7 +47,8 @@ const RESULT = 3;
 function urgency(id: string): number {
   if (id === "win" || id === "loss") return RESULT;
   if (id.startsWith("call_")) return CALL;
-  return id === "fight_start" || id.startsWith("phase_") ? MOMENT : SHORT;
+  // Homer's lines sit with the phase lines; a monster's taunt is as easily talked over as praise.
+  return id === "fight_start" || id.startsWith("phase_") || id.startsWith("homer_") ? MOMENT : SHORT;
 }
 
 /** Whether a new line cuts off the one playing. Otherwise the new line is skipped. */
@@ -197,7 +199,13 @@ export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): 
   shared.handle(events, phase);
 }
 
-/** For lines no combat event triggers, such as "fight_start". */
+/** For lines no combat event triggers, such as "fight_start" or Homer's "homer_title". */
 export function speakLine(id: string): boolean {
   return shared.speak(id);
+}
+
+/** Has the monster taunt the player, if it has a taunt recorded and the voice is free. */
+export function speakTaunt(enemyId: string): boolean {
+  const id = tauntFor(enemyId, Math.random);
+  return id !== null && shared.speak(id);
 }
