@@ -25,6 +25,13 @@ test("an 8 cm sway to the right, a shift of weight, is not a dodge", () => {
   expect(longestHold(sway, "dodge_right")).toBe(0);
 });
 
+// The dodge starts counting at a 17 cm shift of the shoulders; this pins that line from below.
+test("a 15 cm lean to the right held for half a second is still not a dodge", () => {
+  const short = pose({ lean: 0.15 }, READY);
+  const nearly = play(recording([[READY, 300], [short, 200], [short, 500], [READY, 200]]));
+  expect(longestHold(nearly, "dodge_right")).toBe(0);
+});
+
 test("no other base move fires while dodging right and coming back", () => {
   expect(others(dodge, "dodge_right")).toEqual([]);
 });

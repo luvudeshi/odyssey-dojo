@@ -32,16 +32,21 @@ test("no other base move fires when both fists go out on the same frame", () => 
   expect(others(thrust, "spear_thrust")).toEqual([]);
 });
 
+/** The same thrust with the left fist setting off one frame before the right, the way real players throw it. */
+const leftLeads = play(
+  recording([
+    [READY, 300], [READY, 200],
+    [blend(READY, LEFT, 0.25), 33], [blend(LEFT, BOTH, 0.75), 99], [BOTH, 33],
+    [BOTH, 100], [READY, 200], [READY, 600],
+  ]),
+);
+
+test("a spear thrust with the left fist one frame ahead of the right still counts once", () => {
+  expect(thrown(leftLeads, "spear_thrust")).toBe(1);
+});
+
 // Fails today: a jab is thrown one frame before the spear thrust. The jab only checks that the right arm is not
 // straight yet, so whichever arm straightens first, even 33 ms early, is read as a punch of its own.
 test.fails("no other base move fires when the left fist arrives one frame ahead of the right", () => {
-  const leftLeads = play(
-    recording([
-      [READY, 300], [READY, 200],
-      [blend(READY, LEFT, 0.25), 33], [blend(LEFT, BOTH, 0.75), 99], [BOTH, 33],
-      [BOTH, 100], [READY, 200], [READY, 600],
-    ]),
-  );
-  expect(thrown(leftLeads, "spear_thrust")).toBe(1);
   expect(others(leftLeads, "spear_thrust")).toEqual([]);
 });

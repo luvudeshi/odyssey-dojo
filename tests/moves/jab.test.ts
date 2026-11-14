@@ -45,6 +45,15 @@ test.fails("a jab that stops just short of a locked elbow is still one jab when 
   expect(thrown(soft, "jab")).toBe(1);
 });
 
+// Fails today: armOut only asks for an elbow past 145 degrees and a fist within 30 cm of shoulder height. It never
+// checks that the fist went toward the camera, so an arm straightened out to the side (the fist 48 cm to the left
+// of the shoulder and 21 cm in front of it when the jab is thrown) counts as a punch.
+test.fails("a straight left arm flung out to the side at shoulder height is not a jab", () => {
+  const wide = pose({ leftUpper: [-1, 0, -0.2], leftFore: [-1, 0, -0.4] }, READY);
+  const fling = play(recording([[READY, 300], [READY, 200], [wide, 200], [wide, 300], [READY, 400], [READY, 600]]));
+  expect(thrown(fling, "jab")).toBe(0);
+});
+
 test("no other base move fires during a jab", () => {
   expect(others(jab, "jab")).toEqual([]);
 });
