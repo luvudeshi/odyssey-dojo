@@ -17,5 +17,6 @@ export const enemy: EnemySpec = {
     { id: "eye", label: "his one eye", position: [0, 4.1, 0.95], moves: ["jab", "cross", "overhead_strike"] },
     { id: "gut", label: "his gut", position: [0, 2, 1.1], moves: ["hook", "cross", "spear_thrust"] },
   ],
+  finisher: "stake_thrust",
   taunts: ["Nobody? I will eat Nobody last!", "My father Poseidon will hear of this."],
 };
