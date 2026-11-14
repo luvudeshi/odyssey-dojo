@@ -283,7 +283,7 @@ export function sizeText(bytes) {
 export function summaryLines(report) {
   const out = [
     `${String(report.files)} files, ${sizeText(report.bytes)} (${String(report.bytes)} bytes). ` +
-      `${String(report.assets)} assets: ${String(report.credited)} credited, ${String(report.gaps)} gaps. ` +
+      `${String(report.assets)} assets: ${String(report.credited)} credited, ${String(report.gaps)} ${report.gaps === 1 ? "gap" : "gaps"}. ` +
       `${String(report.files - report.assets)} not assets.`,
   ];
   /** @type {Map<string, string[]>} */

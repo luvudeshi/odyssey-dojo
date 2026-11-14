@@ -347,6 +347,8 @@ describe("the report", () => {
     const clean = buildReport([file("public/hdri/cave.hdr"), file("public/audio/sfx/index.json")], sources);
     expect(clean.gaps).toBe(0);
     expect(summaryLines(clean)).toHaveLength(1);
+    const one = buildReport([file("public/hdri/cave.hdr"), file("public/models/nobody.glb")], sources);
+    expect(summaryLines(one)[0]).toContain("1 credited, 1 gap. 0 not assets.");
   });
 });
 
