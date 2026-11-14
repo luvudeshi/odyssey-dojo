@@ -62,6 +62,7 @@ const TYPE_DAMAGE: Readonly<Record<LevelAttack["type"], number>> = {
 // Players read a prompt card and then move their whole body, so the level's warnings are stretched onto this range.
 const PLAYABLE_WARNING_MS: Range = [900, 2200];
 const WARNING_MS: Range = [800, 2400];
+// The floor is lowered for a stand-in whose own blows are lighter: see damageRange.
 const DAMAGE: Range = [6, 30];
 const STRIKE_WINDOW_MS: Range = [1600, 3200];
 const HP: Range = [60, 600];
@@ -75,7 +76,8 @@ const TOP_UP_SHARE = 0.15;
 const INTRO_MS = 1500;
 const RECOVER_MS = 700;
 const STRIKE_DAMAGE = 12;
-// The player the fight is paced for: the same one tests/content.test.ts paces Polyphemus for.
+// The player the fight is paced for: 85 percent of prompts right and 800 ms to throw a strike.
+// tests/content.test.ts plays Polyphemus with the same two numbers.
 const SKILL = 0.85;
 const REACT_MS = 800;
 // A strike lands when the defence and then the strike are both right. Each one does 12 * (1 + 0.1 * combo), the combo
@@ -106,6 +108,49 @@ function weightOf(attack: EnemyAttack): number {
 
 function defends(moves: Moves, id: string): boolean {
   return moves.get(id)?.kind === "defend";
+}
+
+/** `value` held to the range the schema allows, or the middle of that range when it is not a number. */
+function held(value: number, range: Range): number {
+  return Number.isFinite(value) ? clamp(value, range) : (range[0] + range[1]) / 2;
+}
+
+/**
+ * The level with every number the adapter reads held to the schema's range (LIMITS). A level that passed
+ * LevelSpecSchema comes back with the same numbers. One that skipped it could carry NaN, Infinity or 1e308, which used
+ * to give a fight with NaN health that never ended. Attacks of a type or direction the adapter does not know are
+ * dropped, as feints are.
+ */
+function trusted(level: LevelSpec): LevelSpec {
+  return {
+    ...level,
+    monster: {
+      ...level.monster,
+      speed: held(level.monster.speed, LIMITS.speed),
+      aggression: held(level.monster.aggression, LIMITS.aggression),
+    },
+    attack_pool: level.attack_pool
+      .filter((attack) => Object.hasOwn(TYPE_DAMAGE, attack.type) && Object.hasOwn(COUNTERS, attack.direction))
+      .map((attack) => ({
+        ...attack,
+        telegraph_ms: held(attack.telegraph_ms, LIMITS.telegraphMs),
+        weight: held(attack.weight, LIMITS.weight),
+      })),
+    phases: level.phases.map((phase) => ({
+      ...phase,
+      duration_s: held(phase.duration_s, LIMITS.phaseSeconds),
+      intensity: held(phase.intensity, LIMITS.intensity),
+    })),
+  };
+}
+
+/**
+ * The damage a blow may do on this stand-in. The floor is 6, or the stand-in's own lightest blow when that is lower:
+ * an enemy tuned to hit softly (the first fight is) must not have its blows lifted above its own tuning.
+ */
+function damageRange(stand: EnemySpec): Range {
+  const lightest = Math.min(...stand.attacks.map((attack) => attack.damage));
+  return [Math.max(1, Math.min(DAMAGE[0], lightest)), DAMAGE[1]];
 }
 
 /** Only used when no enemy is registered at all, so the function still returns something playable. */
@@ -182,7 +227,7 @@ function toAttack(group: Merged, level: LevelSpec, stand: EnemySpec): EnemyAttac
     id: own?.id ?? `gen_${group.counter}`,
     name: `${SIDE_NAMES[group.side]} ${TYPE_NAMES[group.lead.type]}`,
     telegraphMs: Math.round(clamp((short + (long - short) * unit(levelMs, LIMITS.telegraphMs)) * quickness, WARNING_MS)),
-    damage: clamp(Math.round(baseDamage * fury * TYPE_DAMAGE[group.lead.type]), DAMAGE),
+    damage: clamp(Math.round(baseDamage * fury * TYPE_DAMAGE[group.lead.type]), damageRange(stand)),
     counter: group.counter,
     weight: Math.max(MIN_WEIGHT, hundredths(group.weight)),
   };
@@ -254,7 +299,7 @@ function fightMean(
  * The strike beat costs REACT_MS when the strike is thrown and the whole strike window when it is missed, so
  *   exchangeMs = warning + 700 + SKILL * (SKILL * REACT_MS + (1 - SKILL) * strikeWindowMs)
  *   hp = (fightMs - intro) / exchangeMs * DAMAGE_PER_EXCHANGE.
- * Check against Polyphemus: 1825 ms warnings and a 2600 ms window give 3.4 s exchanges, so 400 hp is about 130 s.
+ * Worked once: 1825 ms warnings and a 2600 ms window give 3.4 s exchanges, so a 130 s fight needs about 400 hp.
  *
  * `warningMs` is the warning the engine gives: it honours weights, phase attackIds and telegraphScale.
  * The engine also multiplies strike damage by (0.5 + quality), which this arithmetic leaves out, so the played length
@@ -271,18 +316,33 @@ function pacedHp(fightMs: number, warningMs: number, strikeWindowMs: number): nu
 /**
  * The attacks, softened until the paced player expects to lose no more than DAMAGE_BUDGET over the whole fight:
  *   expected = exchanges * share of warnings missed * average damage = hp / DAMAGE_PER_EXCHANGE * (1 - SKILL) * damage.
- * A stand-in's blows were tuned for its own fight: Polyphemus hits for 7 to 10, the suitors for 10 to 15.
- * Left alone, the same level would be far deadlier on one stand-in than on another.
+ * A stand-in's blows were tuned for its own fight, and the stops differ a lot: the first one hits lightly, the last
+ * one about twice as hard. Left alone, the same level would be far deadlier on one stand-in than on another.
+ * Softening only ever lowers a blow, and never below the stand-in's floor (damageRange).
  */
-function softened(attacks: NonEmpty<EnemyAttack>, phases: NonEmpty<EnemyPhase>, hp: number): NonEmpty<EnemyAttack> {
+function softened(
+  attacks: NonEmpty<EnemyAttack>,
+  phases: NonEmpty<EnemyPhase>,
+  hp: number,
+  range: Range,
+): NonEmpty<EnemyAttack> {
   const expected = (hp / DAMAGE_PER_EXCHANGE) * (1 - SKILL) * fightMean(attacks, phases, (attack) => attack.damage);
   if (expected <= DAMAGE_BUDGET) return attacks;
   const scale = DAMAGE_BUDGET / expected;
-  return nonEmpty(attacks.map((attack) => ({ ...attack, damage: clamp(Math.round(attack.damage * scale), DAMAGE) }))) ?? attacks;
+  const lower = (attack: EnemyAttack): EnemyAttack => ({
+    ...attack,
+    damage: Math.min(attack.damage, clamp(Math.round(attack.damage * scale), range)),
+  });
+  return nonEmpty(attacks.map(lower)) ?? attacks;
 }
 
-/** The generated level as an enemy: the stand-in's id, model, weak spots and finisher, with the level's attacks and pacing. */
-export function fightFromLevel(level: LevelSpec, enemies: readonly EnemySpec[], moves: Moves): EnemySpec {
+/**
+ * The generated level as an enemy: the stand-in's id, model, weak spots and finisher, with the level's attacks and pacing.
+ * The level should have passed LevelSpecSchema (generateLevel's always has). One that did not is still turned into a
+ * fight that ends: see `trusted`.
+ */
+export function fightFromLevel(unchecked: LevelSpec, enemies: readonly EnemySpec[], moves: Moves): EnemySpec {
+  const level = trusted(unchecked);
   const stand = standIn(level.monster.base, enemies, moves);
   const generated = nonEmpty(mergeByCounter(level, moves).map((group) => toAttack(group, level, stand)));
   const attacks = generated ? toppedUp(generated, stand, moves) : stand.attacks;
@@ -302,7 +362,7 @@ export function fightFromLevel(level: LevelSpec, enemies: readonly EnemySpec[], 
     taunts: level.taunts,
     hp,
     strikeWindowMs,
-    attacks: softened(attacks, phases, hp),
+    attacks: softened(attacks, phases, hp, damageRange(stand)),
     phases,
   };
 }

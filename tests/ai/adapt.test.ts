@@ -22,9 +22,46 @@ const storm = fallbackLevel({ phrase: "thunder storm", god: "athena", rival_god:
 /** The game's moves without the jump, as they were before it landed: low blows are ducked there. */
 const NO_JUMP: ReadonlyMap<string, MoveDef> = new Map([...MOVES].filter(([id]) => id !== "jump"));
 
-/** Every level on its natural stand-in, and forced onto each registered enemy in turn. */
+function enemyNamed(id: string): EnemySpec {
+  const enemy = ENEMIES.find((candidate) => candidate.id === id);
+  if (!enemy) throw new Error(`${id} is not registered`);
+  return enemy;
+}
+
+/**
+ * Polyphemus with numbers written down here, so the tests that expect exact values do not move when he is retuned.
+ * These are his numbers on main when this file was written.
+ */
+const CYCLOPS: EnemySpec = {
+  ...enemyNamed("polyphemus"),
+  hp: 400,
+  strikeWindowMs: 2600,
+  attacks: [
+    { id: "club_left", name: "Club swing", telegraphMs: 1800, damage: 7, counter: "dodge_right" },
+    { id: "club_right", name: "Club swing", telegraphMs: 1800, damage: 7, counter: "dodge_left" },
+    { id: "grab", name: "Grasping hand", telegraphMs: 1700, damage: 8, counter: "block" },
+    { id: "boulder", name: "Boulder throw", telegraphMs: 2000, damage: 10, counter: "duck" },
+  ],
+};
+
+/** The same enemy as PR #135 retunes him: every blow at or below the adapter's usual damage floor of 6. */
+const SOFT_CYCLOPS: EnemySpec = {
+  ...CYCLOPS,
+  hp: 162,
+  attacks: [
+    { id: "club_left", name: "Club swing", telegraphMs: 1800, damage: 5, counter: "dodge_right" },
+    { id: "club_right", name: "Club swing", telegraphMs: 1800, damage: 5, counter: "dodge_left" },
+    { id: "grab", name: "Grasping hand", telegraphMs: 1700, damage: 4, counter: "block" },
+    { id: "boulder", name: "Boulder throw", telegraphMs: 2000, damage: 6, counter: "duck" },
+  ],
+};
+
+/** The registered enemies together, each one alone, and the softly tuned Polyphemus alone. */
+const ENEMY_LISTS: readonly (readonly EnemySpec[])[] = [ENEMIES, ...ENEMIES.map((enemy) => [enemy]), [SOFT_CYCLOPS]];
+
+/** Every level on its natural stand-in, and forced onto each enemy in turn. */
 const CASES = LEVELS.flatMap((level) =>
-  [ENEMIES, ...ENEMIES.map((enemy) => [enemy])].map((enemies) => ({ level, enemies, fight: fightFromLevel(level, enemies, MOVES) })),
+  ENEMY_LISTS.map((enemies) => ({ level, enemies, fight: fightFromLevel(level, enemies, MOVES) })),
 );
 
 const attack = (
@@ -60,6 +97,39 @@ const SIDE_OF_COUNTER: Readonly<Record<string, string>> = {
   block: "Straight",
   jump: "Low",
 };
+
+/** The defence that answers a blow from each side, written out again here. */
+const COUNTER_OF_SIDE: Readonly<Record<LevelAttack["direction"], string>> = {
+  left: "dodge_right",
+  right: "dodge_left",
+  high: "duck",
+  center: "block",
+  low: "jump",
+};
+
+/** The stand-in's attack this one was handed over or filled in from: the same id, name, warning and defence. */
+function ownAttack(blow: EnemySpec["attacks"][number], stand: EnemySpec): EnemySpec["attacks"][number] | undefined {
+  return stand.attacks.find(
+    (own) => own.id === blow.id && own.name === blow.name && own.telegraphMs === blow.telegraphMs && own.counter === blow.counter,
+  );
+}
+
+/** The lowest damage a blow may have on this stand-in: 6, or its own lightest blow when that is lower. */
+function damageFloor(stand: EnemySpec): number {
+  return Math.min(6, ...stand.attacks.map((blow) => blow.damage));
+}
+
+/**
+ * How many different defences the adapter promises on this stand-in: three, or fewer when the level's sides and the
+ * stand-in's own attacks do not reach three between them.
+ */
+function promisedDefences(level: LevelSpec, stand: EnemySpec, moves: ReadonlyMap<string, MoveDef>): number {
+  const defends = (id: string): boolean => moves.get(id)?.kind === "defend";
+  const fromLevel = level.attack_pool
+    .filter((blow) => blow.type !== "feint")
+    .map((blow) => (blow.direction === "low" && !defends("jump") ? "duck" : COUNTER_OF_SIDE[blow.direction]));
+  return Math.min(3, new Set([...fromLevel, ...stand.attacks.map((blow) => blow.counter)].filter(defends)).size);
+}
 
 /** A level whose real attacks all come from the given sides, plus one feint. */
 function levelFrom(directions: readonly [LevelAttack["direction"], ...LevelAttack["direction"][]]): LevelSpec {
@@ -107,12 +177,6 @@ function randomLevel(seed: number): LevelSpec {
   });
 }
 
-function enemyNamed(id: string): EnemySpec {
-  const enemy = ENEMIES.find((candidate) => candidate.id === id);
-  if (!enemy) throw new Error(`${id} is not registered`);
-  return enemy;
-}
-
 /** The same invariants tests/content.test.ts holds every registered enemy to. */
 function expectValidContent(enemy: EnemySpec, moves: ReadonlyMap<string, MoveDef>, label: string): void {
   for (const blow of enemy.attacks) {
@@ -136,15 +200,29 @@ function expectValidContent(enemy: EnemySpec, moves: ReadonlyMap<string, MoveDef
   if (enemy.finisher !== undefined) expect(moves.get(enemy.finisher)?.kind, `${label} finisher`).toBe("strike");
 }
 
-/** Numbers a body can answer and the HUD can show. */
-function expectPlayableRanges(fight: EnemySpec, label: string): void {
+/**
+ * Numbers a body can answer and the HUD can show. The ranges are held on the attacks the adapter made. An attack it
+ * took from the stand-in keeps the stand-in's own warning, and its damage may only have been lowered.
+ */
+function expectPlayableRanges(fight: EnemySpec, stand: EnemySpec, label: string): void {
   for (const blow of fight.attacks) {
-    expect(blow.telegraphMs, `${label}/${blow.id}`).toBeGreaterThanOrEqual(800);
-    expect(blow.telegraphMs, `${label}/${blow.id}`).toBeLessThanOrEqual(2400);
-    expect(blow.damage, `${label}/${blow.id}`).toBeGreaterThanOrEqual(6);
-    expect(blow.damage, `${label}/${blow.id}`).toBeLessThanOrEqual(30);
+    const own = ownAttack(blow, stand);
+    if (own) {
+      expect(blow.damage, `${label}/${blow.id} is the stand-in's own`).toBeLessThanOrEqual(own.damage);
+    } else {
+      expect(blow.telegraphMs, `${label}/${blow.id}`).toBeGreaterThanOrEqual(800);
+      expect(blow.telegraphMs, `${label}/${blow.id}`).toBeLessThanOrEqual(2400);
+      expect(blow.damage, `${label}/${blow.id}`).toBeLessThanOrEqual(30);
+      expect(Number.isInteger(blow.telegraphMs) && Number.isInteger(blow.damage), `${label}/${blow.id}`).toBe(true);
+    }
+    expect(blow.damage, `${label}/${blow.id}`).toBeGreaterThanOrEqual(damageFloor(stand));
     expect(blow.weight ?? 1, `${label}/${blow.id}`).toBeGreaterThanOrEqual(0.05);
-    expect(Number.isInteger(blow.telegraphMs) && Number.isInteger(blow.damage), `${label}/${blow.id}`).toBe(true);
+    // No phase makes a warning shorter than a body can answer, unless the stand-in's own attack already was.
+    for (const phase of fight.phases ?? []) {
+      if (!phase.attackIds.includes(blow.id)) continue;
+      const least = own ? Math.min(800, own.telegraphMs) : 800;
+      expect(blow.telegraphMs * phase.telegraphScale, `${label}/${phase.name}/${blow.id}`).toBeGreaterThanOrEqual(least);
+    }
   }
   expect(Number.isInteger(fight.hp) && fight.hp > 0, `${label} hp ${String(fight.hp)}`).toBe(true);
   expect(fight.strikeWindowMs, label).toBeGreaterThanOrEqual(1600);
@@ -156,7 +234,7 @@ function expectStandInAttacks(fight: EnemySpec, stand: EnemySpec, label: string)
   expect(fight.attacks.map(withoutDamage), label).toEqual(stand.attacks.map(withoutDamage));
   fight.attacks.forEach((blow, index) => {
     expect(blow.damage, `${label}/${blow.id}`).toBeLessThanOrEqual(stand.attacks[index]?.damage ?? 0);
-    expect(blow.damage, `${label}/${blow.id}`).toBeGreaterThanOrEqual(6);
+    expect(blow.damage, `${label}/${blow.id}`).toBeGreaterThanOrEqual(damageFloor(stand));
   });
 }
 
@@ -219,7 +297,9 @@ test("every fallback level on every enemy passes the content invariants and stay
     const label = `${level.title} on ${fight.id} of ${String(enemies.length)}`;
     expectValidContent(fight, MOVES, label);
     expect(fight.phases?.map((phase) => phase.name), label).toEqual(level.phases.map((phase) => phase.name));
-    expectPlayableRanges(fight, label);
+    const stand = expectedStandIn(level, enemies);
+    expect(stand, label).toBeDefined();
+    if (stand) expectPlayableRanges(fight, stand, label);
   }
 });
 
@@ -259,8 +339,8 @@ test("the stand-in is the enemy with the base's id, else the table's pick, else 
   const without = (...ids: string[]): EnemySpec[] => ENEMIES.filter((enemy) => !ids.includes(enemy.id));
   expect(pick("charybdis", without("charybdis"))).toBe("scylla");
   expect(pick("sirens", without("sirens"))).toBe("scylla");
-  expect(pick("sirens", without("sirens", "scylla"))).toBe("polyphemus");
-  expect(pick("suitor_horde", without("suitors"))).toBe("polyphemus");
+  expect(pick("sirens", without("sirens", "scylla"))).toBe(without("sirens", "scylla")[0]?.id);
+  expect(pick("suitor_horde", without("suitors"))).toBe(without("suitors")[0]?.id);
   expect(pick("sirens", [enemyNamed("circe")])).toBe("circe");
   // With nothing registered there is still a fight, and it is valid content.
   const bare = fightFromLevel(storm, [], MOVES);
@@ -281,9 +361,8 @@ test("attacks map by direction, merge on one id with added weights and weight-av
       attack("projectile", "right", 925, 0.5),
     ],
   };
-  const polyphemus = enemyNamed("polyphemus");
   // The low strike is jumped, under an id of its own: Polyphemus has no attack that is jumped.
-  const jumped = fightFromLevel(level, ENEMIES, MOVES);
+  const jumped = fightFromLevel(level, [CYCLOPS], MOVES);
   expect(jumped.attacks.map((blow) => [blow.id, blow.counter, blow.name, blow.weight, blow.telegraphMs])).toEqual([
     ["boulder", "duck", "High slam", 0.6, 2200],
     ["gen_jump", "jump", "Low strike", 0.2, 900],
@@ -293,7 +372,7 @@ test("attacks map by direction, merge on one id with added weights and weight-av
   ]);
 
   // In a game with no jump the low strike is ducked, so it merges with the high slam.
-  const fight = fightFromLevel(level, ENEMIES, NO_JUMP);
+  const fight = fightFromLevel(level, [CYCLOPS], NO_JUMP);
   expect(fight.attacks.map((blow) => [blow.id, blow.counter, blow.name])).toEqual([
     ["boulder", "duck", "High slam"],
     ["grab", "block", "Straight grab"],
@@ -307,12 +386,12 @@ test("attacks map by direction, merge on one id with added weights and weight-av
   // 925 is the middle of the level's range, so the middle of the playable one. A weight of zero is lifted to the floor.
   expect(grab?.telegraphMs).toBe(1550);
   expect(grab?.weight).toBe(0.05);
-  // At the lowest aggression a sweep keeps the stand-in's damage; a slam hits harder.
-  expect(clubLeft?.damage).toBe(polyphemus.attacks.find((blow) => blow.id === "club_left")?.damage);
-  expect(boulder.damage).toBeGreaterThan(polyphemus.attacks.find((blow) => blow.id === "boulder")?.damage ?? 99);
+  // At the lowest aggression a sweep keeps the stand-in's damage of 7; a slam hits a tenth harder than its 10.
+  expect(clubLeft?.damage).toBe(7);
+  expect(boulder.damage).toBe(11);
 
   // A faster, angrier monster warns sooner and hits harder with the same pool.
-  const angry = fightFromLevel({ ...level, monster: { ...level.monster, speed: 1.5, aggression: 1 } }, ENEMIES, NO_JUMP);
+  const angry = fightFromLevel({ ...level, monster: { ...level.monster, speed: 1.5, aggression: 1 } }, [CYCLOPS], NO_JUMP);
   expect(angry.attacks[0].telegraphMs).toBeLessThan(boulder.telegraphMs);
   expect(angry.attacks[0].damage).toBeGreaterThan(boulder.damage);
   expect(angry.strikeWindowMs).toBeLessThan(fight.strikeWindowMs);
@@ -346,27 +425,19 @@ test("phases start where the fight's clock puts them, speed up with intensity an
   const slowestLeftOut = Math.max(...ids.filter((id) => !openers.includes(id)).map(warning));
   for (const id of openers) expect(warning(id)).toBeGreaterThanOrEqual(slowestLeftOut);
 
-  // Calm to furious covers the whole range, and no phase makes a warning shorter than a body can answer.
+  // Calm to furious covers the whole range.
   const extremes = fightFromLevel(
     { ...storm, phases: [{ name: "Calm", duration_s: 30, intensity: 0 }, { name: "Fury", duration_s: 30, intensity: 1 }] },
     ENEMIES,
     MOVES,
   );
   expect(extremes.phases?.map((phase) => phase.telegraphScale)).toEqual([1.15, 0.75]);
-  for (const { fight: each, level } of CASES) {
-    for (const phase of each.phases ?? []) {
-      for (const id of phase.attackIds) {
-        const blow = each.attacks.find((candidate) => candidate.id === id);
-        expect((blow?.telegraphMs ?? 0) * phase.telegraphScale, `${level.title}/${phase.name}/${id}`).toBeGreaterThanOrEqual(800);
-      }
-    }
-  }
 });
 
 test("a level made only of feints, or a game with no defend moves, falls back to the stand-in's own attacks", () => {
   for (const level of LEVELS) {
     const feints: LevelSpec = { ...level, attack_pool: level.attack_pool.map((blow) => ({ ...blow, type: "feint" })) };
-    for (const enemy of ENEMIES) {
+    for (const enemy of [...ENEMIES, SOFT_CYCLOPS]) {
       const fight = fightFromLevel(feints, [enemy], MOVES);
       expectStandInAttacks(fight, enemy, `feints on ${enemy.id}`);
       expectValidContent(fight, MOVES, `feints on ${enemy.id}`);
@@ -376,9 +447,10 @@ test("a level made only of feints, or a game with no defend moves, falls back to
   }
   const noMoves = fightFromLevel(storm, ENEMIES, new Map());
   expectStandInAttacks(noMoves, enemyNamed("scylla"), "no moves");
-  // Polyphemus's blows are light enough for the longer fight, so his are handed over as they are.
+  // These blows are light enough for the longer fight, so they are handed over as they are.
   const cyclops: LevelSpec = { ...storm, monster: { ...storm.monster, base: "cyclops" }, attack_pool: [] };
-  expect(fightFromLevel(cyclops, ENEMIES, MOVES).attacks).toBe(enemyNamed("polyphemus").attacks);
+  expect(fightFromLevel(cyclops, [CYCLOPS], MOVES).attacks).toBe(CYCLOPS.attacks);
+  expect(fightFromLevel(cyclops, [SOFT_CYCLOPS], MOVES).attacks).toBe(SOFT_CYCLOPS.attacks);
 });
 
 test("an attack is named for the side its defence answers: a low blow that has to be ducked reads as a high one", () => {
@@ -412,12 +484,14 @@ test("a level that attacks from one or two sides is filled in with the stand-in'
   ] as const;
   const sides = [["center"], ["low"], ["left"], ["left", "right"], ["high", "low"]] as const;
   for (const { moves, game, lowIs, directions } of games.flatMap((each) => sides.map((directions) => ({ ...each, directions })))) {
-    for (const enemy of ENEMIES) {
+    for (const enemy of [...ENEMIES, SOFT_CYCLOPS]) {
       const label = `${directions.join("+")} on ${enemy.id}, ${game}`;
       const fight = fightFromLevel(levelFrom(directions), [enemy], moves);
       expectValidContent(fight, moves, label);
-      expectPlayableRanges(fight, label);
-      expect(new Set(fight.attacks.map((blow) => blow.counter)).size, label).toBe(3);
+      expectPlayableRanges(fight, enemy, label);
+      // Three on every enemy today. An enemy with fewer defences of its own gives what it has.
+      const defences = new Set(fight.attacks.map((blow) => blow.counter)).size;
+      expect(defences, label).toBe(promisedDefences(levelFrom(directions), enemy, moves));
 
       // The level's own attacks come first, under their generated names; the rest are the stand-in's, as it has them.
       const own = fight.attacks.filter((blow) => blow.name.endsWith(" slam"));
@@ -435,12 +509,14 @@ test("a level that attacks from one or two sides is filled in with the stand-in'
       }
       // The level's own attacks open the fight even when the filled-in ones warn for longer.
       const openers: readonly string[] = fight.phases?.[0]?.attackIds ?? [];
-      expect(openers.length, label).toBe(2);
+      expect(openers.length, label).toBe(Math.min(2, fight.attacks.length));
       for (const blow of own.slice(0, 2)) expect(openers, label).toContain(blow.id);
 
       for (const seed of [3, 77, 2024]) {
         expect(play(fight, style, seed, 1, 300).outcome, label).toBe("won");
         expect(play(fight, style, seed, 0, 300).outcome, label).toBe("lost");
+        // One pose cannot answer two defences. With a single defence there is nothing else to be hit by.
+        if (defences < 2) continue;
         for (const blow of fight.attacks) {
           expect(play(fight, style, seed, 1, 300, blow.counter).playerHp, `${label} holding ${blow.counter}`).toBeLessThan(PLAYER_HP);
         }
@@ -474,23 +550,22 @@ test("odd but well-typed levels never throw and still give valid content", () =>
   }
 });
 
-test("400 random schema-valid levels on every enemy never throw, give valid content and always need three defences", () => {
+test("400 random schema-valid levels on every enemy never throw, give valid content and need three defences", () => {
   const style = STYLES[0] ?? { id: "s", name: "S", blurb: "", strikes: ["jab"] };
   for (let seed = 1; seed <= 400; seed++) {
     const level = randomLevel(seed);
-    for (const enemies of [ENEMIES, ...ENEMIES.map((enemy) => [enemy])]) {
+    for (const enemies of ENEMY_LISTS) {
       const label = `random ${String(seed)} of ${String(enemies.length)}`;
       const fight = fightFromLevel(level, enemies, MOVES);
-      expect(fight.id, label).toBe(expectedStandIn(level, enemies)?.id);
+      const stand = expectedStandIn(level, enemies);
+      expect(stand, label).toBeDefined();
+      if (!stand) continue;
+      expect(fight.id, label).toBe(stand.id);
       expectValidContent(fight, MOVES, label);
-      expectPlayableRanges(fight, label);
-      expect(new Set(fight.attacks.map((blow) => blow.counter)).size, label).toBeGreaterThanOrEqual(3);
+      expectPlayableRanges(fight, stand, label);
+      const defences = new Set(fight.attacks.map((blow) => blow.counter)).size;
+      expect(defences, label).toBeGreaterThanOrEqual(promisedDefences(level, stand, MOVES));
       expect(fight.phases?.length, label).toBe(level.phases.length);
-      for (const blow of fight.attacks) {
-        for (const phase of fight.phases ?? []) {
-          if (phase.attackIds.includes(blow.id)) expect(blow.telegraphMs * phase.telegraphScale, label).toBeGreaterThanOrEqual(800);
-        }
-      }
       if (seed % 20 !== 0) continue;
       const perfect = play(fight, style, seed, 1, 300);
       expect([perfect.outcome, perfect.seconds < 150], label).toEqual(["won", true]);
@@ -533,6 +608,131 @@ test("a player who gets most prompts right finishes in roughly the level's own l
     expect(won, label).toBeGreaterThanOrEqual(27);
     expect(healthLeft, label).toBeGreaterThanOrEqual(50);
   }
+});
+
+test("a stand-in whose blows are lighter than 6 keeps them: nothing is lifted above its own tuning", () => {
+  const style = STYLES[0] ?? { id: "s", name: "S", blurb: "", strikes: ["jab"] };
+  const calm = { ...storm.monster, base: "cyclops", speed: 0.9, aggression: 0.2 } as const;
+  // At the lowest aggression a sweep, a throw and a grab do the stand-in's own 5, 5 and 4. They used to be lifted to 6.
+  const level: LevelSpec = {
+    ...storm,
+    monster: calm,
+    attack_pool: [
+      attack("sweep", "left", 925, 0.5),
+      attack("projectile", "right", 925, 0.5),
+      attack("grab", "center", 925, 0.5),
+      attack("strike", "high", 925, 0.5),
+    ],
+  };
+  const fight = fightFromLevel(level, [SOFT_CYCLOPS], MOVES);
+  expect(fight.attacks.map((blow) => [blow.id, blow.damage])).toEqual([
+    ["club_left", 5],
+    ["club_right", 5],
+    ["grab", 4],
+    // A strike does nine tenths of the boulder's 6.
+    ["boulder", 5],
+  ]);
+  // On the stand-in as main has it the same level is unchanged by the lower floor: 7, 7, 9 and 9.
+  expect(fightFromLevel(level, [CYCLOPS], MOVES).attacks.map((blow) => blow.damage)).toEqual([7, 7, 9, 9]);
+
+  // An attack filled in from the stand-in keeps its own damage too.
+  const filled = fightFromLevel(levelFrom(["center"]), [SOFT_CYCLOPS], MOVES);
+  expect(filled.attacks.slice(1).map((blow) => [blow.id, blow.damage])).toEqual([
+    ["club_left", 5],
+    ["club_right", 5],
+  ]);
+
+  // Softening only ever lowers a blow. This stand-in is heavy enough to be softened, and has one blow under the floor.
+  const mixed: EnemySpec = {
+    ...CYCLOPS,
+    attacks: [
+      { id: "club_left", name: "Club swing", telegraphMs: 1800, damage: 30, counter: "dodge_right" },
+      { id: "club_right", name: "Club swing", telegraphMs: 1800, damage: 30, counter: "dodge_left" },
+      { id: "grab", name: "Grasping hand", telegraphMs: 1700, damage: 3, counter: "block" },
+      { id: "boulder", name: "Boulder throw", telegraphMs: 2000, damage: 30, counter: "duck" },
+    ],
+  };
+  const softenedFight = fightFromLevel({ ...storm, attack_pool: [] }, [mixed], MOVES);
+  expect(softenedFight.attacks.map((blow) => blow.id)).toEqual(mixed.attacks.map((blow) => blow.id));
+  expect(softenedFight.attacks[0].damage).toBeLessThan(30);
+  expect(softenedFight.attacks[2]?.damage).toBe(3);
+
+  // Every fallback level on the soft stand-in is still a fight: it can be won, and standing still loses it.
+  for (const each of LEVELS) {
+    const soft = fightFromLevel(each, [SOFT_CYCLOPS], MOVES);
+    expectPlayableRanges(soft, SOFT_CYCLOPS, `${each.title} on the soft stand-in`);
+    for (const blow of soft.attacks) expect(blow.damage, `${each.title}/${blow.id}`).toBeGreaterThanOrEqual(4);
+    expect(play(soft, style, 7, 1, 300).outcome, each.title).toBe("won");
+    expect(play(soft, style, 7, 0, 300).outcome, each.title).toBe("lost");
+  }
+});
+
+test("a level that skipped the schema (NaN, Infinity, 1e308, an unknown attack) still gives a fight that ends", () => {
+  const style = STYLES[0] ?? { id: "s", name: "S", blurb: "", strikes: ["jab"] };
+  const monster = (change: Partial<LevelSpec["monster"]>): LevelSpec => ({ ...storm, monster: { ...storm.monster, ...change } });
+  const attacks = (change: Partial<LevelAttack>): LevelSpec => ({
+    ...storm,
+    attack_pool: storm.attack_pool.map((blow) => ({ ...blow, ...change })),
+  });
+  const phases = (change: Partial<LevelSpec["phases"][number]>): LevelSpec => ({
+    ...storm,
+    phases: storm.phases.map((phase) => ({ ...phase, ...change })),
+  });
+  // What a parsed level can never hold, but a level built by hand or read from storage could.
+  const [unknown = ""] = "whirlwind".split(" ");
+  const broken: readonly (readonly [string, LevelSpec])[] = [
+    ["speed NaN", monster({ speed: Number.NaN })],
+    ["aggression NaN", monster({ aggression: Number.NaN })],
+    ["telegraph_ms NaN", attacks({ telegraph_ms: Number.NaN })],
+    ["weight NaN", attacks({ weight: Number.NaN })],
+    ["weight Infinity", attacks({ weight: Number.POSITIVE_INFINITY })],
+    ["weight 1e308", attacks({ weight: 1e308 })],
+    ["weight -Infinity", attacks({ weight: Number.NEGATIVE_INFINITY })],
+    ["duration_s NaN", phases({ duration_s: Number.NaN })],
+    ["duration_s Infinity", phases({ duration_s: Number.POSITIVE_INFINITY })],
+    ["duration_s 1e308", phases({ duration_s: 1e308 })],
+    ["intensity NaN", phases({ intensity: Number.NaN })],
+    ["unknown attack type", attacks({ type: unknown as LevelAttack["type"] })],
+    ["unknown direction", attacks({ direction: unknown as LevelAttack["direction"] })],
+    ["one unknown attack type among good ones", { ...storm, attack_pool: [...storm.attack_pool, { ...attack("slam", "left", 900, 1), type: unknown as LevelAttack["type"] }] }],
+  ];
+  for (const [what, level] of broken) {
+    for (const enemies of ENEMY_LISTS) {
+      const label = `${what} of ${String(enemies.length)}`;
+      const stand = expectedStandIn(level, enemies);
+      expect(stand, label).toBeDefined();
+      if (!stand) continue;
+      const fight = fightFromLevel(level, enemies, MOVES);
+      expectValidContent(fight, MOVES, label);
+      expectPlayableRanges(fight, stand, label);
+      for (const phase of fight.phases ?? []) {
+        expect(Number.isFinite(phase.belowHp) && Number.isFinite(phase.telegraphScale), `${label}/${phase.name}`).toBe(true);
+      }
+      const perfect = play(fight, style, 31, 1, 300);
+      expect([perfect.outcome, perfect.seconds < 150], label).toEqual(["won", true]);
+      expect(play(fight, style, 31, 0, 300).outcome, label).toBe("lost");
+    }
+  }
+  // A level with every attack unknown plays as one with no attacks: the stand-in's own.
+  const none = fightFromLevel(attacks({ type: unknown as LevelAttack["type"] }), [CYCLOPS], MOVES);
+  expect(none.attacks).toEqual(fightFromLevel({ ...storm, attack_pool: [] }, [CYCLOPS], MOVES).attacks);
+  // A level inside the schema's ranges is not changed by the check: the same fight as before it was added.
+  expect(fightFromLevel(LevelSpecSchema.parse(storm), ENEMIES, MOVES)).toEqual(fightFromLevel(storm, ENEMIES, MOVES));
+});
+
+test("the fight is paced for 60 to 90 seconds whatever the phases add up to", () => {
+  const lasting = (count: number, seconds: number): EnemySpec =>
+    fightFromLevel(
+      { ...storm, phases: Array.from({ length: count }, (_, index) => ({ name: `P${String(index)}`, duration_s: seconds, intensity: 0.5 })) },
+      ENEMIES,
+      MOVES,
+    );
+  // Four phases of 40 seconds are 160: paced as 90. Two of 15 are 30: paced as 60.
+  expect(lasting(4, 40).hp).toBe(lasting(4, 22.5).hp);
+  expect(lasting(2, 15).hp).toBe(lasting(2, 30).hp);
+  // Inside the range the length does count: 90 seconds needs more health than 60.
+  expect(lasting(2, 40).hp).toBeGreaterThan(lasting(2, 30).hp);
+  expect(lasting(4, 22.5).hp).toBeGreaterThan(lasting(4, 15).hp);
 });
 
 test("the registered enemies are exactly as they were before any fight was built", () => {
