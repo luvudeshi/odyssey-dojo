@@ -10,7 +10,7 @@ import type { Side } from "../src/moves/handSignals";
 import { KICK_IDS, legsVisible, styleForLegs } from "../src/moves/legSignals";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, JOINT, pushFrame } from "../src/pose/signals";
-import { style as pankration } from "../src/styles/pankration";
+import { style as pankration } from "../src/styles/defs/pankration";
 import { frameAt } from "./poseFixture";
 
 const J = JOINT;

@@ -56,7 +56,7 @@ export const move: MoveDef = {
     leftElbow: [40, 44], leftWrist: [48, 54], rightElbow: [60, 44], rightWrist: [54, 54],
     rightKnee: [58, 56], rightFoot: [56, 74],
   },
-  teaches: "When someone has hold of you there is no room to punch or kick, but a knee still has room to rise.",
+  teaches: "Held close with no room to swing an arm, a knee can still make the space to get away.",
   detect(history) {
     return best(history) ? 1 : 0;
   },
