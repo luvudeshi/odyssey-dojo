@@ -13,6 +13,8 @@ export interface JsonRequest {
   /** A plain JSON Schema object the answer must match. */
   readonly schema: unknown;
   readonly signal: AbortSignal;
+  /** Told which model gave the answer. The preflight check prints it. */
+  readonly onModel?: (model: string) => void;
 }
 
 export interface ImageRequest {
@@ -29,6 +31,14 @@ export interface SpeechRequest {
 }
 
 export interface SoundRequest {
+  readonly prompt: string;
+  readonly seconds: number;
+  /** Ask for a sound whose end runs into its start. Off unless set. */
+  readonly loop?: boolean;
+  readonly signal: AbortSignal;
+}
+
+export interface MusicRequest {
   readonly prompt: string;
   readonly seconds: number;
   readonly signal: AbortSignal;

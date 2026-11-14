@@ -6,11 +6,12 @@ import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
 import { EndPanel } from "./screens/EndScreen";
-import { flowReducer, playable, START, unlocked } from "./screens/flow";
+import { flowReducer, playable, startAt, unlocked } from "./screens/flow";
 import { IntroScreen } from "./screens/IntroScreen";
 import { QuestMap } from "./screens/QuestMap";
 import { TitleScreen } from "./screens/TitleScreen";
 import { WebcamGate } from "./screens/WebcamGate";
+import { SettingsPanel } from "./ui/SettingsPanel";
 import { STYLES } from "./styles/registry";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
@@ -18,7 +19,8 @@ const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
   const [notice, setNotice] = useState("");
-  const [flow, dispatch] = useReducer(flowReducer, START);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [flow, dispatch] = useReducer(flowReducer, null, () => startAt(ENEMIES, new URLSearchParams(window.location.search).get("stop")));
 
   const starting = useRef(false);
   // Set once the player picks "Keyboard only", so a late camera grant cannot hijack the fight.
@@ -47,7 +49,12 @@ export function App() {
   };
 
   if (flow.screen === "title") {
-    return <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { keyboardOnly.current = true; dispatch({ type: "ready" }); }} />;
+    return (
+      <>
+        <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { keyboardOnly.current = true; dispatch({ type: "ready" }); }} onSettings={() => { setSettingsOpen(true); }} />
+        {settingsOpen && <SettingsPanel onClose={() => { setSettingsOpen(false); }} />}
+      </>
+    );
   }
 
   if (flow.screen === "style") {
@@ -95,6 +102,8 @@ export function App() {
       style={flow.style}
       tracker={tracker}
       seed={flow.seed}
+      onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
+      onQuit={() => { dispatch({ type: "quit" }); }}
       renderEnd={(won, _score, mastery) => (
         <EndPanel
           won={won}

@@ -2,7 +2,7 @@
 // a stake in the ruined eye once he is Blinded. Skin and cloth are tinted to sit in the dusk cave.
 import { Suspense, useMemo } from "react";
 import { Color } from "three";
-import type { Material } from "three";
+import type { Material, Object3D } from "three";
 import type { MonsterProps } from "../../core/types";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { BoneMount } from "./boneMount";
@@ -24,6 +24,16 @@ export function dusk(material: Material): void {
   m.needsUpdate = true;
 }
 
+const DEBUG = new URLSearchParams(window.location.search).has("debug");
+/** Under ?debug the model root is on window.__giantRoot, so a browser test can measure bones in metres. */
+function exposeRoot(root: Object3D): void {
+  if (DEBUG) Reflect.set(window, "__giantRoot", root);
+}
+
+function exposeEye(group: Object3D | null): void {
+  if (DEBUG) Reflect.set(window, "__giantEye", group);
+}
+
 export function GiantPolyphemus(props: MonsterProps) {
   const phase = Math.min(props.phaseIndex, GIANT_CLIPS.length - 1);
   const clips = GIANT_CLIPS[phase] ?? GIANT_CLIPS[0];
@@ -31,7 +41,7 @@ export function GiantPolyphemus(props: MonsterProps) {
     () => ({
       Head: (
         <BoneMount>
-          <group position={[0, 0.3, 0.75]}>
+          <group position={[0, 0.3, 0.75]} ref={exposeEye}>
             <Eye blinded={phase >= 2} glow={(props.weakSpotId === "eye" ? 2.6 : 1.3) + props.hitFlash * 4} />
           </group>
         </BoneMount>
@@ -55,6 +65,7 @@ export function GiantPolyphemus(props: MonsterProps) {
           fit={GIANT_FIT}
           hitFlash={props.hitFlash}
           tweakMaterial={dusk}
+          prepare={exposeRoot}
           anchors={anchors}
           decide={(available, out) => (clips ? decideMonsterClip(clips, props, available, out) : out)}
         />

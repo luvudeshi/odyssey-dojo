@@ -47,10 +47,10 @@ function learned(state: CombatState, move: string): CombatState {
   return { ...state, mastery: { ...state.mastery, [move]: (state.mastery[move] ?? 0) + 1 } };
 }
 
-/** How much help the prompt gives: the full card, just the word, or just the glow. */
-export function promptLevel(successes: number): "full" | "word" | "glow" {
+/** How big the prompt card is. Mastery shrinks it but never hides the word, the key or the timer: "full" adds the diagram and hint, "word" adds the target line, "mini" is word, key and timer only. */
+export function promptLevel(successes: number): "full" | "word" | "mini" {
   if (successes < 2) return "full";
-  return successes < 5 ? "word" : "glow";
+  return successes < 5 ? "word" : "mini";
 }
 
 export function startFight(enemy: EnemySpec, seed: number): CombatState {
