@@ -22,3 +22,9 @@ The cave arena and hit effects start from work by tagrawal029 (branch `feat/aren
 |---|---|---|---|
 | Knight, KayKit Adventurers Character Pack 1.0 (Kay Lousberg), trimmed of unused accessories and clips | `public/models/hero/knight.glb` | https://kaylousberg.itch.io/kaykit-adventurers | CC0 |
 | Adventurer (Quaternius), trimmed of unused clips | `public/models/hero/adventurer.glb` | https://quaternius.com | CC0 |
+
+## Polyphemus candidates
+
+| Asset | Used for | URL | Licence |
+|---|---|---|---|
+| Giant (Quaternius, via Poly Pizza) | `public/models/polyphemus/giant.glb`, the `?model=giant` Polyphemus candidate | https://poly.pizza/m/BldaiPtyJa | CC0 |
