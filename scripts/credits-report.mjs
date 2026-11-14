@@ -2,7 +2,7 @@
 // It exits 1 when an asset has no credit, no licence, or a licence the rules do not allow.
 // How a credit line must be written is in docs/licences.md.
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,19 +24,23 @@ export const ASSET_ROOTS = ["public/models", "public/hdri", "public/textures", "
 /** Folder and `*` credits count only here. A model log has to name the exact file. */
 export const MAIN_CREDITS = "CREDITS.md";
 
+// What may stand between the parts of a licence name: a space, a no-break space, a hyphen, or one of the
+// Unicode hyphens and dashes (U+2010 to U+2015) that text copied from a web page often carries.
+const SEP = "[ \\u00A0\\-\\u2010-\\u2015]";
 const NOT_ALLOWED = [
-  /\bCC[ -]?BY[ -](?:NC|ND|SA)(?:[ -](?:NC|ND|SA))*(?:[ -]?\d\.\d)?/i,
+  new RegExp(`\\bCC${SEP}?BY${SEP}(?:NC|ND|SA)(?:${SEP}(?:NC|ND|SA))*(?:${SEP}?\\d\\.\\d)?`, "i"),
   /\bnon-?commercial\b/i,
   /\broyalty[- ]free\b/i,
   /\ball rights reserved\b/i,
   /\beditorial use\b/i,
 ];
-const CC0 = /\bCC[ -]?0\b/i;
-const CC_BY = /\bCC[ -]?BY\b(?:[ -]?(\d\.\d))?/i;
+// "not CC0" and "non-CC0" say the opposite, so they are not read as CC0.
+const CC0 = new RegExp(`(?<!\\bnot )(?<!\\bnon-)\\bCC${SEP}?0\\b`, "i");
+const CC_BY = new RegExp(`\\bCC${SEP}?BY\\b(?:${SEP}?(\\d\\.\\d))?`, "i");
 const TEAM = /\b(?:made|generated|recorded|built|drawn) by the team\b[^|.`;]*/i;
-// The form the music rows in CREDITS.md use. ElevenLabs output is ours: we generated it with our own account.
-const ELEVENLABS = /\bElevenLabs Terms of Service\b/i;
-const AUTHOR =/\bby (?!the team\b)([^,;|()`]+?)(?= is licensed\b|[,;|()`]|$)/;
+// A CC BY author is "by <Name>": the name starts with a capital letter, a digit or @, and is not "the ...".
+// So "used by the Polyphemus fight" is not an author. A lower-case handle is not read either.
+const AUTHOR = /\bby (?!the\b)([A-Z0-9@][^,;|()`]*?)(?= is licensed\b|[,;|()`]|$)/;
 const PATH = /(?<![\w./-])public\/[\w.\-/*]+/g;
 
 /**
@@ -73,7 +77,6 @@ export function readLicence(text, context = text) {
   }
   const team = TEAM.exec(text);
   if (team) return { status: "ok", label: team[0].trim() };
-  if (ELEVENLABS.test(text)) return { status: "ok", label: "made by the team with ElevenLabs (its Terms of Service)" };
   return { status: "missing", label: "" };
 }
 
@@ -92,12 +95,18 @@ function cells(line) {
 
 /**
  * The `public/...` paths, folders (trailing slash) and `*` patterns a line names.
+ * Stars left by markdown bold or italics are dropped: after a file extension, and two or more after a slash.
  * @param {string} line
  * @returns {string[]}
  */
 export function pathsNamed(line) {
   return [...line.matchAll(PATH)]
-    .map((match) => match[0].replace(/\.+$/, ""))
+    .map((match) =>
+      match[0]
+        .replace(/\.+$/, "")
+        .replace(/(\.[A-Za-z0-9]+)\*+$/, "$1")
+        .replace(/\/\*{2,}$/, "/"),
+    )
     .filter((pattern) => ASSET_ROOTS.some((root) => pattern === `${root}/` || pattern.startsWith(`${root}/`)));
 }
 
@@ -163,12 +172,15 @@ export function matchKind(pattern, path) {
 }
 
 const KIND_RANK = { exact: 0, glob: 1, folder: 2 };
-const STATUS_RANK = { ok: 0, "not-allowed": 1, "no-author": 2, missing: 3 };
+const STATUS_RANK = { "not-allowed": 0, "no-author": 1, ok: 2, missing: 0 };
 
 /**
  * The credit line that decides a file, or null when no line names it.
- * A line naming the exact path with a licence that is not allowed always wins, so a folder credit cannot hide it.
- * After that a line with an allowed licence wins: exact path, then pattern, then folder; CREDITS.md before a model log.
+ * A line that states a licence always beats a line that states none.
+ * Among lines that state a licence the most specific wins: exact path, then pattern, then folder.
+ * So a folder credit cannot hide a pattern or an exact line that says the file is not allowed.
+ * At the same level a problem wins (not allowed, then CC BY without an author, then an allowed licence),
+ * and CREDITS.md comes before a model log.
  * @param {string} path
  * @param {CreditLine[]} lines
  * @returns {CreditLine | null}
@@ -181,11 +193,10 @@ export function findCredit(path, lines) {
       const kind = matchKind(pattern, path);
       if (kind === null) continue;
       if (kind !== "exact" && line.file !== MAIN_CREDITS) continue;
-      const banned = kind === "exact" && line.licence.status === "not-allowed";
       const rank =
-        (banned ? 0 : 1000) +
-        STATUS_RANK[line.licence.status] * 100 +
-        KIND_RANK[kind] * 10 +
+        (line.licence.status === "missing" ? 1000 : 0) +
+        KIND_RANK[kind] * 100 +
+        STATUS_RANK[line.licence.status] * 10 +
         (line.file === MAIN_CREDITS ? 0 : 1);
       candidates.push({ line, rank });
     }
@@ -395,6 +406,20 @@ function main(args) {
   return report.gaps === 0 ? 0 : 1;
 }
 
-if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+/**
+ * True when this file is the script node was started with. Real paths are compared, so a symlinked path still counts.
+ * @returns {boolean}
+ */
+function startedDirectly() {
+  const started = process.argv[1];
+  if (started === undefined) return false;
+  try {
+    return realpathSync(started) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (startedDirectly()) {
   process.exitCode = main(process.argv.slice(2));
 }
