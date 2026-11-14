@@ -38,6 +38,7 @@ The fight lengths quoted here come from the pacing test's own simulated player (
 - If the picture stutters in the test fight, press Q once for low graphics. Every fight starts on high, so press it again after a restart.
 - Keep one hand near the keyboard. Keys work during a webcam fight, so you can cover for the judge without restarting.
 - Check that the demo laptop registers Space and three arrows held together (see "Covering from the keys").
+- At the win screen click "Change style", never "Next fight", until Scylla has a model `[pending #27]`.
 
 ## The script
 
@@ -130,7 +131,7 @@ If two tries do not register, press O and say "I will drive it for you" `[pendin
 
 **Say (19 words):** "Polyphemus falls. First stop on the way home, and all of it ran in this tab with no network."
 
-Do not click "Next fight". Scylla is data only and is drawn as a placeholder block `[pending #27]`.
+Do not click "Next fight". Scylla is data only and is drawn as a placeholder block `[pending #27]`. If the judge wants more, click "Change style" on the win screen.
 
 ### The other two endings
 
