@@ -220,7 +220,7 @@ function bus(source: FakeSource): FakeParam {
 }
 
 /** A stand-in for Athena that speaks when told and falls quiet when `finish` is called. */
-function fakeVoice(voice: VoiceModule): { readonly athena: ReturnType<VoiceModule["createVoice"]>; finish(): void } {
+function fakeVoice(voice: VoiceModule): { readonly athena: ReturnType<VoiceModule["createVoice"]>; readonly finish: () => void } {
   let done: () => void = () => undefined;
   const athena = voice.createVoice({
     available: () => true,
