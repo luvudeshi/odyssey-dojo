@@ -1,9 +1,41 @@
 // Hand measurements shared by the karate, kung fu and boxing strikes.
-// All are in shoulder widths, taken from the mirrored webcam picture, so they hold at any distance from the camera.
+// Picture measurements are in shoulder widths of the mirrored webcam picture, so they hold at any distance from
+// the camera. Measurements on the 3D points are in shoulder widths of the 3D body, so they hold for a child and
+// for a tall adult alike: nothing here is an absolute share of the frame or an absolute number of metres.
 import type { PoseFrame, PoseHistory } from "../core/types";
 import { JOINT, distance2d, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth } from "../pose/signals";
 
 export type Side = "left" | "right";
+
+/** Shoulder width of the 3D body, in metres: the ruler for every 3D distance. About 0.4 for an adult. */
+export function bodyWidth(frame: PoseFrame): number {
+  const left = joint(frame.world, JOINT.leftShoulder);
+  const right = joint(frame.world, JOINT.rightShoulder);
+  return Math.hypot(left.x - right.x, left.y - right.y, left.z - right.z);
+}
+
+/** How far a fist may sit above or below its shoulder and still be at shoulder height, in 3D shoulder widths. */
+const SHOULDER_HEIGHT = 0.75;
+
+/** True when the fist is at shoulder height in 3D. */
+function fistLevel(frame: PoseFrame, side: Side): boolean {
+  const left = side === "left";
+  const shoulder = joint(frame.world, left ? JOINT.leftShoulder : JOINT.rightShoulder);
+  const fist = joint(frame.world, left ? JOINT.leftWrist : JOINT.rightWrist);
+  return Math.abs(fist.y - shoulder.y) < SHOULDER_HEIGHT * bodyWidth(frame);
+}
+
+/** True when the arm is straight and the fist is at shoulder height. */
+export function armOut(frame: PoseFrame, side: Side): boolean {
+  return elbowAngle(frame, side) > 145 && fistLevel(frame, side);
+}
+
+/** True when the arm just went from bent to straight at shoulder height: a punch. */
+export function armThrust(history: PoseHistory, side: Side): boolean {
+  const now = latest(history);
+  if (!now || !armOut(now, side)) return false;
+  return recent(history, 450).some((frame) => elbowAngle(frame, side) < 115);
+}
 
 export function otherSide(side: Side): Side {
   return side === "left" ? "right" : "left";
@@ -83,10 +115,7 @@ export function punch(history: PoseHistory, side: Side): number {
   if (!frame) return 0;
   const bend = elbowAngle(frame, side);
   if (bend <= NEARLY_STRAIGHT) return 0;
-  const left = side === "left";
-  const shoulder = joint(frame.world, left ? JOINT.leftShoulder : JOINT.rightShoulder);
-  const fist = joint(frame.world, left ? JOINT.leftWrist : JOINT.rightWrist);
-  if (Math.abs(fist.y - shoulder.y) >= 0.3) return 0;
+  if (!fistLevel(frame, side)) return 0;
   if (!recent(history, SNAP_MS).some((old) => elbowAngle(old, side) < BENT)) return 0;
   if (handWasOverhead(history, side, 500)) return 0;
   return bend > STRAIGHT ? 1 : 0.5;
