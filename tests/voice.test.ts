@@ -114,8 +114,10 @@ function coachedFight(enemy: EnemySpec, strikeAfterMs: number, msPerWord: number
     const struck = ready ? [{ move: phase.move, quality: 1, player: 0 as const }] : [];
     const result = step(state, enemy, style, { held, struck }, STEP_MS);
     state = result.state;
+    // A call that arrives while a phase line holds the voice is dropped on purpose, so it does not count as asked for.
+    const phaseLine = voice.playing()?.startsWith("phase_") === true;
     for (const event of result.events) {
-      if (event.type === "telegraph" || event.type === "opening") asked.push(lineFor(event, () => 0) ?? "");
+      if (!phaseLine && (event.type === "telegraph" || event.type === "opening")) asked.push(lineFor(event, () => 0) ?? "");
     }
     voice.handle(result.events);
   }
@@ -266,18 +268,22 @@ test("fight start and phase lines replace praise and warnings, and are not refus
   expect(start.started).toEqual(["warn_1", "fight_start"]);
 });
 
-test("fight start and phase lines yield to calls and are not cut off by praise, warnings or each other", () => {
-  const { voice, started, stopped } = fakeVoice();
+test("fight start yields to calls, a phase line does not, and neither is cut off by praise, warnings or the other", () => {
+  const { voice, started, stopped, end } = fakeVoice();
   expect(voice.speak("phase_2")).toBe(true);
   voice.handle([enemyHit]);
   voice.handle([playerHit]);
+  voice.handle([telegraph]);
   expect(voice.speak("fight_start")).toBe(false);
+  expect(voice.speak("phase_1")).toBe(false);
   expect(started).toEqual(["phase_2"]);
 
+  end();
+  expect(voice.speak("fight_start")).toBe(true);
+  voice.handle([enemyHit]);
   voice.handle([telegraph]);
-  expect(started).toEqual(["phase_2", "call_duck"]);
-  expect(stopped).toEqual(["phase_2"]);
-  expect(voice.speak("phase_1")).toBe(false);
+  expect(started).toEqual(["phase_2", "fight_start", "call_duck"]);
+  expect(stopped).toEqual(["fight_start"]);
   expect(voice.speak("fight_start")).toBe(false);
 });
 
@@ -308,7 +314,7 @@ test("the finishing move is called when it begins and again when its window runs
   expect(started.at(-1)).toBe("win");
 });
 
-test("every call of a real fight is spoken, however slowly the clips play or the player strikes", () => {
+test("every call of a real fight is spoken unless a phase line is playing, however slowly the clips play or the player strikes", () => {
   for (const enemy of [polyphemus, scylla]) {
     for (const msPerWord of [300, 400]) {
       for (const strikeAfterMs of [0, 700, 1500]) {
