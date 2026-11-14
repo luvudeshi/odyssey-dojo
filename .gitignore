@@ -5,3 +5,5 @@ public/mediapipe
 .env.*
 .DS_Store
 .claude/worktrees
+!.env.example
+server/data
