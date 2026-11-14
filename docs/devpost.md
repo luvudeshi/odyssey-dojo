@@ -26,7 +26,7 @@ We wanted a judge to stand up and do that with their own body, not press a butto
 Odyssey Fighter is a 3D fight training game that runs in a browser tab. You follow Odysseus's route home and fight the monsters he met, in the order he met them.
 
 - `[pending #7]` **Your body is the controller.** A laptop webcam tracks you, and every block, dodge and strike is your own movement. **Today:** A laptop webcam tracks your body with a pose model that runs in the browser, and each move has a detector that is tested on made-up pose sequences. Every move also has a key.
-- **Pick a fighting style.** Boxer (jab, cross, hook, uppercut), Hoplite (spear thrust, overhead strike), Karate (reverse punch, knife hand, hammer fist) or Kung Fu (double palm, chain punch, rising palm).
+- **Pick a fighting style.** Boxer (jab, cross, hook, uppercut), Hoplite (spear thrust, overhead strike), Karate (reverse punch, knife hand, hammer fist), Kung Fu (double palm, chain punch, rising palm) or Pankration (front kick, knee, hammer fist, uppercut).
 - **Fight in two beats.** The monster winds up and a red card names what stops it: BLOCK, DUCK, DODGE LEFT or DODGE RIGHT. Hold it until the blow lands. Then a weak spot lights up and a gold card names a strike. Hits in a row do more damage, up to 50 percent more; a missed opening resets the run.
 - **Learn as you play.** The card starts as a drawing of the pose, the word and a hint. After two clean reps of a move it is only the word. After five it is only a timer.
 - `[pending #11, #24]` By the end of a fight you are reading the monster, not the card: each attack has its own tell, and a faint ghost figure shows the pose to hit.
@@ -40,8 +40,8 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 - `[pending #21]` **Athena coaches you by voice.** She calls each defense and each strike as it is needed, praises a hit, warns after one, and announces the phases and the result. Her lines are clips stored with the game. **Today:** the clips are stored with the game and the fight screen on `main` plays them, but nobody has logged hearing her in a fight (see "Still to add").
 - `[pending #26]` A quest map shows the route in the poem's order: the Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca.
 - `[pending #27]` Scylla is the second fight. (Today she exists as data and is drawn as a placeholder block.)
-- `[if wired]` Before the fight, the camera looks at you and names the Olympian you take after. **Today:** the god scan is on `main` and runs on a test page, but the game does not open it.
-- `[pending #30]` That god grants one power: defending fills a meter and the god's gesture spends it.
+- Before the fight, with the webcam, the camera looks at you and names the Olympian you take after. It can be skipped with a button, Esc or S, and ends by itself after 30 seconds. Keyboard-only play never sees it.
+- **A divine power.** Defending fills a meter and a god's gesture spends it. The power is the one your god grants.
 - `[pending #28]` A second player can step into the frame; striking together does double damage.
 - **Play with no camera.** Every move has a key. The camera and the keyboard feed the same fight at the same time, and if the camera cannot start the game says so and carries on with keys.
 - **Play with no network.** Pose tracking runs in the browser from files stored with the game, and the sounds are local files.
