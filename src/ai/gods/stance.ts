@@ -1,6 +1,6 @@
 // Reads which god a struck pose points to, from a single pose frame. Pure, and safe on frames with missing points.
-import type { Landmark, PoseFrame } from "../core/types";
-import { JOINT, distance2d, elbowAngle, joint } from "../pose/signals";
+import type { Landmark, PoseFrame } from "../../core/types";
+import { JOINT, distance2d, elbowAngle, joint } from "../../pose/signals";
 import type { GodId } from "./gods";
 
 export type StanceId =

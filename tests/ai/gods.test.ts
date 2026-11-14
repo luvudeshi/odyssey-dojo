@@ -1,16 +1,16 @@
 // Guards the gods' data and the offline god scan: stance, colour and seed cues, determinism, and what a reason may say.
 import { describe, expect, test } from "vitest";
-import type { PoseFrame } from "../src/core/types";
-import { GODS, GOD_IDS } from "../src/gods/gods";
-import type { GodId } from "../src/gods/gods";
-import { clothingTint, lotReason, offlineReveal } from "../src/gods/offlineReveal";
-import type { RevealCues } from "../src/gods/offlineReveal";
-import { STANCES, readStance } from "../src/gods/stance";
-import type { StanceId } from "../src/gods/stance";
-import { TINTS, tintId } from "../src/gods/tint";
-import type { PixelGrid, Tint } from "../src/gods/tint";
-import { JOINT } from "../src/pose/signals";
-import { frameAt } from "./poseFixture";
+import type { PoseFrame } from "../../src/core/types";
+import { GODS, GOD_IDS } from "../../src/ai/gods/gods";
+import type { GodId } from "../../src/ai/gods/gods";
+import { clothingTint, lotReason, offlineReveal } from "../../src/ai/gods/offlineReveal";
+import type { RevealCues } from "../../src/ai/gods/offlineReveal";
+import { STANCES, readStance } from "../../src/ai/gods/stance";
+import type { StanceId } from "../../src/ai/gods/stance";
+import { TINTS, tintId } from "../../src/ai/gods/tint";
+import type { PixelGrid, Tint } from "../../src/ai/gods/tint";
+import { JOINT } from "../../src/pose/signals";
+import { frameAt } from "../poseFixture";
 
 const J = JOINT;
 

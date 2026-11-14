@@ -1,6 +1,6 @@
 // Clothing colour as a cue: averages the torso's colour from raw pixels and sorts a colour into a god's palette. Pure.
-import type { Landmark, PoseFrame } from "../core/types";
-import { JOINT, clamp01, joint } from "../pose/signals";
+import type { Landmark, PoseFrame } from "../../core/types";
+import { JOINT, clamp01, joint } from "../../pose/signals";
 import type { GodId } from "./gods";
 
 /** An average colour, 0..255 red, green, blue. */

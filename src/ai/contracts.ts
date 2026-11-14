@@ -1,8 +1,10 @@
 // What the AI layer passes between the browser and the server. Pure data and zod schemas: no DOM, no Node.
 import { z } from "zod";
 
-export const GOD_IDS = ["zeus", "poseidon", "athena", "hermes", "artemis", "apollo"] as const;
-export type GodId = (typeof GOD_IDS)[number];
+import { GOD_IDS } from "./gods/gods";
+
+export { GOD_IDS } from "./gods/gods";
+export type { GodId } from "./gods/gods";
 
 export const WEATHERS = ["clear", "rain", "storm", "fog", "embers", "snow"] as const;
 export const LIGHTINGS = ["dawn", "noon", "dusk", "night", "underworld"] as const;
