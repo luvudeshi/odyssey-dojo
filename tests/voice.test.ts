@@ -288,6 +288,26 @@ test("a phase change is announced once the fight is past its first phase", () =>
   expect(lineFor({ type: "finished", move: "stake_thrust" }, () => 0)).toBeNull();
 });
 
+test("a move with no call of its own gets the general call, so a new move is never met with silence", () => {
+  const { voice, started } = fakeVoice();
+  voice.handle([{ type: "telegraph", attack: { ...attack, counter: "some_new_defense" } }]);
+  voice.handle([{ type: "opening", weakSpot, move: "some_new_strike" }]);
+  expect(started).toEqual(["call_any_defend", "call_any_strike"]);
+});
+
+test("the finishing move is called when it begins and again when its window runs out, but not on every frame", () => {
+  const { voice, started } = fakeVoice();
+  const finisher = { kind: "finisher", move: "stake_thrust", msLeft: 6000, totalMs: 6000 } as const;
+  voice.handle([enemyHit], finisher);
+  voice.handle([], finisher);
+  voice.handle([], finisher);
+  expect(started).toEqual(["call_stake_thrust"]);
+  voice.handle([{ type: "whiffed" }], finisher);
+  expect(started).toEqual(["call_stake_thrust", "call_stake_thrust"]);
+  voice.handle([{ type: "won" }], { kind: "won" });
+  expect(started.at(-1)).toBe("win");
+});
+
 test("every call of a real fight is spoken, however slowly the clips play or the player strikes", () => {
   for (const enemy of [polyphemus, scylla]) {
     for (const msPerWord of [300, 400]) {
