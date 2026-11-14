@@ -10,9 +10,10 @@ let current: HTMLAudioElement | null = null;
 
 const key = (speaker: Speaker, text: string): string => `${speaker}\n${text}`;
 
-/** Fetches a line ahead of time so it can start the instant it is needed. Returns an object URL, or null. */
+/** Fetches a line ahead of time so it can start the instant it is needed. Returns an object URL, or null. A failure is not remembered, so a later call tries again. */
 export function prepareLine(speaker: Speaker, text: string, fetcher: typeof fetch = fetch): Promise<string | null> {
-  const known = ready.get(key(speaker, text));
+  const id = key(speaker, text);
+  const known = ready.get(id);
   if (known) return known;
   const request = fetcher("/api/speech", {
     method: "POST",
@@ -24,12 +25,16 @@ export function prepareLine(speaker: Speaker, text: string, fetcher: typeof fetc
     .catch((error: unknown) => {
       log("warn", "narration_unavailable", error);
       return null;
+    })
+    .then((url) => {
+      if (url === null) ready.delete(id);
+      return url;
     });
-  ready.set(key(speaker, text), request);
+  ready.set(id, request);
   return request;
 }
 
-/** Speaks a line, replacing any narration already playing. Resolves when it ends; false if it could not play. */
+/** Speaks a line, replacing any narration already playing. Resolves true once it has played to the end; false if it could not play or was cut off by stopNarration or a newer line. */
 export async function speakLine(speaker: Speaker, text: string): Promise<boolean> {
   const url = await prepareLine(speaker, text);
   if (url === null || typeof Audio === "undefined") return false;
@@ -37,14 +42,15 @@ export async function speakLine(speaker: Speaker, text: string): Promise<boolean
   const audio = new Audio(url);
   current = audio;
   return new Promise((resolve) => {
-    const done = (played: boolean) => () => {
+    const finish = (played: boolean): void => {
       if (current === audio) current = null;
       resolve(played);
     };
-    audio.addEventListener("ended", done(true), { once: true });
-    audio.addEventListener("error", done(false), { once: true });
-    audio.addEventListener("pause", done(true), { once: true });
-    audio.play().catch(done(false));
+    audio.addEventListener("ended", () => { finish(true); }, { once: true });
+    audio.addEventListener("error", () => { finish(false); }, { once: true });
+    // Browsers also fire "pause" when a clip reaches its end, so only a pause before the end means it was cut off.
+    audio.addEventListener("pause", () => { finish(audio.ended); }, { once: true });
+    audio.play().catch(() => { finish(false); });
   });
 }
 
