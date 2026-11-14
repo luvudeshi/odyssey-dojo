@@ -21,7 +21,7 @@ async function serve(ai: Partial<AiClients>): Promise<(json: unknown) => Promise
     timeouts: { levelMs: 80, revealMs: 80, portraitMs: 80, speechMs: 80 },
   };
   const app = await createApp({ config, ai: { ...NO_AI, ...ai } });
-  const server = app.listen(0);
+  const server = app.listen(0, "127.0.0.1");
   close = () => { server.close(); };
   const { port } = server.address() as AddressInfo;
   return (json) => fetch(`http://127.0.0.1:${String(port)}/api/speech`, {
