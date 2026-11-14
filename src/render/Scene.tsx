@@ -5,6 +5,7 @@ import { Suspense, createElement, useEffect } from "react";
 import type { RefObject } from "react";
 import type { CombatState, EnemySpec, MonsterProps, PoseFrame } from "../core/types";
 import { ArenaFor } from "./arena/ArenaFor";
+import { ARENA_SKIES } from "./arena/registry";
 import { Atmosphere } from "./Atmosphere";
 import { battle, nowSeconds, resetBattle, syncBattle } from "./battle";
 import { CameraRig } from "./CameraRig";
@@ -76,7 +77,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
               <ArenaFor enemyId={enemy.id} fallback={<Arena />} />
             </Suspense>
           </ErrorBoundary>
-          <Atmosphere />
+          <Atmosphere sky={ARENA_SKIES.get(enemy.id)} />
           <MonsterRig>
             {createElement(MONSTER_MODELS.get(enemy.id) ?? Placeholder, {
               windup: phase.kind === "defend" ? 1 - phase.msLeft / phase.totalMs : 0,
