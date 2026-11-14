@@ -4,10 +4,11 @@ import type { MoveDef } from "../../src/core/types";
 import { MOVES } from "../../src/moves/registry";
 import type { Key } from "../helpers/poses";
 import {
-  ACROSS, CHOP, COCKED, DOWN, GUARD, HIP, HOOK_IN, HOOK_OUT, LATERAL, OVERHEAD, PALM, PUNCH, STAKE_CHEST, STAKE_DOWN,
-  peak, pose, sequence, standing,
+  ACROSS, CHOP, COCKED, DOWN, GUARD, HIP, HOOK_IN, HOOK_OUT, LATERAL, LEG_CHAMBER, LEG_DOWN, LEG_HALF, LEG_KICK,
+  LEG_KNEE, OVERHEAD, PALM, PUNCH, STAKE_CHEST, STAKE_DOWN,
+  peak, pose, sequence, standing, withLegs,
 } from "../helpers/poses";
-import type { Arm } from "../helpers/poses";
+import type { Arm, Leg } from "../helpers/poses";
 import { GOD_GOOD } from "../godMoveSequences";
 
 function moveOf(id: string): MoveDef {
@@ -20,6 +21,8 @@ const both = (arm: Arm) => pose(arm, arm);
 const left = (arm: Arm) => pose(arm, DOWN);
 const right = (arm: Arm) => pose(DOWN, arm);
 const keys = (...pairs: [number, ReturnType<typeof pose>][]): Key[] => pairs.map(([t, p]) => ({ t, pose: p }));
+/** Whole body in view, arms down, the right leg in the given shape and the left leg standing. */
+const leg = (shape: Leg = LEG_DOWN) => withLegs(pose(DOWN), LEG_DOWN, shape);
 
 /** The move done right. */
 const GOOD: Record<string, Key[]> = {
@@ -38,6 +41,8 @@ const GOOD: Record<string, Key[]> = {
     [0, pose(DOWN)], [100, left(COCKED)], [250, left(PUNCH)], [350, right(COCKED)], [500, right(PUNCH)],
   ),
   stake_thrust: keys([0, pose(DOWN)], [300, both(STAKE_CHEST)], [500, both(STAKE_DOWN)]),
+  front_kick: keys([0, leg()], [100, leg()], [300, leg(LEG_CHAMBER)], [450, leg(LEG_KICK)]),
+  knee: keys([0, leg()], [100, leg()], [300, leg(LEG_KNEE)], [500, leg(LEG_KNEE)]),
   block: keys([0, pose(DOWN)], [250, both(GUARD)], [450, both(GUARD)]),
   duck: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, 0, 0.12)], [500, pose(DOWN, DOWN, 0, 0.12)]),
   dodge_left: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, -0.12, 0)], [500, pose(DOWN, DOWN, -0.12, 0)]),
@@ -60,6 +65,8 @@ const MISS: Record<string, [string, Key[]]> = {
   double_palm: ["the same thrust with the hands wide", keys([0, pose(DOWN)], [150, both(COCKED)], [300, both(PUNCH)])],
   chain_punch: ["a single jab", keys([0, pose(DOWN)], [150, left(COCKED)], [300, left(PUNCH)])],
   stake_thrust: ["the hands held at the chest", keys([0, pose(DOWN)], [300, both(STAKE_CHEST)], [900, both(STAKE_CHEST)])],
+  front_kick: ["the knee lifted and set down with no kick", keys([0, leg()], [100, leg()], [300, leg(LEG_CHAMBER)], [500, leg()])],
+  knee: ["a knee lifted only a little", keys([0, leg()], [100, leg()], [300, leg(LEG_HALF)], [600, leg(LEG_HALF)])],
   block: ["the hands at the chest", keys([0, pose(DOWN)], [250, both(COCKED)], [450, both(COCKED)])],
 };
 
