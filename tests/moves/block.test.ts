@@ -8,8 +8,13 @@ const GUARD = pose({
   rightUpper: [0, 0.4, -0.9], rightFore: [-0.35, -0.9, 0.2],
 });
 
-/** Fists up in 300 ms, held for half a second, dropped back to the sides. */
-const block = play(recording([[GUARD, 300], [GUARD, 500], [STANDING, 300], [STANDING, 300]]));
+/**
+ * Hands to the chest, fists up to the face, held for half a second, back down the same way. Going by way of the
+ * chest keeps the forearms in front of the body: turned straight from hanging to the guard they would pass through it.
+ */
+const block = play(
+  recording([[READY, 200], [GUARD, 150], [GUARD, 500], [READY, 150], [STANDING, 200], [STANDING, 300]]),
+);
 
 test("fists brought up to the face are a block for as long as they stay there", () => {
   expect(longestHold(block, "block")).toBeGreaterThanOrEqual(500);
@@ -21,9 +26,9 @@ test("hands held at the chest are not a block", () => {
   expect(longestHold(chest, "block")).toBe(0);
 });
 
-test("one fist at the face with the other arm hanging is not a block", () => {
-  const oneFist = pose({ leftUpper: GUARD.leftUpper, leftFore: GUARD.leftFore });
-  const half = play(recording([[oneFist, 300], [oneFist, 500], [STANDING, 300]]));
+test("one fist at the face with the other hand left at the chest is not a block", () => {
+  const oneFist = pose({ leftUpper: GUARD.leftUpper, leftFore: GUARD.leftFore }, READY);
+  const half = play(recording([[READY, 200], [oneFist, 150], [oneFist, 500], [READY, 150], [STANDING, 200]]));
   expect(longestHold(half, "block")).toBe(0);
 });
 

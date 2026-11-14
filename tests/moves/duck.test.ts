@@ -18,6 +18,13 @@ test("a 6 cm dip of the knees, the bounce of a player keeping loose, is not a du
   expect(longestHold(bounce, "duck")).toBe(0);
 });
 
+// The duck starts counting at a drop of a little over 11 cm; this pins that line from below.
+test("a 10 cm dip held for half a second is still not a duck", () => {
+  const dip = pose({ drop: 0.1 }, READY);
+  const nearly = play(recording([[READY, 300], [dip, 200], [dip, 500], [READY, 200]]));
+  expect(longestHold(nearly, "duck")).toBe(0);
+});
+
 test("no other base move fires while ducking and standing back up", () => {
   expect(others(duck, "duck")).toEqual([]);
 });
