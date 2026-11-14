@@ -22,13 +22,19 @@ export function createFreshFrame(): FreshFrame {
   };
 }
 
-/** Starts the per-picture callback on a video that supports it. Returns false when the browser has no such callback. */
-export function watchCameraFrames(video: HTMLVideoElement, onFrame: () => void): boolean {
-  if (typeof video.requestVideoFrameCallback !== "function") return false;
+/** Starts the per-picture callback. Returns a function that stops it, or null when the browser has no such callback. */
+export function watchCameraFrames(video: HTMLVideoElement, onFrame: () => void): (() => void) | null {
+  if (typeof video.requestVideoFrameCallback !== "function") return null;
+  let handle = 0;
+  let stopped = false;
   const again = (): void => {
+    if (stopped) return;
     onFrame();
-    video.requestVideoFrameCallback(again);
+    handle = video.requestVideoFrameCallback(again);
   };
-  video.requestVideoFrameCallback(again);
-  return true;
+  handle = video.requestVideoFrameCallback(again);
+  return () => {
+    stopped = true;
+    video.cancelVideoFrameCallback(handle);
+  };
 }
