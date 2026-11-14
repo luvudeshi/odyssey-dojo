@@ -4,7 +4,7 @@ First draft of the submission page. The table pitch and judge answers are in [pi
 
 **How to read this draft.** It was checked against `main` at commit `de77074` (Saturday afternoon). A sentence tagged `[pending #N]` describes something that is not on `main` yet, or not yet proven; N is the issue that will settle it. Each one sits in its own sentence or bullet. Before submitting, go through every tag: if the issue is done, delete the tag; if it is not, publish the "Today" version next to it, or delete the sentence if it has none. Nothing tagged may reach the published page.
 
-The ElevenLabs and Gemini parts were checked again against `main` at commit `3474395` and use two more tags. `[if wired]` means the code is on `main` but no game screen calls it yet, so a player does not see or hear it. `[if built]` means it is not on `main` at all. Treat both like `[pending]`: publish the sentence only once it is true.
+The ElevenLabs and Gemini parts were checked again against `main` at commit `fd14780` and use two more tags. `[if wired]` means the code is on `main` but no game screen calls it yet, so a player does not see or hear it. `[if built]` means it is not on `main` at all. Treat both like `[pending]`: publish the sentence only once it is true.
 
 The webcam claims are tagged `[pending #7]` on purpose. The tracking and every detector are built and unit-tested, but nobody has yet won a fight with their body on the demo laptop.
 
@@ -61,12 +61,13 @@ Odyssey Fighter is a 3D fight training game that runs in a browser tab. You foll
 
 ## How we used ElevenLabs
 
-Checked against `main` at `3474395`. Every count below was read from the file named beside it.
+Checked against `main` at `fd14780`. Every count below was read from the file named beside it.
 
 **What it does in the game**
 
 - **Sound effects, heard in every fight.** One clip for each of the engine's 11 fight events: `telegraph`, `defended`, `playerHit`, `opening`, `enemyHit`, `whiffed`, `phaseChanged`, `finished`, `powerUnleashed`, `won` and `lost`. The clips are `public/audio/sfx/<event>.mp3`, listed in `public/audio/sfx/index.json`. `src/audio/sfx.ts` plays them, and `src/screens/FightScreen.tsx` calls it for every event.
 - **Athena the coach, heard in every fight.** 37 lines in `src/audio/athenaLines.ts`, one clip each in `public/audio/athena/`: 26 move calls, 3 lines of praise, 3 warnings, 2 phase lines, a fight start, a win and a loss. `src/audio/voice.ts` picks the line from the fight's events and plays one line at a time; `src/screens/FightScreen.tsx` calls it every frame. On `main` she calls the defense when an attack winds up, calls the strike when a weak spot opens, calls the stake, praises a hit, warns after one, and announces a phase change, the win and the loss.
+- The front kick and the knee have no line of their own, so for those she says "Strike now!".
 - Eight of the 37 lines are recorded but nothing on `main` asks for them: `fight_start`, `call_jump` and the six god-power calls.
 - **Homer and Polyphemus, in the repo, `[if wired]`.** Eight more clips sit in the same folder and index: four lines for Homer as narrator (title, before Polyphemus, win, loss) and Polyphemus's four taunts. The script is `src/audio/storyLines.ts`. `speakLine` and `speakTaunt` in `src/audio/voice.ts` play them, but no screen calls either, so a player does not hear them.
 - **Speech made live, in the repo, `[if wired]`.** `POST /api/speech` in `server/routes/speech.ts` turns a line of text into speech in an Athena, Homer or monster voice, and saves each line under `server/data/speech/` so it is made once. `src/audio/narration.ts` is the browser side. It is for lines that cannot be recorded ahead of time, such as the narration of a fight Gemini wrote. Nothing on `main` calls it.
@@ -91,7 +92,7 @@ Checked against `main` at `3474395`. Every count below was read from the file na
 
 ## How we used Gemini
 
-Checked against `main` at `3474395`.
+Checked against `main` at `fd14780`.
 
 **What it does in the game**
 
