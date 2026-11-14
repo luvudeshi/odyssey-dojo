@@ -12,7 +12,7 @@ export const move: MoveDef = {
   detect(history) {
     const frame = latest(history);
     const earlier = recent(history, 250)[0];
-    if (!frame || !earlier || !history.baseline) return 0;
+    if (!frame || !earlier || !history.baseline || history.baseline.shoulderWidth <= 0) return 0;
     const moved = Math.abs(shoulderCenter(frame).x - shoulderCenter(earlier).x) / history.baseline.shoulderWidth;
     // Reaches 0.7 at 0.6 shoulder widths.
     return clamp01((moved / 0.6) * 0.7);
