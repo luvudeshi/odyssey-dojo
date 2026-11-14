@@ -1,6 +1,7 @@
 @import "./theme.css";
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
+#root { display: flow-root; } /* the .menu margin must not collapse through #root and scroll the page */
 body { background: var(--clay-dark); color: var(--ink); font-family: var(--font-display); }
 
 /* Buttons: black with clay ink is the main choice, .quiet is an outlined second choice. */
@@ -26,7 +27,7 @@ button:disabled { cursor: not-allowed; }
 .menu > button:has(small) { width: min(46rem, 90vw); }
 .menu h1::after { content: ""; display: block; height: 2.2rem; margin: 0.5rem auto 0; background: var(--palmette) center / contain no-repeat; }
 .menu p { margin: 0.35rem 0; font-size: 1.1rem; }
-.notice { min-height: 1.5em; opacity: 0.85; font-style: normal; }
+.notice { min-height: 1.5em; font-style: normal; }
 .verse { max-width: 34rem; font-style: italic; }
 .menu:has(> .verse)::after { content: ""; position: absolute; left: 50%; bottom: 52px; width: min(30rem, 56vw); height: 7rem; transform: translateX(-50%); background: var(--ship) center / contain no-repeat; pointer-events: none; }
 .menu:has(> .verse) { padding-bottom: 9rem; }
@@ -59,8 +60,8 @@ button:disabled { cursor: not-allowed; }
 .prompt.defend::before { content: "Defend"; border-color: var(--clay); }
 .prompt::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--meander-s-h); background: var(--meander-s) repeat-x; }
 .prompt.strike::after { background-image: var(--meander-s); }
-.prompt-teaches { font-size: 0.8rem; opacity: 0.85; font-family: var(--font-display); max-width: 16rem; margin-top: 0.25rem; }
-.prompt-word { font-size: 2.4rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--card-ink); line-height: 1; }
+.prompt-teaches { font-size: 0.9rem; opacity: 1; font-family: var(--font-display); max-width: 16rem; margin-top: 0.25rem; }
+.prompt-word { font-size: 2.1rem; font-weight: 700; letter-spacing: 0.05em; overflow-wrap: anywhere; text-transform: uppercase; color: var(--card-ink); line-height: 1; }
 .prompt-target { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .prompt-hint { font-size: 0.95rem; font-family: var(--font-display); margin-top: 0.3rem; }
 kbd { font-family: var(--font-mono); font-weight: 700; color: var(--card-ink, inherit); border: 2px solid currentColor; border-radius: 0; padding: 0 0.4rem; background: transparent; }
@@ -118,12 +119,13 @@ kbd { font-family: var(--font-mono); font-weight: 700; color: var(--card-ink, in
 .stop.open .dot { animation: stop-pulse 1.8s ease-in-out infinite; }
 .stop:hover:not(:disabled) .dot { transform: scale(1.18); background: var(--purple); color: var(--white); }
 .stop:active:not(:disabled) .dot { transform: scale(1.05); }
-.stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); width: 8rem; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-shadow: 0 0 3px var(--clay-light), 0 0 3px var(--clay-light), 0 0 6px var(--clay-light); }
+.stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); width: 8rem; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: var(--clay-light); border: 2px solid var(--ink); padding: 0.2rem 0.3rem; }
 .stop.above .lbl { bottom: 3rem; }
 .stop.below .lbl { top: 3rem; }
-.stop .lbl small { display: block; font-size: 0.7rem; font-weight: 400; opacity: 0.9; }
+.stop .lbl small { display: block; font-size: 0.75rem; font-weight: 400; }
 .stop.cleared .dot { background: var(--white); color: var(--ink); }
-.stop.locked { cursor: not-allowed; opacity: 0.75; }
+.stop.locked { cursor: not-allowed; }
+.stop.locked .dot { opacity: 0.75; }
 .stop.locked .dot { background: transparent; color: var(--ink); box-shadow: none; border-style: dashed; }
 .stop:focus-visible { outline: none; box-shadow: none; }
 .stop:focus-visible .dot { outline: 3px solid var(--white); outline-offset: 5px; }
