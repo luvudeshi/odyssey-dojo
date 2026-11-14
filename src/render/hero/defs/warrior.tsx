@@ -30,8 +30,8 @@ export const candidate: HeroCandidate = {
     poses: {
       block: ["Guard_Hold"],
       duck: ["Crouch_Idle_Loop"],
-      dodgeLeft: ["Sword_Idle"],
-      dodgeRight: ["Sword_Idle"],
+      dodgeLeft: ["Walk_Loop"],
+      dodgeRight: ["Walk_Loop"],
       punch: ["Punch_Jab"],
       thrust: ["Punch_Cross"],
       hurt: ["Hit_Chest"],
