@@ -21,7 +21,8 @@ function hopeless(error: unknown): boolean {
 }
 
 export function createGemini(apiKey: string): Pick<AiClients, "json" | "image"> {
-  const client = new GoogleGenAI({ apiKey });
+  // Image input and image output are only served by the v1beta API.
+  const client = new GoogleGenAI({ apiKey, apiVersion: "v1beta" });
 
   async function jsonOnce(model: string, request: JsonRequest): Promise<unknown> {
     const interaction = await client.interactions.create(
