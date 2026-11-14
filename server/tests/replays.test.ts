@@ -1,5 +1,5 @@
 // Replay sharing end to end against a temporary data folder: create, page, card, QR, video, bad ids and the cap.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +11,7 @@ import { createApp } from "../app";
 import type { Config } from "../env";
 import { baseUrl, lanAddress } from "../lib/address";
 import { escapeHtml } from "../lib/replayPage";
-import { MAX_REPLAYS, isReplayId } from "../lib/replayStore";
+import { MAX_REPLAYS, createReplay, isReplayId } from "../lib/replayStore";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8]);
 const CARD = `data:image/png;base64,${PNG.toString("base64")}`;
@@ -158,6 +158,37 @@ test("a video is stored, shown on the page and served in ranges", async () => {
   expect(readdirSync(join(dataDir, "replays", made.id)).sort()).toEqual(["card.png", "meta.json", "video.mp4"]);
 });
 
+test("a range past the end of the video is a 416 and a failed precondition is a 412", async () => {
+  const call = await serve();
+  const made = await create(call);
+  expect((await call(`/api/replays/${made.id}/video`, put(VIDEO, "video/webm"))).status).toBe(200);
+
+  const past = await call(`/replays/${made.id}/video`, { headers: { Range: "bytes=500-600" } });
+  expect(past.status).toBe(416);
+  expect(past.headers.get("content-range")).toBe(`bytes */${String(VIDEO.length)}`);
+  expect(await past.text()).toBe("");
+  const stale = await call(`/replays/${made.id}/video`, { headers: { "If-Match": '"another"' } });
+  expect(stale.status).toBe(412);
+  expect(await stale.text()).toBe("");
+});
+
+// Taking away read permission needs a POSIX filesystem and a user who is not root.
+const canLock = process.platform !== "win32" && process.getuid?.() !== 0;
+
+test.skipIf(!canLock)("a stored file that cannot be sent is a 404 labelled as JSON, not as the file", async () => {
+  const call = await serve();
+  const made = await create(call);
+  expect((await call(`/api/replays/${made.id}/video`, put(VIDEO, "video/webm"))).status).toBe(200);
+  // The lookup still finds both files, so the failure comes from sending them, as when a replay is pruned mid-request.
+  for (const file of ["card.png", "video.webm"]) chmodSync(join(dataDir, "replays", made.id, file), 0o000);
+  for (const path of [`/replays/${made.id}/card.png`, `/replays/${made.id}/video`]) {
+    const gone = await call(path);
+    expect(gone.status, path).toBe(404);
+    expect(gone.headers.get("content-type"), path).toContain("application/json");
+    expect(await gone.json(), path).toEqual({ error: "not_found" });
+  }
+});
+
 test("a bad video body is refused and leaves the replay as it was", async () => {
   const call = await serve();
   const made = await create(call);
@@ -249,4 +280,43 @@ test("only the newest 200 replays are kept", async () => {
   expect((await call(`/replays/${ids[1] ?? ""}`)).status).toBe(404);
   expect((await call(`/replays/${ids[2] ?? ""}`)).status).toBe(200);
   expect((await call(`/replays/${ids.at(-1) ?? ""}`)).status).toBe(200);
+});
+
+test("creates that overlap at the cap all keep their replay, and exactly 200 remain", async () => {
+  const call = await serve();
+  const old: string[] = [];
+  for (let index = 0; index < MAX_REPLAYS; index += 1) old.push((await create(call, { meta, card: null })).id);
+  // Big enough that a card is still being written while the next create starts.
+  const big = Buffer.concat([PNG, Buffer.alloc(1_500_000, 7)]);
+  const body = { meta, card: `data:image/png;base64,${big.toString("base64")}` };
+  const overlap = 12;
+  const made = await Promise.all(Array.from({ length: overlap }, () => create(call, body)));
+
+  for (const { id } of made) {
+    expect((await call(`/replays/${id}`)).status, id).toBe(200);
+    const card = await call(`/replays/${id}/card.png`);
+    expect(card.status, id).toBe(200);
+    expect((await card.arrayBuffer()).byteLength, id).toBe(big.length);
+  }
+  const kept = [...old.slice(overlap), ...made.map(({ id }) => id)];
+  expect(new Set(kept).size).toBe(MAX_REPLAYS);
+  expect(readdirSync(join(dataDir, "replays")).sort()).toEqual(kept.sort());
+});
+
+test("a folder another create has only just claimed is not pruned, and an abandoned one goes first", async () => {
+  const replays = join(dataDir, "replays");
+  const abandoned = join(replays, "aaaaaaaaaa");
+  const claimed = join(replays, "bbbbbbbbbb");
+  mkdirSync(abandoned, { recursive: true });
+  const hourAgo = new Date(Date.now() - 3_600_000);
+  utimesSync(abandoned, hourAgo, hourAgo);
+  const link = (id: string): string => `http://test.example/replays/${id}`;
+  const ids: string[] = [];
+  for (let index = 0; index < MAX_REPLAYS - 1; index += 1) ids.push((await createReplay(dataDir, meta, null, link)).id);
+  expect(existsSync(abandoned)).toBe(true);
+
+  mkdirSync(claimed);
+  ids.push((await createReplay(dataDir, meta, null, link)).id);
+  // Two over the cap: the abandoned folder and the oldest real replay go, the fresh claim stays.
+  expect(readdirSync(replays).sort()).toEqual(["bbbbbbbbbb", ...ids.slice(1)].sort());
 });

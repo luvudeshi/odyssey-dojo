@@ -82,8 +82,31 @@ test("a card too big for the server and an empty video are left out rather than 
   expect(JSON.parse(String(calls[0]?.body))).toEqual({ meta, card: null });
 });
 
+test("a card that is not a PNG is left out, and the page and video still go up", async () => {
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0]);
+  const cards = [
+    new Blob([jpeg], { type: "image/jpeg" }),
+    // What the blob says it is does not count, only its bytes.
+    new Blob([jpeg], { type: "image/png" }),
+    new Blob([PNG.subarray(0, 7)], { type: "image/png" }),
+  ];
+  for (const wrong of cards) {
+    const { calls, fetcher } = recorder((seen) => (seen.method === "POST" ? json(created) : json({ ok: true })));
+    expect(await uploadReplay({ meta, card: wrong, video }, { fetcher })).toEqual(links);
+    expect(calls.map((call) => call.method)).toEqual(["POST", "PUT"]);
+    expect(JSON.parse(String(calls[0]?.body))).toEqual({ meta, card: null });
+  }
+  // A PNG whose blob carries no type, or the wrong one, is still a PNG.
+  for (const type of ["", "image/jpeg"]) {
+    const { calls, fetcher } = recorder(() => json(created));
+    expect(await uploadReplay({ meta, card: new Blob([PNG], { type }), video: null }, { fetcher })).toEqual(links);
+    expect(CreateReplayRequestSchema.parse(JSON.parse(String(calls[0]?.body))).card).not.toBeNull();
+  }
+});
+
 test("a large card survives the trip to base64", async () => {
   const bytes = Uint8Array.from({ length: 200_000 }, (_, index) => (index * 31) % 256);
+  bytes.set(PNG.subarray(0, 8));
   const { calls, fetcher } = recorder(() => json(created));
   await uploadReplay({ meta, card: new Blob([bytes]), video: null }, { fetcher });
   const sent = CreateReplayRequestSchema.parse(JSON.parse(String(calls[0]?.body)));
