@@ -13,8 +13,11 @@ const CLIP_DIR = "/audio/stops";
 /** The ambience sits where the music does in the mix (music.ts plays through 0.16), and a little under the battle music. */
 const AMBIENCE_GAIN = 0.16;
 const AMBIENCE_LOUDNESS = 0.08;
-/** No ambience is raised so far that its loudest moment, a log cracking in the fire, passes this before AMBIENCE_GAIN. */
-const AMBIENCE_PEAK = 1.25;
+/**
+ * No ambience is raised so far that its loudest moment passes this before AMBIENCE_GAIN. Only Circe's fire meets it:
+ * a quiet bed with a few sharp pops, which would come out as loud as a blow if the bed were brought to full loudness.
+ */
+const AMBIENCE_PEAK = 2;
 /** A stop's event sounds sit where the usual effects do (sfx.ts plays through 0.5). */
 const EVENT_GAIN = 0.5;
 const EVENT_LOUDNESS = 0.12;
