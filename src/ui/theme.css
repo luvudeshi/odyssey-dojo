@@ -1,0 +1,21 @@
+/* The look of the menu, settings and pause UI. Replace this one block to change the theme; nothing else in src/ui holds a colour, font, radius, border or shadow. Defaults match the title and map screens. */
+:root {
+  --ui-font: "Cinzel", "Trajan Pro", Georgia, serif;
+  --ui-font-body: system-ui, sans-serif;
+  --ui-text: #f1ead9;
+  --ui-text-dim: #f1ead9b3;
+  --ui-accent: #e8b84a;
+  --ui-on-accent: #140c22;
+  --ui-danger: #c0392b;
+  --ui-backdrop: #140c22cc;
+  --ui-panel-bg: #140c22f2;
+  --ui-track-bg: #f1ead933;
+  --ui-focus: #f1ead9;
+  --ui-radius: 0;
+  --ui-border: 3px solid var(--ui-accent);
+  --ui-shadow: none;
+  --ui-title-size: clamp(1.8rem, 4vw, 2.6rem);
+  --ui-button-size: 1.3rem;
+  --ui-label-size: 1.05rem;
+  --ui-focus-ring: 3px solid var(--ui-focus);
+}
