@@ -19,6 +19,9 @@ const LEVELS = ["thunder storm", "drunk and sloppy", "heavy as a mountain", "fas
 );
 const storm = fallbackLevel({ phrase: "thunder storm", god: "athena", rival_god: "poseidon" });
 
+/** The game's moves without the jump, as they were before it landed: low blows are ducked there. */
+const NO_JUMP: ReadonlyMap<string, MoveDef> = new Map([...MOVES].filter(([id]) => id !== "jump"));
+
 /** Every level on its natural stand-in, and forced onto each registered enemy in turn. */
 const CASES = LEVELS.flatMap((level) =>
   [ENEMIES, ...ENEMIES.map((enemy) => [enemy])].map((enemies) => ({ level, enemies, fight: fightFromLevel(level, enemies, MOVES) })),
@@ -38,7 +41,7 @@ const STAND_INS: Readonly<Record<LevelSpec["monster"]["base"], string>> = {
   scylla: "scylla",
   charybdis: "scylla",
   sirens: "scylla",
-  suitor_horde: "polyphemus",
+  suitor_horde: "suitors",
 };
 
 function expectedStandIn(level: LevelSpec, enemies: readonly EnemySpec[]): EnemySpec | undefined {
@@ -247,13 +250,18 @@ test("the stand-in is the enemy with the base's id, else the table's pick, else 
     fightFromLevel({ ...storm, monster: { ...storm.monster, base } }, enemies, MOVES).id;
   expect(pick("cyclops", ENEMIES)).toBe("polyphemus");
   expect(pick("laestrygonian", ENEMIES)).toBe("polyphemus");
-  expect(pick("suitor_horde", ENEMIES)).toBe("polyphemus");
+  expect(pick("suitor_horde", ENEMIES)).toBe("suitors");
   expect(pick("scylla", ENEMIES)).toBe("scylla");
-  expect(pick("charybdis", ENEMIES)).toBe("scylla");
-  expect(pick("sirens", ENEMIES)).toBe("scylla");
-  const sirens: EnemySpec = { ...enemyNamed("scylla"), id: "sirens" };
-  expect(pick("sirens", [...ENEMIES, sirens])).toBe("sirens");
-  expect(pick("sirens", [enemyNamed("polyphemus")])).toBe("polyphemus");
+  // Charybdis and the Sirens are registered under their own ids, so they play themselves.
+  expect(pick("charybdis", ENEMIES)).toBe("charybdis");
+  expect(pick("sirens", ENEMIES)).toBe("sirens");
+  // Without them the table's pick stands in, and without that the first enemy does.
+  const without = (...ids: string[]): EnemySpec[] => ENEMIES.filter((enemy) => !ids.includes(enemy.id));
+  expect(pick("charybdis", without("charybdis"))).toBe("scylla");
+  expect(pick("sirens", without("sirens"))).toBe("scylla");
+  expect(pick("sirens", without("sirens", "scylla"))).toBe("polyphemus");
+  expect(pick("suitor_horde", without("suitors"))).toBe("polyphemus");
+  expect(pick("sirens", [enemyNamed("circe")])).toBe("circe");
   // With nothing registered there is still a fight, and it is valid content.
   const bare = fightFromLevel(storm, [], MOVES);
   expectValidContent(bare, MOVES, "no enemies");
@@ -274,7 +282,18 @@ test("attacks map by direction, merge on one id with added weights and weight-av
     ],
   };
   const polyphemus = enemyNamed("polyphemus");
-  const fight = fightFromLevel(level, ENEMIES, MOVES);
+  // The low strike is jumped, under an id of its own: Polyphemus has no attack that is jumped.
+  const jumped = fightFromLevel(level, ENEMIES, MOVES);
+  expect(jumped.attacks.map((blow) => [blow.id, blow.counter, blow.name, blow.weight, blow.telegraphMs])).toEqual([
+    ["boulder", "duck", "High slam", 0.6, 2200],
+    ["gen_jump", "jump", "Low strike", 0.2, 900],
+    ["grab", "block", "Straight grab", 0.05, 1550],
+    ["club_left", "dodge_right", "Left sweep", 0.5, 1550],
+    ["club_right", "dodge_left", "Right throw", 0.5, 1550],
+  ]);
+
+  // In a game with no jump the low strike is ducked, so it merges with the high slam.
+  const fight = fightFromLevel(level, ENEMIES, NO_JUMP);
   expect(fight.attacks.map((blow) => [blow.id, blow.counter, blow.name])).toEqual([
     ["boulder", "duck", "High slam"],
     ["grab", "block", "Straight grab"],
@@ -293,20 +312,21 @@ test("attacks map by direction, merge on one id with added weights and weight-av
   expect(boulder.damage).toBeGreaterThan(polyphemus.attacks.find((blow) => blow.id === "boulder")?.damage ?? 99);
 
   // A faster, angrier monster warns sooner and hits harder with the same pool.
-  const angry = fightFromLevel({ ...level, monster: { ...level.monster, speed: 1.5, aggression: 1 } }, ENEMIES, MOVES);
+  const angry = fightFromLevel({ ...level, monster: { ...level.monster, speed: 1.5, aggression: 1 } }, ENEMIES, NO_JUMP);
   expect(angry.attacks[0].telegraphMs).toBeLessThan(boulder.telegraphMs);
   expect(angry.attacks[0].damage).toBeGreaterThan(boulder.damage);
   expect(angry.strikeWindowMs).toBeLessThan(fight.strikeWindowMs);
 });
 
-test("low attacks are jumped once the game has a jump, under an id of their own", () => {
-  const duck = MOVES.get("duck");
-  if (!duck) throw new Error("duck is missing");
-  const withJump = new Map<string, MoveDef>([...MOVES, ["jump", { ...duck, id: "jump" }]]);
-  const fight = fightFromLevel(storm, ENEMIES, withJump);
-  expectValidContent(fight, withJump, "with jump");
+test("low attacks are jumped, under an id of their own, and ducked in a game with no jump", () => {
+  expect(MOVES.get("jump")?.kind).toBe("defend");
+  const fight = fightFromLevel(storm, ENEMIES, MOVES);
+  expectValidContent(fight, MOVES, "with jump");
   expect(fight.attacks.find((blow) => blow.counter === "jump")?.id).toBe("gen_jump");
-  expect(fightFromLevel(storm, ENEMIES, MOVES).attacks.map((blow) => blow.counter)).not.toContain("jump");
+  const ducked = fightFromLevel(storm, ENEMIES, NO_JUMP);
+  expectValidContent(ducked, NO_JUMP, "without jump");
+  expect(ducked.attacks.map((blow) => blow.counter)).not.toContain("jump");
+  expect(ducked.attacks.length).toBe(fight.attacks.length - 1);
 });
 
 test("phases start where the fight's clock puts them, speed up with intensity and open with the slower attacks", () => {
@@ -318,8 +338,10 @@ test("phases start where the fight's clock puts them, speed up with intensity an
   const ids = fight.attacks.map((blow) => blow.id);
   expect(phases[1]?.attackIds).toEqual(ids);
   expect(phases[2]?.attackIds).toEqual(ids);
+  // Five defences now that low blows are jumped, so the slower three open the fight.
+  expect(ids.length).toBe(5);
   const openers: readonly string[] = phases[0]?.attackIds ?? [];
-  expect(openers.length).toBe(2);
+  expect(openers.length).toBe(3);
   const warning = (id: string): number => fight.attacks.find((blow) => blow.id === id)?.telegraphMs ?? 0;
   const slowestLeftOut = Math.max(...ids.filter((id) => !openers.includes(id)).map(warning));
   for (const id of openers) expect(warning(id)).toBeGreaterThanOrEqual(slowestLeftOut);
@@ -365,27 +387,35 @@ test("an attack is named for the side its defence answers: a low blow that has t
       expect(blow.name.split(" ")[0], `${level.title}/${blow.id}`).toBe(SIDE_OF_COUNTER[blow.counter]);
     }
   }
-  // The Charybdis level's heaviest ducked attack is a low grab. It used to be shown as "Low grab incoming" over a DUCK prompt.
+  // The Charybdis level's heaviest low attack is a grab. It is jumped and keeps its own name, on Charybdis herself.
   const tide = fallbackLevel({ phrase: "calm and patient", god: "athena", rival_god: "poseidon" });
-  const ducked = fightFromLevel(tide, ENEMIES, MOVES).attacks.find((blow) => blow.counter === "duck");
-  expect([ducked?.id, ducked?.name]).toEqual(["head_high", "High grab"]);
-  const onlyLow = fightFromLevel(levelFrom(["low"]), ENEMIES, MOVES).attacks[0];
-  expect([onlyLow.counter, onlyLow.name]).toEqual(["duck", "High slam"]);
-  // Once the game has a jump, the same blow is jumped and keeps its own name.
-  const duck = MOVES.get("duck");
-  if (!duck) throw new Error("duck is missing");
-  const withJump = new Map<string, MoveDef>([...MOVES, ["jump", { ...duck, id: "jump" }]]);
-  const jumped = fightFromLevel(levelFrom(["low"]), ENEMIES, withJump).attacks[0];
+  const tideFight = fightFromLevel(tide, ENEMIES, MOVES);
+  expect(tideFight.id).toBe("charybdis");
+  const names = (fight: EnemySpec, counter: string): unknown[] =>
+    fight.attacks.filter((blow) => blow.counter === counter).map((blow) => [blow.id, blow.name]);
+  expect(names(tideFight, "jump")).toEqual([["gen_jump", "Low grab"]]);
+  expect(names(tideFight, "duck")).toEqual([["spout", "High throw"]]);
+  const jumped = fightFromLevel(levelFrom(["low"]), ENEMIES, MOVES).attacks[0];
   expect([jumped.counter, jumped.name]).toEqual(["jump", "Low slam"]);
+  // In a game with no jump the same blows are ducked. They used to be shown as "Low grab incoming" over a DUCK prompt.
+  expect(names(fightFromLevel(tide, ENEMIES, NO_JUMP), "duck")).toEqual([["spout", "High grab"]]);
+  const onlyLow = fightFromLevel(levelFrom(["low"]), ENEMIES, NO_JUMP).attacks[0];
+  expect([onlyLow.counter, onlyLow.name]).toEqual(["duck", "High slam"]);
 });
 
 test("a level that attacks from one or two sides is filled in with the stand-in's own attacks, so no single pose wins untouched", () => {
   const style = STYLES[0] ?? { id: "s", name: "S", blurb: "", strikes: ["jab"] };
-  for (const directions of [["center"], ["low"], ["left"], ["left", "right"], ["high", "low"]] as const) {
+  // With the jump, and in a game without it, where a low blow counts as a high one.
+  const games = [
+    { moves: MOVES, game: "jump", lowIs: "low" },
+    { moves: NO_JUMP, game: "no jump", lowIs: "high" },
+  ] as const;
+  const sides = [["center"], ["low"], ["left"], ["left", "right"], ["high", "low"]] as const;
+  for (const { moves, game, lowIs, directions } of games.flatMap((each) => sides.map((directions) => ({ ...each, directions })))) {
     for (const enemy of ENEMIES) {
-      const label = `${directions.join("+")} on ${enemy.id}`;
-      const fight = fightFromLevel(levelFrom(directions), [enemy], MOVES);
-      expectValidContent(fight, MOVES, label);
+      const label = `${directions.join("+")} on ${enemy.id}, ${game}`;
+      const fight = fightFromLevel(levelFrom(directions), [enemy], moves);
+      expectValidContent(fight, moves, label);
       expectPlayableRanges(fight, label);
       expect(new Set(fight.attacks.map((blow) => blow.counter)).size, label).toBe(3);
 
@@ -393,7 +423,7 @@ test("a level that attacks from one or two sides is filled in with the stand-in'
       const own = fight.attacks.filter((blow) => blow.name.endsWith(" slam"));
       const filled = fight.attacks.filter((blow) => !own.includes(blow));
       expect(fight.attacks, label).toEqual([...own, ...filled]);
-      expect(own.length, label).toBe(new Set(directions.map((side) => (side === "low" ? "high" : side))).size);
+      expect(own.length, label).toBe(new Set(directions.map((side) => (side === "low" ? lowIs : side))).size);
       const ownWeight = own.reduce((sum, blow) => sum + (blow.weight ?? 1), 0);
       expect(ownWeight, label).toBeCloseTo(3);
       for (const blow of filled) {
@@ -483,7 +513,7 @@ test("through the real engine: a player who does everything right wins inside 15
   }
 });
 
-test("a player who gets most prompts right finishes in roughly the level's own length and wins, on either model", () => {
+test("a player who gets most prompts right finishes in roughly the level's own length and wins, on every enemy", () => {
   const boxer = STYLES.find((style) => style.id === "boxer");
   if (!boxer) throw new Error("the Boxer style is missing");
   for (const { level, enemies, fight } of CASES) {
@@ -495,11 +525,11 @@ test("a player who gets most prompts right finishes in roughly the level's own l
     const label =
       `${level.title} on ${fight.id} of ${String(enemies.length)}: planned ${String(planned)} s, ` +
       `played ${average.toFixed(0)} s, won ${String(won)}/30, health left ${healthLeft.toFixed(0)}`;
-    // The plan assumes an engine that honours phases and weights. The one on this branch does not yet and runs about
-    // 10 percent long; the phases engine also scales strikes by quality and runs about 10 percent short. Both fit here.
+    // The engine scales strike damage by quality, which the plan leaves out: at this player's 0.7 the fights run 5 to 10
+    // percent short of the plan.
     expect(average, label).toBeGreaterThanOrEqual(planned * 0.8);
     expect(average, label).toBeLessThanOrEqual(planned * 1.25);
-    // The monster's damage is budgeted for the longer fight, so the same level is survivable on Scylla as on Polyphemus.
+    // The monster's damage is budgeted for the longer fight, so the same level is survivable on every registered enemy.
     expect(won, label).toBeGreaterThanOrEqual(27);
     expect(healthLeft, label).toBeGreaterThanOrEqual(50);
   }
