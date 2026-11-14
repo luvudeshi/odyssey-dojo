@@ -1,8 +1,8 @@
 // Checks the marble portrait's pure maths: size, determinism, stone tones, exposure, the gilded rim, the dark vignette,
 // the crop and its mirroring, the blank-frame check, the gilding colour and the wreath's leaves.
 import { expect, test } from "vitest";
-import { gilded, headIsFramed, isBlank, laurelBranch, marbleize, portraitCrop, sourceX } from "../src/gods/marble";
-import type { Pixels, PortraitPose } from "../src/gods/marble";
+import { gilded, headIsFramed, isBlank, laurelBranch, marbleize, portraitCrop, sourceX } from "../../src/ai/gods/marble";
+import type { Pixels, PortraitPose } from "../../src/ai/gods/marble";
 
 const INK = [20, 12, 34] as const;
 /** Mean of the three channels of the darkest and the lightest stone. */

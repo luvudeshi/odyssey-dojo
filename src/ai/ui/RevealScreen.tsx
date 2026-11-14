@@ -2,9 +2,11 @@
 // Works with no camera, no server and no network: each missing piece only shortens the path to the reveal.
 import { useEffect, useRef, useState } from "react";
 import type { PoseFrame } from "../../core/types";
+import { JOINT } from "../../pose/signals";
 import type { PoseTracker } from "../../pose/tracker";
 import { GODS } from "../gods/gods";
 import type { GodId } from "../gods/gods";
+import { renderPortrait } from "../gods/portrait";
 import { clothingTint } from "../gods/tint";
 import { revealGod } from "../revealGod";
 import type { GodReveal } from "../revealGod";
@@ -19,6 +21,8 @@ type Step =
 interface Shot {
   readonly snapshot: string;
   readonly pixels: ImageData;
+  /** The picture itself, kept so the marble portrait is of the pose the player struck, not of a later moment. */
+  readonly canvas: HTMLCanvasElement;
 }
 
 const COUNTDOWN_SECONDS = 3;
@@ -37,20 +41,34 @@ function capture(video: HTMLVideoElement): Shot | null {
     return {
       snapshot: canvas.toDataURL("image/jpeg", 0.85),
       pixels: context.getImageData(0, 0, canvas.width, canvas.height),
+      canvas,
     };
   } catch {
     return null;
   }
 }
 
+/** The player as a marble bust in the god's colours: what they see when the AI's portrait does not arrive. */
+function marblePortrait(god: GodId, shot: Shot, pose: PoseFrame | null): string {
+  const nose = pose?.image[JOINT.nose];
+  const leftShoulder = pose?.image[JOINT.leftShoulder];
+  const rightShoulder = pose?.image[JOINT.rightShoulder];
+  const options = { accent: GODS[god].accent };
+  const marble = renderPortrait(
+    shot.canvas,
+    shot.canvas.width,
+    shot.canvas.height,
+    nose && leftShoulder && rightShoulder ? { ...options, pose: { nose, leftShoulder, rightShoulder } } : options,
+  );
+  return marble ?? shot.snapshot;
+}
+
 export function RevealScreen(props: {
   /** The running camera, or null for keyboard play: the god is then drawn by lot. */
   tracker: PoseTracker | null;
   onDone: (reveal: GodReveal) => void;
-  /** Draws the portrait in the browser when the AI's does not arrive. Left out: the plain snapshot is shown. */
-  drawPortrait?: (god: GodId, video: HTMLVideoElement, frame: PoseFrame | null) => string | null;
 }) {
-  const { tracker, onDone, drawPortrait } = props;
+  const { tracker, onDone } = props;
   const [step, setStep] = useState<Step>({ kind: "ask" });
   const frame = useRef<PoseFrame | null>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -79,7 +97,6 @@ export function RevealScreen(props: {
   const scan = (shot: Shot | null): void => {
     setStep({ kind: "reading" });
     const pose = frame.current;
-    const video = tracker?.video;
     void revealGod(
       {
         snapshot: shot?.snapshot ?? null,
@@ -87,7 +104,7 @@ export function RevealScreen(props: {
         tint: shot ? clothingTint(shot.pixels, pose) : null,
         seed: Date.now(),
       },
-      { drawPortrait: (god) => (video ? (drawPortrait?.(god, video, pose) ?? shot?.snapshot ?? null) : null) },
+      { drawPortrait: (god) => (shot ? marblePortrait(god, shot, pose) : null) },
     ).then((reveal) => {
       if (!alive.current) return;
       setStep({ kind: "revealed", reveal, portrait: null });
@@ -105,8 +122,6 @@ export function RevealScreen(props: {
       else scan(tracker ? capture(tracker.video) : null);
     }, 1000);
     return () => { clearTimeout(timer); };
-    // scan only reads refs and props that cannot change during a countdown.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, tracker]);
 
   if (step.kind === "ask") {
