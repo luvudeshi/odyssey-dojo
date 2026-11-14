@@ -6,6 +6,6 @@ import type { FightingStyle } from "../core/types";
 export const style: FightingStyle = {
   id: "pankration",
   name: "Pankration",
-  blurb: "The all-in fighting of the Greek games: kicks, knees and fists. Odysseus beat Ajax with a kick behind the knee.",
+  blurb: "The way of Theseus, said to have invented pankration to beat the Minotaur: kicks, knees and fists together.",
   strikes: ["front_kick", "knee", "hammer_fist", "uppercut"],
 };
