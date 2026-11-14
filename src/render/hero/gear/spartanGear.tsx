@@ -36,7 +36,7 @@ function Frame({ bone, children }: { bone: string; children: ReactNode }) {
   const q = REST_INV[bone] ?? [0, 0, 0, 1];
   return (
     <BoneMount follow>
-      <group quaternion={q as unknown as [number, number, number, number]}>{children}</group>
+      <group quaternion={[q[0], q[1], q[2], q[3]]}>{children}</group>
     </BoneMount>
   );
 }
