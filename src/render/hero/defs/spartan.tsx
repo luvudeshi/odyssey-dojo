@@ -22,7 +22,8 @@ export const candidate: HeroCandidate = {
   id: "spartan",
   url: "/models/hero/spartan.glb",
   // targetHeight is the bone box (head bone to sole), 1.544 m, which renders the 1.83 m mesh at 1.8 m.
-  fit: { targetHeight: 1.544, rotationY: Math.PI },
+  // offset z (inside the turned group, so +z is away from the camera) steps the whole figure back from the camera so the feet and a crouch stay inside the frame.
+  fit: { targetHeight: 1.544, rotationY: Math.PI, offset: [0, 0, 0.8] },
   tweakMaterial: tweak,
   anchors: SPARTAN_ANCHORS,
   rig: {
