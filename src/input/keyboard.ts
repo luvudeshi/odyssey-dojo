@@ -16,6 +16,8 @@ export function createKeyboard(moves: ReadonlyMap<string, MoveDef>): Keyboard {
   let struck: Strike[] = [];
 
   const down = (event: KeyboardEvent): void => {
+    // Menus and the settings panel are dialogs: their keys are theirs.
+    if (typeof Element !== "undefined" && event.target instanceof Element &&event.target.closest("[role=dialog]")) return;
     const move = byKey.get(event.key);
     if (!move) return;
     // Leave Space on a focused button alone so the result overlay stays keyboard-operable.

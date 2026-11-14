@@ -3,7 +3,10 @@
 //   UPDATE_BALANCE=1 npx vitest run tests/balance
 import { readFileSync, writeFileSync } from "node:fs";
 import { env } from "node:process";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
+
+// 3,600 simulated fights take about 1.5 s alone and far longer when other agents load the machine.
+vi.setConfig({ testTimeout: 60_000 });
 import type { EnemyAttack, EnemySpec } from "../../src/core/types";
 import { ENEMIES } from "../../src/enemies/registry";
 import { STYLES } from "../../src/styles/registry";

@@ -8,9 +8,10 @@ export function isLoopback(address: string | undefined): boolean {
   return address !== undefined && LOOPBACK.includes(address);
 }
 
-/** True for the API paths any device on the network may call: replays and health. */
+/** True for the API paths any device on the network may call: replays, health, and the online rooms a second laptop joins. None of them spends a key. */
 export function isOpenPath(path: string): boolean {
-  return path.startsWith("/api/replays/") || path === "/api/health" || path === "/api/health/";
+  return path.startsWith("/api/replays/") || path === "/api/health" || path === "/api/health/"
+    || path === "/api/rooms" || path.startsWith("/api/rooms/");
 }
 
 /** Whether a request for `path` from `address` may be answered. Express matches routes without regard to case, so this does too. */

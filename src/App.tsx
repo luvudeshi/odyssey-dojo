@@ -11,6 +11,7 @@ import { IntroScreen } from "./screens/IntroScreen";
 import { QuestMap } from "./screens/QuestMap";
 import { TitleScreen } from "./screens/TitleScreen";
 import { WebcamGate } from "./screens/WebcamGate";
+import { SettingsPanel } from "./ui/SettingsPanel";
 import { STYLES } from "./styles/registry";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
@@ -18,6 +19,7 @@ const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
   const [notice, setNotice] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [flow, dispatch] = useReducer(flowReducer, null, () => startAt(ENEMIES, new URLSearchParams(window.location.search).get("stop")));
 
   const starting = useRef(false);
@@ -47,7 +49,12 @@ export function App() {
   };
 
   if (flow.screen === "title") {
-    return <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { keyboardOnly.current = true; dispatch({ type: "ready" }); }} />;
+    return (
+      <>
+        <TitleScreen notice={notice} onCamera={useCamera} onKeyboard={() => { keyboardOnly.current = true; dispatch({ type: "ready" }); }} onSettings={() => { setSettingsOpen(true); }} />
+        {settingsOpen && <SettingsPanel onClose={() => { setSettingsOpen(false); }} />}
+      </>
+    );
   }
 
   if (flow.screen === "style") {
@@ -95,6 +102,8 @@ export function App() {
       style={flow.style}
       tracker={tracker}
       seed={flow.seed}
+      onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
+      onQuit={() => { dispatch({ type: "quit" }); }}
       renderEnd={(won, _score, mastery) => (
         <EndPanel
           won={won}

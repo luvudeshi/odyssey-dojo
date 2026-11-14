@@ -1,6 +1,7 @@
 // Athena's voice: turns combat events into spoken lines, one at a time, and stays silent when a clip is missing.
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
+import { getSettings } from "../settings/store";
 import { clipUrl } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
@@ -226,7 +227,7 @@ export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   };
   load(INDEX_URL, true);
   for (const url of storyIndexes) load(url, false);
-  return { available: (id) => clips.has(id), play: audioPlayer((url) => new Audio(url)), random: Math.random };
+  return { available: (id) => clips.has(id), play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume })), random: Math.random };
 }
 
 // Created with the module so the clip indexes are loaded before the first fight starts.
