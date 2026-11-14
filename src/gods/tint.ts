@@ -35,7 +35,7 @@ export const TINTS: Readonly<Record<TintId, { readonly god: GodId; readonly reas
   },
   gold: {
     god: "apollo",
-    reason: "You wear the warm golds of full daylight, and Apollo cannot resist a colour borrowed from the sun.",
+    reason: "You wear the warm golds of full daylight, and Apollo of the golden sword cannot resist that gleam.",
   },
   green: {
     god: "artemis",
@@ -49,6 +49,28 @@ export const TINTS: Readonly<Record<TintId, { readonly god: GodId; readonly reas
 
 const MIN_VISIBILITY = 0.5;
 const SAMPLES = 24;
+// A webcam washes bright colours out: a white shirt under warm light is still white, so bright needs more colour.
+const BRIGHT = 0.6;
+const GREY_BELOW = 0.16;
+const BRIGHT_GREY_BELOW = 0.28;
+// Weak warm colours are beige, khaki, brown and pink, and also the range of skin. Only a strong warm colour is one
+// somebody chose to wear, so the rest are no cue at all.
+const WARM_SATURATION = 0.7;
+// Forearms and hands may be bare. They are left out of the average: half a forearm's width in shoulder spans, and how
+// far past the wrist the hand runs, as a fraction of the forearm.
+const ARM_REACH = 0.22;
+const HAND = 1.6;
+const ARMS = [
+  [JOINT.leftElbow, JOINT.leftWrist],
+  [JOINT.rightElbow, JOINT.rightWrist],
+] as const;
+
+interface Sum {
+  red: number;
+  green: number;
+  blue: number;
+  count: number;
+}
 
 /** Which colour family a tint belongs to, or null when there is no usable colour. */
 export function tintId(tint: Tint | null): TintId | null {
@@ -62,11 +84,12 @@ export function tintId(tint: Tint | null): TintId | null {
   const saturation = max === 0 ? 0 : spread / max;
   // A black shirt on a webcam is rarely pure black: allow a faint colour cast when it is dim.
   if (max < 0.22 || (max < 0.32 && saturation < 0.3)) return "dark";
-  if (saturation < 0.16) return "grey";
+  if (saturation < (max > BRIGHT ? BRIGHT_GREY_BELOW : GREY_BELOW)) return "grey";
   const sector = max === r ? ((g - b) / spread + 6) % 6 : max === g ? (b - r) / spread + 2 : (r - g) / spread + 4;
   const hue = sector * 60;
-  if (hue < 18 || hue >= 335) return "red";
-  if (hue < 70) return "gold";
+  const strong = saturation >= WARM_SATURATION;
+  if (hue < 18 || hue >= 335) return strong ? "red" : null;
+  if (hue < 70) return strong && max > BRIGHT ? "gold" : null;
   if (hue < 165) return "green";
   return hue < 255 ? "blue" : "purple";
 }
@@ -79,7 +102,8 @@ function seen(point: Landmark): Landmark | null {
  * The average colour of the player's clothing: the middle of the torso, between the shoulders and the hips.
  * `pixels` is RGBA, row by row, as from getImageData. Pose points are in the mirrored picture, so say
  * `mirrored: true` if the pixels were drawn mirrored too; by default they are taken to be the raw camera picture.
- * Returns null when the torso is not in view.
+ * Only cloth should decide it: arms folded across the chest are skipped, and when the torso holds several colours
+ * the average is of the commonest colour family alone. Returns null when the torso is not in view.
  */
 export function clothingTint(
   pixels: PixelGrid,
@@ -106,24 +130,48 @@ export function clothingTint(
   const y1 = clamp01(top + (bottom - top) * 0.85);
   if (x1 <= x0 || y1 <= y0) return null;
 
-  let red = 0;
-  let green = 0;
-  let blue = 0;
-  let count = 0;
+  // Everything from here is in pixels of the mirrored picture.
+  const reach = ARM_REACH * span * width;
+  const forearms = ARMS.flatMap(([elbowAt, wristAt]) => {
+    const elbow = seen(joint(frame.image, elbowAt));
+    const wrist = seen(joint(frame.image, wristAt));
+    if (!elbow || !wrist) return [];
+    const [x, y] = [elbow.x * width, elbow.y * height];
+    return [{ x, y, dx: wrist.x * width - x, dy: wrist.y * height - y }];
+  });
+  const onArm = (x: number, y: number): boolean =>
+    forearms.some((arm) => {
+      const length = arm.dx * arm.dx + arm.dy * arm.dy;
+      const dot = (x - arm.x) * arm.dx + (y - arm.y) * arm.dy;
+      const along = length === 0 ? 0 : Math.min(HAND, Math.max(0, dot / length));
+      return Math.hypot(x - arm.x - along * arm.dx, y - arm.y - along * arm.dy) < reach;
+    });
+
+  const families = new Map<TintId | "none", Sum>();
   for (let row = 0; row < SAMPLES; row++) {
-    const y = Math.min(height - 1, Math.floor((y0 + ((row + 0.5) / SAMPLES) * (y1 - y0)) * height));
+    const down = y0 + ((row + 0.5) / SAMPLES) * (y1 - y0);
+    const y = Math.min(height - 1, Math.floor(down * height));
     for (let column = 0; column < SAMPLES; column++) {
       const along = x0 + ((column + 0.5) / SAMPLES) * (x1 - x0);
+      if (onArm(along * width, down * height)) continue;
       const x = Math.min(width - 1, Math.floor((options.mirrored ? along : 1 - along) * width));
       const at = (y * width + x) * 4;
       const [r, g, b, alpha] = [data[at], data[at + 1], data[at + 2], data[at + 3]];
       // A short buffer or a see-through pixel has no colour to add.
       if (r === undefined || g === undefined || b === undefined || !alpha) continue;
-      red += r;
-      green += g;
-      blue += b;
-      count += 1;
+      const family = tintId([r, g, b]) ?? "none";
+      const sum = families.get(family) ?? { red: 0, green: 0, blue: 0, count: 0 };
+      sum.red += r;
+      sum.green += g;
+      sum.blue += b;
+      sum.count += 1;
+      families.set(family, sum);
     }
   }
-  return count === 0 ? null : [Math.round(red / count), Math.round(green / count), Math.round(blue / count)];
+  let most: Sum | null = null;
+  for (const sum of families.values()) {
+    if (!most || sum.count > most.count) most = sum;
+  }
+  if (!most) return null;
+  return [Math.round(most.red / most.count), Math.round(most.green / most.count), Math.round(most.blue / most.count)];
 }
