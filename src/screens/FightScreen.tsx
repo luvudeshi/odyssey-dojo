@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
+import { playVoice } from "../audio/voice";
 import { startFight, step } from "../combat/engine";
 import type { EnemySpec, FightingStyle, PoseFrame } from "../core/types";
 import { Hud } from "../hud/Hud";
@@ -47,6 +48,7 @@ export function FightScreen(props: {
       last = now;
       current = result.state;
       result.events.forEach(playEvent);
+      playVoice(result.events);
       setState(current);
       if (DEBUG) setConfidences([...MOVES.values()].map((move) => [move.id, move.detect(history)]));
       handle = requestAnimationFrame(tick);
