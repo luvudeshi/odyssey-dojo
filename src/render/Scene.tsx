@@ -7,6 +7,7 @@ import type { CombatState, EnemySpec, MonsterProps, PoseFrame } from "../core/ty
 import { ArenaFor } from "./arena/ArenaFor";
 import { Atmosphere } from "./Atmosphere";
 import { Effects } from "./Effects";
+import { ErrorBoundary } from "./ErrorBoundary";
 import { HitEffects } from "./effects/HitEffects";
 import { hitPulse } from "./effects/pulse";
 import { MONSTER_MODELS } from "./monsters/registry";
@@ -51,7 +52,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
   const weakSpot = phase.kind === "strike" ? phase.weakSpot : null;
   const quality = useQualityToggle();
   return (
-    <>
+    <ErrorBoundary label="canvas" fallback={<p style={{ color: "#fff", padding: "1rem" }}>The 3D view failed to start. Reload the page.</p>}>
       <Canvas
         shadows={quality === "high" ? "percentage" : false}
         dpr={[1, 1.5]}
@@ -62,10 +63,12 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
         }}
       >
         <QualityContext.Provider value={quality}>
-          <Suspense fallback={null}>
-            <ArenaFor enemyId={enemy.id} fallback={<Arena />} />
-            <Atmosphere />
-          </Suspense>
+          <ErrorBoundary key={enemy.id} label="arena" fallback={<Arena />}>
+            <Suspense fallback={<Arena />}>
+              <ArenaFor enemyId={enemy.id} fallback={<Arena />} />
+            </Suspense>
+          </ErrorBoundary>
+          <Atmosphere />
           <group position={[0, 0, -4]}>
             {createElement(MONSTER_MODELS.get(enemy.id) ?? Placeholder, {
               windup: phase.kind === "defend" ? 1 - phase.msLeft / phase.totalMs : 0,
@@ -92,6 +95,6 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           q: quality {quality}
         </div>
       )}
-    </>
+    </ErrorBoundary>
   );
 }
