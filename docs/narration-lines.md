@@ -45,7 +45,7 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `taunt_suitors_2` | The Suitors | The suitors taunt the player | Stranger, you have shot your last. The vultures will have you here. |
 | `taunt_suitors_3` | The Suitors | The suitors taunt the player | Friends, draw your swords and hold the tables up against his arrows! |
 
-Scylla has one taunt because her file has one. When `src/enemies/defs/scylla.ts` gets more, add `taunt_scylla_2` and `taunt_scylla_3` to `TAUNT_LINES` and to this table, then run the clip tool again.
+Scylla has one taunt because her file has one, so the "two or three taunts per monster" point of issue #86 is still open for her. When `src/enemies/defs/scylla.ts` gets more, add `taunt_scylla_2` and `taunt_scylla_3` to `TAUNT_LINES` and to this table, run the clip tool again, and change Scylla's range in `tests/narrationLines.test.ts` from `[1, 3]` to `[2, 3]`.
 
 ## Lines recorded first
 
@@ -87,11 +87,36 @@ The tool writes both `index.json` files. It does not touch the lines recorded fi
 
 ## How the game speaks them
 
-`src/audio/storyVoice.ts` speaks these through Athena's voice, so two lines are never heard together. Each function returns a promise that never rejects. It resolves `false` when nothing could be said.
+`src/audio/storyVoice.ts` speaks these through Athena's voice, so two lines are never heard together. Each function returns a promise that never rejects. It resolves `true` when the voice took the line, even if it was cut short, and `false` when it never started.
 
-- `speakNarration(enemyId, "before" | "after")`: Homer's line for that stop. It waits up to 6 seconds for the voice to be free.
+- `speakNarration(enemyId, "before" | "after")`: Homer's line for that stop. If another story line is playing it is cut off first. Then it waits up to 6 seconds for Athena to finish.
 - `speakResult(enemyId, won)`: on a win, the stop's "after" line (or `homer_win` for a fight with none). On a loss, `homer_loss`. It waits for Athena's own result line to end.
-- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It waits up to 2.5 seconds, so it follows Athena's phase line. Athena's next call cuts a taunt short.
+- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It is first tried a tenth of a second later and waits up to 3.5 seconds in all, so Athena's phase line for that frame always goes first. It does not matter whether it is called before or after `playVoice`. Athena's next call cuts a taunt short.
 - `stopStory()`: drops a line that is still waiting and cuts off a story line that is playing. Athena's lines are left alone.
 
 Asking for a line that is already waiting or playing joins it, so it is heard once. Asking again after it is over speaks it again, so call these from an effect that runs once per screen, not on every frame.
+
+### The wiring, and why the cleanup is required
+
+None of this is wired into the screens yet. Those files are the lead's. The lines they need:
+
+```tsx
+// src/screens/IntroScreen.tsx
+useEffect(() => { void speakNarration(enemy.id, "before"); return stopStory; }, [enemy.id]);
+
+// src/screens/EndScreen.tsx, in EndPanel, which needs a new prop enemyId (App.tsx passes enemyId={enemy.id})
+useEffect(() => { void speakResult(enemyId, won); return stopStory; }, [enemyId, won]);
+
+// src/screens/FightScreen.tsx, inside result.events.forEach
+if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(enemy.id);
+// and stopStory() in that effect's cleanup, so a waiting taunt is not heard on the next screen
+```
+
+`return stopStory` is required, not optional. Homer's new lines are 6 to 9 seconds long and wait up to 6 seconds for Athena. Without the cleanup:
+
+- A line still waiting when the screen is left starts inside the next fight. For example `homer_loss` after "Fight again".
+- A before-line still playing when the fight begins holds the voice, so Athena's `fight_start` is refused.
+
+One case is safe even without it: a new Homer line cuts off an older story line, so the next intro is not silent while the last result line plays on.
+
+A taunt in a fight is usually cut short. Taunts are 2.7 to 5.8 seconds long and Athena's calls come every second or two. Nobody has listened to this in a real fight yet. If it sounds bad, ask for the taunt where no call is due, such as the start of the fight.
