@@ -33,8 +33,8 @@ export const enemy: EnemySpec = {
     },
   ],
   weakSpots: [
-    { id: "throat", label: "a singing throat", position: [0, 3.2, 0.8], moves: ["jab", "cross", "spear_thrust"] },
-    { id: "wing", label: "an open wing", position: [-1.1, 3, 0.6], moves: ["hook", "overhead_strike"] },
+    { id: "throat", label: "a singing throat", position: [0, 3.2, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm"] },
+    { id: "wing", label: "an open wing", position: [-1.1, 3, 0.6], moves: ["hook", "overhead_strike", "knife_hand", "hammer_fist", "rising_palm"] },
   ],
   taunts: [
     "Come closer, Odysseus, pride of the Achaeans. Stay your ship and hear us.",

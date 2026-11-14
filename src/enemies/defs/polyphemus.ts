@@ -26,8 +26,8 @@ export const enemy: EnemySpec = {
     { name: "Blinded", belowHp: 0.3, attackIds: ["club_left", "club_right", "boulder"], telegraphScale: 0.65 },
   ],
   weakSpots: [
-    { id: "eye", label: "his one eye", position: [0, 4.1, 0.95], moves: ["jab", "cross", "overhead_strike"] },
-    { id: "gut", label: "his gut", position: [0, 2, 1.1], moves: ["hook", "cross", "spear_thrust"] },
+    { id: "eye", label: "his one eye", position: [0, 4.1, 0.95], moves: ["jab", "cross", "overhead_strike", "reverse_punch", "hammer_fist", "rising_palm"] },
+    { id: "gut", label: "his gut", position: [0, 2, 1.1], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm"] },
   ],
   finisher: "stake_thrust",
   taunts: [

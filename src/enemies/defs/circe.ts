@@ -27,8 +27,8 @@ export const enemy: EnemySpec = {
     { name: "Unmasked", belowHp: 0.3, attackIds: ["wand_left", "wand_right", "cup", "spell"], telegraphScale: 0.75 },
   ],
   weakSpots: [
-    { id: "wand_hand", label: "her wand hand", position: [0.9, 2.6, 0.7], moves: ["hook", "cross", "overhead_strike"] },
-    { id: "guard", label: "her open guard", position: [0, 2.2, 0.8], moves: ["jab", "cross", "spear_thrust"] },
+    { id: "wand_hand", label: "her wand hand", position: [0.9, 2.6, 0.7], moves: ["hook", "cross", "overhead_strike", "knife_hand", "hammer_fist", "chain_punch"] },
+    { id: "guard", label: "her open guard", position: [0, 2.2, 0.8], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm"] },
   ],
   taunts: [
     "Drink, stranger. You have come a long way.",
