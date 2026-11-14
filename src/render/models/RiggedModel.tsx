@@ -22,6 +22,8 @@ export interface RiggedModelProps {
   readonly hitFlash?: number;
   /** Children parented to the bone of that name (a weak-spot marker, a glowing eye). They inherit the model's scale. */
   readonly anchors?: Readonly<Record<string, ReactNode>>;
+  /** Runs once on this instance's own copy of each material, to recolour or flat-shade a pack that does not match the look. Keep it a stable function. */
+  readonly tweakMaterial?: (material: Material) => void;
 }
 
 // Draco GLBs decode from our own files, never gstatic, so venue wifi cannot break them.
@@ -73,7 +75,7 @@ function hasEmissive(material: Material): material is EmissiveMaterial {
   return "emissive" in material && (material as EmissiveMaterial).emissive instanceof Color;
 }
 
-export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors }: RiggedModelProps) {
+export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors, tweakMaterial }: RiggedModelProps) {
   const gltf = useGLTF(url);
   const rig = useMemo(() => {
     const root = clone(gltf.scene);
@@ -86,6 +88,7 @@ export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors }: RiggedM
       const own = Array.isArray(mesh.material) ? mesh.material.map((m) => m.clone()) : mesh.material.clone();
       mesh.material = own;
       for (const material of Array.isArray(own) ? own : [own]) {
+        tweakMaterial?.(material);
         if (hasEmissive(material)) flashables.push({ material, base: material.emissive.clone() });
       }
     });
@@ -95,7 +98,7 @@ export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors }: RiggedM
     const mixer = new AnimationMixer(root);
     const actions = new Map<string, AnimationAction>(gltf.animations.map((clip) => [clip.name, mixer.clipAction(clip)]));
     return { root, flashables, scale, position, mixer, actions, available: new Set(actions.keys()) };
-  }, [gltf, fit.targetHeight, fit.offset, fit.footOffset]);
+  }, [gltf, fit.targetHeight, fit.offset, fit.footOffset, tweakMaterial]);
 
   const live = useRef<{ current: AnimationAction | null; name: string | null; decision: ClipDecision }>({ current: null, name: null, decision: newDecision() });
 
