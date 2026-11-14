@@ -61,7 +61,8 @@ export function Body(props: MonsterProps) {
       l[key] = MathUtils.damp(l[key], target[key], key === "collapse" ? 2.5 : p.attackId || p.defeated ? 9 : 6, dt);
     }
     l.phase = MathUtils.damp(l.phase, p.phaseIndex, 2.5, dt);
-    const flash = Math.max(p.hitFlash, decay(nowSeconds(), battle.enemyHitAt, 0.35));
+    // The killing blow must not blow the funnel out to white: the hit wash fades out as it collapses.
+    const flash = Math.max(p.hitFlash, decay(nowSeconds(), battle.enemyHitAt, 0.35)) * (p.defeated ? 0.35 : 1);
     const t = clock.elapsedTime;
     for (const material of [parts.body, parts.sheet, parts.foamMat]) {
       updateWater(material, { time: t, flash, spin: l.spin, defeat: l.collapse, phase: l.phase });
