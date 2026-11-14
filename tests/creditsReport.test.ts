@@ -78,6 +78,17 @@ describe("reading a licence", () => {
     expect(readLicence("made by the team").status).toBe("ok");
   });
 
+  it("reads the ElevenLabs terms, the form our music rows use, as made by the team", () => {
+    expect(readLicence("ElevenLabs Terms of Service and Music Terms, see below")).toEqual({
+      status: "ok",
+      label: "made by the team with ElevenLabs (its Terms of Service)",
+    });
+    const row = "| Battle music | `public/audio/music/fight.mp3` | ElevenLabs music | ElevenLabs Terms of Service |";
+    const table = ["| Clip | File | Source | Licence |", "|---|---|---|---|", row].join("\n");
+    const credit = findCredit("public/audio/music/fight.mp3", creditLines({ file: "CREDITS.md", text: table }));
+    expect(credit).toMatchObject({ line: 3, licence: { status: "ok" } });
+  });
+
   it("refuses the Creative Commons variants the rules do not allow", () => {
     expect(readLicence("CC BY-NC 4.0")).toEqual({ status: "not-allowed", label: "CC BY-NC 4.0" });
     expect(readLicence("CC BY-SA 3.0").status).toBe("not-allowed");

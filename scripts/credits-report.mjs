@@ -34,7 +34,9 @@ const NOT_ALLOWED = [
 const CC0 = /\bCC[ -]?0\b/i;
 const CC_BY = /\bCC[ -]?BY\b(?:[ -]?(\d\.\d))?/i;
 const TEAM = /\b(?:made|generated|recorded|built|drawn) by the team\b[^|.`;]*/i;
-const AUTHOR = /\bby (?!the team\b)([^,;|()`]+?)(?= is licensed\b|[,;|()`]|$)/;
+// The form the music rows in CREDITS.md use. ElevenLabs output is ours: we generated it with our own account.
+const ELEVENLABS = /\bElevenLabs Terms of Service\b/i;
+const AUTHOR =/\bby (?!the team\b)([^,;|()`]+?)(?= is licensed\b|[,;|()`]|$)/;
 const PATH = /(?<![\w./-])public\/[\w.\-/*]+/g;
 
 /**
@@ -71,6 +73,7 @@ export function readLicence(text, context = text) {
   }
   const team = TEAM.exec(text);
   if (team) return { status: "ok", label: team[0].trim() };
+  if (ELEVENLABS.test(text)) return { status: "ok", label: "made by the team with ElevenLabs (its Terms of Service)" };
   return { status: "missing", label: "" };
 }
 
