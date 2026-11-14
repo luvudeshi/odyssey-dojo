@@ -26,8 +26,8 @@ describe("warrior hero model", () => {
 
   it("only names clips the file has", () => {
     const rig = candidate.rig;
-    const named = [rig?.idle, ...Object.values(rig?.poses ?? {}).flat(), ...Object.values(rig?.byMove ?? {})];
-    for (const name of named) expect(clips.has(name ?? "")).toBe(true);
+    const named = [rig.idle, ...Object.values(rig.poses).flat(), ...Object.values(rig.byMove ?? {})];
+    for (const name of named) expect(clips.has(name)).toBe(true);
   });
 
   it("mounts gear on bones that exist", () => {
