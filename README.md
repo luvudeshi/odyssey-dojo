@@ -1,8 +1,14 @@
 # Odyssey Fighter
 
-A full-body 3D fighting game for HackUTA 2026 (theme: Homer's Odyssey). Your webcam tracks your body; you block, dodge and strike the monsters Odysseus met on his way home, and the game teaches you each move mid-fight.
+A full-body 3D fight training game for HackUTA 2026 (theme: Homer's Odyssey). Your webcam tracks your body; you follow Odysseus's route home, block, dodge and strike the monsters he met, and learn each move mid-fight.
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first: it has the plan, how the pieces fit, the rules for working together and the list of tasks to pick up.
+## Start here
+
+1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the plan, every feature, how the pieces fit, who owns what, and the timeline.
+2. [docs/COORDINATION.md](docs/COORDINATION.md): how you and your coding agent claim a task and report on it.
+3. [The issue list](https://github.com/toyeshhm/odyssey-fighter/issues): one issue per task. Pick an `open` one nobody is assigned to.
+
+Coding agents load `AGENTS.md` / `CLAUDE.md`, which point at the same two docs.
 
 ## Run it
 

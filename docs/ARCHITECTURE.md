@@ -1,114 +1,130 @@
 # Odyssey Fighter: plan and architecture
 
-HackUTA 2026. Theme: Homer's Odyssey. Judged on Robustness (does it work), Theme, Creativity, at a table where a judge plays on a laptop webcam: 3 minutes to present, 2 for questions.
+HackUTA 2026. Theme: Homer's Odyssey. Judged on Robustness (does it work), Theme and Creativity. One judge plays on our laptop for about 3 minutes, then 2 minutes of questions. **Deadline: 12 PM Sunday.**
+
+Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-fighter/issues). How to claim one and report on it: [COORDINATION.md](COORDINATION.md).
 
 ## The game
 
-A full-body 3D fighting game. Your webcam tracks your body. You fight the monsters Odysseus met on his way home, and the game teaches you each move in the middle of the fight.
+A full-body 3D fight training game. Your webcam tracks your body. You follow Odysseus's route home, fight the monsters he met in the order he met them, and learn real fighting moves as you go.
 
-1. **Pick a fighting style.** Boxer (jab, cross, hook: Odysseus boxes the beggar Irus in Book 18) or Hoplite (spear thrust, overhead strike).
-2. **Fight.** Every exchange has two beats:
-   - **Defend.** The monster winds up and a red prompt card says what stops it (BLOCK, DUCK, DODGE LEFT, DODGE RIGHT) with a stick-figure diagram. The defense counts if you are holding it when the attack lands.
-   - **Strike.** A gold ring marks a weak spot and a gold card names a strike from your style (JAB, LEFT HOOK...). Land it before the window closes.
-3. **Learn as you play.** Each time you get a move right, its prompt shrinks: full card with diagram and hint, then just the word, then just the timer. Hits in a row build a combo that adds damage.
-4. **Climb the ladder.** Polyphemus, then Scylla, then a boss. Win them all and Ithaca is yours.
+1. **Meet your god.** The camera looks at you and names the Olympian you take after. That god grants you one power.
+2. **Pick a fighting style.** Boxer (jab, cross, hook), Hoplite (spear thrust, overhead strike) or Pankration (kicks and knees).
+3. **Follow the quest map.** Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca. Each fight you win opens the next.
+4. **Fight.** Every exchange has two beats:
+   - **Defend.** The monster winds up and a prompt says what stops it: BLOCK, DUCK, DODGE LEFT, DODGE RIGHT.
+   - **Strike.** A weak spot lights up and a prompt names a strike. A faint ghost figure shows the pose to hit. The better you throw it, the more damage it does.
+5. **Learn as you play.** Each prompt shrinks as you get the move right, and each move says what it is for in real self-defense.
+6. **Finish it.** Each monster ends on one big taught move. Polyphemus: drive the stake into his eye.
+7. **Bring a friend.** A second player steps into frame, or joins your room from another laptop. Strike together for double damage.
 
-Every move also has a key, so the game is playable with no camera. That is the demo fallback.
+Every move also has a key, so the game runs with no camera and no network. That is the demo fallback.
 
-## Deadline
+**The judged demo is the Polyphemus fight.** It gets the polish. Everything else exists to make the quest real around it.
 
-The opening slides say Devpost is due **11:59 PM Saturday** and judging is 1 PM Sunday. Until an organizer says otherwise, a playable build and a Devpost entry go in by 11:30 PM Saturday. Anything after that is polish.
+## Features
 
-## Approaches we considered
+### Must have: frozen at 1 AM Sunday
+| # | Feature | Issue |
+|---|---|---|
+| 1 | Webcam pose drives every move, with a key for each as fallback | #7 |
+| 2 | Calibration countdown; "step back, I can't see you" pause | #8 |
+| 3 | Style select: Boxer, Hoplite | built |
+| 4 | Moves taught in the fight, prompts that fade as you learn; each move says what it teaches | built, #4 |
+| 5 | The player's movements shown live on a 3D figure | built, #7 |
+| 6 | Damage scales with how well the move is done (GOOD, GREAT, PERFECT) | #23 |
+| 7 | Faint ghost outline of the move to make | #24 |
+| 8 | Polyphemus in three phases: The Cave, The Club, Blinded | #5, #11, #12 |
+| 9 | Finishing move: the stake | #6, #13 |
+| 10 | Athena as voice coach, clips made ahead of time so it works offline | #14, #15 |
+| 11 | Hit feel: shake, flashes, sparks, a cave arena | #9, #10 |
+| 12 | Quest map in Odyssey order, Polyphemus playable, the rest shown ahead | #26 |
+| 13 | Title, intro line, win and loss screens | #16 |
+| 14 | Detectors tuned on all three of us | #17 |
+| 15 | Devpost, demo video, backup recording | #21 |
 
-- **2D vase-painting look.** Cheapest to make cohesive. Dropped: we want it to feel like a real 3D game.
-- **3D with downloaded rigged models from the start.** Looks most finished, but mapping webcam pose onto a rigged character is fiddly and blocks everything else.
-- **3D built in code now, models later (chosen).** Monsters and the player are made of simple 3D shapes. Each monster's model is one file behind a fixed interface, so swapping in a downloaded model later touches nothing else.
-- **A separate tutorial with a 3D teacher.** Dropped for now: prompts inside the fight teach the moves. A tutorial can come later.
+### Should have: in this order, after the freeze (earlier if it is your own claimed area and touches nothing shared)
+| # | Feature | Issue |
+|---|---|---|
+| 16 | God scan: a webcam snapshot goes to Gemini and comes back as your god; falls back to body measurements in the browser | #20, #2 |
+| 17 | Divine power: defends fill a meter, your god's gesture spends it | #30 |
+| 18 | Kicks and the Pankration style | #25 |
+| 19 | Two players on one camera, double damage | #28 |
+| 20 | Scylla, the second stop | #27 |
+| 21 | Online rooms: host a fight, a friend joins with a code | #29 |
+| 22 | Player figure dressed for the style; real sound effects; Homer's narration and taunts | #18, #19, #2 |
 
-Fresh code only. Ideas from our earlier pose-tracking work are fine; no code is copied from it.
+### Stretch
+- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Reached from its own menu entry, never in the way of the quest.
+- Replay and god card with a QR code (#2).
+- More quest stops: Circe, the Sirens, Charybdis, the suitors.
+- Difficulty that adapts to the player. Rigged downloaded models.
 
 ## How it fits together
 
 ```
-webcam -> pose/tracker -> pose/signals (history, baseline) -> moves/defs/* (detectors)
-                                                                   |
-keyboard -> input/keyboard ----------------------------> input/poseInput (merge)
-                                                                   |
-                                                         CombatInput (held, struck)
-                                                                   v
-            enemies/defs/* + styles/defs/* ----------> combat/engine.step()
-                                                                   |
-                                         CombatState + CombatEvents each frame
-                                             |              |            |
-                                       render/Scene      hud/Hud     audio/sfx
+webcam -> pose/tracker -> pose/signals (history, baseline, quality) -> moves/defs/* (detectors)
+                                                                            |
+keyboard -> input/keyboard --------------------------------------> input/poseInput (merge)
+remote player -> net/ (rooms) ------------------------------------------->  |
+                                                              CombatInput (held, struck + quality + player)
+                                                                            v
+        enemies/defs/* + styles/defs/* + god power ------------> combat/engine.step()
+                                                                            |
+                                                  CombatState + CombatEvents each frame
+                                                   |            |           |          |
+                                             render/Scene    hud/Hud   audio/*    net/ (to guest)
+
+server/ (optional): Gemini and ElevenLabs keys, god reveal, AI fights, room relay.
+The game must start and play a full fight with the server off.
 ```
 
-- **`combat/engine.ts` is pure.** No camera, graphics or clock. It takes the state, what the player is doing and the time passed, and returns the new state plus events. Everything visible is drawn from that state. This is why the keyboard and the webcam are interchangeable and why the rules are tested without a browser.
-- **Content registers itself.** Moves, styles, enemies and monster models are each one file in a `defs/` or `models/` folder. A registry picks up every file in the folder, so adding one never means editing a shared list.
-- **`tests/content.test.ts` guards merges.** It fails if an enemy or style names a move that doesn't exist or is the wrong kind, or if two moves share a key.
+- **`combat/engine.ts` is pure.** No camera, graphics, clock or network. It takes the state, what the players are doing and the time passed, and returns the new state plus events. That is why keyboard, webcam and a remote player are interchangeable, and why the rules are tested without a browser.
+- **Content registers itself.** Moves, styles, enemies and monster models are one file each in a `defs/` or `models/` folder. Adding one never means editing a shared list.
+- **Everything visible reads state and events.** Scene, HUD, effects and audio never change the fight.
+- **`tests/content.test.ts` guards merges.** It fails if an enemy or style names a move that does not exist.
+- **The first base stays.** Every feature above is an addition to it, so nothing was thrown away.
 
-## Folders
+### Contract changes (#4, lead, lands first)
+- `EnemySpec`: `phases`, `finisher`, `place`, `book`. `EnemyAttack`: optional `weight`.
+- `CombatPhase`: `finisher`. `CombatEvent`: `phaseChanged`, `finished`, `powerUnleashed`; `enemyHit` carries `quality`.
+- `CombatInput.struck`: each entry has the move, a 0..1 `quality` and the player (0 or 1).
+- `MoveDef`: `ghost` (target pose), `teaches` (one line), optional `quality(history)`.
+- `CombatState`: `power` (0..1), `players` (1 or 2). `MonsterProps`: `phaseIndex`, `hitFlash`.
+
+## Folders and owners
 
 | Path | What | Owner |
 |---|---|---|
-| `src/core/types.ts` | Shared contracts: every type that crosses a folder boundary | **Lead** |
-| `src/combat/` | Fight rules | **Lead** |
-| `src/pose/` | Webcam tracking, pose history, shared measurements | **Lead** |
-| `src/input/` | Keyboard and pose turned into combat input | **Lead** |
-| `src/screens/`, `src/App.tsx` | Screen flow and the per-frame loop | **Lead** |
-| `src/moves/defs/` | One file per move: prompt, hint, key, diagram, detector | Anyone |
-| `src/styles/defs/` | One file per fighting style | Anyone |
-| `src/enemies/defs/` | One file per monster, as data | Anyone |
-| `src/render/monsters/models/` | One file per monster's 3D model | Anyone |
-| `src/render/` (rest), `src/hud/`, `src/audio/` | Arena, player figure, overlays, sound | Anyone, one person per file at a time |
-| `tests/` | Engine and content tests | Whoever changes the code |
+| `src/core/types.ts` | Shared contracts | **Lead** (toyeshhm) |
+| `src/combat/`, `src/pose/`, `src/input/` | Fight rules, tracking, input | **Lead** |
+| `src/screens/FightScreen.tsx`, `src/App.tsx` | Per-frame loop and screen flow | **Lead** |
+| `server/`, `src/ai/`, `src/audio/`, `src/replay/`, `public/audio/` | Backend, god reveal, AI fights, all sound | luvudeshi (#2) |
+| `src/render/arena/`, `src/render/effects/`, title and end screens | Cave, hit feedback, screens | tagrawal029 (#22) |
+| `src/moves/defs/`, `src/styles/defs/`, `src/enemies/defs/`, `src/render/monsters/models/` | One file per move, style, monster, model | Whoever holds the issue |
+| `src/render/` (rest), `src/hud/`, `src/net/` | Scene, figure, overlays, rooms | Whoever holds the issue |
+| `package.json`, `vite.config.ts`, `Makefile`, `index.html`, `.gitignore`, `README.md` | Shared files | PR only |
 
-## Working together
+## Timeline
 
-- Branch from `main`, one feature per branch, open a PR. The lead merges.
-- `make check` must pass before you open the PR.
-- Stay inside the files your task names. If you need a change to `src/core/types.ts` or anything marked **Lead**, ask first: those are the files everyone else depends on.
-- Tune move detectors at `http://localhost:5173/?debug`, which shows every detector's live confidence. A move fires at 0.7.
+| When | Goal |
+|---|---|
+| Sat by 4 PM | Plan and issues live. Contract changes (#4) merged. |
+| Sat 4 to 8 PM | Webcam working on a real body (#7). Phases and finisher in the engine (#5, #6). Arena, hit feel, Athena, Polyphemus model and data in parallel. |
+| **Sat 8 PM** | **Checkpoint 1:** one full webcam fight, start to finish, on the demo laptop. |
+| Sat 8 PM to Sun 1 AM | Quality scoring, ghost outline, quest map, calibration, tuning. All must-haves merged. |
+| **Sun 1 AM** | **Checkpoint 2:** must-haves frozen on a tag. |
+| Sun 1 to 7 AM | Should-haves in order. Sleep in shifts. |
+| Sun 7 to 10 AM | No new features. Test in the judging room's light. Record the backup run and the demo video. |
+| Sun 10 to 11:30 AM | Devpost written and submitted, 30 minutes spare. |
 
-## Tasks to pick up
+## Approaches we considered
 
-Each is self-contained and lands in its own files. Put your name next to one in the team chat before you start.
+- **2D vase-painting look.** Cheapest to make cohesive. Dropped: we want a real 3D game.
+- **Downloaded rigged models from the start.** Looks most finished, but mapping webcam pose onto a rigged character blocks everything else.
+- **3D built in code now, models later (chosen).** Each monster's model is one file behind a fixed interface, so swapping one in later touches nothing else.
+- **A separate tutorial.** Dropped: prompts and the ghost outline teach inside the fight.
+- **A full quest of short fights.** Dropped for the judged build: one deep fight is safer in front of a judge. The quest map keeps the journey.
+- **Rewriting the base.** Not needed: every new feature is an addition to the contracts.
 
-**Moves** (`src/moves/defs/`, copy `jab.ts` or `block.ts`)
-- [ ] Uppercut for Boxer: wrist rises fast with the elbow bent. Add it to `styles/defs/boxer.ts` and to enemy weak spots.
-- [ ] Shield bash for Hoplite: left forearm across the chest, then pushed forward.
-- [ ] Tune every detector on a real webcam with `?debug`: thresholds in `pose/signals.ts` and each move file are first guesses.
-
-**Monsters**
-- [ ] Scylla's 3D model (`render/monsters/models/Scylla.tsx`, copy `Polyphemus.tsx`): six necks that strike on `head_left`, `head_right`, `head_high`, `head_center`. Her data already exists.
-- [ ] Boss: data file plus model. Antinous and the suitors, or Poseidon. Faster warnings, more health.
-- [ ] Charybdis or the Sirens as a fourth fight.
-- [ ] Give Polyphemus a club, a hit reaction and an idle sway.
-- [ ] Swap a monster for a free rigged model (Quaternius, Poly Pizza), with credit in the README.
-
-**Look and feel**
-- [ ] Arena dressing: sea, cave walls, torches, a sky. One arena per enemy if time allows.
-- [ ] Hit feedback: screen shake, a flash on the monster, sparks at the weak spot.
-- [ ] Player figure: thicker limbs, a helmet, a shield or gloves that match the chosen style.
-- [ ] Title screen and style-select art.
-
-**Sound** (`src/audio/sfx.ts`)
-- [ ] Replace the placeholder tones with real clips in `public/audio/`.
-- [ ] Athena as coach: ElevenLabs lines generated ahead of time ("Hands up!", "Now, his eye!") played on `telegraph` and `opening` events.
-- [ ] Monster taunts and a Homer-style line at the start and end of each fight, from each enemy's `taunts`.
-
-**Robustness**
-- [ ] "Step back so the camera sees you" pause when the body leaves the frame.
-- [ ] A calibration moment before the first fight ("stand still"), with a visible countdown.
-- [ ] Test in the judging room's lighting; record a backup video of a full run.
-
-**Submission**
-- [ ] Devpost page, screenshots and the demo video.
-
-## Stretch goals (only after the base game is solid)
-
-- **God scan:** the webcam picks which Olympian you are and that god grants a special power on a gesture.
-- **AI-generated fights:** describe a fighting style in your own words and get a custom moveset and arena.
-- **Replay and god card** with a QR code.
-- **Difficulty that adapts** to how well you are doing.
+Fresh code only. Ideas from earlier projects are fine; no code is copied from them.
