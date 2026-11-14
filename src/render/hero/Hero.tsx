@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
+import { MathUtils } from "three";
 import type { Color, Group, Material, Mesh, Object3D } from "three";
 import type { PoseFrame } from "../../core/types";
 import { battle, nowSeconds } from "../battle";
@@ -14,7 +15,9 @@ import type { HeroCandidate } from "./candidates";
 import { chooseHeroPose, decideHeroPose } from "./heroClips";
 import type { HeroInput } from "./heroClips";
 
-const GHOST_OFFSET: readonly [number, number, number] = [-1.1, 0, 0.9];
+const GHOST_OFFSET: readonly [number, number, number] = [-0.9, 0, 0.2];
+/** Smaller than the hero so the whole body stays in frame beside it. */
+const GHOST_SCALE = 0.7;
 const GHOST_OPACITY = 0.25;
 /** Same threshold PlayerFigure uses to decide the webcam is live. */
 const STALE_SECONDS = 0.5;
@@ -65,7 +68,12 @@ function GlbHero({ candidate, ready }: { candidate: HeroCandidate; ready: RefObj
   const prepare = useMemo(() => tinter(candidate.tint), [candidate.tint]);
   useEffect(() => { if (DEBUG) Object.assign(window, { __heroGroup: group.current, __battle: battle, __now: nowSeconds }); }, []);
   // PlayerFigure steps the hero about the arena and writes battle.heroX/Z; the model follows it.
-  useFrame(() => { group.current?.position.set(battle.heroX, 0, HOME_Z + battle.heroZ); });
+  useFrame((_, delta) => {
+    const g = group.current;
+    if (!g) return;
+    g.position.set(battle.heroX, 0, HOME_Z + battle.heroZ);
+    g.scale.y = MathUtils.damp(g.scale.y, battle.held.has("duck") ? (candidate.rig.duck?.squash ?? 1) : 1, 14, Math.min(delta, 0.05));
+  });
   return (
     <group ref={group} position={[0, 0, HOME_Z]}>
       <RiggedModel
@@ -107,6 +115,7 @@ function GhostedHero({ candidate, poseRef }: { candidate: HeroCandidate; poseRef
     g.visible = next !== "hidden";
     if (next === "ghost") g.position.set(...GHOST_OFFSET);
     else g.position.set(0, 0, 0);
+    g.scale.setScalar(next === "ghost" ? GHOST_SCALE : 1);
     for (const m of mats.current) {
       if (next === "ghost" && "color" in m) {
         // A flat pale glow reads as a hologram; the bronze metal would just look dark at 25%.

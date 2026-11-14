@@ -52,6 +52,10 @@ describe("decideHeroPose", () => {
     expect(decide("victory")).toMatchObject({ clip: "Cheer", loop: false });
     expect(decide("defeat")).toMatchObject({ clip: "Die", loop: false });
   });
+  test("duck can freeze a clip on its crouch frame instead of looping it", () => {
+    const held = { ...rig, duck: { hold: 0.3 } };
+    expect(decideHeroPose(held, "duck", calm, new Set(["Idle", "Crouch"]))).toMatchObject({ clip: "Crouch", scrub: 0.3 });
+  });
   test("uses the next clip in the list when the first is missing", () => {
     expect(decide("block", calm, new Set(["Idle", "Block"])).clip).toBe("Block");
   });

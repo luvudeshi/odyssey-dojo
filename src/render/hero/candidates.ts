@@ -22,7 +22,7 @@ export const knight: HeroCandidate = {
     idle: "Idle",
     poses: {
       block: ["Blocking", "Block"],
-      duck: ["Jump_Land"], // stand-in: the landing crouch
+      duck: ["Jump_Land"], // stand-in: the landing crouch, frozen mid-way (see rig.duck)
       dodgeLeft: ["Dodge_Left"],
       dodgeRight: ["Dodge_Right"],
       punch: ["1H_Melee_Attack_Slice_Horizontal"],
@@ -35,6 +35,7 @@ export const knight: HeroCandidate = {
     punch: { seconds: 0.7, hit: 0.45 },
     thrust: { seconds: 0.7, hit: 0.4 },
     hurt: { seconds: 0.5 },
+    duck: { hold: 0.3 },
   },
 };
 
@@ -46,7 +47,7 @@ export const adventurer: HeroCandidate = {
     idle: `${A}Idle_Sword`,
     poses: {
       block: [`${A}Idle_Neutral`], // no guard clip: stand-in is a still stance
-      duck: [`${A}Roll`], // stand-in
+      duck: [`${A}Idle_Neutral`], // Roll has root motion (tumbles into the floor), so a still stance is squashed instead
       dodgeLeft: [`${A}Run_Left`],
       dodgeRight: [`${A}Run_Right`],
       punch: [`${A}Punch_Right`],
@@ -59,6 +60,7 @@ export const adventurer: HeroCandidate = {
     punch: { seconds: 0.5, hit: 0.4 },
     thrust: { seconds: 0.6, hit: 0.4 },
     hurt: { seconds: 0.5 },
+    duck: { squash: 0.75 },
   },
 };
 
