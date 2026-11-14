@@ -6,17 +6,12 @@ import type { ReactNode } from "react";
 import { AnimationMixer, Box3, Color, LoopOnce, LoopRepeat, Vector3 } from "three";
 import type { AnimationAction, Mesh, Material, Object3D } from "three";
 import { clone } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { fitModel } from "./fitModel";
+import type { ModelFit } from "./fitModel";
 import { newDecision } from "./clipMap";
 import type { ClipDecision } from "./clipMap";
 
-export interface ModelFit {
-  /** World height the model is scaled to. */
-  readonly targetHeight: number;
-  /** Radians around Y, to turn a model that does not face +Z. */
-  readonly rotationY?: number;
-  /** Extra offset after the feet are placed on the floor and the model is centred. */
-  readonly offset?: readonly [number, number, number];
-}
+export type { ModelFit };
 
 export interface RiggedModelProps {
   readonly url: string;
@@ -28,6 +23,9 @@ export interface RiggedModelProps {
   /** Children parented to the bone of that name (a weak-spot marker, a glowing eye). They inherit the model's scale. */
   readonly anchors?: Readonly<Record<string, ReactNode>>;
 }
+
+// Draco GLBs decode from our own files, never gstatic, so venue wifi cannot break them.
+useGLTF.setDecoderPath("/draco/");
 
 const FADE = 0.15;
 const FLASH = new Color(1, 0.25, 0.1);
@@ -93,18 +91,11 @@ export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors }: RiggedM
     });
     root.updateWorldMatrix(true, true);
     const box = measure(root);
-    const size = box.getSize(new Vector3());
-    const center = box.getCenter(new Vector3());
-    const scale = size.y > 0 ? fit.targetHeight / size.y : 1;
-    const position: [number, number, number] = [
-      -center.x * scale + (fit.offset?.[0] ?? 0),
-      -box.min.y * scale + (fit.offset?.[1] ?? 0),
-      -center.z * scale + (fit.offset?.[2] ?? 0),
-    ];
+    const { scale, position } = fitModel(box, fit);
     const mixer = new AnimationMixer(root);
     const actions = new Map<string, AnimationAction>(gltf.animations.map((clip) => [clip.name, mixer.clipAction(clip)]));
     return { root, flashables, scale, position, mixer, actions, available: new Set(actions.keys()) };
-  }, [gltf, fit.targetHeight, fit.offset]);
+  }, [gltf, fit.targetHeight, fit.offset, fit.footOffset]);
 
   const live = useRef<{ current: AnimationAction | null; name: string | null; decision: ClipDecision }>({ current: null, name: null, decision: newDecision() });
 
@@ -164,9 +155,11 @@ export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors }: RiggedM
     : null;
 
   return (
-    <group rotation={[0, fit.rotationY ?? 0, 0]} position={rig.position}>
-      <primitive object={rig.root} scale={rig.scale} />
-      {portals}
+    <group rotation={[0, fit.rotationY ?? 0, 0]}>
+      <group position={rig.position}>
+        <primitive object={rig.root} scale={rig.scale} />
+        {portals}
+      </group>
     </group>
   );
 }
