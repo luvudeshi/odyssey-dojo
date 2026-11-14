@@ -32,7 +32,7 @@ export async function startTracker(): Promise<PoseTracker> {
   });
 
   const camera = createFreshFrame();
-  const byCallback = watchCameraFrames(video, camera.mark);
+  const byCallback = watchCameraFrames(video, () => { camera.mark(); });
   let lastVideoTime = -1;
   return {
     video,
