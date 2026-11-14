@@ -9,6 +9,7 @@ export const move: MoveDef = {
   hint: "Hop straight up off both feet",
   key: "ArrowUp",
   diagram: { leftElbow: [30, 42], leftWrist: [24, 54], rightElbow: [70, 42], rightWrist: [76, 54], shiftY: -8 },
+  teaches: "Getting your feet off the line of a low sweep keeps you standing.",
   detect(history) {
     const frame = latest(history);
     const standing = history.baseline;

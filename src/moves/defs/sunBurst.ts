@@ -23,6 +23,7 @@ export const move: MoveDef = {
   hint: "Bring your hands together at your chest, then fling both arms wide",
   key: "6",
   diagram: { leftElbow: [23, 28], leftWrist: [8, 24], rightElbow: [77, 28], rightWrist: [92, 24] },
+  teaches: "Bursting both arms out from your chest breaks a front grab and opens space to leave.",
   detect(history) {
     const frame = latest(history);
     if (!frame || !wide(frame, "left") || !wide(frame, "right")) return 0;

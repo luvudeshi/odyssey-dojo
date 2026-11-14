@@ -38,6 +38,7 @@ export const move: MoveDef = {
   hint: "Aim one arm out, draw the other hand to your shoulder, then drop it",
   key: "5",
   diagram: { leftElbow: [24, 31], leftWrist: [10, 30], rightElbow: [78, 36], rightWrist: [65, 30] },
+  teaches: "A long guard arm keeps your distance while you set your feet and pick your moment.",
   detect(history) {
     return released(history, "left", "right") || released(history, "right", "left") ? 1 : 0;
   },
