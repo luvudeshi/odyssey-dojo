@@ -7,7 +7,7 @@ export type Character = (typeof CHARACTERS)[number];
 /** Voice names to try, best first. Set <CHARACTER>_VOICE_ID in .env (e.g. HOMER_VOICE_ID) to force one. */
 const PREFERRED: Readonly<Record<Character, readonly string[]>> = {
   // A clear, commanding woman.
-  athena: ["Alice", "Matilda", "Charlotte", "Sarah", "Lily", "Rachel", "Jessica", "Laura"],
+  athena: ["Sarah", "Matilda", "Alice", "Charlotte", "Lily", "Rachel", "Jessica", "Laura"],
   // An older, warm storyteller.
   homer: ["George", "Bill", "Eldrin", "Wyatt", "Daniel", "Brian"],
   // Deep and menacing.
