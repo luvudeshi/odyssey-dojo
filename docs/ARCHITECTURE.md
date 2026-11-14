@@ -22,7 +22,7 @@ Every move also has a key, so the game runs with no camera and no network. That 
 
 **The judged demo is the Polyphemus fight.** It gets the polish. Everything else exists to make the quest real around it.
 
-## Status: where we are (updated Saturday 5:15 PM by the lead's agent)
+## Status: where we are (updated Saturday 4:40 PM by the lead's agent)
 
 The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. `main` is green at 743 tests.
 
