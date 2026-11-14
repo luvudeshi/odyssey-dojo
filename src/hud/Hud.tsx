@@ -56,7 +56,7 @@ function Bar({ label, value, max, side }: { label: string; value: number; max: n
 
 export function Hud({ enemy, state }: { enemy: EnemySpec; state: CombatState }) {
   const phase = state.phase;
-  const moveId = phase.kind === "defend" ? phase.attack.counter : phase.kind === "strike" ? phase.move : null;
+  const moveId = phase.kind === "defend" ? phase.attack.counter : phase.kind === "strike" || phase.kind === "finisher" ? phase.move : null;
   const move = moveId === null ? undefined : MOVES.get(moveId);
   return (
     <div className="hud">
@@ -66,10 +66,16 @@ export function Hud({ enemy, state }: { enemy: EnemySpec; state: CombatState }) 
         {state.score} {state.combo > 1 && <span>x{state.combo} combo</span>}
       </div>
       {phase.kind === "intro" && <div className="banner">{enemy.name}<small>{enemy.title}</small></div>}
-      {move && (phase.kind === "defend" || phase.kind === "strike") && (
+      {move && (phase.kind === "defend" || phase.kind === "strike" || phase.kind === "finisher") && (
         <PromptCard
           move={move}
-          target={phase.kind === "defend" ? `${phase.attack.name} incoming` : `Hit ${phase.weakSpot.label}`}
+          target={
+            phase.kind === "defend"
+              ? `${phase.attack.name} incoming`
+              : phase.kind === "finisher"
+                ? "Finish it"
+                : `Hit ${phase.weakSpot.label}`
+          }
           successes={state.mastery[move.id] ?? 0}
           left={phase.msLeft / phase.totalMs}
         />
