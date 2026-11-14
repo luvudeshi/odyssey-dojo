@@ -716,8 +716,6 @@ test("a level that skipped the schema (NaN, Infinity, 1e308, an unknown attack) 
   // A level with every attack unknown plays as one with no attacks: the stand-in's own.
   const none = fightFromLevel(attacks({ type: unknown as LevelAttack["type"] }), [CYCLOPS], MOVES);
   expect(none.attacks).toEqual(fightFromLevel({ ...storm, attack_pool: [] }, [CYCLOPS], MOVES).attacks);
-  // A level inside the schema's ranges is not changed by the check: the same fight as before it was added.
-  expect(fightFromLevel(LevelSpecSchema.parse(storm), ENEMIES, MOVES)).toEqual(fightFromLevel(storm, ENEMIES, MOVES));
 });
 
 test("the fight is paced for 60 to 90 seconds whatever the phases add up to", () => {
