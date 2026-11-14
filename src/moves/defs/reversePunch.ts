@@ -1,4 +1,5 @@
 // Karate's gyaku-zuki: the rear hand punches while the other hand pulls back to the hip.
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { armThrust, elbowAngle, latest } from "../../pose/signals";
 import { wristRise } from "../handSignals";
@@ -17,5 +18,8 @@ export const move: MoveDef = {
     if (!frame || !armThrust(history, "right")) return 0;
     // The pulling hand: low at the hip, with the elbow bent behind it (a hanging arm is straight).
     return wristRise(frame, "left") < -0.9 && elbowAngle(frame, "left") < 130 ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["right"] });
   },
 };

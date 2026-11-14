@@ -1,3 +1,4 @@
+import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { JOINT, joint, latest, recent } from "../../pose/signals";
 
@@ -17,5 +18,8 @@ export const move: MoveDef = {
       (old) => joint(old.image, JOINT.rightWrist).y < joint(old.image, JOINT.nose).y,
     );
     return below && wasAbove ? 1 : 0;
+  },
+  quality(history) {
+    return strikeQuality(history, { sides: ["right"], rise: -0.6, tolerance: 1 });
   },
 };
