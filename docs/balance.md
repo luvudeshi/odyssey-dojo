@@ -1,6 +1,6 @@
 # Fight length and win rate at every stop
 
-Issue #115. A judge plays for about three minutes, so this measures how long each stop takes and who wins it.
+Issues #115 and #127. A judge plays for about three minutes, so this measures how long each stop takes and who wins it.
 
 ## How it is measured
 
@@ -29,7 +29,7 @@ Each cell: fights won / mean length of all 200 fights / mean length of the fight
 <!-- table:now -->
 | Stop | beginner | average | good |
 | --- | --- | --- | --- |
-| Polyphemus | 2% / 101 s / 150 s when won | 84% / 115 s / 116 s when won | 100% / 64 s / 64 s when won |
+| Polyphemus | 88% / 91 s / 89 s when won | 100% / 53 s / 53 s when won | 100% / 30 s / 30 s when won |
 | Circe | 1% / 77 s / 113 s when won | 78% / 98 s / 99 s when won | 100% / 56 s / 56 s when won |
 | The Sirens | 1% / 70 s / 116 s when won | 64% / 97 s / 100 s when won | 100% / 58 s / 58 s when won |
 | Scylla | 1% / 55 s / 102 s when won | 45% / 78 s / 82 s when won | 100% / 49 s / 49 s when won |
@@ -37,47 +37,52 @@ Each cell: fights won / mean length of all 200 fights / mean length of the fight
 | The Suitors | 0% / 65 s / none won | 22% / 99 s / 114 s when won | 100% / 70 s / 70 s when won |
 <!-- /table:now -->
 
-What #115 asks for, against these numbers:
+## Polyphemus, the first stop (issue #127)
+
+A judge is a first-time player with three minutes, and losing the only fight they play is the worst outcome. So the first stop is tuned to be won. The four targets are assertions in `tests/balance/balance.test.ts`:
+
+| Target | Measured | Holds? |
+| --- | --- | --- |
+| The beginner wins at least 85% of fights | 88% (175 of 200) | Yes |
+| Those wins take 90 s or less | 88.6 s | Yes |
+| The average player wins every fight | 100% (200 of 200) | Yes |
+| The good player's fight lasts at least 30 s | 30.4 s | Yes |
+| Every fight a beginner wins goes through all three phases | 3 of 3 in every won fight, for all three players | Yes |
+
+What changed in `src/enemies/defs/polyphemus.ts`:
+
+| | Before | #126 proposal | Now |
+| --- | --- | --- | --- |
+| `hp` | 400 | 160 | 162 |
+| Club swing, left and right | 7 | 6 | 5 |
+| Grasping hand | 8 | 6 | 4 |
+| Boulder throw | 10 | 7 | 6 |
+| beginner | 2% / 150 s when won | 73% / 82 s when won | 88% / 89 s when won |
+| good player's fight | 64 s | 29.5 s | 30.4 s |
+
+Telegraphs, the strike window and the three phases are as they were.
+
+**Why not the #126 proposal as it stood.** It missed two of the targets: the beginner won 73% (85% asked), and the good player was done in 29.5 s (30 s asked).
+
+**The room is narrow, and this is what each number does.** Measured by sweeping `hp` from 140 to 240 and the damage from 6, 6, 6, 7 down to 3, 3, 3, 4:
+
+- `hp` sets the length for everyone. The good player needs `hp` of 162 or more to reach 30 s (29.6 s at 161, 30.4 s at 162).
+- Softer attacks raise the beginner's win rate, but also the length of the fights the beginner wins, because the fights that used to be lost late are now long wins. At `hp: 162`: damage 5, 5, 5, 6 gives 86% and 87.9 s; 5, 5, 4, 6 gives 88% and 88.6 s; 4, 4, 5, 6 gives 93% and 90.1 s, which is over.
+- So `hp` cannot go above about 163 without the beginner's wins passing 90 s, and cannot go below 162 without the good player dropping under 30 s. Inside that, 5, 5, 4, 6 leaves the most room on both of the beginner's targets while the boulder stays his hardest hit.
+
+The margins are small: 5 fights of 200 on the win rate, 1.4 s on the 90 s, 0.4 s on the 30 s. The run is seeded, so the numbers do not move by themselves, but a change to strike damage or timing in the engine will move them. With a different set of 200 seeds the beginner's wins came out at 88% and 89.5 s.
+
+A player who defends nothing still loses every fight, in about a minute: with no defence there is no opening to strike in (`tests/content.test.ts`).
+
+**What changed in the older tests.** In `tests/content.test.ts`, the lower bound on the fight of the player who gets 85% of prompts right went from 90 s to 40 s (that player now takes about 42 to 59 s, depending on strike quality), and "a player who misses half the prompts loses" became "a player who defends nothing loses". `tests/pacingStops.test.ts` did not change and passes: Polyphemus is still the easiest stop, by more than before.
+
+## The five later stops
+
+Not retuned yet (part 2 of #127, waiting on the stop PRs). Against the numbers above:
 
 | Asked | Holds? |
 | --- | --- |
-| No stop takes the average player more than 2 minutes | Yes. The longest is Polyphemus at 115 s (116 s when won). |
+| No stop takes the average player more than 2 minutes | Yes. The longest is Circe at 98 s (99 s when won). |
 | The route gets harder stop by stop | Yes, for all three players: fights won and health left never go up from one stop to the next. |
-| The beginner wins Polyphemus most of the time in under 90 seconds | **No.** The beginner wins 2% of the time, and those wins take 150 s. See NEEDS below. |
-
-No number in `src/enemies/defs/` was changed. The two goals that can hold already do, and the third cannot be reached by any change the existing tests allow.
-
-Also worth knowing, though #115 does not ask about it: the average player wins less than half the time from Scylla on, and about one fight in five against the Suitors.
-
-## NEEDS: the beginner cannot win Polyphemus in under 90 seconds while the 90 second floor stands
-
-For the lead (toyeshhm). This needs a change to `tests/content.test.ts`, which this task may not edit.
-
-**The two rules that cannot both hold**
-
-- #115: the beginner (defends half the attacks, strikes late) wins Polyphemus most of the time in under 90 seconds.
-- `tests/content.test.ts`, in "Polyphemus: a player who gets most prompts right wins in 90 to 150 seconds" and "Polyphemus: the fight stays in range however well the strikes are thrown": a player who gets 85% of prompts right and strikes after 0.8 s must take **at least 90 seconds** on average, even at strike quality 1.
-
-That 85% player defends more, strikes sooner and hits harder than any beginner, so the beginner is always slower than they are. If they need 90 seconds, the beginner needs more. Today the 85% player with perfect strikes takes 92 s, so Polyphemus's health cannot come down at all, and the beginner's rare wins take 150 s.
-
-Lowering only his damage does not help either. At `hp: 400` the beginner needs about 190 s to get through his health, so softer attacks only make a longer fight: with damage 3, 3, 4, 5 the beginner wins 29% of the time and those wins take 189 s; with 2, 2, 2, 3 the beginner wins 93% but takes 213 s, and "a player who misses half the prompts loses" in `tests/content.test.ts` breaks (9 wins of 30, the limit is 6).
-
-**The numbers that would meet #115**
-
-In `src/enemies/defs/polyphemus.ts`: `hp: 400` to `hp: 160`, and attack damage from 7, 7, 8, 10 to 6, 6, 6, 7 (club_left, club_right, grab, boulder). Nothing else changes. With those numbers:
-
-<!-- table:proposed -->
-| Stop | beginner | average | good | pinned |
-| --- | --- | --- | --- | --- |
-| Polyphemus | 73% / 85 s / 82 s when won | 100% / 53 s / 53 s when won | 100% / 29 s / 29 s when won | 100% / 42 s / 42 s when won |
-<!-- /table:proposed -->
-
-("pinned" is the 85% player of `tests/content.test.ts` at strike quality 1.)
-
-**What would have to change in the existing tests**
-
-Only the lower bound in the two Polyphemus pacing tests of `tests/content.test.ts`: each `toBeGreaterThanOrEqual(90)` would become `toBeGreaterThanOrEqual(40)`. With the proposed numbers that test's own player averages 53 s at quality 0.7, 58 s at 0.55 and about 42 s at 1. The comment at the top of `polyphemus.ts` ("90 to 150 seconds") would change with it.
-
-Every other test was run with the proposed numbers in place and still passes, including "a player who misses half the prompts loses" (5 wins of 30, the limit is 6) and the route order in `tests/pacingStops.test.ts`. That limit is close: a Polyphemus any softer than this breaks it.
-
-The cost is a first fight of under a minute for a player who already knows the moves. `tests/balance/balance.test.ts` keeps this proposal checked, so the table above stays true until the lead decides.
+| The average player wins at least 60% at every stop | **No.** Scylla 45%, Charybdis 41%, the Suitors 22%. |
+| The beginner's win rate falls stop by stop from Circe | Only just: it is 1% or 0% everywhere after Polyphemus. |
