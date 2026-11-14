@@ -16,9 +16,6 @@ export function Atmosphere({ sky }: { sky?: { readonly hdri: string; readonly ya
         <Suspense fallback={null}>
           <Environment
             files={sky?.hdri ?? HDRI}
-            background={sky !== undefined}
-            backgroundIntensity={0.42}
-            backgroundRotation={[0, sky?.yaw ?? 0, 0]}
             environmentRotation={[0, sky?.yaw ?? 0, 0]}
             environmentIntensity={sky ? 0.3 : 0.6}
           />

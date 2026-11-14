@@ -8,6 +8,7 @@ import { SUN } from "../cave/mouthLayout";
 import { Blobs } from "../cave/Blob";
 import { Fire } from "../cave/Fire";
 import { Sea } from "../cave/Sea";
+import { Sky } from "../cave/Sky";
 import { LightShafts } from "../cave/Shafts";
 import { floorGeometry, homesteadGeometry, rockGeometry, shellGeometry } from "../cave/solids";
 import { useQualityLevel } from "../../quality";
@@ -61,6 +62,7 @@ function CaveMouth() {
         <meshStandardMaterial vertexColors flatShading roughness={0.9} />
       </mesh>
 
+      <Sky />
       <Sea />
       <Fire />
       <Blobs />
