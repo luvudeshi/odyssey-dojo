@@ -2,9 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
+import { playVoice } from "../audio/voice";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { Hud } from "../hud/Hud";
+import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
@@ -62,7 +64,8 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
-      result.events.forEach((event) => { playEvent(event); noteHit(event); });
+      result.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
+      playVoice(result.events, current.phase);
       setState(current);
       handle = requestAnimationFrame(tick);
     };
