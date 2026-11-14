@@ -98,12 +98,14 @@ The game must start and play a full fight with the server off.
 |---|---|---|
 | `src/core/types.ts` | Shared contracts | **Lead** (toyeshhm) |
 | `src/combat/`, `src/pose/`, `src/input/` | Fight rules, tracking, input | **Lead** |
-| `src/screens/FightScreen.tsx`, `src/App.tsx` | Per-frame loop and screen flow | **Lead** |
+| `src/render/`, `src/hud/`, `src/screens/`, `src/App.tsx`, `src/index.css` | Everything you see: arena, monsters' models, player figure, ghost outline, effects, overlays, screens, quest map | **Lead** |
 | `server/`, `src/ai/`, `src/audio/`, `src/replay/`, `public/audio/` | Backend, god reveal, AI fights, all sound | luvudeshi (#2) |
-| `src/render/arena/`, `src/render/effects/`, title and end screens | Cave, hit feedback, screens | tagrawal029 (#22) |
-| `src/moves/defs/`, `src/styles/defs/`, `src/enemies/defs/`, `src/render/monsters/models/` | One file per move, style, monster, model | Whoever holds the issue |
-| `src/render/` (rest), `src/hud/`, `src/net/` | Scene, figure, overlays, rooms | Whoever holds the issue |
+| `src/moves/defs/`, `src/styles/defs/`, `src/enemies/defs/` | One file per move, style and monster's data | Whoever holds the issue |
+| `src/net/` | Online rooms | Whoever holds the issue |
+| `docs/devpost.md`, video, backup run | Submission | Whoever holds the issue |
 | `package.json`, `vite.config.ts`, `Makefile`, `index.html`, `.gitignore`, `README.md` | Shared files | PR only |
+
+**The lead's agent keeps the core, the hardest parts and all UI and design.** Teammates' agents take content (moves, styles, monster data), detector tuning, sound, the server and AI features, online rooms and the submission.
 
 ## Timeline
 
