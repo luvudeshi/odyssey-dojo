@@ -34,7 +34,7 @@ test("another device is refused on spending routes and allowed on replays, healt
 
 test("a request from this machine is answered as before, whatever X-Forwarded-For claims", async () => {
   const app = await createApp({ config, ai: NO_AI });
-  const server = app.listen(0);
+  const server = app.listen(0, "127.0.0.1");
   close = () => { server.close(); };
   const { port } = server.address() as AddressInfo;
   const post = (host: string): Promise<Response> => fetch(`http://${host}:${String(port)}/api/level`, {
