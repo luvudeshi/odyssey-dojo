@@ -2,7 +2,7 @@
 // wind-up, and sets off no other move except the overlaps listed with each gesture.
 import { expect, test } from "vitest";
 import type { CombatInput, Landmark, PoseFrame } from "../src/core/types";
-import { createPoseInput } from "../src/input/poseInput";
+import { RELEASE_MS, createPoseInput } from "../src/input/poseInput";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, JOINT, joint, pushFrame } from "../src/pose/signals";
 import { frameAt } from "./poseFixture";
@@ -254,6 +254,8 @@ const sunBurst = [...hold(handsTogether, 8), ...hold(armsWide, 10), ...hold(stan
 // Shoulder height through a hop, in shoulder widths: a small dip, up to 0.3 at frame 5, back down by frame 10.
 const HOP = [0.04, 0.06, -0.05, -0.15, -0.25, -0.3, -0.25, -0.15, -0.03, 0.05, 0.02];
 const hop = HOP.map((rise) => shifted(stand, 0, rise * WIDTH));
+/** The hop reads as held until frame 17; a defend then stays held for RELEASE_MS more (src/input/poseInput.ts). */
+const LET_GO = 20 + Math.ceil(RELEASE_MS / STEP);
 const jump = [...hop, ...hold(stand, 30)];
 
 interface Gesture {
@@ -267,13 +269,13 @@ interface Gesture {
    * offer both moves of a pair. The fight only looks for the move it prompted, so an extra move costs nothing.
    * - overhead_strike is the right-hand thunderbolt and hammer_fist the left-hand one: the same motion by design.
    * - aegis_push is a spear thrust with the palms close together, and double_palm is the same push by design.
-   * - spear_thrust does not check that the arms went forward, so arms flung wide count too.
+   * - arms flung wide used to count as a spear thrust; since #191 both wrists out past their own sides do not.
    * - hook reads any bent left arm crossing the body at shoulder height.
    * - knife_hand reads the right arm alone: across the body at chest height or above, then straight out to the
    *   right. That is the right arm of a chest-high sweep to the right; a belly-high sweep starts too low for it.
    * - uppercut and rising_palm share risingHand (handSignals.ts), which reads a hand brought up from the waist
-   *   with a bent elbow. Drawing the bow does that with the string hand: the right hand is an uppercut, the left
-   *   a rising palm. Both fire on the draw, before the arrow is loosed.
+   *   with a bent elbow. Drawing the bow does that with the string hand, and used to fire them; since #191 two
+   *   hands coming up together are not a rising hand, so the draw (bow arm and string hand together) is quiet.
    * - a dash is also a dodge.
    */
   readonly also: readonly string[];
@@ -294,16 +296,16 @@ const GESTURES: readonly Gesture[] = [
   { move: "aegis_push", how: "both palms", poses: aegisPush, at: 8, also: ["double_palm", "spear_thrust"] },
   { move: "swift_dash", how: "to the right", poses: swiftDash, at: 2, also: ["dodge_right"] },
   { move: "swift_dash", how: "to the left", poses: swiftDash.map(mirrored), at: 2, also: ["dodge_left"] },
-  { move: "moon_arrow", how: "left bow arm", poses: moonArrow, at: 10, also: ["uppercut"] },
-  { move: "moon_arrow", how: "right bow arm", poses: moonArrow.map(mirrored), at: 10, also: ["rising_palm"] },
+  { move: "moon_arrow", how: "left bow arm", poses: moonArrow, at: 10, also: [] },
+  { move: "moon_arrow", how: "right bow arm", poses: moonArrow.map(mirrored), at: 10, also: [] },
   {
     move: "moon_arrow",
     how: "a small release",
     poses: [...hold(bowDrawn, 10), ...hold(bowEased, 8), ...hold(stand, 20)],
     at: 10,
-    also: ["uppercut"],
+    also: [],
   },
-  { move: "sun_burst", how: "both arms", poses: sunBurst, at: 8, also: ["spear_thrust"] },
+  { move: "sun_burst", how: "both arms", poses: sunBurst, at: 8, also: [] },
   { move: "jump", how: "a hop", poses: jump, at: 4, also: [] },
 ];
 
@@ -484,7 +486,7 @@ test("jump is held from the top of a hop until just after landing, then let go",
   const held = heldJump(play(jump));
   expect(held.slice(0, 4)).not.toContain(true);
   expect(held.slice(4, 17)).not.toContain(false);
-  expect(held.slice(20)).not.toContain(true);
+  expect(held.slice(LET_GO)).not.toContain(true);
 });
 
 test.each([5, 10, 15, 25])("a second hop %i frames after the first is held from its top too", (gap) => {
@@ -492,7 +494,7 @@ test.each([5, 10, 15, 25])("a second hop %i frames after the first is held from 
   const second = HOP.length + gap;
   expect(held.slice(4, 17)).not.toContain(false);
   expect(held.slice(second + 4, second + 17)).not.toContain(false);
-  expect(held.slice(second + 20)).not.toContain(true);
+  expect(held.slice(second + LET_GO)).not.toContain(true);
 });
 
 test("jump works from the baseline alone after a gap in tracking", () => {
@@ -500,7 +502,7 @@ test("jump works from the baseline alone after a gap in tracking", () => {
   const held = heldJump(play(jump, 2000));
   expect(held.slice(0, 4)).not.toContain(true);
   expect(held.slice(4, 17)).not.toContain(false);
-  expect(held.slice(20)).not.toContain(true);
+  expect(held.slice(LET_GO)).not.toContain(true);
 });
 
 test.each([6, 9, 12, 30, 45, 90])("jump is not held by standing up from a duck over %i frames", (frames) => {

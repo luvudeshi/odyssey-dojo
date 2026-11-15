@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
 import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
 import { speakMonsterTaunt, stopStory } from "../audio/storyVoice";
+import { useStopAudio } from "../audio/useStopAudio";
 import { playVoice, speakLine } from "../audio/voice";
 import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
@@ -11,7 +12,7 @@ import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { CameraView } from "../hud/CameraView";
-import { Hud } from "../hud/Hud";
+import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { forTwo } from "../net/host";
@@ -20,6 +21,7 @@ import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
 import { keyboardTakesOver } from "../pose/escape";
+import { sentence } from "../pose/cameraError";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
 import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
@@ -53,6 +55,7 @@ export function FightScreen(props: {
   const pausedRef = useRef(false);
   const overRef = useRef(false);
   const [lost, setLost] = useState(false);
+  const [lostWhy, setLostWhy] = useState("");
   const [state, setState] = useState(() => startFight(enemy, seed));
   const poseRef = useRef<PoseFrame | null>(null);
 
@@ -86,7 +89,9 @@ export function FightScreen(props: {
       }
       keyboardMode = keyboardTakesOver(keyboardMode, gate.paused, keys);
       if (tracker && !keyboardMode) {
-        gate = gateStep(gate, presenceAt(history, now).ok, dt);
+        const seen = presenceAt(history, now);
+        gate = gateStep(gate, seen.ok, dt);
+        if (!seen.ok) setLostWhy(sentence(seen.reason));
         setLost(gate.paused);
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
@@ -122,6 +127,7 @@ export function FightScreen(props: {
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   const running = view === "off";
+  useStopAudio(enemy.id, !running || over);
   useEffect(() => { overRef.current = over; pausedRef.current = !running; }, [over, running]);
 
   useEffect(() => {
@@ -143,10 +149,10 @@ export function FightScreen(props: {
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
-      <Hud enemy={enemy} state={state} />
+      <SkyHud enemy={enemy} state={state} />
       {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
       <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
-      {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
+      {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu
           view={view}

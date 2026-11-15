@@ -40,8 +40,10 @@ test("standing still triggers nothing; fists at the face is a block; bent-then-s
   const still = read(history);
   expect([...still.held, ...still.struck]).toEqual([]);
 
-  const guard = frameAt(700, { [JOINT.leftWrist]: [0.47, 0.22], [JOINT.rightWrist]: [0.53, 0.22] });
-  expect([...read(pushFrame(history, guard)).held]).toEqual(["block"]);
+  // Two frames, so that one bad frame cannot put a guard up on its own.
+  const fists = { [JOINT.leftWrist]: [0.47, 0.22], [JOINT.rightWrist]: [0.53, 0.22] } as const;
+  const guarded = pushFrame(pushFrame(history, frameAt(700, fists)), frameAt(733, fists));
+  expect([...read(guarded).held]).toEqual(["block"]);
 
   const bent = frameAt(700, {}, { [JOINT.leftElbow]: [-0.3, -0.35, 0], [JOINT.leftWrist]: [-0.2, -0.45, -0.05] });
   const straight = frameAt(900, {}, { [JOINT.leftElbow]: [-0.2, -0.5, -0.3], [JOINT.leftWrist]: [-0.2, -0.5, -0.6] });

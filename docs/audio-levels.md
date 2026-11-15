@@ -76,6 +76,8 @@ Voice clips only: `athena`, `narration`, `taunts`. 66 of the 82 were re-encoded.
 
 **`athena/fight_start.mp3` was levelled last, by itself.** PR #188 replaced it with a shorter take ("I am with you!") while this work was under way, so the first two runs left it alone. After #188 merged, `--write` brought the new take from -17.6 to -15.6 LUFS and from -1.7 to -1.5 dBTP through the limiter. Re-encoding added one MP3 frame (26 ms) at the end, which took the clip past the 1.3 s that `tests/athenaLines.test.ts` allows so that it ends before the first call. That last frame was dropped with `ffmpeg -t 1.24 -c copy` (no second re-encode), which is how the take in #188 was trimmed too. The clip is 49 frames again, 1.28 s as a browser counts it. If the tool ever rewrites this clip again, do the same cut afterwards. The group table below was made before this and leaves the clip out.
 
+**`athena/call_knee.mp3` is a new take, levelled by itself.** `server/tools/hearClips.ts` heard the first take's opening word as "Me" where the line says "Knee" (`docs/audio-heard.md`), so the clip was made again with `genClips.ts athena` and `--write` was run once more. It took the new take from -14.3 to -15.5 LUFS (-1.2 dB, no limiter) and its peak from -0.8 to -1.9 dBTP. Its lead is 15 ms. No other clip was touched by that run. The group table and the list of rewritten clips below show the first take; the row under "Measured now" shows the new one.
+
 | group | clips | before: quietest to loudest (median) | spread | after: quietest to loudest (median) | spread |
 |---|---|---|---|---|---|
 | athena (Athena's own lines, without `fight_start`) | 49 | -19.4 to -12.6 (-15.3) | 6.8 LU | -16.8 to -14.0 (-15.6) | 2.8 LU |
@@ -99,7 +101,7 @@ The clips that were rewritten. "limiter" marks the ones that went through it.
 | `athena/call_hammer_fist.mp3` | -15.4 | -16.5 | -1.1 | -0.5 | -1.6 |  |
 | `athena/call_hook.mp3` | -15.3 | -16.0 | -0.7 | -0.9 | -1.6 |  |
 | `athena/call_jab.mp3` | -15.8 | -16.7 | -0.9 | -0.8 | -1.5 |  |
-| `athena/call_knee.mp3` | -13.8 | -15.5 | -1.7 | -0.9 | -2.5 |  |
+| `athena/call_knee.mp3` (the first take, since replaced: see above) | -13.8 | -15.5 | -1.7 | -0.9 | -2.5 |  |
 | `athena/call_moon_arrow.mp3` | -15.0 | -15.7 | -0.7 | -0.9 | -1.5 |  |
 | `athena/call_overhead_strike.mp3` | -14.3 | -15.5 | -1.2 | -0.8 | -2.0 |  |
 | `athena/call_rising_palm.mp3` | -13.2 | -15.5 | -2.3 | -0.8 | -3.1 |  |
@@ -225,7 +227,7 @@ None.
 | `athena/call_hook.mp3` | 2.08 | -16.0 | -1.6 | 33 | 254 | 0.0 | -16.0 |
 | `athena/call_jab.mp3` | 1.92 | -16.7 | -1.5 | 26 | 105 | 0.0 | -16.7 |
 | `athena/call_jump.mp3` | 1.68 | -15.9 | -1.4 | 21 | 250 | 0.0 | -15.9 |
-| `athena/call_knee.mp3` | 2.16 | -15.5 | -2.5 | 42 | 179 | 0.0 | -15.5 |
+| `athena/call_knee.mp3` | 2.16 | -15.5 | -1.9 | 15 | 146 | 0.0 | -15.5 |
 | `athena/call_knife_hand.mp3` | 2.00 | -14.0 | -1.0 | 27 | 265 | 0.0 | -14.0 |
 | `athena/call_moon_arrow.mp3` | 2.08 | -15.7 | -1.5 | 28 | 159 | 0.0 | -15.7 |
 | `athena/call_overhead_strike.mp3` | 2.16 | -15.5 | -2.0 | 37 | 100 | 0.0 | -15.5 |

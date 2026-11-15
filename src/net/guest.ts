@@ -24,6 +24,9 @@ export interface GuestLink {
   close(): void;
 }
 
+/** With no fight known, the guest asks which one is on at the first state it hears and again every this many states (about a second). */
+export const ASK_EVERY_STATES = 15;
+
 export function createGuestLink(transport: RoomTransport): GuestLink {
   let here = false;
   let fight: ReturnType<GuestLink["fight"]> = null;
@@ -32,6 +35,10 @@ export function createGuestLink(transport: RoomTransport): GuestLink {
   let events: CombatEvent[] = [];
   let result: boolean | null = null;
   let stopped = false;
+  /** The number the host gave the fight this guest is in; undefined before one, or from a host that gives none. */
+  let fightId: number | undefined;
+  /** States heard with no fight known: the start was sent before this guest was here. */
+  let unplaced = 0;
 
   transport.onMessage((message) => {
     switch (message.type) {
@@ -39,6 +46,10 @@ export function createGuestLink(transport: RoomTransport): GuestLink {
         here = message.joined;
         break;
       case "start":
+        // The host says it again when this guest comes back, and when asked: the fight already on screen is left alone.
+        if (fight !== null && message.id !== undefined && message.id === fightId) break;
+        fightId = message.id;
+        unplaced = 0;
         fight = { enemyId: message.enemyId, styleId: message.styleId, seed: message.seed };
         state = null;
         seq = 0;
@@ -47,6 +58,10 @@ export function createGuestLink(transport: RoomTransport): GuestLink {
         stopped = false;
         break;
       case "state":
+        if (fight === null) {
+          if (unplaced % ASK_EVERY_STATES === 0) void transport.send({ type: "ask" });
+          unplaced += 1;
+        }
         // Streams keep order, but a reconnect can replay: never go back to an older state.
         if (message.seq <= seq) break;
         seq = message.seq;

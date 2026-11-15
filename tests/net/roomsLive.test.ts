@@ -46,7 +46,9 @@ function streamOver(url: string): EventStream {
         for (let cut = buffer.indexOf("\n\n"); cut >= 0; cut = buffer.indexOf("\n\n")) {
           const frame = buffer.slice(0, cut);
           buffer = buffer.slice(cut + 2);
-          if (frame.startsWith("data: ")) stream.onmessage?.({ data: frame.slice(6) });
+          const data = frame.split("\n").find((line) => line.startsWith("data: "));
+          const id = frame.split("\n").find((line) => line.startsWith("id: "));
+          if (data !== undefined) stream.onmessage?.({ data: data.slice(6), ...(id === undefined ? {} : { lastEventId: id.slice(4) }) });
         }
       }
     } catch {

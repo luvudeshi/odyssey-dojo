@@ -5,6 +5,7 @@ import type { GuestLink } from "../net/guest";
 import { cleanCode, joinRoom, openRoom } from "../net/transport";
 import { startTracker } from "../pose/tracker";
 import type { PoseTracker } from "../pose/tracker";
+import { Button, Panel, PebbleHeading } from "../ui/pebble";
 import { browserDeps } from "./roomNet";
 import { MODE_TEXT, ROOM_MESSAGES, guestMode } from "./roomUrl";
 import type { GuestMode } from "./roomUrl";
@@ -54,8 +55,8 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
   };
 
   return (
-    <main className="menu room">
-      <h1>Join a room</h1>
+    <Panel as="main" ornament className="menu room">
+      <PebbleHeading as="h1" text="Join a room" px={60} tone="ochre" />
       <label htmlFor="room-code">Four letters from your friend</label>
       <input
         id="room-code"
@@ -71,13 +72,13 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
       />
       <p className="notice" role="alert">{problem}</p>
       <p className="mode-note">{MODE_TEXT[mode]}</p>
-      <button disabled={busy || code.length !== 4} onClick={() => { void join(mode === "camera"); }}>
+      <Button primary disabled={busy || code.length !== 4} onClick={() => { void join(mode === "camera"); }}>
         {mode === "camera" ? "Join with my webcam" : "Join"}
-      </button>
+      </Button>
       {mode === "camera" && (
-        <button disabled={busy || code.length !== 4} onClick={() => { void join(false); }}>Join with the keyboard</button>
+        <Button disabled={busy || code.length !== 4} onClick={() => { void join(false); }}>Join with the keyboard</Button>
       )}
-      <button className="quiet" onClick={() => { left.current = true; props.onBack(); }}>Back</button>
-    </main>
+      <Button onClick={() => { left.current = true; props.onBack(); }}>Back</Button>
+    </Panel>
   );
 }

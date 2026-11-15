@@ -19,6 +19,7 @@ import { Hero } from "./hero/Hero";
 import { GhostFigure } from "./GhostFigure";
 import { MOVE_GHOST_ON } from "./ghost/ghostSwitch";
 import { QualityContext, useQualityToggle } from "./quality";
+import { QualityGovernor } from "./qualityGovernor";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
@@ -67,7 +68,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
       <Canvas
         shadows={quality === "high" ? "percentage" : false}
         frameloop={paused ? "never" : "always"}
-        dpr={[1, 1.5]}
+        dpr={quality === "high" ? [1, 1.5] : 1}
         gl={{ toneMapping: ACESFilmicToneMapping }}
         camera={{ position: [1.4, 2.15, 4.9], fov: 52 }}
         onCreated={({ camera }) => {
@@ -102,6 +103,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           <Hero poseRef={poseRef} />
           {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
           <Effects />
+          <QualityGovernor />
         </QualityContext.Provider>
       </Canvas>
       {DEBUG && (

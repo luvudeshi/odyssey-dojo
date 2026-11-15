@@ -99,15 +99,18 @@ export interface Voice {
 }
 
 /** Told true when a line starts and false when that voice falls quiet. `who` is set for a voice that was given a name. */
-let onSpeaking: (speaking: boolean, who?: string) => void = () => undefined;
+const listeners: ((speaking: boolean, who?: string) => void)[] = [];
+const onSpeaking = (speaking: boolean, who?: string): void => {
+  for (const listener of listeners) listener(speaking, who);
+};
 
 /**
- * Lets one listener (the music) know when a line is being spoken, so it can dip under it.
+ * Lets a listener (the music, a stop's ambience) know when a line is being spoken, so it can dip under it.
  * A second Voice must give `createVoice` a name of its own, as the monsters' channel below does: two voices under one
  * name would report silence when one falls quiet while the other still speaks.
  */
 export function watchVoice(listener: (speaking: boolean, who?: string) => void): void {
-  onSpeaking = listener;
+  listeners.push(listener);
 }
 
 export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voice {

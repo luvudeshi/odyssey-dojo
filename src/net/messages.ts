@@ -4,14 +4,22 @@ import type { CombatEvent, CombatState } from "../core/types";
 
 export type GuestMessage =
   | { readonly type: "strike"; readonly move: string; readonly quality: number }
-  | { readonly type: "held"; readonly moves: readonly string[] };
+  | { readonly type: "held"; readonly moves: readonly string[] }
+  /** "Which fight is on?": sent by a guest that hears states but was not here for the start. The host answers with the start. */
+  | { readonly type: "ask" };
 
 export type HostMessage =
-  | { readonly type: "start"; readonly enemyId: string; readonly styleId: string; readonly seed: number }
+  /**
+   * `id` is the host's number for this fight. The host sends the same start again when the guest comes back in the
+   * middle of it; a guest already in the fight with that id ignores the repeat.
+   */
+  | { readonly type: "start"; readonly enemyId: string; readonly styleId: string; readonly seed: number; readonly id?: number }
   | { readonly type: "state"; readonly seq: number; readonly state: CombatState; readonly events: readonly CombatEvent[] }
   | { readonly type: "end"; readonly won: boolean }
   /** The host left the fight for the quest map; the room stays open for the next one. */
-  | { readonly type: "stop" };
+  | { readonly type: "stop" }
+  /** Sent now and then by an idle host so the relay keeps the room; the guest ignores it (parseMessage drops it). */
+  | { readonly type: "keep" };
 
 /** Sent by the relay itself: whether the other member's stream is open. */
 export interface PeerMessage {
@@ -73,7 +81,8 @@ export function parseMessage(value: unknown): NetMessage | null {
       return { type: "held", moves: value.moves };
     case "start":
       if (!isId(value.enemyId) || !isId(value.styleId) || !isNumber(value.seed)) return null;
-      return { type: "start", enemyId: value.enemyId, styleId: value.styleId, seed: value.seed };
+      if (value.id !== undefined && !isNumber(value.id)) return null;
+      return { type: "start", enemyId: value.enemyId, styleId: value.styleId, seed: value.seed, ...(value.id === undefined ? {} : { id: value.id }) };
     case "state":
       if (!isNumber(value.seq) || !isState(value.state) || !Array.isArray(value.events)) return null;
       if (value.events.length > MAX_EVENTS || !value.events.every(isEvent)) return null;
@@ -82,6 +91,8 @@ export function parseMessage(value: unknown): NetMessage | null {
       return typeof value.won === "boolean" ? { type: "end", won: value.won } : null;
     case "stop":
       return { type: "stop" };
+    case "ask":
+      return { type: "ask" };
     default:
       return null;
   }

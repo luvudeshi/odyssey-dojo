@@ -5,7 +5,7 @@ import { playEvent } from "../audio/sfx";
 import { playVoice } from "../audio/voice";
 import type { CombatState, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
-import { Hud } from "../hud/Hud";
+import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { TouchPad } from "../hud/TouchPad";
@@ -18,6 +18,8 @@ import type { PoseTracker } from "../pose/tracker";
 import { noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
 import { STYLES } from "../styles/registry";
+import { Button, WaveBorder, installGround } from "../ui/pebble";
+import "./endPanel.css";
 import type { Joined } from "./RoomJoin";
 
 interface Fight { readonly enemyId: string; readonly styleId: string; readonly seed: number }
@@ -27,7 +29,7 @@ function Notice(props: { line: string; onLeave: () => void; button: string }) {
     <main className="menu room">
       <h1>Fight together</h1>
       <p className="notice" role="status">{props.line}</p>
-      <button onClick={props.onLeave}>{props.button}</button>
+      <Button primary onClick={props.onLeave}>{props.button}</Button>
     </main>
   );
 }
@@ -39,6 +41,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   const [state, setState] = useState<CombatState | null>(null);
   const poseRef = useRef<PoseFrame | null>(null);
   const touched = useRef<string[]>([]);
+  useEffect(() => { installGround(); }, []);
 
   useEffect(() => {
     const keyboard = createKeyboard(MOVES);
@@ -84,15 +87,16 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} />
-      <Hud enemy={enemy} state={state} />
+      <SkyHud enemy={enemy} state={state} />
       <div className="preview mirror" ref={holder} />
-      {!over && <button className="quiet room-leave" onClick={onLeave}>Leave the room</button>}
+      {!over && <Button className="room-leave" onClick={onLeave}>Leave the room</Button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
       {over && (
-        <div className="overlay">
+        <div className="overlay guest-over">
+          <WaveBorder className="guest-wave" />
           <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
           <p className="notice">Waiting for the host to go on.</p>
-          <button onClick={onLeave}>Leave the room</button>
+          <div className="end-buttons"><Button primary onClick={onLeave}>Leave the room</Button></div>
         </div>
       )}
     </div>
