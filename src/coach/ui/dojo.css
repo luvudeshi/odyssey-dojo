@@ -175,6 +175,17 @@
   .dojo[data-tier="needs_work"] .dojo-grade { font-size: 3.8rem; }
   .dojo-tip { font-size: 1.8rem; }
 }
+/* A small window (1024 x 768): the frame and the words beside it are wider than the stage, so both were cut at the
+   edges. A smaller figure, a narrower checklist and less gap keep them side by side inside the window. */
+@media (max-width: 1180px) {
+  .dojo-stage { gap: 1rem; }
+  .dojo-outline .move-guide { --mg-figure: 330px; padding-right: 1.4rem; }
+  .dojo-outline .mg-words { width: 15rem; }
+  .dojo-side { min-width: 15rem; }
+  /* The grade words fit the narrower column: "Excellent!" and "improvement" are the widest. */
+  .dojo-grade { font-size: 2.6rem; }
+  .dojo[data-tier="needs_work"] .dojo-grade { font-size: 1.9rem; }
+}
 @media (max-width: 62rem) {
   .dojo-stage { flex-direction: column; }
   .dojo-columns { flex-direction: column; }
