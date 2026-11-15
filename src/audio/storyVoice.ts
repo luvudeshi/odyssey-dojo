@@ -3,7 +3,8 @@
 // Every function returns a promise that never rejects. It resolves true once a line that started is over (played out,
 // cut off or failed), and false when it never started: no clip, no audio, an unknown stop, or its channel stayed busy.
 // Homer speaks on the screens around a fight, so his new line cuts off an older story line. A taunt is spoken inside a
-// fight: it starts at once, and a second taunt asked for while one plays is dropped.
+// fight: it starts at once, and a second taunt asked for while one plays is not played (it resolves false, or joins the
+// playing taunt when the dice picked that same one).
 import { log } from "../core/log";
 import { isStoryLine, narrationId, pickTaunt } from "./narrationLines";
 import type { NarrationMoment } from "./narrationLines";
@@ -138,8 +139,8 @@ export function speakResult(enemyId: string, won: boolean, waitMs?: number): Pro
 
 /**
  * Has the monster taunt the player, for every stop of the quest. The taunt starts at once on the monsters' own channel,
- * a little quieter than Athena, and plays over her calls. It may be called before or after `playVoice` in a frame.
- * `stopStory` silences it, and so does `playVoice` when the fight is won or lost.
+ * a little quieter than Athena, and plays over her calls. `stopStory` silences it, and so does `playVoice` when the fight
+ * is won or lost. Ask for it before `playVoice` in a frame: asked after, in the frame the fight ends, it plays over the result.
  */
 export function speakMonsterTaunt(enemyId: string, waitMs?: number): Promise<boolean> {
   return shared.speakMonsterTaunt(enemyId, waitMs);
