@@ -1,5 +1,7 @@
-// Lists every shipped asset with its credit line, licence and size. Run it with `make credits`.
-// It exits 1 when an asset has no credit, no licence, or a licence the rules do not allow.
+// Lists every file under public/ with its credit line, licence and size. Run it with `make credits`.
+// It exits 1 when a file has no credit, no licence, or a licence the rules do not allow for its class.
+// Art and sound may be CC0, CC BY with the author, or made by the team.
+// Bundled software and model files (the folders in SOFTWARE_ROOTS) carry their own open licence instead.
 // How a credit line must be written is in docs/licences.md.
 
 import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
@@ -9,17 +11,25 @@ import { fileURLToPath } from "node:url";
 /**
  * @typedef {{ path: string, size: number }} AssetFile
  * @typedef {{ file: string, text: string }} CreditSource
- * @typedef {"ok" | "missing" | "not-allowed" | "no-author"} LicenceStatus
+ * @typedef {"ok" | "missing" | "not-allowed" | "no-author" | "no-source"} LicenceStatus
  * @typedef {{ status: LicenceStatus, label: string }} Licence
- * @typedef {{ file: string, line: number, patterns: string[], licence: Licence }} CreditLine
+ * @typedef {{ file: string, line: number, patterns: string[], licence: Licence, software: Licence }} CreditLine
  * @typedef {"exact" | "glob" | "folder"} MatchKind
- * @typedef {"no credit" | "no licence on the credit line" | "licence not allowed" | "CC BY without an author"} GapKind
- * @typedef {{ path: string, size: number, licence: string, where: string, gap: GapKind | null, asset: boolean, note: string }} Row
- * @typedef {{ rows: Row[], files: number, bytes: number, assets: number, credited: number, gaps: number }} Report
+ * @typedef {"art" | "software"} AssetClass
+ * @typedef {"no credit" | "no licence on the credit line" | "licence not allowed" | "CC BY without an author" | "software licence without an author" | "software credit without a source link"} GapKind
+ * @typedef {{ path: string, size: number, licence: string, where: string, gap: GapKind | null, asset: boolean, kind: AssetClass, note: string }} Row
+ * @typedef {{ rows: Row[], files: number, bytes: number, assets: number, software: number, credited: number, gaps: number, absent: string[] }} Report
  */
 
-/** The folders whose files ship with the game and need a credit. */
-export const ASSET_ROOTS = ["public/models", "public/hdri", "public/textures", "public/audio"];
+/** Everything under here ships with the game, so every file in it needs a credit. */
+export const ASSET_ROOTS = ["public"];
+
+/**
+ * Folders of bundled software and model files: code and machine-learning models that other people publish
+ * under their own open licence. They are not art. A file is in this class only because of its folder,
+ * so an art asset cannot pass by writing "MIT" on its credit line. Each entry ends with a slash.
+ */
+export const SOFTWARE_ROOTS = ["public/draco/", "public/mediapipe/"];
 
 /** Folder and `*` credits count only here. A model log has to name the exact file. */
 export const MAIN_CREDITS = "CREDITS.md";
@@ -42,6 +52,20 @@ const TEAM = /\b(?:made|generated|recorded|built|drawn) by the team\b[^|.`;]*/i;
 // So "used by the Polyphemus fight" is not an author. A lower-case handle is not read either.
 const AUTHOR = /\bby (?!the\b)([A-Z0-9@][^,;|()`]*?)(?= is licensed\b|[,;|()`]|$)/;
 const PATH = /(?<![\w./-])public\/[\w.\-/*]+/g;
+// The open licences a bundled software or model file may carry. Plain "BSD" with no clause count is not read.
+const APACHE = new RegExp(`\\bApache(?:${SEP}License)?,?(?:${SEP}Version)?${SEP}2\\.0\\b`, "i");
+const MIT = /\bMIT\b/;
+const BSD = new RegExp(`\\bBSD${SEP}([23])${SEP}Clause\\b`, "i");
+const LINK = /\bhttps?:\/\/[^\s|`<>]+/;
+
+/**
+ * Which rules a file is checked by: "software" under one of SOFTWARE_ROOTS, "art" anywhere else.
+ * @param {string} path
+ * @returns {AssetClass}
+ */
+export function assetClass(path) {
+  return SOFTWARE_ROOTS.some((root) => path.startsWith(root)) ? "software" : "art";
+}
 
 /**
  * Why a file is bookkeeping and not an asset, or null when it is an asset.
@@ -78,6 +102,31 @@ export function readLicence(text, context = text) {
   const team = TEAM.exec(text);
   if (team) return { status: "ok", label: team[0].trim() };
   return { status: "missing", label: "" };
+}
+
+/**
+ * Reads the licence of a bundled software or model file: Apache-2.0, MIT, or BSD with 2 or 3 clauses.
+ * The line must also name the author with the word "by" and give a link to the source.
+ * A CC0, CC BY or made-by-the-team line is not allowed here: these folders hold other people's software.
+ * @param {string} text
+ * @param {string} [context]
+ * @returns {Licence}
+ */
+export function readSoftwareLicence(text, context = text) {
+  for (const pattern of NOT_ALLOWED) {
+    const bad = pattern.exec(text);
+    if (bad) return { status: "not-allowed", label: bad[0] };
+  }
+  const bsd = BSD.exec(text);
+  const name = APACHE.test(text) ? "Apache-2.0" : MIT.test(text) ? "MIT" : bsd ? `BSD-${bsd[1] ?? ""}-Clause` : null;
+  if (name === null) {
+    const art = readLicence(text, context);
+    return art.status === "missing" ? art : { status: "not-allowed", label: art.label };
+  }
+  const author = AUTHOR.exec(context)?.[1]?.trim();
+  if (author === undefined || author === "") return { status: "no-author", label: name };
+  if (!LINK.test(context)) return { status: "no-source", label: name };
+  return { status: "ok", label: `${name}, by ${author}` };
 }
 
 /**
@@ -135,23 +184,26 @@ export function creditLines(source) {
     }
     const patterns = pathsNamed(line);
     if (patterns.length === 0) return;
-    found.push({ file: source.file, line: index + 1, patterns, licence: lineLicence(line, licenceColumn) });
+    found.push({ file: source.file, line: index + 1, patterns, ...lineLicences(line, licenceColumn) });
   });
   return found;
 }
 
 /**
+ * The licence a line gives, read twice: by the art rules and by the bundled software rules.
+ * Which reading counts is decided later, by the folder of the file the line names.
  * @param {string} line
  * @param {number} licenceColumn
- * @returns {Licence}
+ * @returns {{ licence: Licence, software: Licence }}
  */
-function lineLicence(line, licenceColumn) {
-  if (licenceColumn < 0) return readLicence(line);
+function lineLicences(line, licenceColumn) {
+  if (licenceColumn < 0) return { licence: readLicence(line), software: readSoftwareLicence(line) };
   const cell = cells(line)[licenceColumn] ?? "";
-  const licence = readLicence(cell, line);
-  // A Licence cell that says something we do not know ("MIT", "unknown") is not an allowed licence.
-  if (licence.status === "missing" && cell !== "") return { status: "not-allowed", label: cell.slice(0, 40) };
-  return licence;
+  // A Licence cell that says something the class does not know ("MIT" for art, "unknown") is not an allowed licence.
+  /** @type {(licence: Licence) => Licence} */
+  const orNotAllowed = (licence) =>
+    licence.status === "missing" && cell !== "" ? { status: "not-allowed", label: cell.slice(0, 40) } : licence;
+  return { licence: orNotAllowed(readLicence(cell, line)), software: orNotAllowed(readSoftwareLicence(cell, line)) };
 }
 
 /**
@@ -172,33 +224,36 @@ export function matchKind(pattern, path) {
 }
 
 const KIND_RANK = { exact: 0, glob: 1, folder: 2 };
-const STATUS_RANK = { "not-allowed": 0, "no-author": 1, ok: 2, missing: 0 };
+const STATUS_RANK = { "not-allowed": 0, "no-author": 1, "no-source": 1, ok: 2, missing: 0 };
 
 /**
  * The credit line that decides a file, or null when no line names it.
  * A line that states a licence always beats a line that states none.
  * Among lines that state a licence the most specific wins: exact path, then pattern, then folder.
  * So a folder credit cannot hide a pattern or an exact line that says the file is not allowed.
- * At the same level a problem wins (not allowed, then CC BY without an author, then an allowed licence),
+ * At the same level a problem wins (not allowed, then no author or no source link, then an allowed licence),
  * and CREDITS.md comes before a model log.
+ * The line comes back with `licence` set to the reading for this file's class: art or bundled software.
  * @param {string} path
  * @param {CreditLine[]} lines
  * @returns {CreditLine | null}
  */
 export function findCredit(path, lines) {
+  const software = assetClass(path) === "software";
   /** @type {{ line: CreditLine, rank: number }[]} */
   const candidates = [];
   for (const line of lines) {
+    const licence = software ? line.software : line.licence;
     for (const pattern of line.patterns) {
       const kind = matchKind(pattern, path);
       if (kind === null) continue;
       if (kind !== "exact" && line.file !== MAIN_CREDITS) continue;
       const rank =
-        (line.licence.status === "missing" ? 1000 : 0) +
+        (licence.status === "missing" ? 1000 : 0) +
         KIND_RANK[kind] * 100 +
-        STATUS_RANK[line.licence.status] * 10 +
+        STATUS_RANK[licence.status] * 10 +
         (line.file === MAIN_CREDITS ? 0 : 1);
-      candidates.push({ line, rank });
+      candidates.push({ line: { ...line, licence }, rank });
     }
   }
   candidates.sort((a, b) => a.rank - b.rank);
@@ -210,14 +265,18 @@ const GAP_FOR = {
   missing: "no licence on the credit line",
   "not-allowed": "licence not allowed",
   "no-author": "CC BY without an author",
+  "no-source": "software credit without a source link",
 };
 
 /**
+ * `expected` is a list of folders (each ending with a slash) that should hold files. One with no file in
+ * `files` is listed in `absent`, so a report run before `make setup` says what it could not see.
  * @param {AssetFile[]} files
  * @param {CreditSource[]} sources
+ * @param {string[]} [expected]
  * @returns {Report}
  */
-export function buildReport(files, sources) {
+export function buildReport(files, sources, expected = []) {
   const lines = sources.flatMap(creditLines);
   const rows = [...files]
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
@@ -229,8 +288,10 @@ export function buildReport(files, sources) {
     files: rows.length,
     bytes: rows.reduce((sum, row) => sum + row.size, 0),
     assets: assets.length,
+    software: assets.filter((row) => row.kind === "software").length,
     credited: assets.length - gaps,
     gaps,
+    absent: expected.filter((folder) => !files.some((file) => file.path.startsWith(folder))),
   };
 }
 
@@ -240,17 +301,20 @@ export function buildReport(files, sources) {
  * @returns {Row}
  */
 function rowFor(file, lines) {
-  const base = { path: file.path, size: file.size, gap: null, asset: true, note: "" };
+  const kind = assetClass(file.path);
+  const base = { path: file.path, size: file.size, gap: null, asset: true, kind, note: "" };
   const rule = bookkeepingRule(file.path);
   if (rule !== null) return { ...base, asset: false, licence: `not an asset (${rule})`, where: "-" };
   const credit = findCredit(file.path, lines);
   if (credit === null) return { ...base, licence: "-", where: "-", gap: "no credit" };
   const where = `${credit.file}:${String(credit.line)}`;
-  if (credit.licence.status !== "ok") {
-    return { ...base, licence: credit.licence.label || "-", where, gap: GAP_FOR[credit.licence.status] };
+  const { status, label } = credit.licence;
+  if (status !== "ok") {
+    const gap = kind === "software" && status === "no-author" ? "software licence without an author" : GAP_FOR[status];
+    return { ...base, licence: label || "-", where, gap };
   }
   const note = credit.file === MAIN_CREDITS ? "" : `credited in the model log only, not in ${MAIN_CREDITS}`;
-  return { ...base, licence: credit.licence.label, where, note };
+  return { ...base, licence: kind === "software" ? `Bundled software: ${label}` : label, where, note };
 }
 
 /**
@@ -259,9 +323,10 @@ function rowFor(file, lines) {
  * @returns {string}
  */
 export function gapOwner(path) {
-  return path.startsWith("public/audio/")
-    ? "audio (luvudeshi's agent)"
-    : "models, textures and skies (the lead's agents)";
+  if (path.startsWith("public/audio/")) return "audio (luvudeshi's agent)";
+  if (assetClass(path) === "software") return "bundled software and model files (the lead's agents)";
+  if (/^public\/(?:models|hdri|textures)\//.test(path)) return "models, textures and skies (the lead's agents)";
+  return "icons and screen art (the lead's agents)";
 }
 
 /**
@@ -277,6 +342,7 @@ export function sizeText(bytes) {
 
 /**
  * The summary, then the gaps grouped by owner, kind and folder, then the notes.
+ * The second line is there only when the list holds bundled software or model files.
  * @param {Report} report
  * @returns {string[]}
  */
@@ -286,6 +352,12 @@ export function summaryLines(report) {
       `${String(report.assets)} assets: ${String(report.credited)} credited, ${String(report.gaps)} ${report.gaps === 1 ? "gap" : "gaps"}. ` +
       `${String(report.files - report.assets)} not assets.`,
   ];
+  if (report.software > 0) {
+    out.push(
+      `Art and sound: ${String(report.assets - report.software)}. ` +
+        `Bundled software and model files under their own open licence: ${String(report.software)}.`,
+    );
+  }
   /** @type {Map<string, string[]>} */
   const groups = new Map();
   for (const row of report.rows) {
@@ -299,6 +371,9 @@ export function summaryLines(report) {
   }
   for (const row of report.rows) {
     if (row.note !== "") out.push(`NOTE, ${row.path}: ${row.note}`);
+  }
+  for (const folder of report.absent) {
+    out.push(`NOTE, ${folder}: no files on this machine, so none are listed. They ship with the game: run make setup, then this report again`);
   }
   return out;
 }
@@ -400,7 +475,7 @@ function readSources(root) {
 function main(args) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const files = ASSET_ROOTS.flatMap((folder) => walk(root, folder));
-  const report = buildReport(files, readSources(root));
+  const report = buildReport(files, readSources(root), SOFTWARE_ROOTS);
   const text = args.includes("--markdown") ? formatMarkdown(report) : formatText(report);
   process.stdout.write(`${text}\n`);
   return report.gaps === 0 ? 0 : 1;
