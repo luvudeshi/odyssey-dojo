@@ -54,9 +54,10 @@ const NOTHING: CombatInput = { held: new Set(), struck: [] };
 export interface BodyReader {
   /**
    * Give it the player's newest frame (the same frame again, or null, is fine). Returns what the player is doing:
-   * strikes only on the call that first sees them, defends for as long as they are held.
+   * strikes only on the call that first sees them, defends for as long as they are held. `ask` is the move the prompt
+   * asks for (null for none): that move may read looser, as it does for player one (createPoseInput).
    */
-  read(frame: PoseFrame | null): CombatInput;
+  read(frame: PoseFrame | null, ask?: string | null): CombatInput;
   /** The player is standing ready now: take their neutral stance from the last frames, not from when they walked in. */
   settle(): void;
   history(): PoseHistory;
@@ -73,7 +74,7 @@ export function createBodyReader(moves: ReadonlyMap<string, MoveDef>): BodyReade
   /** `settle` was asked for before there were frames to take the stance from: take it from the next ones. */
   let owed = false;
   return {
-    read(frame) {
+    read(frame, ask = null) {
       if (!frame) {
         held = NOTHING.held;
         return NOTHING;
@@ -95,7 +96,7 @@ export function createBodyReader(moves: ReadonlyMap<string, MoveDef>): BodyReade
           owed = false;
         }
       }
-      const input = read(history);
+      const input = read(history, ask);
       held = input.held;
       return input;
     },

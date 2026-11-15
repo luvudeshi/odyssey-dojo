@@ -240,6 +240,7 @@ The fight teaches. The prompt card shrinks as you get a move right, from a drawi
 
 **8. Does it really teach you to fight?**
 It teaches the shape and timing of a move: hands up before the blow lands, weight across on a dodge, a straight arm on a jab. It cannot teach contact, distance or power, and it does not replace a coach. Rating how well each strike is thrown (GOOD, GREAT, PERFECT, on screen now), one line per move on what it is for (on the result screen now), and a ghost outline to line up with (built, switched off) are how we take it further.
+`[pending: branch feedback-popup and the lead's end-screen change]` It also tells you exactly what to fix on every move: a grade and one tip measured from your body, like "Guard hand by your chin", and a report card at the end with one thing to work on per move (32 words). **Today:** say it of the Training Dojo only, where every try gets its grade and one written tip.
 
 **9. What do Gemini and ElevenLabs do, and where does my picture go?**
 Pose tracking runs on this laptop and sends no video anywhere, and neither service is called during a fight. ElevenLabs made the sound ahead of time: the eleven fight sounds and Athena's 50 lines are files in the game, so they play with no network. The API keys stay on the server, never in the browser.

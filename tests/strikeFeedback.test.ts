@@ -4,7 +4,7 @@ import { FEEDBACK_POINTS, FEEDBACK_RULES, TIP_MAX, strikeFeedback, tipsFor } fro
 import type { PoseFrame, PoseHistory } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import { MOVES } from "../src/moves/registry";
-import { EMPTY_HISTORY, JOINT, pushFrame } from "../src/pose/signals";
+import { EMPTY_HISTORY, JOINT, elbowAngle, pushFrame } from "../src/pose/signals";
 import { STYLES } from "../src/styles/registry";
 import { LEFT_OUT, READY, RIGHT_OUT, STANDING, frameAt, pose, recording } from "./poseFixture";
 import type { BodyPose } from "./poseFixture";
@@ -73,8 +73,10 @@ describe("the tip names what the body did", () => {
     expect(strikeFeedback("cross", turned(made(pose(HALF_RIGHT, READY)), "right"), 0.85).tip).toBe("Extend your arm fully");
   });
 
-  test("a cross thrown square to the camera: hips", () => {
-    expect(strikeFeedback("cross", made(pose(RIGHT_OUT, READY)), 0.85)).toMatchObject({ grade: "GREAT", tip: "Turn your hips into it" });
+  test("a clean cross thrown square to the camera is EXCELLENT with no tip: a webcam sees almost every cross square-on", () => {
+    expect(strikeFeedback("cross", made(pose(RIGHT_OUT, READY)), 0.85)).toEqual({ grade: "EXCELLENT", points: FEEDBACK_POINTS.EXCELLENT, tip: null });
+    expect(strikeFeedback("cross", made(pose(RIGHT_OUT, READY)), 0.6)).toEqual({ grade: "GREAT", points: FEEDBACK_POINTS.GREAT, tip: null });
+    expect(strikeFeedback("reverse_punch", made(pose(RIGHT_OUT, READY)), 0.85).tip).toBeNull();
   });
 
   test("a clean shape thrown slowly: speed", () => {
@@ -113,6 +115,42 @@ describe("the tip names what the body did", () => {
   test("the same tip whether it is read as the move counts or after the hand has come back", () => {
     const after = recording([[READY, 300], [pose(HALF_LEFT, READY), 130], [READY, 200]]).reduce(pushFrame, EMPTY_HISTORY);
     expect(strikeFeedback("jab", after, 0.85).tip).toBe("Extend your arm fully");
+  });
+});
+
+describe("a punch the detector counts is not told to extend for the camera's short elbow", () => {
+  /** The strongest the move's own detector read over the frames, played as the fight plays them. */
+  function counted(move: string, history: PoseHistory): number {
+    const detector = MOVES.get(move);
+    if (!detector) throw new Error(move);
+    let played: PoseHistory = { ...EMPTY_HISTORY, baseline: history.baseline };
+    let best = 0;
+    for (const frame of history.frames) {
+      played = pushFrame(played, frame);
+      best = Math.max(best, detector.detect(played));
+    }
+    return best;
+  }
+  // A straight punch at the camera reads 20 to 30 degrees short: about 132 degrees here (the cross's turned
+  // shoulder moves its reading, so its forearm is a little straighter to read the same).
+  const SHORT_LEFT = { leftUpper: [0.1, 0.45, -1], leftFore: [0.1, -0.45, -1] } as const;
+  const SHORT_RIGHT = { rightUpper: [-0.1, 0.4, -1], rightFore: [-0.1, -0.4, -1] } as const;
+
+  test.each([
+    ["jab", made(pose(SHORT_LEFT, READY))],
+    ["cross", turned(made(pose(SHORT_RIGHT, READY)), "right")],
+  ] as const)("%s at about 132 degrees: counted, EXCELLENT, no tip", (move, history) => {
+    expect(counted(move, history)).toBeGreaterThanOrEqual(0.7);
+    expect(strikeFeedback(move, history, 0.85)).toEqual({ grade: "EXCELLENT", points: FEEDBACK_POINTS.EXCELLENT, tip: null });
+  });
+
+  test("no counted jab with the elbow at 128 degrees or straighter is told to extend", () => {
+    for (let bend = 0.45; bend >= 0; bend -= 0.05) {
+      const history = made(pose({ leftUpper: [0.1, bend, -1], leftFore: [0.1, -bend, -1] }, READY));
+      expect(elbowAngle(history.frames.at(-1) as PoseFrame, "left")).toBeGreaterThanOrEqual(128);
+      expect(counted("jab", history)).toBeGreaterThanOrEqual(0.7);
+      expect(strikeFeedback("jab", history, 0.85).tip).toBeNull();
+    }
   });
 });
 

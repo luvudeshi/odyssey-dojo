@@ -2,6 +2,8 @@
 
 Issue #198. On demo day the venue's network may be slow, an AI service may answer late or wrongly, and a key may be missing on the demo laptop. This page says what each server route does in each of those cases, how long it takes, what the player sees, and which test proves it. `docs/offline.md` (issue #156) covers the other case, the network being off altogether.
 
+Since PR #392 (15 November) the god scan is out of the game: `POST /api/reveal` and its tests are still here, and only the developer page (`src/ai/lab/`) opens the scan, so no player meets the god scan rows below. The generated fight is now reached from the main menu's "Ask the Muse" button.
+
 ## The rules, and the tests that hold them
 
 | Rule | Held by |

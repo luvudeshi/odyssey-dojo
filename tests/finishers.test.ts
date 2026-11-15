@@ -67,6 +67,8 @@ test("every stop has a short line for its FINISH card, and the three escapes do 
     if (endingFor(enemy.id).kind === "escape" && ["sirens", "scylla", "charybdis"].includes(enemy.id)) {
       expect(line.toLowerCase(), enemy.id).not.toContain("finish");
     }
+    // The general line is only for an unknown id: each stop names its own last move.
+    expect(line, enemy.id).not.toBe(GENERAL_FINISHER_LINE);
   }
   expect(Object.keys(FINISHER_LINES).sort()).toEqual(ENEMIES.map((enemy) => enemy.id).sort());
   expect(finisherLine("nobody")).toBe(GENERAL_FINISHER_LINE);

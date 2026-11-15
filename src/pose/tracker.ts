@@ -4,6 +4,7 @@ import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
 import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
 import { log } from "../core/log";
 import type { Landmark, PoseFrame } from "../core/types";
+import { duoCamera } from "../duo/duoCamera";
 import { createFreshFrame, createRateMeter, tooSlow, watchCameraFrames } from "./freshFrame";
 
 export interface PoseTracker {
@@ -67,8 +68,10 @@ export async function startTracker(): Promise<PoseTracker> {
   const build = (plan: Plan): Promise<PoseLandmarker> => PoseLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: `/mediapipe/pose_landmarker_${plan.model}.task`, delegate: plan.delegate },
     runningMode: "VIDEO",
-    numPoses: 1,
+    numPoses: duoCamera.wanted(),
   });
+  // Two players on one camera (src/duo): how many bodies the model in use was last told to look for.
+  let looking = duoCamera.wanted();
   let lastT = 0;
   // The first call on a new landmarker compiles GPU programs (0.6 to 2 s). Do it now, off the fight.
   const warm = (made: PoseLandmarker): void => {
@@ -178,6 +181,10 @@ export async function startTracker(): Promise<PoseTracker> {
       lastCaptured = captured;
       const t = Math.max(captured, lastT + 1);
       lastT = t;
+      if (looking !== duoCamera.wanted()) {
+        looking = duoCamera.wanted();
+        void landmarker.setOptions({ numPoses: looking }).catch((error: unknown) => { log("warn", "pose_options_failed", error); });
+      }
       let result: PoseLandmarkerResult;
       try {
         result = landmarker.detectForVideo(video, t);
@@ -198,6 +205,15 @@ export async function startTracker(): Promise<PoseTracker> {
         slowSince ||= now;
         if (now - slowSince > 3000) { note("too-slow"); slowSince = 0; }
       } else slowSince = 0;
+      if (duoCamera.on()) {
+        // Every body goes to the seats; player one's frame comes back and is handed out as the one pose always was.
+        const bodies = result.landmarks.map((image, i) => ({ image: mirrored(image, (x) => 1 - x), world: mirrored(result.worldLandmarks[i] ?? [], (x) => -x) }));
+        const first = duoCamera.take(bodies, t);
+        if (!first) { stats.noPerson++; return null; }
+        stats.poses++;
+        keep(stats.poseTimes, t);
+        return first;
+      }
       const image = result.landmarks[0];
       const world = result.worldLandmarks[0];
       if (!image || !world) { stats.noPerson++; return null; }
