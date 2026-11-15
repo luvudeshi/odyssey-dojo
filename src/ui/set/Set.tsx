@@ -1,4 +1,4 @@
-// The storm kit's few React pieces (set.css has the rest): the painted backdrop and a title. Only rendered under ?look=storm.
+// The storm kit's few React pieces (set.css has the rest): the painted backdrop and a title.
 import type { ReactNode } from "react";
 
 /** A full-bleed painting at full quality, with a soft veil where the words sit. Place it first in a positioned screen. */

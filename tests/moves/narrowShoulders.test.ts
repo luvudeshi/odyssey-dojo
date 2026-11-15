@@ -6,8 +6,8 @@
 // level. Every replay goes through the real pose input, so "counts" means what the game means.
 //
 // What sets the numbers (src/moves/handSignals.ts, the lenient strikes of the lenient-strikes PR): an arm is out
-// while its upper arm is lifted between PUNCH_LIFT (40) and 140 degrees from hanging, so a straight arm counts
-// from 49 degrees below level to 49 above on every body here. The fist's height band (PUNCH_HEIGHT torso
+// while its upper arm is lifted between PUNCH_LIFT (30) and 140 degrees from hanging, so a straight arm counts
+// from 59 degrees below level (56 with 0.60 m arms) to at least 49 above on every body here. The fist's height band (PUNCH_HEIGHT torso
 // lengths) is wider than that, and the over-the-head check is measured on the same 3D ruler, so neither shoulder
 // width nor arm length moves the angles. The bent-elbow reading (LIFT_BENT) waits for the upper arm to stop
 // rising, or a straight arm on its way over the head would count up to about 90 degrees. Before, the band was SHOULDER_HEIGHT (0.3 m on the 0.5 m torso) and the
@@ -49,12 +49,12 @@ interface Case {
   readonly down: number;
 }
 
-const FIXTURE: Case = { name: "0.40 m shoulders, 0.55 m arms (the fixture)", build: FIXTURE_BUILD, up: 49, down: 49 };
+const FIXTURE: Case = { name: "0.40 m shoulders, 0.55 m arms (the fixture)", build: FIXTURE_BUILD, up: 49, down: 59 };
 const NARROW: readonly Case[] = [
-  { name: "0.34 m shoulders, 0.55 m arms", build: { shoulders: 0.34, arm: 0.55, torso: 0.5 }, up: 49, down: 49 },
-  { name: "0.30 m shoulders, 0.55 m arms", build: { shoulders: 0.3, arm: 0.55, torso: 0.5 }, up: 49, down: 49 },
-  { name: "0.34 m shoulders, 0.60 m arms", build: { shoulders: 0.34, arm: 0.6, torso: 0.5 }, up: 49, down: 49 },
-  { name: "0.30 m shoulders, 0.60 m arms", build: { shoulders: 0.3, arm: 0.6, torso: 0.5 }, up: 49, down: 49 },
+  { name: "0.34 m shoulders, 0.55 m arms", build: { shoulders: 0.34, arm: 0.55, torso: 0.5 }, up: 49, down: 59 },
+  { name: "0.30 m shoulders, 0.55 m arms", build: { shoulders: 0.3, arm: 0.55, torso: 0.5 }, up: 49, down: 59 },
+  { name: "0.34 m shoulders, 0.60 m arms", build: { shoulders: 0.34, arm: 0.6, torso: 0.5 }, up: 49, down: 56 },
+  { name: "0.30 m shoulders, 0.60 m arms", build: { shoulders: 0.3, arm: 0.6, torso: 0.5 }, up: 49, down: 56 },
 ];
 const PUNCHES: readonly (readonly [string, Side])[] = [["jab", "left"], ["cross", "right"]];
 /** "Within a few degrees" of the fixture's angles. */
@@ -85,16 +85,17 @@ test.each(NARROW)("$name: the baseline reads the narrow shoulders and the same t
 });
 
 describe.each([FIXTURE, ...NARROW])("$name", ({ build, up, down }) => {
-  // Jab and cross read on either hand, so each punch fires both.
-  test.each(PUNCHES)("a %s counts from level to the pinned angles, as a jab and a cross and nothing else", (_move, side) => {
+  // Left and right are distinct: the left fist is the jab alone, the right fist the cross alone.
+  test.each(PUNCHES)("a %s counts from level to the pinned angles, as itself and nothing else", (move, side) => {
     for (let degrees = -down; degrees <= up; degrees++) {
-      expect(fired(punchOn(build, side, degrees)), `${String(degrees)} degrees above level`).toEqual(["cross", "jab"]);
+      expect(fired(punchOn(build, side, degrees)), `${String(degrees)} degrees above level`).toEqual([move]);
     }
   });
 
-  test.each(PUNCHES)("a %s any steeper does not count, and nothing else fires in its place", (_move, side) => {
+  // Aimed up there is no steepest limit any more: a fist thrown up toward a camera above it counts, and so does a
+  // straight arm on its way overhead (it is a rough punch on the way). Aimed down the arm must still be lifted.
+  test.each(PUNCHES)("a %s any steeper down does not count, and nothing else fires in its place", (_move, side) => {
     for (let past = 1; past <= BEYOND; past++) {
-      expect(fired(punchOn(build, side, up + past)), `${String(up + past)} degrees above level`).toEqual([]);
       expect(fired(punchOn(build, side, -down - past)), `${String(down + past)} degrees below level`).toEqual([]);
     }
   });

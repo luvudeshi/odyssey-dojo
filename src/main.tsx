@@ -2,7 +2,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import "./index.css";
-import "./ui/lookSwitch";
 import "./ui/set/set.css";
 import "./ui/set/screens.css";
 

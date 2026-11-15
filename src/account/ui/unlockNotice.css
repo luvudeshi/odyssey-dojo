@@ -1,0 +1,11 @@
+/* The unlock notice (UnlockNotice.tsx) as a stack beside the result panel. The card rules are in src/screens/account.css;
+   these sit under two classes, so they outrank those and change nothing else.
+   The result panel (.overlay in src/index.css) is min(40rem, 92vw) wide plus its border, in the middle of the window.
+   The stack takes the strip to the right of it, 16 px in from the edge and 12 px off the panel, and is never wider
+   than it was (20rem). In a window too narrow to have a strip it keeps 14rem and lies over the panel's edge. */
+.acc-notice.acc-stack { width: clamp(14rem, calc((100vw - 42rem) / 2 - 28px), 20rem); }
+.acc-stack .acc-notice__card { gap: 10px; min-width: 0; padding: 6px 12px 6px 8px; }
+.acc-stack .acc-notice__card > div { min-width: 0; }
+.acc-stack .acc-notice__card small { font-size: 12px; letter-spacing: 0.08em; }
+.acc-stack .acc-notice__card b { display: block; font-size: 20px; line-height: 1.1; overflow-wrap: anywhere; }
+.acc-stack .acc-notice__more { justify-content: center; padding: 6px 12px; font: 700 18px var(--pb-font-body); color: var(--pb-ochre-light); }

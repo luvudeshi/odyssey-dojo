@@ -66,7 +66,7 @@ export const PRACTICE_TIPS = {
   guard: tip("guard", "Bring both fists right up to your cheeks. Hands at your chest leave your head open."),
   hold: tip("hold", "Keep your fists up for a beat so the guard reads clearly. Once is enough."),
   // Duck.
-  depth: tip("depth", "Drop lower: bend your knees until your head is under where it was."),
+  depth: tip("depth", "Drop lower: bend your knees until your head would clear a swing."),
   knees: tip("knees", "Bend your knees, not your waist, and keep your eyes up on what is coming."),
   // Dodges.
   distance: tip("distance", "Step further: move your whole body off the line, not only your head."),
@@ -517,6 +517,9 @@ const said = (counted: boolean, quality: number, peak: number, say: PracticeTip 
   counted, quality, peak, tip: say?.tip ?? null, part: say?.part ?? null,
 });
 
+/** How long after a strike first counts its best quality is still taken, in milliseconds (the Dojo's settle time). */
+const SETTLE_MS = 300;
+
 /**
  * Judges one repetition. `frames` are the frames of the attempt, oldest first, fed one at a time through the same
  * history the fight keeps (about a second long). `baseline` is the stance from calibration; left out, it is
@@ -539,6 +542,9 @@ export function judgeRep(move: MoveDef, frames: readonly PoseFrame[], baseline: 
       countedAt = history;
       // A strike is scored at the frame it first counts, the way the fight scores it.
       if (move.quality) thrown = safe(move.quality(history));
+    } else if (countedAt && move.quality && (frame.t - (latest(countedAt)?.t ?? frame.t)) <= SETTLE_MS) {
+      // The detector now counts a rough strike early in its motion, so the best look in the next moment is scored.
+      thrown = Math.max(thrown ?? 0, safe(move.quality(history)));
     }
     peak = Math.max(peak, confidence);
   }

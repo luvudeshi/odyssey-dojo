@@ -13,12 +13,12 @@ Every number below is a first guess. Nothing here has been tried on a real body 
 
 | Step | The screen says |
 | --- | --- |
-| jab | Jab: left fist straight out |
-| cross | Cross: right fist straight out |
-| block | Block: both fists up to your face |
-| dodge_left | Dodge left: step to your left |
-| dodge_right | Dodge right: step to your right |
-| duck | Duck: bend your knees, drop low |
+| jab | Jab: left fist out to keep space |
+| cross | Cross: right fist, your power hand |
+| block | Block: fists up to cover your head |
+| dodge_left | Dodge left: step off the line |
+| dodge_right | Dodge right: step off the line |
+| duck | Duck: drop low under a swing |
 
 The player must stand still for about a second before the first step. The dodges and the duck are
 measured against that stance, so those frames go into `assessWarmup` too, with times before `startedAtMs`.
