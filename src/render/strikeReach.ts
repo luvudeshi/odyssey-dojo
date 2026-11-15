@@ -10,7 +10,7 @@ import type { EnemySpec } from "../core/types";
  * The leap in seconds: a quick crouch, the launch and flight (the crouch comes out of `out`, so the monster still reacts
  * `out` after the strike counts), the hop back home after the blow, and the landing the legs absorb.
  */
-export const REACH = { crouch: 0.045, out: 0.14, back: 0.44, land: 0.26 } as const;
+export const REACH = { crouch: 0.045, out: 0.14, back: 0.36, land: 0.26 } as const;
 
 /** Where the leap is at one moment. Every field runs 0..1 and is continuous in time, so nothing snaps or pops. */
 export interface Leap {
@@ -57,12 +57,12 @@ export function leapAt(since: number, out: Leap = newLeap()): Leap {
     out.air = smooth(p / 0.7);
     out.lean = 0.8 + 0.2 * p;
   } else if (since < REACH.out + REACH.back) {
-    // The blow stops him dead, then he springs off and drops back to his mark, legs reaching down for the floor.
+    // The blow stops him dead for a beat, then he kicks off and drops hard to his mark, legs reaching for the floor.
     // Along the floor he eases in, so he lands without sliding; he falls with speed, so the legs have work to do.
     const u = (since - REACH.out) / REACH.back;
     out.across = 1 - smooth(u);
-    out.up = 1 - u * u;
-    out.arc = 0.8 * 4 * u * (1 - u);
+    out.up = 1 - u ** 1.4;
+    out.arc = 0.3 * 4 * u * (1 - u);
     out.air = 1 - smooth((u - 0.45) / 0.45);
     out.lean = 1 - u;
   } else {
