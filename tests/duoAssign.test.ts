@@ -127,6 +127,27 @@ test("player one leaving: the player who stayed becomes player one, drawn where 
   expect(back.out[0]?.players).toBe(1);
 });
 
+test("after a take-over, once everyone has been gone long enough to be forgotten, the next player is read where they stand", () => {
+  const seating = createSeating();
+  const start = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]));
+  const alone = run(seating, times(40, () => [body(0.7, 0.54, 0.16)]), start.t);
+  expect(at(alone.out.at(-1)?.first ?? null)).toBe(0.3);
+  // Nobody in the picture for a second: longer than a player is remembered.
+  const empty = run(seating, times(Math.ceil(1000 / FRAME_MS), () => []), alone.t);
+  // Someone stands where the first hero stood. Before the fix they were read far to the left of where they are.
+  const back = run(seating, times(10, () => [body(0.3, 0.5, 0.12)]), empty.t);
+  expect(at(back.out.at(-1)?.first ?? null)).toBe(0.3);
+  expect(at(back.out.at(-1)?.firstSeen ?? null)).toBe(0.3);
+  // A short loss of the promoted player keeps the shift: they come back as the hero, drawn where the hero stood.
+  const again = createSeating();
+  const s2 = run(again, times(JOINED, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]));
+  const a2 = run(again, times(40, () => [body(0.7, 0.54, 0.16)]), s2.t);
+  const blink = run(again, times(5, () => []), a2.t);
+  const b2 = run(again, times(5, () => [body(0.7, 0.54, 0.16)]), blink.t);
+  expect(at(b2.out.at(-1)?.first ?? null)).toBe(0.3);
+  expect(at(b2.out.at(-1)?.firstSeen ?? null)).toBe(0.7);
+});
+
 test("a body in the background, a body with hidden shoulders and one person found twice are not players", () => {
   const seating = createSeating();
   const small = body(0.7, 0.5, MIN_SHOULDERS - 0.01);
