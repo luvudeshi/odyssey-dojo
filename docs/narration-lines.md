@@ -104,11 +104,12 @@ Asking for a line that is already waiting or playing joins it, so it is heard on
 
 ### The wiring, and why the cleanup is required
 
-The screens call these since PR #144: IntroScreen and EndPanel through `narrateIntro` and `narrateResult` in `src/screens/hookups.ts`, and FightScreen directly. The lines are:
+The screens call these: App and EndPanel through `narrateIntro` and `narrateResult` in `src/screens/hookups.ts`, and FightScreen directly. There is no intro screen since PR #281, so the before-line is asked for by the click on a stop. The lines are:
 
 ```tsx
-// src/screens/IntroScreen.tsx: narrateIntro calls speakNarration(enemy.id, "before") and returns stopStory
-useEffect(() => narrateIntro(enemy.id), [enemy.id]);
+// src/App.tsx, QuestMap's onEnter: narrateIntro calls speakNarration(next.id, "before") and returns stopStory.
+// The fight opens at once. onQuit calls stopIntro.current(), so leaving the fight for the map stops him.
+if (next) stopIntro.current = narrateIntro(next.id);
 
 // src/screens/EndScreen.tsx, in EndPanel: narrateResult calls speakResult(enemyId, won) and returns stopStory
 useEffect(() => narrateResult(enemyId, won), [enemyId, won]);
@@ -120,11 +121,27 @@ if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(ene
 
 `speakHomecoming` has no caller on `main` yet: the last stop's result screen is `src/screens/EndScreen.tsx`, the lead's file, and the call is offered to him as a patch on issue #179 (the "Home in Ithaca" panel asks for it), not pushed. Until it is in, the last win speaks only `homer_after_suitors`, like any other stop.
 
-`return stopStory` is required, not optional. Homer's new lines are 6 to 9 seconds long and wait up to 6 seconds for Athena. Without the cleanup:
-
-- A line still waiting when the screen is left starts inside the next fight. For example `homer_loss` after "Fight again".
-- A before-line still playing when the fight begins holds the voice, so Athena's `fight_start` is refused.
+On the result screen `return stopStory` is required, not optional. Homer's new lines are 6 to 9 seconds long and wait up to 6 seconds for Athena. Without the cleanup, a line still waiting when the screen is left starts inside the next fight. For example `homer_loss` after "Fight again".
 
 One case is safe even without it: a new Homer line cuts off an older story line, so the next intro is not silent while the last result line plays on.
+
+### Homer's line before a stop plays into the fight
+
+Since PR #281 a click on a stop starts its fight at once, and Homer's before-line is the only place that stop's story is spoken. It starts on the click and runs 7.0 to 9.2 seconds, so the fight opens under it. On the webcam it starts over calibration.
+
+What is heard:
+
+- He is heard to his end. While he speaks, Athena's `fight_start`, her calls, praise and warnings are not spoken. They are dropped, not queued: nothing bursts out when he ends, and her next call is spoken on its own beat. The prompt card shows every move meanwhile. On the keyboard that is "I am with you!" and about the first three calls. On the webcam it is fewer, by however long calibration took, and a fight that opens after he has ended gets its opening line as usual.
+- The music, the stop's ambience and the hit sounds play as in any fight, dipped under him as under any line.
+- Three lines do cut him, because each comes once and says what just happened: a phase line, the power-ready line and the result. We have not seen one come that early in a fight. A taunt only follows a phase line, so it is never heard over him.
+- He takes the voice no harder than before. Asked for while Athena speaks (the last fight's result line, a call, `fight_start`), he waits up to 6 seconds and cuts nothing but praise or a warning.
+- A pause does not cut him: he talks on over the pause menu, as he does over the result screen. "Restart fight" keeps him too.
+- Leaving the fight stops him. "Quit to map" stops him at once through `stopIntro` in App. Any other way out (for example "Use camera" on a keyboard fight) stops him one tick after the fight screen unmounts.
+
+How: `urgency` in `src/audio/voice.ts` has a tier for the before-lines (`isBeforeLine` in `narrationLines.ts`), above the calls and below the power line. The tier only counts while he is the line being spoken. `useStopAudio` calls `enterFightVoice` when a fight screen mounts and `leaveFightVoice` when it unmounts. `leaveFightVoice` cuts the taunt and Athena at once, refuses any taunt still waiting, and cuts the before-line one tick later unless a fight screen has mounted again by then. That delay is for React's dev build, which mounts every screen twice: cut in the cleanup itself, he was silenced 10 ms after he began.
+
+One thing is not ours. On `main` the cleanup of FightScreen's tick effect also calls `stopStory()`, which cuts him the same way in the dev build. Taking that one line out is asked of the lead on issue #179. Until it is out, he is still cut as the fight opens under `make dev`.
+
+`tests/voicePriorities.test.ts` replays the clip times of a keyboard fight measured on `main` and the webcam path. `tests/audioSession.test.ts` mounts the fight twice through the real `useStopAudio`.
 
 A taunt in a fight plays whole, after Athena's phase line and under her calls. In a fight replayed in headless Chrome before the taunt waited, the taunt and the phase line started in the same instant and ran together for about two seconds. Now the taunt starts within 0.1 seconds of the phase line's end (1.7 to 2.85 seconds after the phase change). Taunts are 2.7 to 5.8 seconds long and her calls come every 0.7 to 3 seconds, so two or three calls are spoken over each taunt. `tests/voicePriorities.test.ts` replays the clip times of that fight with stand-in audio and a fake clock. Nobody has listened to the two voices together in a real fight since the change. If the taunt is too loud or too quiet under her, change `TAUNT_VOLUME`.
