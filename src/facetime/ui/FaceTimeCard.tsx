@@ -9,7 +9,7 @@ import { describe, isLive, isOpen } from "../callMachine";
 import { normalizePhone } from "../phone";
 import type { FaceTimeSession } from "../session";
 import { standInLink } from "../standIn";
-import { AnswerStart, AnswerWaiting, answeredLine, useAnswering } from "./AnswerPanel";
+import { AnswerStart, AnswerWaiting, answeredLine, startOffer, useAnswering } from "./AnswerPanel";
 import "../../screens/account.css";
 import "../../screens/multiplayer.css";
 import "./faceTimeCard.css";
@@ -53,7 +53,8 @@ export function FaceTimeCard(props: {
   const [, setBeat] = useState(0);
   const askStatus = props.status;
   // A card that was handed a session (the loopback page) does not answer: the page's answerer runs the page's own session.
-  const answering = useAnswering(props.answering ?? (props.session ? null : undefined));
+  // A given answerer is asked at once; the page's own only once the server says it has the room's settings.
+  const answering = useAnswering(props.answering ?? (props.session ? null : undefined), props.answering !== undefined || canStandIn);
 
   useEffect(() => {
     if (session) return;
@@ -95,6 +96,7 @@ export function FaceTimeCard(props: {
   const friendSeat = session?.standInSeat() ?? null;
   const friendLink = friendSeat ? standInLink(window.location.origin, friendSeat) : null;
   const waiting = state !== null && (state.phase === "dialing" || state.phase === "ringing");
+  const start = state === null ? "none" : startOffer(state, answering.on);
 
   // Nothing to offer: no phone line on this server and no stand-in. The Multiplayer screen then shows two choices.
   if (idle && setup.kind !== "ready" && !offerStandIn && !answering.offered) return null;
@@ -174,13 +176,11 @@ export function FaceTimeCard(props: {
           )}
           {open && (
             <>
-              <Button
-                primary
-                disabled={!isLive(state) || state.phase === "bridge_ready"}
-                onClick={() => { const link = session?.link(); if (link) props.onStart(link); }}
-              >
-                Start the fight
-              </Button>
+              {start !== "none" && (
+                <Button primary disabled={start === "wait"} onClick={() => { const link = session?.link(); if (link) props.onStart(link); }}>
+                  Start the fight
+                </Button>
+              )}
               <Button onClick={() => { session?.hangUp(performance.now()); }}>Hang up</Button>
             </>
           )}

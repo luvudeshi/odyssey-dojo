@@ -4,16 +4,19 @@ import { describe, expect, test } from "vitest";
 import type { PoseFrame, PoseHistory } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import {
-  CHECK_EVERY_MS, DUPLICATE_IDENTITY, ENDED_SHOW_MS, LOOK_EVERY_MS, NOT_JOINED, NO_ROOM_SAID_AFTER_MS, NO_SERVER, QUICK_ASKS, QUICK_EVERY_MS, SAME_ROOM_AFTER_MS, SEAT_TAKEN,
+  CHECK_EVERY_MS, DUPLICATE_IDENTITY, ENDED_SHOW_MS, LOOK_EVERY_MS, NOT_JOINED, NO_ROOM_SAID_AFTER_MS, NO_SERVER, QUICK_ASKS, QUICK_EVERY_MS, SAME_ROOM_AFTER_MS, SEAT_HELD, SEAT_TAKEN,
   createAnswerer, createWaitingApi, isBridge,
 } from "../src/facetime/answer";
 import type { Waiting } from "../src/facetime/answer";
 import type { FaceTimeApi } from "../src/facetime/api";
+import { IDLE, describe as describeCall } from "../src/facetime/callMachine";
+import type { CallPhase, CallState } from "../src/facetime/callMachine";
 import { createFakeRoom } from "../src/facetime/fakeRoom";
 import type { FakeRoom } from "../src/facetime/fakeRoom";
 import type { RoomEvent } from "../src/facetime/room";
 import { ANSWER_FALLBACK_MS, BRIDGE_FALLBACK_MS, createFaceTimeSession } from "../src/facetime/session";
 import type { SessionDeps } from "../src/facetime/session";
+import { answeredLine, asksForOffer, startOffer } from "../src/facetime/ui/AnswerPanel";
 import { MOVES } from "../src/moves/registry";
 import { rating } from "../src/pose/quality";
 
@@ -312,6 +315,39 @@ describe("waiting for a call", () => {
     expect(made.answerer.state()).toMatchObject({ phase: "waiting", reason: "" });
   });
 
+  test("a room another window of the game is in is not joined: this window stays out, says why, and joins when the seat is free", async () => {
+    const made = rig(inRoom("chert-warm-AAAA", { seated: true }));
+    made.answerer.start(1000);
+    made.answerer.tick(1000);
+    await settle();
+    // Not joined: joining under the same name would throw the other window out, and end the call it may be on.
+    expect(made.rooms).toHaveLength(0);
+    expect(made.answerer.state()).toMatchObject({ phase: "looking", room: null, reason: SEAT_HELD });
+    // The same with a call on in that room.
+    made.says = inRoom("chert-warm-AAAA", { seated: true, caller: CALLER, ready: true });
+    made.answerer.tick(1000 + LOOK_EVERY_MS);
+    await settle();
+    expect(made.rooms).toHaveLength(0);
+    expect(made.asked).toBe(2);
+    expect(made.log).toEqual([]);
+    // The other window was closed: the seat is free, and this one takes it.
+    made.says = inRoom("chert-warm-AAAA");
+    made.answerer.tick(1000 + 2 * LOOK_EVERY_MS);
+    await settle();
+    expect(made.rooms).toHaveLength(1);
+    expect(made.answerer.state()).toMatchObject({ phase: "waiting", room: "chert-warm-AAAA", reason: "" });
+  });
+
+  test("the window that is in the room does not mind being told its own seat is held", async () => {
+    const made = await waiting();
+    made.says = inRoom("chert-warm-AAAA", { seated: true });
+    made.answerer.tick(1000 + CHECK_EVERY_MS);
+    await settle();
+    expect(made.rooms).toHaveLength(1);
+    expect(made.last().calls).not.toContain("disconnect");
+    expect(made.answerer.state()).toMatchObject({ phase: "waiting", room: "chert-warm-AAAA", reason: "" });
+  });
+
   test("a room that cannot be joined is said plainly and tried again", async () => {
     const made = rig();
     made.failJoin = true;
@@ -393,6 +429,21 @@ describe("answering", () => {
     await waiting(made);
     expect(made.log).toEqual(["picture", "sound", "publish", "greet"]);
     expect(made.answerer.state()).toMatchObject({ phase: "call", room: "chert-0b9c2f6e" });
+    expect(made.session.state().phase).toBe("greeted");
+  });
+
+  test("the camera of a caller who was there first is read too: the room tells it after the caller (livekitRoom.ts)", async () => {
+    const made = rig(inRoom("chert-0b9c2f6e", { caller: CALLER, ready: true }));
+    made.present = [
+      { type: "joined", identity: AGENT },
+      { type: "joined", identity: CALLER },
+      { type: "video", track: track("friend-camera"), identity: CALLER },
+      { type: "audio", track: track("friend-voice"), identity: CALLER },
+      { type: "metadata", metadata: READY },
+    ];
+    await waiting(made);
+    expect(made.log).toEqual(["picture", "sound", "publish", "watch", "hear", "greet"]);
+    expect(made.session.friendSeen()).toBe(true);
     expect(made.session.state().phase).toBe("greeted");
   });
 
@@ -547,14 +598,86 @@ describe("after a call", () => {
   });
 });
 
+describe("the card during an answered call", () => {
+  const call = (phase: CallPhase): CallState => ({ ...IDLE, phase, dialedAt: 0, readyAt: phase === "dialing" || phase === "ringing" ? null : 9000, greetedAt: phase === "greeted" || phase === "playing" ? 9000 : null });
+  const line = (state: CallState): string => answeredLine(state) ?? describeCall(state, 9000);
+
+  test("while FaceTime is connecting the card does not offer to start the fight", () => {
+    // The caller is in the room, the ready sign has not come: some nine seconds on a real call.
+    for (const phase of ["dialing", "ringing"] as const) {
+      expect(startOffer(call(phase), true), phase).toBe("none");
+      expect(line(call(phase))).toBe("A FaceTime call is coming in. Connecting...");
+    }
+    // The sign came and the greeting is going out: still nothing to press.
+    expect(startOffer(call("bridge_ready"), true)).toBe("none");
+  });
+
+  test("once the call is live it is offered, and the card says the friend is on the call", () => {
+    expect(startOffer(call("greeted"), true)).toBe("go");
+    expect(line(call("greeted"))).toMatch(/^Your friend is on the call\. /);
+    expect(startOffer(call("playing"), true)).toBe("go");
+    // Over, or never begun: nothing to start.
+    for (const phase of ["idle", "ended", "failed"] as const) expect(startOffer(call(phase), true), phase).toBe("none");
+  });
+
+  test("on the real session: nothing to press from the caller's arrival to the ready sign, then the fight can start", async () => {
+    const made = await waiting();
+    made.answerer.tick(2000);
+    made.last().emit({ type: "joined", identity: CALLER });
+    await settle();
+    expect(made.answerer.state().phase).toBe("call");
+    expect(startOffer(made.session.state(), true)).toBe("none");
+    made.last().emit({ type: "video", track: track("friend-camera"), identity: CALLER });
+    await settle();
+    expect(startOffer(made.session.state(), true)).toBe("none");
+    made.last().emit({ type: "metadata", metadata: READY });
+    await settle();
+    expect(startOffer(made.session.state(), true)).toBe("go");
+    expect(line(made.session.state())).toMatch(/^Your friend is on the call\. /);
+  });
+
+  test("with no ready sign the fallback greeting makes the call live, and only then is the fight offered", async () => {
+    const made = await waiting();
+    made.answerer.tick(2000);
+    made.last().emit({ type: "joined", identity: CALLER });
+    await settle();
+    made.session.tick(2000);
+    made.last().emit({ type: "video", track: track("friend-camera"), identity: CALLER });
+    await settle();
+    made.session.tick(2000 + ANSWER_FALLBACK_MS - 1);
+    await settle();
+    expect(startOffer(made.session.state(), true)).toBe("none");
+    made.session.tick(2000 + ANSWER_FALLBACK_MS);
+    await settle();
+    expect(startOffer(made.session.state(), true)).toBe("go");
+  });
+
+  test("a dialled call and the stand-in keep the button as it was: greyed from the dial, pressed once greeted", () => {
+    expect((["dialing", "ringing", "bridge_ready", "greeted", "playing", "ended", "failed", "idle"] as const).map((phase) => startOffer(call(phase), false)))
+      .toEqual(["wait", "wait", "wait", "go", "go", "none", "none", "none"]);
+  });
+
+  test("the idle card asks whether a call can come in only on a server that has its room settings", () => {
+    const fresh = { offered: false, on: false, never: false, rooms: true };
+    expect(asksForOffer(fresh)).toBe(true);
+    // No LiveKit settings (or a server that refuses this page): nothing is asked, the screen is as it was.
+    expect(asksForOffer({ ...fresh, rooms: false })).toBe(false);
+    expect(asksForOffer({ ...fresh, offered: true })).toBe(false);
+    expect(asksForOffer({ ...fresh, on: true })).toBe(false);
+    expect(asksForOffer({ ...fresh, never: true })).toBe(false);
+  });
+});
+
 describe("the page's side of /api/facetime/waiting", () => {
   const answering = (status: number, body: unknown): typeof fetch => () => Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }));
 
   test("it asks the one path and reads a room, no room, and a server that cannot tell", async () => {
     const asked: string[] = [];
     const ask = createWaitingApi((url) => { asked.push(String(url)); return answering(200, { url: URL, token: "t", room: "chert-warm-AAAA", identity: "odyssey-dojo", caller: null, ready: false, line: "+1 555 555 0100", source: "livekit" })(url); });
-    expect(await ask()).toEqual({ room: "chert-warm-AAAA", url: URL, token: "t", caller: null, ready: false, line: "+1 555 555 0100" });
+    // A server from before `seated` says nothing about the seat: taken as free, as it was then.
+    expect(await ask()).toEqual({ room: "chert-warm-AAAA", url: URL, token: "t", caller: null, ready: false, line: "+1 555 555 0100", seated: false });
     expect(asked).toEqual(["/api/facetime/waiting"]);
+    expect(await createWaitingApi(answering(200, { url: URL, token: "t", room: "chert-warm-AAAA", caller: null, ready: false, seated: true, line: null }))()).toMatchObject({ room: "chert-warm-AAAA", seated: true });
     expect(await createWaitingApi(answering(200, { url: URL, token: "t", room: "chert-x", caller: CALLER, ready: true, line: null }))()).toMatchObject({ room: "chert-x", caller: CALLER, ready: true, line: null });
     expect(await createWaitingApi(answering(200, { room: null, reason: "No call can come in yet.", line: null }))()).toEqual({ room: null, reason: "No call can come in yet.", line: null });
     expect(await createWaitingApi(answering(502, { error: "network", message: "The call's room could not be looked up.", line: "+1 555 555 0100" }))()).toEqual({ room: undefined, reason: "The call's room could not be looked up.", line: "+1 555 555 0100" });

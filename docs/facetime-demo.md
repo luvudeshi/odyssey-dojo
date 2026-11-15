@@ -4,7 +4,7 @@ For the "Best Use of FaceTime (Chert)" judging. The track asks for an AI agent t
 
 **On the trial line the call goes the other way:** the friend FaceTimes the line and the game answers. Use "Answer a call" in [facetime.md](facetime.md) for the steps; at 0:15 below, press "Wait for a FaceTime call" and have the friend call the number, in place of typing a number and pressing Call. The rest of the three minutes is the same.
 
-**This script has not been run on a real call yet.** Run it end to end at least twice before judging and change any step that does not match what happens.
+**This script has not been run end to end on a real call yet.** The game has answered one real FaceTime call (03:21 on Sunday 15 November; see "Run so far" and "Rules for the demo" in [facetime.md](facetime.md)), but the fight on that call did not go as this script says: read those rules first. Run it end to end at least twice before judging and change any step that does not match what happens.
 
 ## Before the judge arrives
 
