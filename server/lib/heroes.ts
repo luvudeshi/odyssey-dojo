@@ -1,11 +1,14 @@
 // The hall of heroes: every finished fight of a signed-in player, kept as a time series on Tiger Data, and the
 // lists and counts read back from it. This is what the game uses Tiger Data for beyond plain Postgres:
 //
-// - `fights` is a hypertable on its time column, one chunk a day. "Tonight" reads the last day's chunk and no other.
-//   Chunks older than a day are kept in the columnstore, grouped by account (TimescaleDB sets that policy itself).
+// - `fights` is a hypertable on its time column, one chunk a day. "Tonight" reads the last two days' chunks and no
+//   other. Chunks older than a day are kept in the columnstore, ordered by time (TimescaleDB sets that policy itself).
+//   They are not grouped by account: a hero has a few fights a day, and a batch of two or three rows is larger than
+//   the rows themselves (measured: docs/accounts.md).
 // - `fights_hourly` is a continuous aggregate: per account and hour, the fights, the wins, the best score and the
-//   fight it came from. "All time" reads those few rows per hero, not every fight ever fought. It is real-time, so
-//   a fight of this minute is in it before the next refresh.
+//   fight it came from. "All time" reads one row per hero and hour played, already added up, not every fight: the
+//   more a hero fights in an hour, the more it saves. It is real-time, so a fight of this minute is in it before the
+//   next refresh.
 // - time_bucket_gapfill gives the fights per ten minutes with the empty buckets filled in, for the activity line.
 // - last(value, time) and last(value, score) pick the newest hero name and the stop of the best fight in one pass.
 //
@@ -57,7 +60,7 @@ export function heroSchemaSql(prefix = ""): readonly Prepared[] {
   const t = heroTables(prefix);
   return [
     {
-      // One row a fight. A chunk a day: "tonight" touches one or two chunks, and a chunk a day old moves to the columnstore.
+      // One row a fight. A chunk a day: "tonight" touches two chunks (the last 24 hours cross one midnight), and a chunk a day old moves to the columnstore.
       text: `create table if not exists ${t.fights} (
         at timestamptz not null,
         account_id uuid not null references ${t.accounts} (id) on delete cascade,
@@ -69,7 +72,7 @@ export function heroSchemaSql(prefix = ""): readonly Prepared[] {
         god_id text,
         seconds real,
         best_combo integer
-      ) with (tsdb.hypertable, tsdb.partition_column = 'at', tsdb.chunk_interval = '1 day', tsdb.segmentby = 'account_id', tsdb.orderby = 'at desc')`,
+      ) with (tsdb.hypertable, tsdb.partition_column = 'at', tsdb.chunk_interval = '1 day', tsdb.segmentby = '', tsdb.orderby = 'at desc')`,
       params: [],
     },
     {
@@ -90,6 +93,24 @@ export function heroSchemaSql(prefix = ""): readonly Prepared[] {
       params: [t.hourly],
     },
   ];
+}
+
+/**
+ * A fights table made before the columnstore setting was measured groups its old chunks by account, which made them
+ * 2.3 times larger, not smaller. `create table if not exists` leaves such a table as it is, so start-up asks for the
+ * setting (`check`: a row when it is still grouped) and only then changes it (`set`, safe to run again). Chunks
+ * already in the columnstore keep the layout they were written with.
+ */
+export function columnstoreSql(prefix = ""): { readonly check: Prepared; readonly set: Prepared } {
+  const t = heroTables(prefix);
+  return {
+    check: {
+      text: `select 1 as n from timescaledb_information.hypertable_columnstore_settings
+        where hypertable = $1::regclass and coalesce(segmentby, '') <> ''`,
+      params: [t.fights],
+    },
+    set: { text: `alter table ${t.fights} set (timescaledb.segmentby = '', timescaledb.orderby = 'at desc')`, params: [] },
+  };
 }
 
 export interface HallRow {
@@ -192,6 +213,7 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
   const gate = options.gate ?? (<T>(work: () => Promise<T>): Promise<T> => work());
   const t = heroTables(options.prefix);
   const schema = heroSchemaSql(options.prefix);
+  const columnstore = columnstoreSql(options.prefix);
   const readHall = hallSql(t);
 
   let state: "unknown" | "ready" | "off" = "unknown";
@@ -203,6 +225,21 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
   let reading: Promise<Hall> | null = null;
 
   const iso = (ms: number): string => new Date(ms).toISOString();
+
+  /**
+   * Puts the columnstore setting of an older fights table right (columnstoreSql). It only makes old fights smaller,
+   * so a failure here is one log line and never a reason to have no hall; the next start of the server tries again.
+   */
+  const regroup = async (): Promise<void> => {
+    try {
+      const grouped = await statement(columnstore.check.text, columnstore.check.params);
+      if (grouped.length === 0) return;
+      await statement(columnstore.set.text, columnstore.set.params);
+      log("info", "heroes_columnstore_set");
+    } catch {
+      log("warn", "heroes_columnstore_not_set");
+    }
+  };
 
   /** Makes the tables once. Two callers at once share one attempt. */
   const prepare = (): Promise<void> => {
@@ -219,6 +256,7 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
         throw new Unavailable();
       }
       for (const { text, params } of schema) await statement(text, params);
+      await regroup();
       state = "ready";
       log("info", "heroes_ready");
     })().finally(() => { preparing = null; });

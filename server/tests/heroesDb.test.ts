@@ -214,6 +214,30 @@ describe.skipIf(url === "")("the hall of heroes on a real Tiger Data service", (
     expect(again).toEqual([{ n: 1 }]);
   });
 
+  test("old fights are ordered by time in the columnstore and not grouped by account, and a table from before is set right at start-up", async () => {
+    const setting = (): Promise<{ segmentby: string; orderby: string }[]> => sql(
+      "select coalesce(segmentby, '') as segmentby, orderby from timescaledb_information.hypertable_columnstore_settings where hypertable = $1::regclass",
+      [h.fights],
+    );
+    expect(await setting()).toEqual([{ segmentby: "", orderby: "at DESC" }]);
+    // What the table was made with before the setting was measured. This run's own table, and nothing else.
+    await sql(`alter table ${h.fights} set (timescaledb.segmentby = 'account_id', timescaledb.orderby = 'at desc')`, []);
+    expect(await setting()).toEqual([{ segmentby: "account_id", orderby: "at DESC" }]);
+    // A server that starts on it changes the setting back, once, and has its hall.
+    const door = statementsOf(createAccounts(() => Promise.resolve(db), { prefix }));
+    if (door === null) throw new Error("the accounts have no door");
+    const asked: string[] = [];
+    const noting = (text: string, params: readonly unknown[]): Promise<unknown[]> => { asked.push(text); return door(text, params); };
+    expect((await createHeroes(noting, { prefix }).hall()).activity.fights).toHaveLength(ACTIVITY_BUCKETS);
+    expect(await setting()).toEqual([{ segmentby: "", orderby: "at DESC" }]);
+    expect(asked.filter((text) => text.startsWith("alter table"))).toHaveLength(1);
+    // And the next start finds nothing to change.
+    asked.length = 0;
+    await createHeroes(noting, { prefix }).hall();
+    expect(asked.filter((text) => text.startsWith("alter table"))).toHaveLength(0);
+    expect(await setting()).toEqual([{ segmentby: "", orderby: "at DESC" }]);
+  });
+
   test("a signed-in player's fight is written with their account, the server's time and the name on their screen", async () => {
     const player = await signUp();
     const written = await fight(player, 1840, { stop: "scylla", style: "hoplite", god: "athena", hero: `${player.name} Bold` });
