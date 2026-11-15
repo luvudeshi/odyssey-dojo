@@ -1,7 +1,8 @@
 // Limits for the room relay, for when a tunnel lets the whole internet reach it (issue #155).
 // All of it is in memory and runs on a clock the tests move. The send limit is per member and lives in ./rooms.
 import type { IncomingHttpHeaders, Server } from "node:http";
-import { isLoopback } from "./localOnly";
+import { isIP } from "node:net";
+import { isLoopback, publicRooms } from "./localOnly";
 import { SENDS_PER_SECOND } from "./rooms";
 
 export const MINUTE_MS = 60_000;
@@ -10,6 +11,11 @@ export const SMALL_BODY_BYTES = 1024;
 export const SEND_ENVELOPE_BYTES = 512;
 export const CREATES_PER_MINUTE = 6;
 export const MAX_ROOMS_PER_CLIENT = 3;
+/**
+ * With PUBLIC_ROOMS=1 strangers make rooms, so every room made by a caller that is not this machine also counts
+ * against this one budget. However many addresses somebody has, they make no more rooms a minute than this.
+ */
+export const PUBLIC_CREATES_PER_MINUTE = 30;
 /** Rooms no other caller can take, so the laptop that runs the server can always open one of its own. */
 export const ROOMS_KEPT_FOR_THIS_MACHINE = 10;
 /**
@@ -67,12 +73,28 @@ export function network(address: string): string {
  * caller in a header. The header is only ever a counting key: it never makes a request local (see ./localOnly), and it
  * is ignored on a request from another device, which could put anything there to get a fresh budget.
  */
-export function clientKey(socketAddress: string | undefined, headers: IncomingHttpHeaders): string {
-  if (!isLoopback(socketAddress)) return socketAddress === undefined ? "unknown" : network(socketAddress);
+export function clientKey(socketAddress: string | undefined, headers: IncomingHttpHeaders, roomsArePublic = false): string {
   const value = headers[TUNNEL_HEADER];
   const caller = (typeof value === "string" ? value : "").trim().slice(0, 64);
-  if (caller !== "") return `via ${network(caller)}`;
+  if (isLoopback(socketAddress) && caller !== "") return `via ${network(caller)}`;
+  const passedOn = roomsArePublic ? lastHop(headers) : null;
+  if (passedOn !== null) return `via ${passedOn}`;
+  if (!isLoopback(socketAddress)) return socketAddress === undefined ? "unknown" : network(socketAddress);
   return PROXY_HEADERS.some((name) => headers[name] !== undefined) ? RELAYED : THIS_MACHINE;
+}
+
+/**
+ * With PUBLIC_ROOMS=1 the server sits behind its own proxy (Caddy in deploy/vultr), and every request reaches it from
+ * that proxy's one address. The proxy writes the address it took the request from as the last entry of
+ * X-Forwarded-For, so that entry is the counting key: one budget per caller, not one for the whole internet.
+ * Only the last entry is read. The ones before it are whatever the caller sent. Null when it is not an address.
+ * It is only ever a counting key, as above. A server that callers reach with no proxy in between must not set
+ * PUBLIC_ROOMS: there a caller writes this header itself, and only PUBLIC_CREATES_PER_MINUTE and MAX_ROOMS hold it.
+ */
+function lastHop(headers: IncomingHttpHeaders): string | null {
+  const value = headers["x-forwarded-for"];
+  const last = (typeof value === "string" ? value : "").split(",").pop()?.trim() ?? "";
+  return last.length <= 64 && isIP(last) !== 0 ? network(last) : null;
 }
 
 /** Shortens how long a request may take to arrive. The server's own check runs every 30 s, so a stalled one is closed 30 to 60 s after it began. */
@@ -115,8 +137,9 @@ export function createBudget(max: number, windowMs: number, now: () => number): 
 
 export type RoomLimits = ReturnType<typeof createRoomLimits>;
 
-export function createRoomLimits(now: () => number = Date.now) {
+export function createRoomLimits(now: () => number = Date.now, roomsArePublic: () => boolean = publicRooms) {
   const creates = createBudget(CREATES_PER_MINUTE, MINUTE_MS, now);
+  const publicCreates = createBudget(PUBLIC_CREATES_PER_MINUTE, MINUTE_MS, now);
   const wrong = createBudget(WRONG_CODES_PER_MINUTE, MINUTE_MS, now);
   const polls = createBudget(POLLS_PER_SECOND, 1_000, now);
   const streams = new Map<string, Map<string, number>>();
@@ -128,8 +151,13 @@ export function createRoomLimits(now: () => number = Date.now) {
      */
     create: (client: string): number => {
       if (client === THIS_MACHINE) return 0;
-      const wait = creates.wait(client);
-      if (wait === 0) creates.count(client);
+      // With public rooms on, every caller but this machine also shares one budget.
+      const shared = roomsArePublic();
+      const wait = Math.max(shared ? publicCreates.wait("") : 0, creates.wait(client));
+      if (wait === 0) {
+        creates.count(client);
+        if (shared) publicCreates.count("");
+      }
       return wait;
     },
     /**

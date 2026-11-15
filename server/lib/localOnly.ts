@@ -72,15 +72,30 @@ export function isTunnelPath(path: string): boolean {
 }
 
 /**
+ * True when PUBLIC_ROOMS=1: this server is the room server behind a public page (docs/rooms-tunnel.md, "The hosted
+ * copy"), so a request that was passed on may also make a room. Off unless the value is exactly "1", so a laptop behaves as it always has.
+ * It opens that one path and nothing else, and the room limits (./roomLimits) bound what a stranger can do with it.
+ */
+export function publicRooms(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return env.PUBLIC_ROOMS?.trim() === "1";
+}
+
+/** Making a room: "/api/rooms" itself, with or without one closing slash, and nothing after it. */
+function isRoomsRoot(path: string): boolean {
+  return path === "/api/rooms" || path === "/api/rooms/";
+}
+
+/**
  * Whether a request for `path` from `address` carrying `headers` may be answered.
  * Express matches routes without regard to case, so this does too.
+ * `roomsArePublic` is what publicRooms() said: with it a request that was passed on may make a room as well.
  */
-export function mayAnswer(path: string, address: string | undefined, headers: IncomingHttpHeaders = {}): boolean {
+export function mayAnswer(path: string, address: string | undefined, headers: IncomingHttpHeaders = {}, roomsArePublic = false): boolean {
   const lower = path.toLowerCase();
   if (!lower.startsWith("/api/")) return true;
   // A loopback socket is this machine's own browser or a tunnel that runs here. Another device is refused whatever headers it sends.
   if (isAccountPath(lower) || isHeroesPath(lower)) return isLoopback(address);
-  if (wasRelayed(headers)) return isTunnelPath(lower);
+  if (wasRelayed(headers)) return isTunnelPath(lower) || (roomsArePublic && isRoomsRoot(lower));
   return isOpenPath(lower) || isLoopback(address);
 }
 
@@ -122,11 +137,17 @@ function callerOf(request: Request): string {
   return address ?? "unknown";
 }
 
-/** The guard as middleware. Each one keeps its own count of join attempts. */
-export function createGuard(joinAllowed: (caller: string) => boolean = createJoinLimit()): (request: Request, response: Response, next: NextFunction) => void {
+/**
+ * The guard as middleware. Each one keeps its own count of join attempts.
+ * `roomsArePublic` is asked on every request, because the server reads its .env after this file is loaded.
+ */
+export function createGuard(
+  joinAllowed: (caller: string) => boolean = createJoinLimit(),
+  roomsArePublic: () => boolean = publicRooms,
+): (request: Request, response: Response, next: NextFunction) => void {
   return (request, response, next) => {
     const address = request.socket.remoteAddress;
-    if (!mayAnswer(request.path, address, request.headers)) {
+    if (!mayAnswer(request.path, address, request.headers, roomsArePublic())) {
       response.status(403).json({ error: "local_only" });
       return;
     }
