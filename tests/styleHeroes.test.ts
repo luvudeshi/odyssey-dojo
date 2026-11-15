@@ -15,10 +15,10 @@ test("the chosen figures are the ones agreed on the board", () => {
   const chosen = Object.fromEntries(Object.entries(HEROES).map(([id, hero]) => [id, hero.name]));
   expect(chosen).toEqual({
     boxer: "Polydeuces",
-    hoplite: "Achilles",
+    jiu_jitsu: "Theseus",
     karate: "Heracles",
     kung_fu: "Proteus",
-    pankration: "Theseus",
+    taekwondo: "Achilles",
   });
   expect(heroFor("no_such_style")).toBeUndefined();
 });

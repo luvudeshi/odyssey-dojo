@@ -50,7 +50,7 @@ These are offered by the Dojo next to the game's five styles. A list may mix the
 
 | Style | Line | Moves |
 |---|---|---|
-| Taekwondo (`taekwondo`) | Kicks first: keep people at leg length, where hands cannot reach. | `front_kick`, `roundhouse_kick`, `side_kick`, `low_kick`, `knee` |
+| Taekwondo kicks (`taekwondo_kicks`) | Kicks first: keep people at leg length, where hands cannot reach. | `front_kick`, `roundhouse_kick`, `side_kick`, `low_kick`, `knee` |
 | Self-defense basics (`self_defense`) | Plain moves for getting free and getting away. | `palm_heel`, `elbow_strike`, `knee`, `hammer_fist`, `wrist_release`, `low_kick`, `high_block` |
 | Muay Thai (`muay_thai`) | Elbows, knees and low kicks for when someone is close. | `elbow_strike`, `knee`, `low_kick`, `roundhouse_kick`, `front_kick`, `jab`, `cross` |
 | Karate basics (`karate_basics`) | High and low blocks with karate kicks and hand strikes. | `reverse_punch`, `knife_hand`, `front_kick`, `side_kick`, `high_block`, `low_block` |
