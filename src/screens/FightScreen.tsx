@@ -54,6 +54,8 @@ export function FightScreen(props: {
   baseline?: Baseline | null;
   /** A god for the divine power effect; null for none. The game passes none, so Athena lends her aegis. */
   god?: GodId | null;
+  /** The picked hero's name, for the power banner. Left out, the banner names the god. */
+  hero?: string;
   /** Buttons shown once the fight is over. */
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
@@ -62,7 +64,7 @@ export function FightScreen(props: {
   link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>, events: readonly CombatEvent[]) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, hero, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
@@ -199,7 +201,7 @@ export function FightScreen(props: {
       <SkyHud enemy={enemy} state={state} history={readHistory} />
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
-      <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
+      <PowerReady god={god} hero={hero} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
       {/* The keyboard plaque has nothing to say once the fight is over; the camera picture stays. */}
       {!(over && !tracker) && <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />}
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}

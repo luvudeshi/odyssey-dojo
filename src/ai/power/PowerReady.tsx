@@ -18,6 +18,8 @@ import "./powerReady.css";
 export interface PowerReadyProps {
   /** The god the scan found; null for keyboard play or a skipped scan, when Athena lends her aegis. */
   readonly god: GodId | null;
+  /** The picked hero's name. Given, the banner names the hero and there is no "Champion of" plate. */
+  readonly hero?: string | undefined;
   /** CombatState.power, 0 to 1. */
   readonly power: number;
   /** True when the fight is played on the keyboard: the banner then leads with the key. */
@@ -30,9 +32,9 @@ export interface PowerReadyProps {
   readonly announce?: (moveId: string) => boolean;
 }
 
-function safePrompt(god: GodId | null, keyboard: boolean): PowerPrompt | null {
+function safePrompt(god: GodId | null, keyboard: boolean, hero?: string): PowerPrompt | null {
   try {
-    return powerPrompt(god, keyboard);
+    return powerPrompt(god, keyboard, hero);
   } catch (error) {
     log("warn", "power_ready.prompt", error);
     return null;
@@ -40,9 +42,9 @@ function safePrompt(god: GodId | null, keyboard: boolean): PowerPrompt | null {
 }
 
 export function PowerReady(props: PowerReadyProps) {
-  const { god, power, keyboard, phase, paused = false, announce = speakPowerReady } = props;
+  const { god, hero, power, keyboard, phase, paused = false, announce = speakPowerReady } = props;
   const ready = powerUsable(power, phase);
-  const prompt = ready ? safePrompt(god, keyboard) : null;
+  const prompt = ready ? safePrompt(god, keyboard, hero) : null;
   const moveId = prompt?.moveId ?? null;
   const track = useRef(READY_START);
 
@@ -108,7 +110,7 @@ export function PowerReady(props: PowerReadyProps) {
   }, [waiting, powerKey]);
 
   if (prompt === null) {
-    const patron = champion(god, power, phase);
+    const patron = champion(hero === undefined ? god : null, power, phase);
     if (patron === null) return null;
     return (
       <div className={`power-ready power-ready--champion power-ready--${patron.god}`} style={{ "--power-ready-accent": patron.accent } as CSSProperties}>
