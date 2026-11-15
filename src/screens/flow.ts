@@ -46,9 +46,14 @@ export function startAt(enemies: readonly EnemySpec[], stopId: string | null): F
   return index < 0 ? START : { ...START, cleared: enemies.slice(0, index).map((enemy) => enemy.id) };
 }
 
-/** `?room=CODE` opens the join screen; otherwise as `startAt`. */
-export function openAt(enemies: readonly EnemySpec[], stopId: string | null, room: string | null): Flow {
-  return room === null ? startAt(enemies, stopId) : { ...START, screen: "join" };
+/**
+ * `?room=CODE` opens the join screen; otherwise as `startAt`. `beaten` is the stops the saved profile has beaten, so a
+ * reload keeps them marked on the map; an id that is not a stop is dropped.
+ */
+export function openAt(enemies: readonly EnemySpec[], stopId: string | null, room: string | null, beaten: readonly string[]): Flow {
+  const flow: Flow = room === null ? startAt(enemies, stopId) : { ...START, screen: "join" };
+  const kept = enemies.map((enemy) => enemy.id).filter((id) => beaten.includes(id) && !flow.cleared.includes(id));
+  return kept.length === 0 ? flow : { ...flow, cleared: [...flow.cleared, ...kept] };
 }
 
 export function flowReducer(flow: Flow, action: FlowAction): Flow {
