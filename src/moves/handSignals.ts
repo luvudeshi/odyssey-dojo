@@ -78,16 +78,27 @@ export function wristGap(frame: PoseFrame): number {
   return width === 0 ? 0 : distance2d(wrist(frame, "left"), wrist(frame, "right")) / width;
 }
 
+/** A wrist lower than this, in shoulder widths above the shoulder line, is down by the waist. */
+const WAIST = -1;
+/** A wrist higher than this has come up to the chest. */
+const CHEST = -0.6;
+
 /**
  * True when the hand was down by the waist within the last 400 ms and is now up in front of the body,
  * between the shoulders and the top of the head, with the elbow bent tighter than `bentBelow` degrees.
+ * Not a rising hand: a punch thrown from the waist, which passes the same place with its elbow snapping open,
+ * or both hands brought up together, which is a guard going up or the start of a two-handed push.
  */
 export function risingHand(history: PoseHistory, side: Side, bentBelow: number): boolean {
   const frame = latest(history);
   if (!frame) return false;
   const rise = wristRise(frame, side);
   if (rise < -0.15 || rise > 1.3 || wristOut(frame, side) > 1 || elbowAngle(frame, side) > bentBelow) return false;
-  return recent(history, 400).some((old) => wristRise(old, side) < -1);
+  if (armOpening(history, side)) return false;
+  const before = recent(history, 400);
+  if (!before.some((old) => wristRise(old, side) < WAIST)) return false;
+  const other = otherSide(side);
+  return !(wristRise(frame, other) > CHEST && before.some((old) => wristRise(old, other) < WAIST));
 }
 
 export const STRAIGHT = 145;
