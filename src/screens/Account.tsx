@@ -4,6 +4,8 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { type Achievement, achievements } from "../account/achievements";
 import { NAME_MAX, renameProfile, useProfile } from "../account/store";
+import { AccountSignIn } from "../account/ui/AccountSignIn";
+import { HallOfHeroes } from "../account/ui/HallOfHeroes";
 import { Icon, type IconName } from "../account/ui/icons";
 import { Trophy, type TrophyEvents } from "../account/ui/Trophy";
 import type { EnemySpec } from "../core/types";
@@ -112,6 +114,7 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
           <Wall side="r" groups={groups.slice(2)} activeId={activeId} events={events} />
           <Detail feat={picked ?? feats.find((feat) => !feat.done)} picked={picked !== undefined} />
           <p className="acc-count set-sub"><b>{feats.filter((feat) => feat.done).length}</b> of {feats.length} trophies hung</p>
+          <AccountSignIn><HallOfHeroes /></AccountSignIn>
           <div className="acc-actions">
             <Button onClick={() => { setSettingsOpen(true); }}><WithIcon icon="sliders">Open settings</WithIcon></Button>
             <Button className="set-back" onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
