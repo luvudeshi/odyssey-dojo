@@ -77,14 +77,3 @@ export function confirmCharacter(id: string, storage: CharacterStorage | null = 
   const wanted = characterById(id).id;
   return wanted === loadCharacter(storage) ? wanted : pickCharacter(wanted, storage);
 }
-
-/**
- * Call with the scan's god (null when the scan was skipped). Returns the character the player fights as.
- * A god sets the character unless the player picked one by hand; no god changes nothing.
- */
-export function characterFromScan(godId: string | null | undefined, storage: CharacterStorage | null = browserStorage()): CharacterId {
-  const kept = handPicked(storage);
-  if (kept !== null) return kept;
-  if (!isGodId(godId)) return loadCharacter(storage);
-  return saveCharacter(characterForGod(godId), storage);
-}

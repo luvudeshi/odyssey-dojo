@@ -5,7 +5,7 @@ import { offlineReveal } from "../src/ai/gods/offlineReveal";
 import { CHARACTER_KEY, CHARACTERS, DEFAULT_CHARACTER, characterById, isCharacterId, loadCharacter } from "../src/characters/characters";
 import type { CharacterStorage } from "../src/characters/characters";
 import {
-  CHARACTER_SOURCE_KEY, GOD_CHARACTER, characterForGod, characterFromScan, characterLineForGod, confirmCharacter,
+  CHARACTER_SOURCE_KEY, GOD_CHARACTER, characterForGod, characterLineForGod, confirmCharacter,
   handPicked, pickCharacter,
 } from "../src/characters/godCharacter";
 
@@ -90,58 +90,30 @@ describe("characterLineForGod", () => {
   });
 });
 
-describe("the stored character and the scan", () => {
+describe("the stored character and the hand pick", () => {
   test("the storage key follows the repo's naming", () => {
     expect(CHARACTER_SOURCE_KEY).toBe("odyssey-dojo.character.source");
     expect(CHARACTER_SOURCE_KEY.startsWith(`${CHARACTER_KEY}.`)).toBe(true);
   });
 
-  test("a scan sets the character when the player never picked one", () => {
+  test("a pick by hand is remembered as such", () => {
     const storage = memoryStorage();
     expect(handPicked(storage)).toBeNull();
-    expect(characterFromScan("poseidon", storage)).toBe("poseidon");
-    expect(loadCharacter(storage)).toBe("poseidon");
-    expect(handPicked(storage)).toBeNull();
-  });
-
-  test("a later scan may change a character an earlier scan set", () => {
-    const storage = memoryStorage();
-    characterFromScan("zeus", storage);
-    expect(characterFromScan("artemis", storage)).toBe("achilles");
-    expect(loadCharacter(storage)).toBe("achilles");
-  });
-
-  test("a pick by hand wins over every later scan", () => {
-    const storage = memoryStorage();
     expect(pickCharacter("achilles", storage)).toBe("achilles");
     expect(handPicked(storage)).toBe("achilles");
-    for (const god of GOD_IDS) expect(characterFromScan(god, storage), god).toBe("achilles");
     expect(loadCharacter(storage)).toBe("achilles");
   });
 
-  test("a skipped scan changes nothing", () => {
-    const storage = memoryStorage();
-    expect(characterFromScan(null, storage)).toBe(DEFAULT_CHARACTER);
-    expect(storage.data).toEqual({});
-    characterFromScan("athena", storage);
-    expect(characterFromScan(null, storage)).toBe("athena");
-    expect(characterFromScan("ares", storage)).toBe("athena");
-  });
-
-  test("confirming the character the scan gave is not a pick by hand", () => {
-    const storage = memoryStorage();
-    characterFromScan("zeus", storage);
+  test("confirming the character already stored is not a pick by hand", () => {
+    const storage = memoryStorage({ [CHARACTER_KEY]: "zeus" });
     expect(confirmCharacter("zeus", storage)).toBe("zeus");
     expect(handPicked(storage)).toBeNull();
-    expect(characterFromScan("poseidon", storage)).toBe("poseidon");
   });
 
   test("confirming any other character is a pick by hand", () => {
-    const storage = memoryStorage();
-    characterFromScan("zeus", storage);
+    const storage = memoryStorage({ [CHARACTER_KEY]: "zeus" });
     expect(confirmCharacter("athena", storage)).toBe("athena");
     expect(handPicked(storage)).toBe("athena");
-    expect(characterFromScan("poseidon", storage)).toBe("athena");
   });
 
   test("confirming the default with nothing stored is not a pick by hand", () => {
@@ -158,18 +130,15 @@ describe("the stored character and the scan", () => {
 
   test("no storage, or one that throws, never throws and falls back", () => {
     expect(handPicked(null)).toBeNull();
-    expect(characterFromScan("zeus", null)).toBe("zeus");
     expect(pickCharacter("athena", null)).toBe("athena");
     expect(confirmCharacter("athena", null)).toBe("athena");
     expect(handPicked(throwing)).toBeNull();
-    expect(characterFromScan("zeus", throwing)).toBe("zeus");
     expect(pickCharacter("athena", throwing)).toBe("athena");
     expect(confirmCharacter("athena", throwing)).toBe("athena");
   });
 
-  test("a source value we do not know lets the scan choose", () => {
+  test("a source value we do not know is not a hand pick", () => {
     const storage = memoryStorage({ [CHARACTER_KEY]: "achilles", [CHARACTER_SOURCE_KEY]: "maybe" });
     expect(handPicked(storage)).toBeNull();
-    expect(characterFromScan("zeus", storage)).toBe("zeus");
   });
 });
