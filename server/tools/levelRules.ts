@@ -221,13 +221,23 @@ export function formatTables(clips: readonly Measure[]): string {
   return out.join("\n");
 }
 
-/** The clips that have a row in the doc's tables. */
-export function listedClips(markdown: string): readonly string[] {
-  return [...markdown.matchAll(/^\| `([^`]+\.mp3)` \|/gm)].map((match) => match[1] ?? "");
-}
-
 export const DOC_START = "<!-- levels:start (written by server/tools/levelClips.ts) -->";
 export const DOC_END = "<!-- levels:end -->";
+
+/**
+ * The rows of the clip tables in the measured part of the doc (other tables in the doc are not read).
+ * A cell that is not a number, such as the dash in a row added by hand, is NaN.
+ */
+export function listedClips(doc: string): readonly Measure[] {
+  const start = doc.indexOf(DOC_START);
+  const end = doc.indexOf(DOC_END);
+  const measured = start < 0 || end < start ? "" : doc.slice(start, end);
+  return [...measured.matchAll(/^\| `([^`]+\.mp3)` \|(.*)\|\s*$/gm)].map((match) => {
+    const [seconds, lufs, truePeak, leadMs, tailMs, playDb] = (match[2] ?? "").split("|").map((cell) => (cell.trim() === "" ? Number.NaN : Number(cell)));
+    const cell = (value: number | undefined): number => value ?? Number.NaN;
+    return { path: match[1] ?? "", seconds: cell(seconds), lufs: cell(lufs), truePeak: cell(truePeak), leadMs: cell(leadMs), tailMs: cell(tailMs), playDb: cell(playDb) };
+  });
+}
 
 /** The doc with its measured part replaced. Null when the doc has lost its two markers. */
 export function withTables(doc: string, tables: string): string | null {
