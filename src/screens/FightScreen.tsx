@@ -2,7 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
-import { playVoice } from "../audio/voice";
+import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
+import { speakMonsterTaunt, stopStory } from "../audio/storyVoice";
+import { playVoice, speakLine } from "../audio/voice";
+import { PowerEffect } from "../ai/ui/PowerEffect";
+import { GODS } from "../ai/gods/gods";
+import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { CameraView } from "../hud/CameraView";
@@ -31,6 +36,8 @@ export function FightScreen(props: {
   seed: number;
   /** Set by calibration; null for keyboard play. */
   baseline?: Baseline | null;
+  /** The god the scan found, for the divine power effect; null for none. */
+  god?: GodId | null;
   /** Buttons shown once the fight is over. */
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
@@ -39,7 +46,8 @@ export function FightScreen(props: {
   link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, link = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
+  const [powerCount, setPowerCount] = useState(0);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
   const overRef = useRef(false);
@@ -49,6 +57,8 @@ export function FightScreen(props: {
 
   useEffect(() => {
     battle.styleId = style.id;
+    startMusic("fight");
+    speakLine("fight_start");
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
@@ -88,8 +98,14 @@ export function FightScreen(props: {
       last = now;
       current = result.state;
       link?.publish(current, result.events, now);
-      result.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
+      result.events.forEach((event) => {
+        playEvent(event); noteHit(event); notePhase(event);
+        if (event.type === "won") startMusic("win");
+        if (event.type === "lost") startMusic("loss");
+        if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(enemy.id);
+      });
       playVoice(result.events, current.phase);
+      if (result.events.some((event) => event.type === "powerUnleashed")) setPowerCount((n) => n + 1);
       setState(current);
       handle = requestAnimationFrame(tick);
     };
@@ -97,6 +113,7 @@ export function FightScreen(props: {
     return () => {
       cancelAnimationFrame(handle);
       keyboard.dispose();
+      stopStory();
     };
   }, [enemy, style, tracker, seed, baseline, link]);
 
@@ -117,14 +134,16 @@ export function FightScreen(props: {
 
   useEffect(() => {
     if (running) return;
+    pauseMusic();
     const since = performance.now();
-    return () => { shiftBattleTimes(battle, performance.now() - since); };
+    return () => { resumeMusic(); shiftBattleTimes(battle, performance.now() - since); };
   }, [running]);
 
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <Hud enemy={enemy} state={state} />
+      {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
       <CameraView tracker={tracker} poseRef={poseRef} />
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (

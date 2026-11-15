@@ -69,12 +69,14 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   }, [link, tracker, fight]);
 
   const holder = useRef<HTMLDivElement>(null);
+  const started = state !== null;
   useEffect(() => {
     const node = holder.current;
     if (!tracker || !node) return;
     node.append(tracker.video);
     return () => { tracker.video.remove(); };
-  }, [tracker]);
+    // The preview box only exists once the first state has arrived, so run again then.
+  }, [tracker, started]);
 
   if (!enemy || !style) return <Notice line="This stop is not in your copy of the game." onLeave={onLeave} button="Leave the room" />;
   if (!state) return <Notice line="The fight is starting..." onLeave={onLeave} button="Leave the room" />;
@@ -84,6 +86,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       <Scene enemy={enemy} state={state} poseRef={poseRef} />
       <Hud enemy={enemy} state={state} />
       <div className="preview mirror" ref={holder} />
+      {!over && <button className="quiet room-leave" onClick={onLeave}>Leave the room</button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
       {over && (
         <div className="overlay">

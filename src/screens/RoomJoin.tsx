@@ -1,5 +1,5 @@
 // Join a room: type the four letters, or arrive from a link with the code filled in.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createGuestLink } from "../net/guest";
 import type { GuestLink } from "../net/guest";
 import { cleanCode, joinRoom, openRoom } from "../net/transport";
@@ -28,12 +28,15 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
   const mode = detectMode();
+  const left = useRef(false);
+  const gone = (): boolean => left.current;
 
   const join = async (useCamera: boolean): Promise<void> => {
     if (busy || code.length !== 4) return;
     setBusy(true);
     setProblem("");
     const room = await joinRoom(browserDeps, code);
+    if (gone()) return;
     if (typeof room === "string") {
       setProblem(ROOM_MESSAGES[room] ?? "");
       setBusy(false);
@@ -41,7 +44,12 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
     }
     let tracker: PoseTracker | null = null;
     if (useCamera) tracker = await startTracker().catch(() => null);
-    const played: GuestMode = tracker ? "camera" : mode === "camera" ? "keyboard" : mode;
+    // Back was pressed while the join or the camera prompt was pending: open nothing, keep no camera.
+    if (gone()) {
+      tracker?.stop();
+      return;
+    }
+    const played: GuestMode = tracker ? "camera" : mode !== "camera" ? mode : window.matchMedia("(pointer: coarse)").matches ? "touch" : "keyboard";
     props.onJoined({ link: createGuestLink(openRoom(browserDeps, room)), mode: played, tracker });
   };
 
@@ -69,7 +77,7 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
       {mode === "camera" && (
         <button disabled={busy || code.length !== 4} onClick={() => { void join(false); }}>Join with the keyboard</button>
       )}
-      <button className="quiet" onClick={props.onBack}>Back</button>
+      <button className="quiet" onClick={() => { left.current = true; props.onBack(); }}>Back</button>
     </main>
   );
 }
