@@ -1,0 +1,72 @@
+/* The main menu's cards as hoplite shields (menuShields.tsx). Hover tilts the shield toward you and runs a glint across it;
+   keyboard focus does the same and rings the card. With reduced motion the tilt and glint hold still. */
+.bronze-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.menu-cards { --shield: clamp(170px, min(15.5vw, 29vh), 300px); display: flex; justify-content: center; align-items: flex-start; gap: clamp(14px, 2.4vw, 46px); width: min(84rem, 100%); margin: 0.9rem 0 0.4rem; }
+
+.menu .menu-shield {
+  position: relative; display: flex; flex-direction: column; align-items: center; flex: 0 1 calc(var(--shield) + 40px); min-width: 0; margin: 0; padding: 6px 4px 8px;
+  border: 0; border-radius: 50% 50% 18px 18px / 40% 40% 18px 18px; background: none; box-shadow: none; color: var(--pb-text);
+  font-family: var(--pb-font-body); text-transform: none; letter-spacing: normal; cursor: pointer; perspective: 700px;
+}
+.menu .menu-shield:hover, .menu .menu-shield:active { background: none; box-shadow: none; color: var(--pb-text); }
+.menu .menu-shield:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 6px; }
+
+.menu-shield__wrap { position: relative; display: block; width: var(--shield); height: var(--shield); flex: none; }
+.menu-shield--primary .menu-shield__wrap { width: calc(var(--shield) * 1.08); height: calc(var(--shield) * 1.08); margin-top: calc(var(--shield) * -0.04); }
+/* A spear slung behind the shield. */
+.menu-shield__spear {
+  position: absolute; left: 50%; top: 50%; width: 7px; height: 128%; margin: -64% 0 0 -3.5px; transform: rotate(-52deg);
+  background: linear-gradient(90deg, #3a2210, #8a5a2a 45%, #2a160a); border-radius: 3px; box-shadow: 0 6px 10px rgba(0, 0, 0, 0.6);
+}
+.menu-shield__spear::before { content: ""; position: absolute; left: 50%; top: -34px; width: 18px; height: 44px; margin-left: -9px; border-radius: 50% 50% 40% 40% / 80% 80% 20% 20%; background: linear-gradient(90deg, #ffe6b0, #c98f37 50%, #6b3f17); }
+.menu-shield__spear::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 10px; height: 22px; margin-left: -5px; border-radius: 2px 2px 50% 50%; background: linear-gradient(90deg, #ffe6b0, #a86424); }
+
+.menu-shield__aspis {
+  position: relative; display: block; width: 100%; height: 100%; border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 244, 210, 0.55), transparent 32%),
+    radial-gradient(circle, transparent 79%, #3e2109 80%, #c98f37 82%, #ffe6b0 85%, #b97f2f 88%, #5a300f 92%, #2a1406 96%),
+    radial-gradient(circle at 50% 45%, #e6aa58, #b8762e 45%, #7a4416 78%);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.7), 0 0 0 2px #1a0d06, inset 0 -10px 24px rgba(40, 18, 4, 0.6);
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 220ms;
+}
+.menu-shield--primary .menu-shield__aspis { box-shadow: 0 16px 30px rgba(0, 0, 0, 0.7), 0 0 0 2px #1a0d06, 0 0 0 5px #ffd99a, 0 0 30px rgba(255, 200, 110, 0.5), inset 0 -10px 24px rgba(40, 18, 4, 0.6); }
+.menu-shield__face { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+.menu-shield__studs { fill: none; stroke: #ffe6b0; stroke-width: 3; stroke-dasharray: 0.1 10.4; stroke-linecap: round; opacity: 0.9; }
+.menu-shield__dentils { fill: none; stroke: #3e2109; stroke-width: 5; stroke-dasharray: 4.2 3; opacity: 0.75; }
+.menu-shield__band { fill: none; stroke: #5a300f; stroke-width: 1.4; opacity: 0.6; }
+/* The device in relief: a light edge above and a shadow below. */
+.bronze-device { filter: drop-shadow(-1px -1.5px 0 rgba(255, 238, 200, 0.85)) drop-shadow(2px 3px 1.5px rgba(40, 16, 2, 0.85)); }
+.bronze-device .f { fill: url(#bronze-cast); }
+.bronze-device .l, .bronze-device .s { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.bronze-device .l { stroke: #f2c56e; stroke-width: 3.4; }
+.bronze-device .s { stroke: #4a2408; stroke-width: 1.8; }
+.bronze-device .e { fill: #fff1c9; }
+.bronze-device .h { fill: #4a2408; }
+
+.menu-shield__glint { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; pointer-events: none; }
+.menu-shield__glint i { position: absolute; inset: -20%; background: linear-gradient(115deg, transparent 38%, rgba(255, 250, 230, 0.75) 48%, transparent 58%); transform: translateX(-120%); opacity: 0; }
+.menu-shield:is(:hover, :focus-visible) .menu-shield__aspis {
+  transform: rotateX(14deg) rotateY(-10deg) scale(1.05);
+  box-shadow: 0 22px 34px rgba(0, 0, 0, 0.75), 0 0 0 2px #1a0d06, 0 0 0 4px #fff1c9, 0 0 36px rgba(255, 210, 120, 0.6), inset 0 -10px 24px rgba(40, 18, 4, 0.6);
+}
+.menu-shield:is(:hover, :focus-visible) .menu-shield__glint i { animation: menu-shield-glint 900ms ease-out forwards; }
+@keyframes menu-shield-glint { from { transform: translateX(-120%); opacity: 1; } to { transform: translateX(120%); opacity: 1; } }
+
+/* The bronze ribbon with the name. */
+.menu-shield__name {
+  position: relative; margin-top: -16px; padding: 7px 26px 8px; white-space: nowrap; font: 800 clamp(17px, 1.45vw, 23px)/1.1 var(--pb-font-body); letter-spacing: 0.1em; text-transform: uppercase;
+  color: #2a1406; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.6); background: linear-gradient(#ffe6b0, #e0a552 40%, #a86424);
+  clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%); filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6));
+}
+.menu-shield--primary .menu-shield__name { background: linear-gradient(#fff6d8, #f2c56e 40%, #c98f37); }
+.menu-shield:is(:hover, :focus-visible) .menu-shield__name { background: linear-gradient(#fff6d8, #ffd27a 40%, #d99a3e); }
+.menu .menu-shield__line {
+  display: block; margin-top: 8px; padding: 2px 10px; max-width: 15rem; font: 600 17px/1.3 var(--pb-font-body); color: var(--pb-text);
+  text-shadow: 0 0 3px #000, 0 1px 4px #000, 0 0 12px #000; background: radial-gradient(closest-side, rgba(3, 7, 9, 0.62), transparent); border-radius: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-shield__aspis { transition: none; }
+  .menu-shield:is(:hover, :focus-visible) .menu-shield__glint i { animation: none; transform: translateX(0); opacity: 1; }
+}
