@@ -1,0 +1,25 @@
+---
+description: House rules for working on Odyssey Dojo in Cursor
+alwaysApply: true
+---
+
+# Odyssey Dojo: rules for Cursor
+
+Read these before changing anything. They are the same rules every agent on the team follows.
+
+- Read `AGENTS.md`, then `docs/COORDINATION.md` (how to claim a task and land work) and `docs/ARCHITECTURE.md` (the plan and who owns which folder).
+- Work on a branch and open a pull request. Never push to `main`.
+- Do not edit `src/core/types.ts`, `src/combat/`, `src/pose/`, `src/input/`, `src/render/`, `src/hud/`, `src/screens/` or `src/App.tsx` unless you work for the lead. Send those changes as a tested diff on the lead's fix list.
+- Run `make ready` before you open the pull request.
+- Tests: no `test.skip`, `test.fails` or `test.todo`. A fix comes with a test that fails without it.
+- Keys live only in `.env` and `.env.local`. Never print, commit or paste them.
+- Write plain, simple English in code comments, docs and pull requests.
+
+## Where things are
+
+- `src/moves/`: one file per move, each with a detector that reads pose landmarks.
+- `src/enemies/`: the monsters of the Odyssey, as data.
+- `src/coach/`: the Training Dojo.
+- `src/net/` and `server/`: online rooms.
+- `src/duo/`: two players on one camera.
+- `tests/`: vitest. Run one file with `npx vitest run tests/<name>.test.ts`.
