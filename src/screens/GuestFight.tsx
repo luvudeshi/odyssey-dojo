@@ -13,6 +13,7 @@ import { noteHit } from "../hud/RatingFlash";
 import { TouchPad } from "../hud/TouchPad";
 import { createKeyboard } from "../input/keyboard";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
+import { clearFriend, feedFromHost } from "../net/friendStage";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
 import type { GuestLink } from "../net/guest";
@@ -53,6 +54,9 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
     const watchMiss = createMissWatch();
     let history: PoseHistory = { frames: [], baseline: null };
     let handle = 0;
+    // The guest's own last strike, so a hit that is not theirs can be put down to the host.
+    let ownMove = "";
+    let ownAt = -Infinity;
     const tick = (now: number): void => {
       const frame = tracker?.read() ?? null;
       if (frame) {
@@ -68,17 +72,20 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history, asked) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
       noteInput(input, now / 1000);
       link.sendInput(input);
+      const own = input.struck.at(-1);
+      if (own) { ownMove = own.move; ownAt = now / 1000; }
       // The guest sends strikes only, so its held defends are not tries.
       if (view && watchPhase(watchMiss, view.state.phase, { ...input, held: new Set() }, view.events, now)) noteMiss();
       if (view) {
         view.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
         playVoice(view.events, view.state.phase);
+        feedFromHost(view.events, ownMove, ownAt, now / 1000);
         setState(view.state);
       }
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(handle); keyboard.dispose(); };
+    return () => { cancelAnimationFrame(handle); keyboard.dispose(); clearFriend(); };
   }, [link, tracker, fight]);
 
   // Told once per fight, when it is won or lost: the Account counts a room fight for the guest too.
@@ -105,7 +112,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       <Scene enemy={enemy} state={state} poseRef={poseRef} />
       <SkyHud enemy={enemy} state={state} />
       {!over && <PowerCircle power={state.power} />}
-      <div className="preview mirror" ref={holder} />
+      {tracker && <div className="preview mirror" ref={holder} />}
       {!over && <Button className="room-leave" onClick={onLeave}>Leave the room</Button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
       {over && (

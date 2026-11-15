@@ -24,6 +24,7 @@ import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { noteFeedback, noteMiss } from "../hud/MissFlash";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
+import { clearFriend, feedFromGuest, friendStage } from "../net/friendStage";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -133,6 +134,9 @@ export function FightScreen(props: {
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
+      // The guest's hero stands beside the host's while the guest is in the room fight; a solo fight never touches the store.
+      if (link?.guestHere()) feedFromGuest(input.struck, now / 1000);
+      else if (friendStage.here) clearFriend();
       const from = current;
       const result = step(current, enemy, style, input, dt, !tracker || keyboardMode || legs);
       last = now;
@@ -161,12 +165,14 @@ export function FightScreen(props: {
         stampPower(battle, patronRef.current, now / 1000, from);
         setPowerCount((n) => n + 1);
       }
-      setState(current);
+      // The "You + Friend" tag follows the guest, who may have left; the engine's own state keeps its player count.
+      setState(link && current.players === 2 && !link.guestHere() ? { ...current, players: 1 } : current);
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(handle);
+      clearFriend();
       keyboard.dispose();
       // Homer's opening line is left to run to its end: leaving the fight (App's onQuit) and the result panel stop him.
     };

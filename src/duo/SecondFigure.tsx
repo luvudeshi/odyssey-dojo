@@ -16,6 +16,7 @@ import { createBodyTracker } from "../render/hero/track/BodyTracker";
 import type { BodyTracker } from "../render/hero/track/BodyTracker";
 import { RiggedModel } from "../render/models/RiggedModel";
 import { HOME_Z } from "../render/PlayerFigure";
+import { friendDrawn, friendStage } from "../net/friendStage";
 import { duoCamera } from "./duoCamera";
 import type { DuoCamera } from "./duoCamera";
 import { secondDrawn } from "./secondDrawn";
@@ -30,7 +31,8 @@ function isMesh(node: Object3D): node is Mesh {
   return (node as { isMesh?: boolean }).isMesh === true;
 }
 
-function Spartan({ camera }: { camera: DuoCamera }) {
+/** `camera` moves the figure with player two's body; `friend` plays the hero's own clips for an online friend instead. */
+function Spartan({ camera, friend }: { camera: DuoCamera | null; friend: boolean }) {
   const trackers = useRef(new WeakMap<Object3D, BodyTracker>());
   const input = useRef<MutableInput>(newInput());
   const frame = useRef<PoseFrame | null>(null);
@@ -51,9 +53,9 @@ function Spartan({ camera }: { camera: DuoCamera }) {
   /** What the clips are told: hurt, won and lost come from the fight; the strikes and defends are player two's own body. */
   const read = (now: number): MutableInput => {
     const out = readInput(input.current, now) as MutableInput;
-    out.held = NO_MOVES;
-    out.struckMove = "";
-    out.sinceStrike = Infinity;
+    out.held = friend ? friendStage.held : NO_MOVES;
+    out.struckMove = friend ? friendStage.struckMove : "";
+    out.sinceStrike = friend ? now - friendStage.struckAt : Infinity;
     return out;
   };
   return (
@@ -65,8 +67,9 @@ function Spartan({ camera }: { camera: DuoCamera }) {
       tweakMaterial={spartan.tweakMaterial}
       afterMixer={(root, delta) => {
         const now = nowSeconds();
-        secondDrawn.at = performance.now();
-        frame.current = camera.second(now * 1000) ?? frame.current;
+        if (friend) friendDrawn.at = performance.now();
+        else secondDrawn.at = performance.now();
+        frame.current = camera?.second(now * 1000) ?? frame.current;
         trackers.current.get(root)?.update(frame.current, now, delta, trackShare(read(now), spartan.rig.hurt.seconds));
       }}
       decide={(available, out) => {
@@ -88,7 +91,23 @@ export function SecondFigure({ camera = duoCamera }: { camera?: DuoCamera }) {
     <group position={[...SECOND_PLACE]}>
       <ErrorBoundary label="second-figure" fallback={null}>
         <Suspense fallback={null}>
-          <Spartan camera={camera} />
+          <Spartan camera={camera} friend={false} />
+        </Suspense>
+      </ErrorBoundary>
+    </group>
+  );
+}
+
+/** The friend of an online room, on the same spot: shown while friendStage says they are in the fight. */
+export function FriendFigure() {
+  const [here, setHere] = useState(false);
+  useFrame(() => { if (friendStage.here !== here) setHere(friendStage.here); });
+  if (!here) return null;
+  return (
+    <group position={[...SECOND_PLACE]}>
+      <ErrorBoundary label="friend-figure" fallback={null}>
+        <Suspense fallback={null}>
+          <Spartan camera={null} friend />
         </Suspense>
       </ErrorBoundary>
     </group>
