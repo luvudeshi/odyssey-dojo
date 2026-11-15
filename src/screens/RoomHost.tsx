@@ -1,10 +1,11 @@
-// Host a room: asks the server for a code, shows it large with a QR code a phone can scan, waits for a friend.
+// Host a room, inside the Multiplayer screen's host card: asks the server for a code, shows it large with a QR code a
+// phone can scan, and waits for a friend.
 import { useEffect, useRef, useState } from "react";
 import { toDataURL } from "qrcode";
 import { createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createRoom, openRoom } from "../net/transport";
-import { Button, Panel, PebbleHeading } from "../ui/pebble";
+import { Button } from "../ui/pebble";
 import { browserDeps, fetchLanBase } from "./roomNet";
 import { ROOM_MESSAGES, joinUrl, reachableBase } from "./roomUrl";
 
@@ -50,8 +51,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
   };
 
   return (
-    <Panel as="main" ornament className="menu room">
-      <PebbleHeading as="h1" text="Fight together" px={60} tone="ochre" />
+    <div className="room">
       {phase.kind === "making" && <p className="notice">Opening a room...</p>}
       {phase.kind === "failed" && (
         <>
@@ -62,10 +62,14 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
       )}
       {phase.kind === "open" && (
         <>
-          <p>Room code</p>
-          <div className="room-code" aria-label={`Room code ${phase.code.split("").join(" ")}`}>{phase.code}</div>
-          <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={220} height={220} />
-          <p className="room-url">{phase.url}</p>
+          <div className="room-invite">
+            <div>
+              <p>Room code</p>
+              <div className="room-code" aria-label={`Room code ${phase.code.split("").join(" ")}`}>{phase.code}</div>
+              <p className="room-url">{phase.url}</p>
+            </div>
+            <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={170} height={170} />
+          </div>
           <p className="notice" role="status">{friend ? "A friend has joined." : "Waiting for a friend..."}</p>
           <Button
             primary
@@ -76,7 +80,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
           </Button>
         </>
       )}
-      <Button onClick={leave}>Back</Button>
-    </Panel>
+      <Button onClick={leave}>Close the room</Button>
+    </div>
   );
 }

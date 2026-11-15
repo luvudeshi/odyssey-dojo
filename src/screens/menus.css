@@ -71,8 +71,8 @@
 .room label { display: block; margin: 0.4rem 0 0.6rem; font: 600 20px var(--pb-font-body); }
 
 /* Main menu: three cards in a row under the logo (they borrow the style card's plaque), and a quiet keyboard link. */
-.menu-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; width: min(66rem, 100%); margin: 0.7rem 0 0.5rem; }
-.menu .menu-card { flex: 1 1 15rem; max-width: 21rem; padding: 20px 18px 22px; }
+.menu-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; width: min(76rem, 100%); margin: 0.7rem 0 0.5rem; }
+.menu .menu-card { flex: 1 1 13rem; max-width: 18.5rem; padding: 18px 14px 20px; }
 .menu .menu-card--primary { border-color: var(--pb-ochre); border-width: 3px; }
 .menu-card__icon { display: block; width: 76px; height: 76px; margin: 0 auto 10px; fill: none; stroke: var(--pb-ochre-light); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .menu .menu-card .style-card__name { font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; }

@@ -399,11 +399,14 @@ function newRun(id) {
   };
 }
 
-/** Title -> "Fight together" -> "Host a room". Returns the room code, read from the join link the QR code holds. */
+/** The main menu's Account card: its name is the card's own name followed by its line of small print (MainMenu.tsx). */
+const ACCOUNT_CARD = { selector: 'nav[aria-label="Main menu"] button:has-text("Account")', name: /^Account/ };
+
+/** Main menu -> Account -> "Host a room". Returns the room code, read from the join link the QR code holds. */
 async function hostOpensRoom(page, base) {
   await page.goto(base);
-  await press(page, "fight together", { name: /together/i });
-  await press(page, "host a room", { name: /host/i });
+  await press(page, "open the account", ACCOUNT_CARD);
+  await press(page, "host a room", { name: "Host a room" });
   const ready = await until(page, () => {
     const link = document.querySelector("img[data-join-url]")?.getAttribute("data-join-url");
     const label = document.querySelector('[aria-label^="Room code"]')?.textContent?.trim();
@@ -435,11 +438,11 @@ async function sendCode(page) {
   return answer.typing ? { refused: answer.alert } : { refused: null };
 }
 
-/** Title -> "Fight together" -> "Join a room" -> the four letters, typed. */
+/** Main menu -> Account -> "Join a room" -> the four letters, typed. */
 async function guestTypesCode(page, base, code) {
   await page.goto(base);
-  await press(page, "fight together", { name: /together/i });
-  await press(page, "join a room", { name: /join/i });
+  await press(page, "open the account", ACCOUNT_CARD);
+  await press(page, "join a room", { name: "Join a room" });
   const input = page.locator('main input[maxlength="4"], main input').first();
   await input.waitFor({ timeout: SCREEN_MS });
   await input.fill(code.toLowerCase());
@@ -450,7 +453,8 @@ async function guestTypesCode(page, base, code) {
 }
 
 /**
- * The host's "Start" (live once the friend is in), the first style, the first open stop, the intro, the fight.
+ * The host's "Start" (live once the friend is in), the first style, the first open stop, the fight. The click on
+ * the stop starts the fight.
  * "Start" is the button right after the room's status line; "Back" is live all the time and must not be taken for it.
  */
 async function hostStartsFight(page) {
@@ -461,21 +465,27 @@ async function hostStartsFight(page) {
   if (!friend) throw new Error(`the host never saw the guest, the page shows ${await page.evaluate(readWhere)}`);
   await press(page, "start", { selector: 'main:has(img[data-join-url]) [role="status"] + button:enabled', name: /^start/i });
   await page.locator("img[data-join-url]").waitFor({ state: "detached", timeout: SCREEN_MS });
-  // A style button is the one with a line of small print under its name.
-  const style = page.locator("main button:has(small)").first();
-  await style.waitFor({ timeout: SCREEN_MS });
-  const styleName = await style.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
-  await style.click();
-  const stop = page.locator("button.stop.open").first();
-  await stop.waitFor({ timeout: SCREEN_MS });
-  await stop.click();
-  await page.locator("button.stop").first().waitFor({ state: "detached", timeout: SCREEN_MS });
-  // The heading is laid in pebbles on a canvas, in upper case: its words are in aria-label (plain text is the fallback).
-  const enemy = (await page.locator("main h1").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
-  // The intro's first button begins the fight.
-  await press(page, "begin the fight", { selector: "main button", name: /^face /i });
-  // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
-  await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
+  // A style button is the one with a line of small print under its name (the main menu's cards have one too, but
+  // they sit in a nav). The host has no camera: if the game leaves the style screen on its own, the step says where
+  // the page went instead of only timing out.
+  let styleName = "";
+  let enemy = "";
+  try {
+    const style = page.locator("main button:has(small):not(nav button)").first();
+    await style.waitFor({ timeout: SCREEN_MS });
+    styleName = await style.evaluate((element) => element.firstChild?.textContent?.trim() ?? "", null, { timeout: SCREEN_MS });
+    await style.click({ timeout: SCREEN_MS });
+    const stop = page.locator("button.stop.open").first();
+    await stop.waitFor({ timeout: SCREEN_MS });
+    // The monster's name is the first text of the stop's label; the small print after it is the book.
+    enemy = await stop.evaluate((element) => (element.querySelector(".lbl")?.firstChild?.textContent ?? element.textContent ?? "").trim(), null, { timeout: SCREEN_MS });
+    // The click on the stop starts the fight: there is no screen in between.
+    await stop.click({ timeout: SCREEN_MS });
+    // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
+    await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
+  } catch (error) {
+    throw new Error(`after "Start" the host did not get from the style screen to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
+  }
   return `"${friend.notice}", style ${styleName}, against ${enemy}`;
 }
 

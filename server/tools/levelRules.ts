@@ -44,6 +44,8 @@ const MUSIC_LOUDNESS: Readonly<Record<string, number>> = { menu: 0.1, fight: 0.1
 /** stopAudio.ts: EVENT_* and AMBIENCE_*. */
 const STOP_EVENT = { gain: 0.5, loudness: 0.12, peak: 0.9 };
 const STOP_AMBIENCE = { gain: 0.16, loudness: 0.08, peak: 2 };
+/** powerSound.ts: POWER_GAIN, POWER_LOUDNESS and POWER_PEAK. */
+const POWER = { gain: 0.7, loudness: 0.13, peak: 0.9 };
 /** settings/store.ts: the default music volume. Effects and voice default to 1. */
 const MUSIC_VOLUME = 0.7;
 /** voice.ts: TAUNT_VOLUME. A monster's taunt is spoken on its own channel, under Athena's calls. */
@@ -120,6 +122,7 @@ export function playbackDb(path: string, rms: number, peak: number): number {
       ? level(STOP_AMBIENCE.loudness, STOP_AMBIENCE.peak) * STOP_AMBIENCE.gain * MUSIC_VOLUME
       : level(STOP_EVENT.loudness, STOP_EVENT.peak) * STOP_EVENT.gain;
   }
+  if (folder === "power") gain = level(POWER.loudness, POWER.peak) * POWER.gain;
   return 20 * Math.log10(gain);
 }
 
@@ -196,6 +199,7 @@ export function outOfLine(clips: readonly Measure[]): readonly string[] {
       if (Math.abs(off) > OUTLIER_LU) notes.push(`${signed(off)} LU from the median of ${group} at the listener`);
       if (round1(clip.truePeak + clip.playDb) > PEAK_TOLERANCE_DBTP) notes.push(`peak ${fixed(clip.truePeak)} dBTP`);
       // Music and ambience fade in, and Homer and the taunts can start a moment late. A call or an effect cannot.
+      // A god's power clip is not listed either: the game starts it past its silence (powerSound.ts).
       const prompt = isMoveCall(clip.path) || group === "sfx" || group === "stops (events)";
       if (prompt && Math.round(clip.leadMs) > LATE_MS) notes.push(`${String(Math.round(clip.leadMs))} ms of silence before the sound`);
       if (notes.length > 0) lines.push(`- \`${clip.path}\`: ${notes.join("; ")}`);

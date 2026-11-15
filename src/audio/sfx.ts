@@ -250,11 +250,19 @@ export function setEventOverride(next: EventOverride | null): void {
   override = next;
 }
 
+/** The god's own sound for the power going off (powerSound.ts): returns true when it played, and the usual one is then skipped. */
+let powerSound: (() => boolean) | null = null;
+
+export function setPowerSound(next: (() => boolean) | null): void {
+  powerSound = next;
+}
+
 export function playEvent(event: CombatEvent): void {
   const { type } = event;
   if (!(type in EVENTS)) return;
   // A hidden tab stays silent, and asking the context to run again there would bring the music back with it.
   if (tabHidden()) return;
+  if (type === "powerUnleashed" && powerSound?.()) return;
   if (override?.(event)) return;
   const active = sharedPlayer();
   if (!active) return;
