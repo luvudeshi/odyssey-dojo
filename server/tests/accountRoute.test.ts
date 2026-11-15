@@ -585,6 +585,8 @@ test("a flood of sign-ins holds two places at the database and one hash at a tim
   // Eighteen reach the hash: one runs, eight wait, nine are told to come back. Nothing waits without a bound.
   expect(answers.filter((status) => status === 401)).toHaveLength(HASHES_AT_ONCE + HASHES_WAITING);
   expect(answers.filter((status) => status === 429)).toHaveLength(FLOOD - HASHES_AT_ONCE - HASHES_WAITING);
+  // Each of them is told to come back in one second, and the page does that by itself (BUSY_RETRIES in src/account/client.ts).
+  for (const answer of await Promise.all(burst)) if (answer.status === 429) expect([answer.retry, JSON.parse(answer.text)]).toEqual(["1", { error: "slow_down" }]);
   expect(stand.most).toBe(STRANGERS_AT_ONCE);
   // The same for sign-ups: the count before the hash takes a place, the hash does not.
   stand.most = 0;
