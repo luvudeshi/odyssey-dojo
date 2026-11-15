@@ -250,7 +250,7 @@ Not checked:
 
 ## Accounts on the hosted copy
 
-Accounts and the hall of heroes (`docs/accounts.md`) work on the hosted copy once three things are true.
+Accounts and the hall of heroes (`docs/accounts.md`) work on the hosted copy once three things are true (`PUBLIC_ACCOUNTS=1` needs the code from PR 384).
 
 1. **Caddy reaches the game as a caller on the same machine.** The game answers the account paths and the hall only to its own machine (a tunnel that runs there). `docker-compose.yml` runs Caddy inside the game's network (`network_mode: "service:game"`) and the Caddyfile hands requests to `127.0.0.1:8787`, so Caddy is such a caller. Every request still carries `X-Forwarded-For`, so the routes that spend keys, room making and health stay closed to visitors. Checked on the live server: `/api/account/status` answers, `/api/level`, `/api/speech`, `/api/health` and `POST /api/rooms` still answer 403.
 2. **The database string and the flag are in `.env` on the instance.** Add the three lines to `deploy/vultr/.env` there, by hand over SSH. Never put the string in git, an issue, a PR or a chat.
