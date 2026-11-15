@@ -60,12 +60,12 @@ interface Answer {
 
 /** Seconds to wait before sending a refused sign-up or sign-in again, or null when it is not to be sent again. */
 function busyFor(answer: Answer | null): number | null {
-  if (answer?.status !== 429 || answer.retryAfterS === null) return null;
+  if (answer === null || answer.status !== 429 || answer.retryAfterS === null) return null;
   return answer.retryAfterS <= BUSY_WAIT_MAX_S ? answer.retryAfterS : null;
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => { setTimeout(resolve, ms); });
+  return new Promise<void>((resolve) => { setTimeout(resolve, ms); });
 }
 
 const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 409: "name_taken", 413: "too_big", 429: "slow_down", 503: "unavailable" };
