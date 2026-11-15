@@ -328,3 +328,38 @@ test("the camera store: after player two takes over, the frame to draw over the 
   camera.setOn(false);
   expect(promoted && camera.seen(promoted)).toBe(promoted);
 });
+
+test("the two walk past each other, then the one now on the right leaves: the one who stayed is still drawn where the hero stood", () => {
+  const seating = createSeating();
+  const start = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]));
+  // Three seconds of walking, one body lower in the picture so the two never merge, then standing still on the other sides.
+  const steps = Math.ceil(3000 / FRAME_MS);
+  const walk = run(seating, times(steps, (i) => [body(0.3 + (0.4 * i) / steps, 0.5, 0.12), body(0.7 - (0.4 * i) / steps, 0.7, 0.16)]), start.t);
+  const stand = run(seating, times(Math.ceil(3000 / FRAME_MS), () => [body(0.7, 0.5, 0.12), body(0.3, 0.7, 0.16)]), walk.t);
+  expect([at(stand.out.at(-1)?.first ?? null), at(stand.out.at(-1)?.second ?? null)]).toEqual([0.7, 0.3]);
+  // Player one (now on the right) walks out: the one who stayed is drawn where the hero stood when player two joined.
+  const left = run(seating, times(40, () => [body(0.3, 0.7, 0.16)]), stand.t);
+  const hero = left.out.at(-1)?.first ?? null;
+  expect(Math.abs((at(hero) ?? 0) - 0.3)).toBeLessThan(0.03);
+  expect(at(left.out.at(-1)?.firstSeen ?? null)).toBe(0.3);
+});
+
+test("the two merge into one body for a second and come apart: nobody is promoted, and both seats are where they were", () => {
+  const seating = createSeating();
+  const start = run(seating, times(JOINED, () => [body(0.3), body(0.7)]));
+  const merged = run(seating, times(Math.ceil(1500 / FRAME_MS), () => [body(0.5, 0.5, 0.2)]), start.t);
+  const apart = run(seating, times(20, () => [body(0.3), body(0.7)]), merged.t);
+  // A merge lasting well past PROMOTE_MS is not the hero leaving; before the fix this put the hero's picture 0.4 away.
+  expect([at(apart.out.at(-1)?.first ?? null), at(apart.out.at(-1)?.second ?? null)]).toEqual([0.3, 0.7]);
+  expect(apart.out.at(-1)?.players).toBe(2);
+});
+
+test("someone standing next to a lone hero who the reader sees alone for a moment does not take the hero's seat", () => {
+  const seating = createSeating();
+  const alone = run(seating, times(30, () => [body(0.4)]));
+  // The newcomer 0.16 away: the whole-picture reader returns only their body for a few pictures (under FLIP_MS), then both.
+  const flip = run(seating, times(5, () => [body(0.56)]), alone.t);
+  expect(flip.out.every((seats) => seats.first === null)).toBe(true);
+  const both = run(seating, times(10, () => [body(0.4), body(0.56)]), flip.t);
+  expect([at(both.out.at(-1)?.first ?? null), at(both.out.at(-1)?.second ?? null)]).toEqual([0.4, 0.56]);
+});
