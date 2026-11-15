@@ -102,6 +102,8 @@ Voice clips only: `athena`, `narration`, `taunts`. 66 of the 82 were re-encoded.
 
 **`athena/call_knee.mp3` is a new take, levelled by itself.** `server/tools/hearClips.ts` heard the first take's opening word as "Me" where the line says "Knee" (`docs/audio-heard.md`), so the clip was made again with `genClips.ts athena` and `--write` was run once more. It took the new take from -14.3 to -15.5 LUFS (-1.2 dB, no limiter) and its peak from -0.8 to -1.9 dBTP. Its lead is 15 ms. No other clip was touched by that run. The group table and the list of rewritten clips below show the first take; the row under "Measured now" shows the new one.
 
+**Scylla's second and third taunts came later, and are not in the two tables below.** `taunts/taunt_scylla_2.mp3` and `taunts/taunt_scylla_3.mp3` were made after the runs above. `--write` took `taunt_scylla_2` from -21.0 to -19.0 LUFS (+2.0 dB) and its peak from -5.5 to -3.5 dBTP. `taunt_scylla_3` came at -20.3 LUFS, within tolerance, and is byte for byte as ElevenLabs made it. No other clip was touched by that run. Both have a row under "Measured now", where the taunts now count 15.
+
 | group | clips | before: quietest to loudest (median) | spread | after: quietest to loudest (median) | spread |
 |---|---|---|---|---|---|
 | athena (Athena's own lines, without `fight_start`) | 49 | -19.4 to -12.6 (-15.3) | 6.8 LU | -16.8 to -14.0 (-15.6) | 2.8 LU |
@@ -206,7 +208,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
 | stops (events) | 20 | -38.0 | -20.1 | -12.3 | 25.7 | -22.4 (-31.4 to -17.0) |
-| taunts | 13 | -20.5 | -19.0 | -18.8 | 1.7 | -22.1 (-23.6 to -21.9) |
+| taunts | 15 | -20.5 | -19.0 | -18.8 | 1.7 | -22.1 (-23.6 to -21.9) |
 
 ### Voice clips out of tolerance
 
@@ -405,6 +407,8 @@ None.
 | `taunts/taunt_circe_2.mp3` | 3.44 | -19.0 | -1.5 | 83 | 1 | -3.1 | -22.1 |
 | `taunts/taunt_circe_3.mp3` | 3.68 | -19.5 | -1.5 | 45 | 197 | -3.1 | -22.6 |
 | `taunts/taunt_scylla_1.mp3` | 3.04 | -20.5 | -3.7 | 39 | 133 | -3.1 | -23.6 |
+| `taunts/taunt_scylla_2.mp3` | 3.44 | -19.0 | -3.5 | 23 | 0 | -3.1 | -22.1 |
+| `taunts/taunt_scylla_3.mp3` | 4.00 | -20.3 | -4.4 | 31 | 174 | -3.1 | -23.4 |
 | `taunts/taunt_sirens_1.mp3` | 5.76 | -19.0 | -3.3 | 84 | 116 | -3.1 | -22.1 |
 | `taunts/taunt_sirens_2.mp3` | 4.40 | -19.0 | -3.0 | 33 | 126 | -3.1 | -22.1 |
 | `taunts/taunt_sirens_3.mp3` | 5.20 | -19.0 | -1.9 | 43 | 106 | -3.1 | -22.1 |
