@@ -326,11 +326,12 @@ describe("a defend in a fight", () => {
     expect(context?.names()).toEqual(["synthesised", "defendBlock"]);
   });
 
-  test("a defend event with no attack on it is dropped without a sound or an error", async () => {
+  test("a defend event with no attack on it, or a counter that is not text, still plays the usual sound", async () => {
     const { sfx } = await inBrowser(EVERYTHING);
     const context = await loadedContext(() => { sfx.playEvent({ type: "whiffed" }); });
     expect(() => { sfx.playEvent({ type: "defended" } as CombatEvent); }).not.toThrow();
-    expect(context.started.length).toBe(0);
+    expect(() => { sfx.playEvent({ type: "defended", attack: { counter: 7 } } as unknown as CombatEvent); }).not.toThrow();
+    expect(context.names()).toEqual(["defended", "defended"]);
   });
 });
 

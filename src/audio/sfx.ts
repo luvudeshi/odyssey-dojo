@@ -6,7 +6,7 @@ import { log } from "../core/log";
 import type { CombatEvent } from "../core/types";
 import { getSettings } from "../settings/store";
 import type { Cue } from "./cues";
-import { DEFEND_GAIN, defendClip, listedCues, prepareCue, UNLOCK_CLIP, UNLOCK_GAIN } from "./cues";
+import { DEFEND_GAIN, defendClipFor, listedCues, prepareCue, UNLOCK_CLIP, UNLOCK_GAIN } from "./cues";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
 import { tabHidden, watchTab } from "./tab";
@@ -209,7 +209,7 @@ function start(player: Player, event: CombatEvent): void {
   const { type } = event;
   try {
     // A defend sounds like what was done: a dodge, a block, a duck or a jump. With no clip for it, the usual sound below.
-    if (event.type === "defended" && startCue(player, defendClip(event.attack.counter), DEFEND_GAIN)) return;
+    if (event.type === "defended" && startCue(player, defendClipFor(event), DEFEND_GAIN)) return;
     // An event with neither a clip file nor a synthesised design stays silent.
     const buffer = clips.get(type) ?? (SYNTHESISED.has(type) ? synthBuffer(context, type, Number.POSITIVE_INFINITY) : null);
     if (buffer === null) return;

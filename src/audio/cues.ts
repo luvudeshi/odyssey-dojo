@@ -75,6 +75,15 @@ export function defendClip(move: string): string | null {
   return kind === null ? null : DEFEND_CLIPS[kind];
 }
 
+/**
+ * The clip for a "defended" event, by the counter of the attack it carries. Null when the event has no attack on it or
+ * the counter is not a defend move this file knows: the event then keeps the usual "defended" sound.
+ */
+export function defendClipFor(event: { readonly attack?: { readonly counter?: unknown } }): string | null {
+  const move = event.attack?.counter;
+  return typeof move === "string" ? defendClip(move) : null;
+}
+
 /** The clips of this file that an index.json lists. Anything malformed gives an empty list. */
 export function listedCues(index: unknown): readonly string[] {
   if (!Array.isArray(index)) return [];
