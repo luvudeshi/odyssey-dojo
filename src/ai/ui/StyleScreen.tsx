@@ -8,7 +8,7 @@ import { MOVES } from "../../moves/registry";
 import { fightFromLevel } from "../adapt";
 import { generateLevel } from "../client";
 import type { GodId, LevelResponse, LevelSpec } from "../contracts";
-import { EXAMPLE_PHRASES, MAX_PHRASE_LENGTH, cleanPhrase, fromSpeech, pickExamples } from "./phrase";
+import { EXAMPLE_PHRASES, MAX_PHRASE_LENGTH, cleanEpithet, cleanPhrase, fromSpeech, pickExamples } from "./phrase";
 import "./styleScreen.css";
 
 // lib.dom does not declare speech recognition, so the part used here is typed by hand.
@@ -127,7 +127,9 @@ export function StyleScreen(props: {
     stopListening();
     setPhrase(said);
     setStep({ kind: "working" });
-    generateLevel({ phrase: said, god, rival_god: rivalGod, ...(epithet === undefined ? {} : { epithet }) }).then(
+    // An epithet longer than the server allows would be refused, and every phrase would then get a bundled fight.
+    const known = cleanEpithet(epithet);
+    generateLevel({ phrase: said, god, rival_god: rivalGod, ...(known === undefined ? {} : { epithet: known }) }).then(
       (made) => {
         if (!alive.current) return;
         setStep({ kind: "card", made });
