@@ -124,7 +124,8 @@ test("half a motion is not enough", () => {
 test("the existing strikes still read as themselves with the new moves loaded", () => {
   const read = createPoseInput(MOVES);
   const jab = after(pose(700, {}, LEFT_BENT), pose(900, {}, LEFT_OUT));
-  expect(read(jab).struck.map((strike) => strike.move)).toEqual(["jab"]);
+  // Jab and cross read on either hand, so the punch is both, and nothing new.
+  expect(read(jab).struck.map((strike) => strike.move)).toEqual(["cross", "jab"]);
 });
 
 test("every style, old and new, has real strikes, a blurb and a unique id; every move has a unique key and id", () => {

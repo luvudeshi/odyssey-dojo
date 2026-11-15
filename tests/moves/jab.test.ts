@@ -21,6 +21,6 @@ test("a short push that stops with the elbow still bent at 120 degrees is not a 
   expect(thrown(short, "jab")).toBe(0);
 });
 
-test("no other base move fires during a jab", () => {
-  expect(others(jab, "jab")).toEqual([]);
+test("no other base move fires during a jab, apart from the cross (both read on either hand)", () => {
+  expect(others(jab, "jab")).toEqual(["cross"]);
 });
