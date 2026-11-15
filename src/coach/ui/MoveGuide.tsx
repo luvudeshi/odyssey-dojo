@@ -2,10 +2,10 @@
 // a live checklist of what the move's detector is seeing. Drawn with SVG; everything that changes per frame is
 // written straight to the page inside one animation-frame loop, so React renders only when the move changes.
 // The figure and the checklist come from ../guide.
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Baseline, MoveDef, PoseHistory } from "../../core/types";
-import { VIEW, fitView, guideFor, liveChecks, poseAt, toScreen, towardOf } from "../guide";
-import type { Guide, GuideEnd, GuideJoint, ScreenFigure } from "../guide";
+import { CARD_ROOM, MARK, RING, VIEW, frameOf, guideFor, liveChecks, markSize, motionPaths, poseAt, toScreen, towardOf, viewOf } from "../guide";
+import type { Frame, Guide, GuideEnd, GuideJoint, GuideKeyframe, Room, ScreenFigure } from "../guide";
 import "./moveGuide.css";
 
 export interface MoveGuideProps {
@@ -18,8 +18,9 @@ export interface MoveGuideProps {
   msLeft?: number;
   msTotal?: number;
   /**
-   * "card" (the default) fits the prompt card: a box 260 px wide and at most 300 px tall, with the figure, the
-   * instruction and three checks, and no name (the card has its own). "medium" and "large" are for a screen of their own.
+   * "card" (the default) fits the prompt card: a box 260 px wide and at most `--mg-max` (300 px) tall, with the figure
+   * framed tight on the part that moves, the instruction and three checks, and no name (the card has its own).
+   * "medium" and "large" are for a screen of their own.
    */
   size?: "card" | "medium" | "large";
   /** True (the default): the player's left is at the left of the picture, like the camera view, so it is copied like a mirror. */
@@ -30,9 +31,18 @@ type Side = "left" | "right";
 const SIDES: readonly Side[] = ["left", "right"];
 /** How long the match stays lit after a strike is read, which is over in a frame or two. */
 const MATCH_SHOWN_MS = 700;
-const HEAD = 11;
-const END = 5.5;
-const KNEE = 3.5;
+const { head: HEAD, end: END, knee: KNEE } = MARK;
+/** On the card an arrow shorter than this is left out: a fist that only grows toward the camera has its ring. */
+const SHORT_ARROW = 24;
+/** On the card an arrow along a limb's path stops this far, in the drawing's units, before where the fist or foot lands. */
+const ARROW_STOP = 14;
+/**
+ * Whether two still poses on the card get the arrows too. Not for a move of the whole body: its arrow is beside the
+ * figure, and in half the card's width that would halve the figure. The two poses show which way it goes.
+ */
+const stillArrows = (guide: Guide): boolean => !guide.moving.includes("head");
+/** The gap between two still poses on the card, in pixels: the same as in moveGuide.css. */
+const STEP_GAP = 4;
 
 const BONES: readonly (readonly [GuideJoint, GuideJoint, GuideEnd])[] = SIDES.flatMap((side): [GuideJoint, GuideJoint, GuideEnd][] => [
   [`${side}Shoulder`, `${side}Elbow`, `${side}Wrist`], [`${side}Elbow`, `${side}Wrist`, `${side}Wrist`],
@@ -50,24 +60,29 @@ const lit = (moving: readonly GuideEnd[], end: GuideEnd): boolean =>
   moving.some((each) => each === end || (each.slice(0, -4) === end.slice(0, -4) && !each.endsWith("Wrist") && !end.endsWith("Wrist")));
 
 /** One figure. Every part carries a data attribute so `paint` can move it without React. */
-function Figure(props: { figure: ScreenFigure; moving: readonly GuideEnd[]; view: string; live?: boolean; children?: React.ReactNode }) {
-  const { figure, moving, view, live, children } = props;
+/** `fit` is the card's framing of it (frameOf in ../guide); without one it is drawn whole in the usual box. */
+function Figure(props: { figure: ScreenFigure; moving: readonly GuideEnd[]; fit?: Frame | undefined; live?: boolean; children?: React.ReactNode }) {
+  const { figure, moving, fit, live, children } = props;
   const body = moving.includes("head") ? "mg-lit" : undefined;
+  const marks = fit?.marks ?? 1;
+  // On the card a move of the arms is cut off under the hips and hangs from the top of its box; any other stands on the floor.
+  const framed = fit ? (fit.whole ? " mg-whole" : " mg-upper") : "";
   return (
-    <svg className={live ? "mg-svg mg-live" : "mg-svg"} viewBox={view} aria-hidden="true">
-      <line className="mg-floor" x1="20" y1="192" x2={VIEW.width - 20} y2="192" />
+    <svg className={`mg-svg${live ? " mg-live" : ""}${framed}`} viewBox={fit ? viewOf(fit) : `0 ${String(VIEW.top)} ${String(VIEW.width)} ${String(VIEW.height)}`}
+      preserveAspectRatio={fit ? (fit.whole ? "xMidYMax meet" : "xMidYMin meet") : undefined} aria-hidden="true">
+      {(!fit || fit.whole) && <line className="mg-floor" x1="20" y1="192" x2={VIEW.width - 20} y2="192" />}
       {children}
       <polygon className={body} data-torso="" points={torsoPoints(figure)} />
       <circle className={body} data-j="head" data-r={HEAD} cx={n(figure.at.head[0])} cy={n(figure.at.head[1])} r={HEAD} />
       {BONES.map(([a, b, end]) => (
-        <line key={a} className={lit(moving, end) ? "mg-lit" : undefined} data-a={a} data-b={b}
+        <line key={a} className={body ?? (lit(moving, end) ? "mg-lit" : undefined)} data-a={a} data-b={b}
           x1={n(figure.at[a][0])} y1={n(figure.at[a][1])} x2={n(figure.at[b][0])} y2={n(figure.at[b][1])} />
       ))}
       {DOTS.map(([end, r]) => (
-        <g key={end} className={lit(moving, end) ? "mg-lit" : undefined}>
-          <circle className="mg-ring" data-ring={end} data-r={r} cx={n(figure.at[end][0])} cy={n(figure.at[end][1])}
-            r={n(r * figure.size[end] * 1.5)} opacity={n(Math.min(1, figure.size[end] - 1))} />
-          <circle data-j={end} data-r={r} cx={n(figure.at[end][0])} cy={n(figure.at[end][1])} r={n(r * figure.size[end])} />
+        <g key={end} className={body ?? (lit(moving, end) ? "mg-lit" : undefined)}>
+          <circle className="mg-ring" data-ring={end} data-r={r} data-marks={marks} cx={n(figure.at[end][0])} cy={n(figure.at[end][1])}
+            r={n(r * markSize(figure.size[end], marks) * RING)} opacity={n(Math.min(1, figure.size[end] - 1))} />
+          <circle data-j={end} data-r={r} data-marks={marks} cx={n(figure.at[end][0])} cy={n(figure.at[end][1])} r={n(r * markSize(figure.size[end], marks))} />
         </g>
       ))}
     </svg>
@@ -87,24 +102,48 @@ function paint(svg: SVGSVGElement, figure: ScreenFigure): void {
     const grow = name === "head" ? 1 : figure.size[name as GuideEnd];
     const ring = dot.dataset.ring !== undefined;
     dot.setAttribute("cx", n(figure.at[name][0])); dot.setAttribute("cy", n(figure.at[name][1]));
-    dot.setAttribute("r", n(Number(dot.dataset.r) * grow * (ring ? 1.5 : 1)));
+    dot.setAttribute("r", n(Number(dot.dataset.r) * markSize(grow, Number(dot.dataset.marks ?? 1)) * (ring ? RING : 1)));
     if (ring) dot.setAttribute("opacity", n(Math.min(1, grow - 1)));
   }
 }
 
-/** The path each moving end takes from the start pose through the move, as arrows. A move of the whole body gets one beside it. */
-function arrows(guide: Guide, mirrored: boolean): string[] {
-  const whole = guide.moving.includes("head");
-  return guide.moving.flatMap((end) => {
-    const path = guide.keyframes.map((key) => toScreen(key.pose, towardOf(key), mirrored).at[end]);
-    const points = path.filter((point, index) => index === 0 || Math.hypot(point[0] - (path[index - 1]?.[0] ?? 0), point[1] - (path[index - 1]?.[1] ?? 0)) > 1);
-    const [first, last] = [points[0], points.at(-1)];
-    if (!first || !last || points.length < 2) return [];
-    const sideways = Math.abs(last[0] - first[0]) > Math.abs(last[1] - first[1]);
-    const [dx, dy] = whole ? (sideways ? [0, -34] : [70, 0]) : [0, 0];
-    return [points.map(([x, y], index) => `${index === 0 ? "M" : "L"}${n(x + dx)} ${n(y + dy)}`).join(" ")];
-  });
+/**
+ * The path of each moving end as an SVG path. `least` leaves out the ones too short to read as an arrow, and `short`
+ * stops each that far before its end, so the arrow's head points at the fist where it lands and is not under it.
+ */
+function arrows(guide: Guide, mirrored: boolean, least = 0, short = 0): string[] {
+  type Point = readonly [number, number];
+  const length = (points: readonly Point[]): number =>
+    points.reduce((sum, [x, y], index) => sum + Math.hypot(x - (points[index - 1]?.[0] ?? x), y - (points[index - 1]?.[1] ?? y)), 0);
+  const stopped = (points: readonly Point[]): readonly Point[] => {
+    const [before, last] = [points.at(-2), points.at(-1)];
+    if (!before || !last) return points;
+    const span = Math.hypot(last[0] - before[0], last[1] - before[1]);
+    // A last stretch too short to shorten is left as it is.
+    if (span < short * 2) return points;
+    const keep = (span - short) / span;
+    return [...points.slice(0, -1), [before[0] + (last[0] - before[0]) * keep, before[1] + (last[1] - before[1]) * keep]];
+  };
+  return motionPaths(guide, mirrored)
+    .filter((points) => length(points) >= least)
+    .map((points) => stopped(points).map(([x, y], index) => `${index === 0 ? "M" : "L"}${n(x)} ${n(y)}`).join(" "));
 }
+
+/**
+ * Says whether the game is reading a body. With none (keyboard, no camera) the match bar and the ticks are hidden,
+ * and on the card the height the match bar had goes to the figure (`--mg-spare`), so the guide is exactly as tall
+ * as before. Where the card around it already hides the bar there is nothing to hand over. Measures only on a change.
+ */
+function showLive(holder: HTMLElement, live: boolean): void {
+  if (holder.dataset.live === String(live)) return;
+  delete holder.dataset.live;
+  const match = holder.querySelector<HTMLElement>(".mg-match");
+  const height = live || !match ? 0 : match.offsetHeight;
+  const gap = height > 0 ? Number.parseFloat(getComputedStyle(holder).rowGap) || 0 : 0;
+  holder.style.setProperty("--mg-spare", `${String(height + gap)}px`);
+  holder.dataset.live = String(live);
+}
+const isLive = (frames: PoseHistory | null): boolean => frames !== null && frames.frames.length > 0;
 
 const REDUCED = "(prefers-reduced-motion: reduce)";
 function useReducedMotion(): boolean {
@@ -128,6 +167,11 @@ export function MoveGuide(props: MoveGuideProps) {
   // The newest props, so a parent that re-renders every frame does not restart the loop.
   const latest = useRef({ history, baseline, msLeft, msTotal });
   useEffect(() => { latest.current = { history, baseline, msLeft, msTotal }; }, [history, baseline, msLeft, msTotal]);
+
+  // Before the first paint, so the match bar never flashes in a keyboard fight.
+  useLayoutEffect(() => {
+    if (root.current) showLive(root.current, isLive(latest.current.history()));
+  }, [move]);
 
   useEffect(() => {
     const holder = root.current;
@@ -159,7 +203,7 @@ export function MoveGuide(props: MoveGuideProps) {
         row.style.setProperty("--mg-progress", (matched ? 1 : check.progress).toFixed(3));
       });
       holder.dataset.matched = String(matched);
-      holder.dataset.live = String(frames !== null && frames.frames.length > 0);
+      showLive(holder, isLive(frames));
       holder.style.setProperty("--mg-match", (matched ? 1 : live.overall).toFixed(3));
       holder.style.setProperty("--mg-time", (total !== undefined && total > 0 ? Math.min(1, Math.max(0, (left ?? 0) / total)) : 0).toFixed(3));
       const percent = holder.querySelector(".mg-match-number");
@@ -171,12 +215,63 @@ export function MoveGuide(props: MoveGuideProps) {
     return () => { cancelAnimationFrame(handle); };
   }, [move, guide, still, mirrored, rowCount]);
 
+  // How much room the figure has on the card, read from the page: its box, and the corners the card cuts off
+  // (`--mg-corner-w`, `--mg-corner-h`). Read again only when the box changes size, never per frame.
+  const card = size === "card";
+  const [room, setRoom] = useState<Room>(CARD_ROOM);
+  useLayoutEffect(() => {
+    const box = root.current?.querySelector<HTMLElement>(".mg-figure");
+    if (!box || !card) return;
+    const read = (): void => {
+      const style = getComputedStyle(box);
+      const px = (value: string): number => Number.parseFloat(value) || 0;
+      const [width, height] = [px(style.width), px(style.height)];
+      const [cornerWidth, cornerHeight] = [px(style.getPropertyValue("--mg-corner-w")), px(style.getPropertyValue("--mg-corner-h"))];
+      if (width <= 0 || height <= 0) return;
+      setRoom((now) => (now.width === width && now.height === height && now.cornerWidth === cornerWidth && now.cornerHeight === cornerHeight
+        ? now : { width, height, cornerWidth, cornerHeight }));
+    };
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const watcher = new ResizeObserver(read);
+    watcher.observe(box);
+    return () => { watcher.disconnect(); };
+  }, [card, move, still]);
+
   const first = guide?.keyframes[0];
   const checks = liveChecks(move, null, null, rowCount).checks;
-  const view = guide && size === "card" ? fitView(guide, mirrored) : `0 ${String(VIEW.top)} ${String(VIEW.width)} ${String(VIEW.height)}`;
-  // Without motion: every different pose of the loop side by side, in order.
-  const steps = (guide?.keyframes ?? []).filter((key, index, all) => JSON.stringify(key.pose) !== JSON.stringify(all[index - 1]?.pose));
+  // Without motion: every different pose of the loop side by side, in order. The card has room for two big ones,
+  // so it shows the last two: where the telling part of the move begins and where it ends.
+  const steps = useMemo((): readonly GuideKeyframe[] => {
+    const poses = (guide?.keyframes ?? []).filter((key, index, all) => JSON.stringify(key.pose) !== JSON.stringify(all[index - 1]?.pose));
+    return card ? poses.slice(-2) : poses;
+  }, [guide, card]);
+  // On the card the figure is framed to fill its box. Two still poses share it: half each, at one scale, each
+  // keeping clear of the corner on its own side.
+  const fits = useMemo((): readonly Frame[] => {
+    if (!guide || !card) return [];
+    if (!still || steps.length < 2) return [frameOf(guide, mirrored, room, still ? { keys: steps, arrows: false } : {})];
+    const half = (corners: "left" | "right"): Room => ({ ...room, width: (room.width - STEP_GAP) / 2, corners });
+    const fit = (corners: "left" | "right", atMost = Infinity): Frame => frameOf(guide, mirrored, half(corners), { keys: steps, arrows: stillArrows(guide), atMost });
+    const scale = Math.min(fit("left").scale, fit("right").scale);
+    const [one, two] = [fit("left", scale), fit("right", scale)];
+    // Both at the height of the lower one, which keeps each clear of its corner.
+    const top = Math.min(one.top, two.top);
+    return [{ ...one, top }, { ...two, top }];
+  }, [guide, card, still, steps, mirrored, room]);
   const screen = (key: Guide["keyframes"][number]): ScreenFigure => toScreen(key.pose, towardOf(key), mirrored);
+  const paths = guide ? arrows(guide, mirrored, card ? SHORT_ARROW : 0, card && !guide.moving.includes("head") ? ARROW_STOP : 0) : [];
+  const head = card ? 26 : 16;
+  const trail = (
+    <>
+      <defs>
+        <marker id="mg-head" viewBox="0 0 10 10" refX="6" refY="5" markerUnits="userSpaceOnUse" markerWidth={head} markerHeight={head} orient="auto">
+          <path d="M0 0L10 5L0 10z" />
+        </marker>
+      </defs>
+      {paths.map((d) => <path key={d} className="mg-arrow" d={d} markerEnd="url(#mg-head)" />)}
+    </>
+  );
 
   return (
     <section ref={root} className={`move-guide ${size} ${move.kind}`} aria-label={`How to do ${move.name}`}>
@@ -186,20 +281,13 @@ export function MoveGuide(props: MoveGuideProps) {
           {still
             ? steps.map((key, index) => (
               <figure key={key.t}>
-                <Figure figure={screen(key)} moving={guide.moving} view={view} />
+                <Figure figure={screen(key)} moving={guide.moving} fit={fits[index]}>
+                  {card && stillArrows(guide) && steps.length > 1 && index === steps.length - 1 ? trail : null}
+                </Figure>
                 <figcaption>{String(index + 1)}</figcaption>
               </figure>
             ))
-            : (
-              <Figure figure={screen(first)} moving={guide.moving} view={view} live>
-                <defs>
-                  <marker id="mg-head" viewBox="0 0 10 10" refX="6" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="16" orient="auto">
-                    <path d="M0 0L10 5L0 10z" />
-                  </marker>
-                </defs>
-                {arrows(guide, mirrored).map((d) => <path key={d} className="mg-arrow" d={d} markerEnd="url(#mg-head)" />)}
-              </Figure>
-            )}
+            : <Figure figure={screen(first)} moving={guide.moving} fit={fits[0]} live>{trail}</Figure>}
         </div>
       )}
       <div className="mg-words">

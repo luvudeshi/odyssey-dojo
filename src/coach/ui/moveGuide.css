@@ -64,24 +64,48 @@
 .mg-checks li[data-met="true"] .mg-tick::after { content: ""; width: 0.38em; height: 0.72em; margin-top: -0.14em; border: solid var(--mg-bg); border-width: 0 0.2em 0.2em 0; transform: rotate(45deg); }
 .mg-checks li[data-met="true"] .mg-bar-fill { background: var(--mg-good); }
 .mg-checks li[data-met="true"] .mg-label { color: var(--mg-good); }
-/* No camera: the checklist is a list of what to do, with nothing to tick. */
-.move-guide[data-live="false"] .mg-match, .move-guide[data-live="false"] .mg-bar, .move-guide[data-live="false"] .mg-tick { opacity: 0.35; }
+/* No camera (keyboard): nothing is being read, so there is no match bar and nothing to tick. The checklist stays as
+   a plain list of what to do. `data-live` is written by the component. */
+.move-guide[data-live="false"] .mg-match, .move-guide[data-live="false"] .mg-bar, .move-guide[data-live="false"] .mg-tick { display: none; }
+.move-guide[data-live="false"] .mg-checks li { grid-template-columns: 1fr; }
 
-/* The card size: a column that fits the prompt card, 260 px wide and at most 300 px tall. The card has the move's
-   name and its timer already, so here it is the figure, the instruction, the match bar and three checks at 18 px. */
+/* The card size: a column that fits the prompt card, 260 px wide and at most --mg-max tall (300 px unless the card
+   around it says otherwise). The card has the move's name and its timer already, so here it is the figure, the
+   instruction, the match bar and three checks at 18 px. The figure's box is the full width and --mg-figure tall,
+   and the figure is drawn as big as fits in it: framed on the arms for a move of the arms (src/coach/guide.ts,
+   frameOf). With no camera the match bar's height (--mg-spare, written by the component) goes to the figure. */
 .move-guide.card {
-  --mg-figure: 140px; --mg-how: 18px; --mg-check: 18px;
-  box-sizing: border-box; flex-direction: column; align-items: stretch; gap: 3px; width: 260px; max-height: 300px; overflow: hidden;
+  --mg-figure: 140px; --mg-how: 18px; --mg-check: 18px; --mg-spare: 0px; --mg-corner-w: 0px; --mg-corner-h: 0px;
+  box-sizing: border-box; flex-direction: column; align-items: stretch; gap: 3px; width: 260px; max-height: var(--mg-max, 300px); overflow: hidden;
   padding: 6px 8px; border-width: 2px; box-shadow: none;
 }
 .card .mg-words { display: contents; }
 .card .mg-kind, .card .mg-name, .card .mg-depth, .card .mg-match-word, .card .mg-bar { display: none; }
-.card .mg-figure { justify-content: center; }
-.card .mg-svg { max-width: 100%; }
-.card .mg-svg line, .card .mg-svg polygon { stroke-width: 8; }
-.card .mg-svg line.mg-lit, .card .mg-svg polygon.mg-lit { stroke-width: 11; }
-.card .mg-steps .mg-svg { height: calc(var(--mg-figure) * 0.62); }
-.card .mg-steps figcaption { line-height: 1; }
+.card .mg-figure { justify-content: center; align-items: stretch; gap: 4px; height: calc(var(--mg-figure) + var(--mg-spare)); }
+.card .mg-svg { width: 100%; height: 100%; overflow: hidden; }
+/* The part that does not move is drawn quieter and thinner, the limb that moves thick and in the accent colour.
+   A whole body is drawn at about half the scale of two arms, so its strokes are wider in the drawing's units. */
+.card .mg-svg line, .card .mg-svg polygon { stroke: color-mix(in srgb, var(--mg-ink) 62%, var(--mg-bg)); stroke-width: 6; }
+.card .mg-svg polygon { fill: color-mix(in srgb, var(--mg-ink) 20%, var(--mg-bg)); }
+.card .mg-svg circle { fill: color-mix(in srgb, var(--mg-ink) 62%, var(--mg-bg)); }
+.card .mg-svg line.mg-lit, .card .mg-svg polygon.mg-lit { stroke: var(--mg-accent); stroke-width: 8; }
+.card .mg-svg polygon.mg-lit { fill: color-mix(in srgb, var(--mg-accent) 30%, var(--mg-bg)); }
+.card .mg-svg .mg-lit circle, .card .mg-svg circle.mg-lit { fill: var(--mg-accent); }
+.card .mg-whole line, .card .mg-whole polygon { stroke-width: 9; }
+.card .mg-whole line.mg-lit, .card .mg-whole polygon.mg-lit { stroke-width: 12; }
+.card .mg-svg .mg-floor { stroke-width: 3; }
+.card .mg-svg circle.mg-ring, .card .mg-svg .mg-lit circle.mg-ring { fill: none; stroke-width: 3.5; }
+/* The legs of an upper-body picture run out of the box: they fade instead of ending on a hard edge. */
+.card .mg-upper { -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent); }
+.card .mg-arrow { stroke-width: 6; stroke-dasharray: 9 9; opacity: 1; }
+.card .mg-whole .mg-arrow { stroke-width: 8; stroke-dasharray: 12 12; }
+/* Without motion: two poses side by side, each the full height, numbered in a bottom corner (the card may cut the top ones). */
+.card .mg-steps figure { position: relative; flex: 1 1 0; min-width: 0; }
+.card .mg-steps .mg-svg { height: 100%; }
+.card .mg-steps figcaption {
+  position: absolute; left: 0; bottom: 0; width: 24px; height: 24px; border-radius: 50%; font-size: 18px; line-height: 24px;
+  color: var(--mg-bg); background: var(--mg-accent);
+}
 .card .mg-how { margin: 0; text-align: center; line-height: 1.15; font-weight: 700; }
 .card .mg-time { height: 5px; margin: 0; }
 .card .mg-match { margin: 0; gap: 6px; line-height: 1; }
@@ -94,6 +118,13 @@
 .card .mg-checks li[data-met="true"] { background: color-mix(in srgb, var(--mg-good) 20%, transparent); }
 .card .mg-tick { grid-row: auto; width: 14px; height: 14px; }
 .card .mg-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card[data-live="false"] .mg-checks li { grid-template-columns: 1fr; text-align: center; }
+
+/* The star-chart prompt card (src/hud/sky) has an arched top for DEFEND and a pointed one for STRIKE and FINISH, and
+   the guide's box is wider than the plate at its top. These are the corners of the figure's box that are off the
+   plate or under the arch's countdown, in pixels: the figure is fitted clear of them. They belong with the card. */
+.sky-card--defend .move-guide.card { --mg-corner-w: 66px; --mg-corner-h: 80px; }
+.sky-card--strike .move-guide.card, .sky-card--finish .move-guide.card { --mg-corner-w: 66px; --mg-corner-h: 58px; }
 
 @media (max-width: 46rem) {
   .move-guide:not(.card) { flex-direction: column; padding: 0.75rem 1rem 1rem; }

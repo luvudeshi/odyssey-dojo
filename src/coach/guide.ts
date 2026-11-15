@@ -252,18 +252,163 @@ export function toScreen(pose: GuidePose, toward: Toward, mirrored = true): Scre
   };
 }
 
-/** The smallest box, as an SVG viewBox, that holds the figure all the way round the loop: for a small card. */
-export function fitView(guide: Guide, mirrored = true): string {
-  const points = guide.keyframes.flatMap((key) => {
-    const screen = toScreen(key.pose, towardOf(key), mirrored);
-    return JOINTS.map((name) => screen.at[name]);
+/** How big the marks are drawn, in the drawing's units: the head, a fist or foot, and a knee. */
+export const MARK = { head: 11, end: 5.5, knee: 3.5 } as const;
+/** How much wider than its mark the ring round an end coming at the camera is. */
+export const RING = 1.5;
+
+/** True when the move is made with the legs or the whole body, so the picture has to show the floor. */
+export const wholeBody = (guide: Guide): boolean => guide.moving.some((end) => !end.endsWith("Wrist"));
+
+/**
+ * The path each moving end takes from the start pose through the move, in the drawing's units: where the arrows go.
+ * A move of the whole body gets its arrow beside the body, not on top of it: beside the head, on the side it goes to,
+ * for a step sideways; down or up its side for a duck or a jump.
+ */
+export function motionPaths(guide: Guide, mirrored = true): Pt[][] {
+  const whole = guide.moving.includes("head");
+  return guide.moving.flatMap((end) => {
+    const path = guide.keyframes.map((key) => toScreen(key.pose, towardOf(key), mirrored).at[end]);
+    const points = path.filter((point, index) => {
+      const before = path[index - 1];
+      return !before || Math.hypot(point[0] - before[0], point[1] - before[1]) > 1;
+    });
+    const [first, last] = [points[0], points.at(-1)];
+    if (!first || !last || points.length < 2) return [];
+    if (!whole) return [points];
+    if (Math.abs(last[0] - first[0]) <= Math.abs(last[1] - first[1])) return [points.map(([x, y]): Pt => [x + 70, y])];
+    const way = Math.sign(last[0] - first[0]);
+    const from = last[0] + way * (MARK.head + 16);
+    return [[[from, last[1]], [from + way * 44, last[1]]]];
   });
-  const xs = points.map(([x]) => x);
-  const ys = points.map(([, y]) => y);
-  const pad = 20;
-  const [left, top] = [Math.min(...xs) - pad, Math.min(...ys) - pad];
-  return [left, top, Math.max(...xs) + pad - left, FLOOR + 6 - top].map((value) => value.toFixed(0)).join(" ");
 }
+
+const UPPER: readonly GuideJoint[] = [
+  "head", "leftShoulder", "rightShoulder", "leftElbow", "rightElbow", "leftWrist", "rightWrist", "leftHip", "rightHip",
+];
+/** How far below the hips a picture of the upper body may end: enough thigh to read as a standing person. */
+const BELOW_HIPS = 16;
+/** Half the widest line, and the room left round everything, in the drawing's units. */
+const LINE = 6;
+const ARROW_HEAD = 13;
+
+/**
+ * The box a figure is drawn in, in pixels. The prompt card has an arched or a pointed top, so the box may have its
+ * two top corners cut off: a triangle `cornerWidth` along the top and `cornerHeight` down the side is not there.
+ */
+export interface Room {
+  readonly width: number;
+  readonly height: number;
+  readonly cornerWidth: number;
+  readonly cornerHeight: number;
+  /** Which top corners are cut: both unless told (one of two pictures side by side has only its outer one). */
+  readonly corners?: "both" | "left" | "right";
+}
+/** The move guide's own card: 260 px less its padding and border, with the figure 140 px tall. */
+export const CARD_ROOM: Room = { width: 240, height: 140, cornerWidth: 0, cornerHeight: 0 };
+
+/** Where a figure is drawn. `left`, `top`, `width` and `height` are an SVG viewBox the same shape as the room. */
+export interface Frame {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  /** Pixels per unit of the drawing. */
+  readonly scale: number;
+  /** False when the legs are left out: a move of the arms is framed from the head to just under the hips. */
+  readonly whole: boolean;
+  /** How many times bigger than usual the fists, feet and knees are drawn, so they read at this scale. */
+  readonly marks: number;
+}
+
+interface Disc { readonly x: number; readonly y: number; readonly r: number }
+
+/** How many times its usual size an end is drawn: `marks` bigger for the card, and bigger again toward the camera. */
+export const markSize = (grow: number, marks: number): number => marks + grow - 1;
+
+/** Everything of one pose of `guide` that has to stay inside the picture, as discs in the drawing's units. */
+export function discsOf(guide: Guide, screen: ScreenFigure, whole: boolean, marks: number): Disc[] {
+  return (whole ? JOINTS : UPPER).map((name) => {
+    const end = ENDS.find((each) => each === name);
+    const size = end && end !== "head" ? markSize(screen.size[end], marks) : 1;
+    // An end that comes at the camera somewhere in the loop has room for its ring all the way round, so the room it
+    // needs grows evenly as it comes forward.
+    const ringed = guide.keyframes.some((key) => key.toward > 0 && key.forward.some((each) => each === end));
+    const mark = name === "head" ? MARK.head : end ? (name.endsWith("Knee") ? MARK.knee : MARK.end) * size * (ringed ? RING : 1) : 0;
+    return { x: screen.at[name][0], y: screen.at[name][1], r: Math.max(mark, LINE) + 3 };
+  });
+}
+
+/**
+ * How far down (`ty`, in pixels) the drawing may be moved, at this `scale` and this move sideways (`tx`), with every
+ * disc inside the room and the line `floor` not above the room's bottom edge. Null when it cannot be.
+ */
+function tyRange(discs: readonly Disc[], room: Room, scale: number, tx: number, floor: number): readonly [number, number] | null {
+  const { width, height, cornerWidth: cw, cornerHeight: ch, corners = "both" } = room;
+  const slope = cw > 0 && ch > 0 ? Math.hypot(1 / cw, 1 / ch) : 0;
+  let [low, high] = [-Infinity, height - scale * floor];
+  for (const disc of discs) {
+    const [x, r] = [scale * disc.x + tx, scale * disc.r];
+    if (x - r < 0 || x + r > width) return null;
+    low = Math.max(low, r - scale * disc.y);
+    high = Math.min(high, height - r - scale * disc.y);
+    if (slope > 0 && corners !== "right") low = Math.max(low, ch * (1 + r * slope - x / cw) - scale * disc.y);
+    if (slope > 0 && corners !== "left") low = Math.max(low, ch * (1 + r * slope - (width - x) / cw) - scale * disc.y);
+  }
+  return low <= high ? [low, high] : null;
+}
+
+/**
+ * Where to draw the figure so it is as big as the room allows, all the way round the loop: the whole figure standing
+ * on the floor for a move of the legs or the whole body; the head to just under the hips for a move of the arms, so
+ * the arms come out about twice as big. Marks, rings and arrows stay inside the room and out of its cut corners.
+ * `keys` are the poses to hold (all of the loop unless told), `arrows` whether the arrows are drawn with them, and
+ * `atMost` caps the scale, to match another picture.
+ */
+export function frameOf(
+  guide: Guide, mirrored = true, room: Room = CARD_ROOM,
+  only: { readonly keys?: readonly GuideKeyframe[]; readonly arrows?: boolean; readonly atMost?: number } = {},
+): Frame {
+  const { keys = guide.keyframes, arrows = true, atMost = Infinity } = only;
+  const whole = wholeBody(guide);
+  const marks = whole ? 1.7 : 1.25;
+  const screens = keys.map((key) => toScreen(key.pose, towardOf(key), mirrored));
+  const discs = [
+    ...screens.flatMap((screen) => discsOf(guide, screen, whole, marks)),
+    ...(arrows ? motionPaths(guide, mirrored).flat() : []).map(([x, y]): Disc => ({ x, y, r: ARROW_HEAD })),
+  ];
+  // What the bottom edge may not rise above: the floor, or a little under the hips.
+  const floor = whole ? FLOOR + 6 : Math.max(...screens.map((screen) => Math.max(screen.at.leftHip[1], screen.at.rightHip[1]))) + BELOW_HIPS;
+  const [minX, maxX] = [Math.min(...discs.map((disc) => disc.x - disc.r)), Math.max(...discs.map((disc) => disc.x + disc.r))];
+  const middle = (scale: number): number => room.width / 2 - (scale * (minX + maxX)) / 2;
+  /** The best place at this scale: as near the middle as fits, standing on the floor or hanging from the top. */
+  const place = (scale: number): readonly [number, number] | null => {
+    const slack = Math.max(0, room.width - scale * (maxX - minX)) / 2;
+    for (let step = 0; step <= 24; step += 1) {
+      for (const side of step === 0 ? [0] : [-1, 1]) {
+        const tx = middle(scale) + (side * step * slack) / 24;
+        const range = tyRange(discs, room, scale, tx, floor);
+        if (range) return [tx, whole ? range[1] : range[0]];
+      }
+    }
+    return null;
+  };
+  let [fits, tooBig] = [0, Math.min(atMost, room.width / (maxX - minX)) * 1.0001];
+  let placed = place(tooBig);
+  if (placed) fits = tooBig;
+  for (let round = 0; round < 24 && !placed; round += 1) {
+    const scale = (fits + tooBig) / 2;
+    if (place(scale)) fits = scale; else tooBig = scale;
+  }
+  placed ??= fits > 0 ? place(fits) : null;
+  // A room too small or too oddly cut for the figure at any size: fill its width and stand on its bottom edge.
+  const scale = placed ? fits : room.width / (maxX - minX);
+  const [tx, ty] = placed ?? [middle(scale), room.height - scale * floor];
+  return { left: -tx / scale, top: -ty / scale, width: room.width / scale, height: room.height / scale, scale, whole, marks };
+}
+
+/** `frameOf` as an SVG viewBox. */
+export const viewOf = (frame: Frame): string => [frame.left, frame.top, frame.width, frame.height].map((value) => value.toFixed(1)).join(" ");
 
 /** One thing the detector is looking for, in the player's words. */
 export interface LiveCheck {

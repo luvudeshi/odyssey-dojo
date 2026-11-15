@@ -3,7 +3,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { LABELS, conditionKey, guideFor, labelOf, liveChecks, plainLabel, poseAt, poseOf, startPose, toScreen, towardOf } from "../src/coach/guide";
+import { CARD_ROOM, LABELS, conditionKey, discsOf, frameOf, guideFor, labelOf, liveChecks, plainLabel, poseAt, poseOf, startPose, toScreen, towardOf } from "../src/coach/guide";
+import type { Room } from "../src/coach/guide";
 import type { GuideJoint } from "../src/coach/guide";
 import { MoveGuide } from "../src/coach/ui/MoveGuide";
 import type { MoveDef, PoseFrame } from "../src/core/types";
@@ -183,6 +184,61 @@ test("moves at the camera are drawn at the camera: a grown fist or foot near its
   expect(mirror.at.leftWrist[0]).toBeLessThan(mirror.at.head[0]);
   expect(facing.at.leftWrist[0]).toBeGreaterThan(facing.at.head[0]);
   expect(facing.at.leftWrist[1]).toBe(mirror.at.leftWrist[1]);
+});
+
+/** The figure's box on the prompt card: arched for a defend, pointed for a strike, taller in a keyboard fight, shorter once the move is learned. */
+const ROOMS: readonly Room[] = [
+  CARD_ROOM,
+  ...[116, 170, 191].flatMap((height): Room[] => [
+    { width: 260, height, cornerWidth: 66, cornerHeight: 80 },
+    { width: 260, height, cornerWidth: 66, cornerHeight: 58 },
+    { width: 128, height, cornerWidth: 66, cornerHeight: 58, corners: "left" },
+    { width: 128, height, cornerWidth: 66, cornerHeight: 80, corners: "right" },
+  ]),
+];
+
+test("on the card the figure stays inside its box and clear of the card's cut corners, all the way round the loop", () => {
+  for (const move of ALL) {
+    for (const room of ROOMS) {
+      const frame = frameOf(guide(move), true, room);
+      const where = `${move.id} in ${JSON.stringify(room)}`;
+      expect(frame.width / frame.height, where).toBeCloseTo(room.width / room.height, 6);
+      const slope = room.cornerWidth > 0 ? Math.hypot(1 / room.cornerWidth, 1 / room.cornerHeight) : 0;
+      for (let ms = 0; ms < guide(move).loopMs; ms += 17) {
+        const { pose, toward } = poseAt(guide(move), ms);
+        for (const disc of discsOf(guide(move), toScreen(pose, toward), frame.whole, frame.marks)) {
+          const [x, y, r] = [(disc.x - frame.left) * frame.scale, (disc.y - frame.top) * frame.scale, disc.r * frame.scale];
+          expect(x - r, where).toBeGreaterThan(-0.01);
+          expect(x + r, where).toBeLessThan(room.width + 0.01);
+          expect(y - r, where).toBeGreaterThan(-0.01);
+          expect(y + r, where).toBeLessThan(room.height + 0.01);
+          if (slope > 0 && room.corners !== "right") expect(x / room.cornerWidth + y / room.cornerHeight - r * slope, where).toBeGreaterThan(0.999);
+          if (slope > 0 && room.corners !== "left") expect((room.width - x) / room.cornerWidth + y / room.cornerHeight - r * slope, where).toBeGreaterThan(0.999);
+        }
+      }
+    }
+  }
+});
+
+test("a move of the arms is framed on the upper body and drawn bigger; a move of the legs or the whole body keeps the floor", () => {
+  const onTheFloor = ["dodge_left", "dodge_right", "duck", "front_kick", "jump", "knee", "swift_dash"];
+  expect(ALL.filter((move) => frameOf(guide(move)).whole).map((move) => move.id).sort()).toEqual(onTheFloor);
+  const room: Room = { width: 260, height: 170, cornerWidth: 66, cornerHeight: 58 };
+  const standing = frameOf(guide(moveOf("duck")), true, room);
+  // The floor line (192) is in the picture, with no more under it than the feet need.
+  expect(standing.top + standing.height).toBeGreaterThan(192);
+  expect(standing.top + standing.height).toBeLessThan(206);
+  for (const move of ALL.filter((each) => !onTheFloor.includes(each.id))) {
+    const frame = frameOf(guide(move), true, room);
+    // Bigger than a whole figure, if only a little for a move that starts with a hand high over the head.
+    expect(frame.scale / standing.scale, move.id).toBeGreaterThan(1.05);
+    // It ends under the hips: the hips are in the picture and the feet are not.
+    const hips = toScreen(startPose(move), towardOf(guide(move).keyframes[0] ?? { toward: 0, forward: [], t: 0, pose: startPose(move) })).at.leftHip[1];
+    expect(frame.top + frame.height, move.id).toBeGreaterThan(hips);
+    expect(frame.top + frame.height, move.id).toBeLessThan(190);
+  }
+  // A straight punch, the commonest strike, comes out at least one and a half times the size of a whole figure.
+  expect(frameOf(guide(moveOf("jab")), true, room).scale / standing.scale).toBeGreaterThan(1.5);
 });
 
 test("a body that copies the figure exactly is counted, for every move", () => {
