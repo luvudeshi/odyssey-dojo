@@ -169,7 +169,7 @@ export function Dojo(props: DojoProps) {
       {picking && (
         <section className="dojo-pick">
           <h1 className="dojo-end-title">What do you want to train?</h1>
-          <p className="dojo-closing">Each one is its strikes, then block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
+          <p className="dojo-closing">Each one is its strikes, then your defences: block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
           <div className="dojo-styles">
             {STYLES.map((each, index) => (
               <button key={each.id} type="button" className="dojo-button dojo-style" autoFocus={index === 0} onClick={() => { setChosen(each); }}>

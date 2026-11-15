@@ -1,5 +1,6 @@
 // The player's profile: a hero name and what they have done so far, kept in this browser's localStorage.
-// There is no server and no password: "signing in" is typing a name. Every field read back is checked.
+// The game plays from this store whether or not anyone is signed in; an account (./sync) only copies it to and fro.
+// Every field read back is checked.
 import { useSyncExternalStore } from "react";
 import { log } from "../core/log";
 import { browserStorage } from "../settings/store";
@@ -38,6 +39,8 @@ export interface FightResult {
   readonly mastery: Readonly<Record<string, number>>;
   readonly styleId: string;
   readonly tally: Readonly<FightTally>;
+  /** The god the scan found for this player, when there was one. Only the hall of heroes (./heroes) reads it. */
+  readonly godId?: string | null;
 }
 
 export const PROFILE_KEY = "odyssey-dojo.profile";
@@ -114,7 +117,14 @@ export interface ProfileStore {
   readonly recordDojo: (perfect: boolean) => void;
   /** One fight played as the guest of a room. The host's fights come through `record`. */
   readonly recordRoom: () => void;
+  /**
+   * Takes the fields of a profile that came back from the account, each checked like stored JSON.
+   * A field it does not hold stays as it is here, so a save from before a field existed can never zero it.
+   */
+  readonly replace: (profile: unknown) => void;
   readonly subscribe: (listener: () => void) => () => void;
+  /** Calls the listener with each fight given to `record`, after the profile has it. A fight that came with a save from the account is not one. */
+  readonly onFight: (listener: (fight: FightResult) => void) => () => void;
 }
 
 export function createProfileStore(storage: SettingsStorage | null): ProfileStore {
@@ -125,6 +135,7 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
     log("warn", "profile.read", error);
   }
   const listeners = new Set<() => void>();
+  const fightListeners = new Set<(fight: FightResult) => void>();
   const save = (next: Profile): void => {
     current = next;
     try {
@@ -137,12 +148,23 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
   return {
     get: () => current,
     rename: (name) => { save({ ...current, name: cleanName(name) }); },
-    record: (fight) => { save(withFight(current, fight)); },
+    record: (fight) => {
+      save(withFight(current, fight));
+      fightListeners.forEach((listener) => { listener(fight); });
+    },
     recordDojo: (perfect) => { save({ ...current, dojo: current.dojo + 1, dojoPerfect: current.dojoPerfect + (perfect ? 1 : 0) }); },
     recordRoom: () => { save({ ...current, rooms: current.rooms + 1 }); },
+    replace: (profile) => {
+      const given = typeof profile === "object" && profile !== null && !Array.isArray(profile) ? profile : {};
+      save(parseProfile(JSON.stringify({ ...current, ...given })));
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
+    },
+    onFight(listener) {
+      fightListeners.add(listener);
+      return () => { fightListeners.delete(listener); };
     },
   };
 }
@@ -154,6 +176,9 @@ export const renameProfile = shared.rename;
 export const recordFight = shared.record;
 export const recordDojo = shared.recordDojo;
 export const recordRoom = shared.recordRoom;
+export const replaceProfile = shared.replace;
+export const subscribeProfile = shared.subscribe;
+export const onFight = shared.onFight;
 
 export function useProfile(): Profile {
   return useSyncExternalStore(shared.subscribe, shared.get, shared.get);

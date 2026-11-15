@@ -41,7 +41,7 @@ export const move: MoveDef = {
   name: "Dodge left",
   kind: "defend",
   prompt: "DODGE LEFT",
-  hint: "Lean or step to your left",
+  hint: "Step off the line to your left",
   key: "ArrowLeft",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftX: -14 },
   teaches: "Step off the line of a rush: a moving target is hard to reach and free to get away",

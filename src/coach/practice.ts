@@ -66,7 +66,7 @@ export const PRACTICE_TIPS = {
   guard: tip("guard", "Bring both fists right up to your cheeks. Hands at your chest leave your head open."),
   hold: tip("hold", "Keep your fists up for a beat so the guard reads clearly. Once is enough."),
   // Duck.
-  depth: tip("depth", "Drop lower: bend your knees until your head is under where it was."),
+  depth: tip("depth", "Drop lower: bend your knees until your head would clear a swing."),
   knees: tip("knees", "Bend your knees, not your waist, and keep your eyes up on what is coming."),
   // Dodges.
   distance: tip("distance", "Step further: move your whole body off the line, not only your head."),
