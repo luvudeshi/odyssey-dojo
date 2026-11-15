@@ -54,7 +54,7 @@ test("every move in the registry has a guide and a short instruction, and every 
     const options = MEASURES[move.id] ?? [];
     expect(options.length, `${move.id} has conditions`).toBeGreaterThan(0);
     for (const measures of options) {
-      const labels = measures.map((measure) => labelOf(move.id, measure));
+      const labels = measures.map((measure) => labelOf(move.id, measure, measures));
       // No two written rows of one checklist read the same.
       const said = labels.filter(({ written }) => written).map(({ label }) => label);
       expect(new Set(said).size, `${move.id}: ${said.join(" | ")}`).toBe(said.length);
@@ -64,13 +64,13 @@ test("every move in the registry has a guide and a short instruction, and every 
         expect(label.length, about).toBeGreaterThan(0);
         expect(label.length, about).toBeLessThanOrEqual(28);
         expect(label, about).not.toMatch(JARGON);
-        // A written label is the one written for this very condition: same name, compared the same way.
+        // A written label is one written for this very condition: its name, compared the same way. No other
+        // condition of the move has it. One made from the condition is shown only while it fails.
         const kind = "anyOf" in measure ? "anyOf" : measure.need;
-        const entry = LABELS[move.id]?.find((each) => each.key === conditionKey(measure.name) && each.kind === kind);
-        expect(written, about).toBe(entry !== undefined);
-        expect(label, about).toBe(entry?.label ?? plainLabel(measure));
-        // One made from the condition is shown only while it fails.
-        if (!written) expect(rank, about).toBe(0);
+        const key = conditionKey(measure.name);
+        const entries = (LABELS[move.id] ?? []).filter((each) => each.kind === kind && each.label === label && (key === each.key || key.startsWith(`${each.key},`)));
+        if (written) expect(entries.length, about).toBeGreaterThan(0);
+        else expect({ label, rank }, about).toEqual({ label: plainLabel(measure), rank: 0 });
         // A condition on one arm or leg is never labelled with the other.
         const named = sidesIn(measure.name);
         if (named.length === 1) expect(sidesIn(label).filter((side) => side !== named[0]), about).toEqual([]);
@@ -82,7 +82,7 @@ test("every move in the registry has a guide and a short instruction, and every 
 test("a label goes with its condition, wherever the table puts it, and a condition nobody labelled gets one made from itself", () => {
   // The same condition under other numbers and units is still that condition; turned round, it is another one.
   expect(conditionKey("ms since left elbow was bent under 115")).toBe(conditionKey("ms since left elbow was bent under 90"));
-  expect(conditionKey("left elbow straight, degrees")).toBe(conditionKey("left elbow straight (at the camera), radians"));
+  expect(conditionKey("left wrist's rise in 300 ms from under -1 (both rising is a guard), shoulder widths")).toBe("left wrist's rise in # ms from under #, shoulder widths");
   // Any condition with a written label will do: the label holds under a new threshold and unit, and not turned round.
   const [id, single] = ALL.flatMap((move) => (MEASURES[move.id] ?? []).flat().map((measure) => [move.id, measure] as const))
     .find(([moveId, measure]) => !("anyOf" in measure) && labelOf(moveId, measure).written) ?? [];
@@ -93,6 +93,10 @@ test("a label goes with its condition, wherever the table puts it, and a conditi
   const turned = { ...single, need: single.need === "min" ? "max" as const : "min" as const };
   expect(labelOf(id, turned).label === written.label && labelOf(id, turned).rank === written.rank, single.name).toBe(false);
   expect(labelOf("no_such_move", single)).toEqual({ label: plainLabel(single), rank: 0, written: false });
+  // Two conditions one label would fit (the same thing measured two ways, say): neither is given it.
+  const twin = { ...single, name: `${head}, measured another way` };
+  expect(labelOf(id, twin).written).toBe(true);
+  expect([labelOf(id, single, [single, twin]).written, labelOf(id, twin, [single, twin]).written]).toEqual([false, false]);
   expect(plainLabel({ ...madeUp("ms since right hand was across the body at chest height", 0), need: "max" })).toBe("First: right hand across");
   expect(labelOf("jab", madeUp("hips turned to the camera in 200 ms, 3D degrees", 0))).toEqual({ label: "Hips turned to the camera", rank: 0, written: false });
   expect(labelOf("no_such_move", madeUp("ms since left foot was on the floor (0.1 off it)", 0)).label).toBe("Not: left foot on the floor");
