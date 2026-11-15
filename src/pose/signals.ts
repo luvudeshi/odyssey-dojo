@@ -26,6 +26,25 @@ export function joint(list: readonly Landmark[], index: number): Landmark {
   return list[index] ?? MISSING;
 }
 
+/**
+ * The lowest visibility at which a joint is trusted. On a desk camera MediaPipe lite reports a plainly visible
+ * elbow at 0.3 to 0.5, so 0.5 would throw real arms away.
+ */
+export const SEEN = 0.3;
+
+/**
+ * The lower of `read` on each of the newest two frames: the quickest reading that one bad frame cannot set off on
+ * its own. With a single frame, that frame's reading.
+ */
+export function bothNewest(history: PoseHistory, read: (frames: readonly PoseFrame[]) => number): number {
+  return Math.min(...history.frames.slice(-2).map((frame) => read([frame])));
+}
+
+/** The mean of `read` over the frames, 0 with none. */
+export function meanOf(frames: readonly PoseFrame[], read: (frame: PoseFrame) => number): number {
+  return frames.length === 0 ? 0 : frames.reduce((sum, frame) => sum + read(frame), 0) / frames.length;
+}
+
 export function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
@@ -52,6 +71,18 @@ export function shoulderCenter(frame: PoseFrame): { x: number; y: number } {
   const left = joint(frame.image, JOINT.leftShoulder);
   const right = joint(frame.image, JOINT.rightShoulder);
   return { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 };
+}
+
+/** How far the nose is to the player's right of the middle of the shoulders, in shoulder widths. About 0 facing the camera. */
+export function headOffset(frame: PoseFrame): number {
+  const width = shoulderWidth(frame);
+  return width === 0 ? 0 : (joint(frame.image, JOINT.nose).x - shoulderCenter(frame).x) / width;
+}
+
+/** How far the nose is above the shoulder line, in shoulder widths. 0.55 to 0.95 standing, under 0.2 bent forward. */
+export function headHeight(frame: PoseFrame): number {
+  const width = shoulderWidth(frame);
+  return width === 0 ? 0 : (shoulderCenter(frame).y - joint(frame.image, JOINT.nose).y) / width;
 }
 
 function arm(frame: PoseFrame, side: "left" | "right"): [Landmark, Landmark, Landmark] {
