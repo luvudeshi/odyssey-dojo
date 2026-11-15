@@ -1,8 +1,9 @@
 // Webcam smoke test. Drives the real app in headless Chrome with a fake camera fed from a video file.
 // Not part of `make check`: it needs Chrome, a video and a dev server, and it proves behaviour, not correctness.
 //
-// Needs playwright-core (not a dependency of this repo; install it somewhere outside, e.g. `npm i playwright-core`
-// in a scratch folder, and run the script from there or set NODE_PATH) and a video converted to .y4m:
+// Needs playwright-core (not a dependency of this repo: install it somewhere outside, e.g. `npm i playwright-core`
+// in a scratch folder, and set FPS_PLAYWRIGHT to that install's folder, .../node_modules/playwright-core, as for
+// scripts/fps.mjs) and a video converted to .y4m:
 //   ffmpeg -i in.mp4 -vf "crop=720:540:0:200,scale=640:480,fps=30" -pix_fmt yuv420p smoke.y4m
 //   npx vite --port 5581 --strictPort &
 //   node webcam-smoke.mjs <video.y4m> <outDir> [--url http://localhost:5581/] [--seconds 60]
@@ -11,8 +12,25 @@
 //   --block-external  abort every request that is not localhost, to prove the fight works offline
 //   --deny            refuse the camera permission and check the keyboard fallback (writes denied.png)
 // Details and numbers: docs/webcam-smoke.md
-import { chromium } from "playwright-core";
 import { mkdirSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+
+/** Playwright is found the way scripts/fps.mjs finds it: in the repo, else in the folder FPS_PLAYWRIGHT names. */
+function loadChromium() {
+  const require = createRequire(import.meta.url);
+  for (const place of ["playwright", "playwright-core", process.env.FPS_PLAYWRIGHT && resolve(process.env.FPS_PLAYWRIGHT)].filter(Boolean)) {
+    try {
+      return require(place).chromium;
+    } catch {
+      // try the next place
+    }
+  }
+  throw new Error("Playwright not found. Install it outside the repo and point FPS_PLAYWRIGHT at its folder (.../node_modules/playwright-core).");
+}
+const chromium = loadChromium();
+/** The ANGLE backend, as in scripts/fps.mjs: d3d11 on Windows, metal on macOS, FPS_GL to choose another. */
+const angle = process.env.FPS_GL ?? { win32: "d3d11", darwin: "metal" }[process.platform] ?? "";
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : fallback; };
@@ -27,7 +45,7 @@ mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({
   channel: "chrome",
   headless: true,
-  args: [...(args.includes("--no-gpu") ? ["--disable-gpu"] : ["--enable-gpu", "--use-angle=metal", "--ignore-gpu-blocklist"]), "--autoplay-policy=no-user-gesture-required",
+  args: [...(args.includes("--no-gpu") ? ["--disable-gpu"] : ["--enable-gpu", ...(angle ? [`--use-angle=${angle}`] : []), "--ignore-gpu-blocklist"]), "--autoplay-policy=no-user-gesture-required",
     ...(deny ? [] : ["--use-fake-ui-for-media-stream"]), "--use-fake-device-for-media-stream", `--use-file-for-fake-video-capture=${video}`],
 });
 const context = await browser.newContext({ viewport: { width: 1440, height: 810 }, permissions: deny ? [] : ["camera"] });
@@ -57,7 +75,7 @@ await page.addInitScript(() => {
     lastFrames = frames; lastT = now;
     const pose = window.__poseRef?.current ?? null;
     const b = window.__battle;
-    const video = document.querySelector(".preview video");
+    const video = document.querySelector(".camera-frame video, .preview video");
     rows.push({
       t: Math.round(now), modelFrames: window.__uploads ?? 0, fps: Math.round(fps * 10) / 10,
       h1: document.querySelector("h1")?.textContent ?? "",
@@ -84,7 +102,8 @@ const t0 = Date.now();
 const step = async (what, fn) => { try { await fn(); } catch (e) { errors.push(`step ${what}: ${String(e).split("\n")[0]}`); } };
 await page.goto(`${base}?debug&stop=${flag("--stop", "polyphemus")}`, { waitUntil: "load" });
 await page.waitForTimeout(500);
-await step("title", () => page.getByText("Fight with your body (webcam)").click());
+// The Story mode card starts the webcam ("Play with" is Camera on a fresh page).
+await step("title", () => page.getByRole("button", { name: /^Story mode/ }).click());
 await page.waitForTimeout(500);
 if (deny) {
   // Camera refused: the game must carry on with the keyboard.
@@ -95,14 +114,17 @@ if (deny) {
   await browser.close();
   process.exit(0);
 }
-await step("style",() => page.evaluate(() => { document.querySelectorAll("button")[0].click(); }));
-await page.waitForTimeout(500);
-await step("stop", () => page.evaluate(() => {
-  const b = document.querySelector("button.stop.open");
-  b.click();
-}));
-await page.waitForTimeout(500);
-await step("intro", () => page.evaluate(() => { Array.from(document.querySelectorAll("button")).find((b) => b.innerText.startsWith("Face")).click(); }));
+// The god scan comes up when the camera is. Its Skip button may sit off the page, so the key it names is the fallback.
+await step("god scan", async () => {
+  const skip = page.locator("button.scan-skip");
+  await skip.waitFor({ timeout: 90_000 });
+  await skip.click({ timeout: 3000 }).catch(() => page.keyboard.press("Escape"));
+});
+// The character already chosen ("Fight as ..."), then the first style card (the screen's first button is "Back").
+await step("character", () => page.locator("button.character-done").click());
+await step("style", () => page.locator("main.menu button.flow-style").first().click());
+// The click on the stop starts calibration, and the fight follows by itself once somebody stands still in the picture.
+await step("stop", () => page.locator("button.stop.open").first().click());
 
 let n = 0;
 while (Date.now() - t0 < seconds * 1000) {

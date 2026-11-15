@@ -92,4 +92,4 @@ What it does not check:
 
 On a busy machine a headless browser can stop drawing frames for many seconds. The Dojo runs on the clock and carries on when the frames come back, so the script waits (up to two minutes) while the browser draws nothing, and says so in a `NOTE` at the end. A step that is late while the browser is drawing frames is a `FAIL`.
 
-`node scripts/smoke.mjs` writes this whole file again from its own text. Run it with `--no-write`, or put this section back, until its text holds this section too.
+`node scripts/smoke.mjs` writes the rest of this file again from its own text and keeps this section as it finds it (`KEPT_SECTIONS` in that script). Edit this section here, by hand.
