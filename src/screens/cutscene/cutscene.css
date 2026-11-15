@@ -1,0 +1,33 @@
+/* Direction C, "Versus". Transform and opacity only; every value arrives as a variable set by Cutscene.tsx from timing.ts. */
+.cut { position: fixed; inset: 0; z-index: 90; overflow: hidden; background: #050407; opacity: var(--over); color: #f6eedc; font-family: var(--pb-font-body); cursor: pointer; }
+.cut-stage { position: absolute; inset: -20px; transform: translate(var(--sx), var(--sy)); }
+.cut-half { position: absolute; inset: 0; overflow: hidden; will-change: transform; }
+.cut-half img { position: absolute; top: 0; height: 100%; width: 100%; object-fit: cover; transform-origin: 40% 40%; transform: scale(var(--zoom)); }
+.cut-hero { clip-path: polygon(0 0, 55% 0, 47% 100%, 0 100%); transform: translateX(var(--hx)); }
+.cut-hero img { left: -20%; }
+.cut-boss { clip-path: polygon(53% 0, 100% 0, 100% 100%, 45% 100%); transform: translateX(var(--bx)); }
+.cut-boss img { transform-origin: 65% 40%; }
+/* the light that is behind the crack when it bursts open */
+.cut-lava { position: absolute; top: 0; bottom: 0; left: 46%; width: 8%; background: linear-gradient(90deg, transparent, #ff9a3c 40%, #fff2cf 50%, #ff9a3c 60%, transparent); opacity: var(--lava); transform: skewX(-5.7deg) scaleX(calc(var(--cx) * 1.4)); z-index: 1; mix-blend-mode: screen; }
+.cut-crack { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; transform-origin: 50% 50%; transform: scale(var(--cx), var(--cy)); }
+.cut-crack path { vector-effect: non-scaling-stroke; stroke-linejoin: miter; }
+.cut-crack-glow2 { fill: none; stroke: #ff5a14; stroke-width: 26px; opacity: calc(var(--lava) * 0.16); }
+.cut-crack-glow { fill: none; stroke: #ff8a2a; stroke-width: 12px; opacity: calc(var(--lava) * 0.4); }
+.cut-crack-glass { fill: #07080b; stroke: #ffc46a; stroke-width: 2.5px; }
+.cut-slab { position: absolute; bottom: 9%; z-index: 3; width: min(40%, 640px); filter: drop-shadow(0 10px 18px rgba(0,0,0,0.7)); opacity: var(--slab); }
+.cut-slab--hero { left: 3.5%; transform: translateX(calc((1 - var(--slab)) * -130%)); --edge: linear-gradient(135deg, #d8f4ff, #4aa8e8 45%, #1d4f86); --ink: #b8e8ff; }
+.cut-slab--boss { right: 3.5%; text-align: right; transform: translateX(calc((1 - var(--slab)) * 130%)); --edge: linear-gradient(225deg, #ffe0a0, #ff7a1a 45%, #8c2a08); --ink: #ffb25a; }
+.cut-slab-in { padding: 14px 30px 18px; background: var(--edge); clip-path: polygon(0 12%, 5% 0, 100% 0, 100% 86%, 95% 100%, 0 100%); position: relative; }
+.cut-slab-in::before { content: ""; position: absolute; inset: 3px; background: linear-gradient(160deg, #11151d, #06070a 60%, #0f1118); clip-path: polygon(0 12%, 5% 0, 100% 0, 100% 86%, 95% 100%, 0 100%); }
+.cut-slab--boss .cut-slab-in { clip-path: polygon(0 0, 95% 0, 100% 14%, 100% 100%, 5% 100%, 0 88%); }
+.cut-slab--boss .cut-slab-in::before { clip-path: polygon(0 0, 95% 0, 100% 14%, 100% 100%, 5% 100%, 0 88%); }
+.cut-slab-in > * { position: relative; display: block; font-style: normal; }
+.cut-slab small { font: 700 20px/1.3 var(--pb-font-body); letter-spacing: 0.22em; text-transform: uppercase; color: #cfc6b4; }
+.cut-slab b { font: 800 clamp(30px, 3.9vw, 64px)/1.05 var(--pb-font-body); white-space: nowrap; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink); text-shadow: 0 0 16px color-mix(in srgb, var(--ink) 45%, transparent), 0 2px 0 #000; }
+.cut-slab i { margin-top: 4px; font: 600 clamp(22px, 1.9vw, 30px)/1.25 var(--pb-font-body); color: #f6eedc; opacity: var(--epi); }
+.cut-vs { position: absolute; z-index: 4; left: 50%; top: 40%; margin: -0.55em 0 0 -0.9em; width: 1.8em; text-align: center; font: 900 clamp(110px, 15vw, 240px)/1 var(--pb-font-body); letter-spacing: 0.02em; color: #ffd27a; -webkit-text-stroke: 3px #9a2c06; text-shadow: 0 0 24px #ff6a18, 0 0 60px #ff4a08, 0 6px 0 #4a1203; opacity: var(--vs); transform: scale(var(--vss)) skewX(-6deg); }
+.cut-flash, .cut-white { position: absolute; inset: 0; z-index: 5; background: #fff; pointer-events: none; }
+.cut-flash { opacity: var(--flash); }
+.cut-white { opacity: var(--white); background: #fff6e2; }
+.cut-hint { position: absolute; z-index: 6; left: 0; right: 0; bottom: 2.4%; margin: 0; text-align: center; font: 700 20px/1.2 var(--pb-font-body); letter-spacing: 0.08em; color: #f6eedc; opacity: calc(var(--hint) * 0.85); text-shadow: 0 1px 6px #000; }
+@media (max-width: 760px) { .cut-slab { width: 44%; } .cut-slab-in { padding: 10px 16px 12px; } }

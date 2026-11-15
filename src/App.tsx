@@ -28,6 +28,8 @@ import { GuestFight } from "./screens/GuestFight";
 import { narrateIntro } from "./screens/hookups";
 import { MenuOrMuse as MainMenu } from "./ai/ui/museDoor"; // The main menu (screens/MainMenu), or the Muse's fight in its place when the address has ?ai=1.
 import { QuestMap } from "./screens/QuestMap";
+import { Cutscene } from "./screens/cutscene/Cutscene";
+import { LOOK } from "./ui/lookSwitch";
 import { Multiplayer } from "./screens/Multiplayer";
 import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
@@ -57,6 +59,8 @@ export function App() {
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
+  // Look C: the face-off before a fight. `at` is when it began; the fight is dispatched at hand over and the overlay then fades out on top of it.
+  const [cut, setCut] = useState<{ readonly index: number; readonly at: number } | null>(null);
 
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
   const [god, setGod] = useState<GodReveal | null>(null);
@@ -75,6 +79,19 @@ export function App() {
   // Menu music on every screen but the fight and its result. Silent until the first click, then it starts.
   useEffect(() => { if (flow.screen !== "fight" && flow.screen !== "result") startMusic("menu"); }, [flow.screen]);
   useEffect(() => stopMusic, []);
+
+  const cutHanded = useRef(false);
+  const cutHandOver = (): void => {
+    if (!cut || cutHanded.current) return;
+    cutHanded.current = true;
+    dispatch({ type: "enter", index: cut.index, seed: Date.now() });
+  };
+  const cutSkip = (): void => { if (cut && !cutHanded.current) setCut({ ...cut, at: performance.now() - 4300 }); };
+  const cutGone = (): void => { setCut(null); };
+  const cutName = cut ? (ENEMIES[cut.index]?.name ?? "") : "";
+  const cutView = cut && LOOK === "c" ? (
+    <Cutscene enemyId={ENEMIES[cut.index]?.id ?? ""} bossName={cutName} heroName={profile.name || "Odysseus"} startedAt={cut.at} onSkip={cutSkip} onHandOver={cutHandOver} onGone={cutGone} />
+  ) : null;
 
   // The monster for this fight: tuned to the player when the optional warm-up was done. Stable between renders so the fight does not restart.
   const stop = ENEMIES[flow.index];
@@ -198,7 +215,7 @@ export function App() {
 
   const enemy = tuned;
   if (flow.screen === "map" || !enemy || !flow.style) {
-    return (
+    return (<>
       <QuestMap
         enemies={ENEMIES}
         cleared={flow.cleared}
@@ -206,12 +223,14 @@ export function App() {
         onEnter={(index) => {
           const next = ENEMIES[index];
           if (next) stopIntro.current = narrateIntro(next.id);
+          if (LOOK === "c") { cutHanded.current = false; setCut({ index, at: performance.now() }); return; }
           dispatch({ type: "enter", index, seed: Date.now() });
         }}
         onStyle={() => { dispatch({ type: "changeStyle" }); }}
         onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
       />
-    );
+      {cutView}
+    </>);
   }
 
   return (
@@ -247,6 +266,7 @@ export function App() {
         )}
       />
       {unlocks}
+      {cutView}
     </CameraPanelContext>
   );
 }
