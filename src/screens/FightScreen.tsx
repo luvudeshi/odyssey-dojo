@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
 import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
-import { speakMonsterTaunt, stopStory } from "../audio/storyVoice";
+import { speakMonsterTaunt } from "../audio/storyVoice";
 import { useStopAudio } from "../audio/useStopAudio";
 import { playVoice, speakLine } from "../audio/voice";
 import { PowerReady } from "../ai/power/PowerReady";
@@ -133,7 +133,7 @@ export function FightScreen(props: {
     return () => {
       cancelAnimationFrame(handle);
       keyboard.dispose();
-      stopStory();
+      // Homer's opening line is left to run to its end: leaving the fight (App's onQuit) and the result panel stop him.
     };
   }, [enemy, style, tracker, seed, baseline, link]);
 
