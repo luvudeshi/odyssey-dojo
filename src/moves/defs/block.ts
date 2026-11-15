@@ -3,7 +3,7 @@ import { JOINT, clamp01, joint, latest, recent, shoulderWidth } from "../../pose
 import { armThrust } from "../handSignals";
 
 /** A webcam's landmarks shake by about 1% of the frame; the guard is read from this many milliseconds of frames. */
-const STEADY_MS = 200;
+export const STEADY_MS = 200;
 
 function mean(frames: readonly PoseFrame[], read: (frame: PoseFrame) => number): number {
   return frames.reduce((sum, frame) => sum + read(frame), 0) / frames.length;
@@ -18,7 +18,7 @@ function reach(frames: readonly PoseFrame[], wrist: number): number {
 }
 
 /** 1 when both fists are within 0.8 shoulder widths of the nose over these frames, 0 from 1.3 out. */
-function guard(frames: readonly PoseFrame[]): number {
+export function guard(frames: readonly PoseFrame[]): number {
   const far = Math.max(reach(frames, JOINT.leftWrist), reach(frames, JOINT.rightWrist));
   return clamp01((1.3 - far / mean(frames, shoulderWidth)) / 0.5);
 }
