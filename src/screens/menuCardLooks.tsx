@@ -1,13 +1,9 @@
-// Draft round (?look=a|b|c): richer icons for the four main menu cards, the paint they share, and look B's mosaic frame.
+// Draft round two (?look=a|b|c): the four main menu cards as obsidian shards (A), hoplite shields (B) or the doorways
+// of a temple front (C), with richer icons.
 // Every icon is drawn from four kinds of mark, so each look paints the same picture its own way:
 // .f solid figure, .l figure lines, .s incised detail, .e accent, .h an opening. The styles are in menuCardLooks.css.
-import { useMemo } from "react";
-import { drawLayout } from "../ui/pebble/draw";
-import { useBoxSize } from "../ui/pebble/hooks";
-import { PAL } from "../ui/pebble/palette";
-import { PebbleCanvas } from "../ui/pebble";
-import { lineStones, makeRng, newLayout, roundRectPoly, strip } from "../ui/pebble/stones";
-import { straightBase, waveBand } from "../ui/pebble/wave";
+import type { ReactNode } from "react";
+import { look } from "../ui/lookSwitch";
 
 /** A Corinthian helmet seen from the front, with a fan crest; .h marks the openings, painted in the card's own colour. */
 const HELMET = (
@@ -69,7 +65,7 @@ export const RICH_ICONS = {
   ),
 };
 
-/** Paint servers the icons use: the bronze of look A and the pebble fill of look B. One per page. */
+/** Paint servers the marks use. One per page. */
 export function LookDefs() {
   return (
     <svg className="lk-defs" width="0" height="0" aria-hidden="true">
@@ -80,35 +76,91 @@ export function LookDefs() {
           <stop offset="0.7" stopColor="#a86424" />
           <stop offset="1" stopColor="#5a300f" />
         </linearGradient>
-        <pattern id="lk-pebbles" width="6" height="5.4" patternUnits="userSpaceOnUse">
-          <rect width="6" height="5.4" fill="#1a110c" />
-          <ellipse cx="1.6" cy="1.4" rx="1.35" ry="1.15" fill="#e2b25d" />
-          <ellipse cx="4.6" cy="1.3" rx="1.25" ry="1.1" fill="#c98f37" />
-          <ellipse cx="3.1" cy="4" rx="1.3" ry="1.15" fill="#d9a34a" />
-          <ellipse cx="0" cy="4" rx="1.2" ry="1.1" fill="#b97f2f" />
-          <ellipse cx="6" cy="4" rx="1.2" ry="1.1" fill="#b97f2f" />
-        </pattern>
+        <linearGradient id="lk-gold" x1="0" y1="0" x2="0.3" y2="1">
+          <stop offset="0" stopColor="#fff4cf" />
+          <stop offset="0.45" stopColor="#f2c56e" />
+          <stop offset="1" stopColor="#9a6420" />
+        </linearGradient>
+        <linearGradient id="lk-glass" x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0" stopColor="#2a3142" />
+          <stop offset="0.3" stopColor="#10131c" />
+          <stop offset="0.75" stopColor="#07080d" />
+          <stop offset="1" stopColor="#1a0d08" />
+        </linearGradient>
+        <radialGradient id="lk-heat" cx="0.5" cy="1" r="0.75">
+          <stop offset="0" stopColor="#ff7a1e" stopOpacity="0.55" />
+          <stop offset="0.45" stopColor="#c8400f" stopOpacity="0.18" />
+          <stop offset="1" stopColor="#c8400f" stopOpacity="0" />
+        </radialGradient>
       </defs>
     </svg>
   );
 }
 
-/** Look B: a mosaic frame laid in stones round the card, with the wave scroll along its top. */
-export function PebbleFrame() {
-  const [ref, box] = useBoxSize<HTMLSpanElement>();
-  const { w, h } = box;
-  const draw = useMemo(() => (ctx: CanvasRenderingContext2D): void => {
-    const l = newLayout(), r = makeRng(31);
-    const outer = roundRectPoly(2, 2, w - 4, h - 4, 10), inner = roundRectPoly(9, 9, w - 18, h - 18, 6);
-    lineStones(l, r, [...inner, inner[0] ?? [9, 9]], { size: 6, rows: 2, gap: 0.92, col: (i, row) => (row === 0 ? (i % 6 < 3 ? PAL.terra[i % 2] ?? "#b8553a" : PAL.cream[i % 3] ?? "#f1e6cf") : PAL.ochre[i % 4] ?? "#d9a34a") });
-    strip(l, outer, 2, "#9c9b93", true);
-    strip(l, roundRectPoly(15, 15, w - 30, h - 30, 4), 1.6, "#9c9b93", true);
-    waveBand(l, r, straightBase(26, 29), w - 52, { size: 3.2, r: 4.4 });
-    drawLayout(ctx, l);
-  }, [w, h]);
+const SHARDS = [
+  "M30 40 L92 2 L150 22 L186 64 L194 250 L160 298 L40 296 L8 246 L6 90 Z",
+  "M8 70 L56 18 L120 0 L176 34 L196 110 L190 262 L150 298 L36 290 L4 230 Z",
+  "M20 30 L70 12 L132 4 L170 40 L196 84 L192 238 L172 296 L30 298 L6 252 L4 100 Z",
+  "M6 50 L78 4 L118 16 L190 58 L194 240 L168 296 L44 298 L10 260 Z",
+];
+const FACETS = "M6 90 L36 70 L92 2 M36 70 L164 66 L186 64 M164 66 L166 254 L194 250 M166 254 L36 256 L8 246 M36 256 L36 70 M36 256 L40 296 M166 254 L160 298";
+// Cracks keep out of the band the name and line sit in.
+const CRACKS = "M100 4 L96 22 L108 34 L100 50 L106 60 M196 96 L178 104 L170 92 L156 100 M4 104 L20 96 L30 110 L42 104 M60 296 L70 272 L86 264 L82 246 M150 298 L144 276 L156 262 L150 250 M196 250 L178 244 L172 256";
+
+/** Look A: a shard of black glass with lava in its cracks. */
+function Shard(props: { index: number; icon: ReactNode }) {
+  const flip = props.index % 2 === 1 ? "translate(200 0) scale(-1 1)" : undefined;
   return (
-    <span ref={ref} className="lk-frame" aria-hidden="true">
-      {w > 40 && h > 40 && <PebbleCanvas width={w} height={h} cacheKey={`lk-frame|${String(w)}x${String(h)}`} draw={draw} />}
+    <>
+      <svg className="lk-shard" viewBox="0 0 200 300" preserveAspectRatio="none" aria-hidden="true">
+        <path className="lk-shard__glass" d={SHARDS[props.index] ?? SHARDS[0]} />
+        <path className="lk-shard__heat" d={SHARDS[props.index] ?? SHARDS[0]} />
+        <path className="lk-shard__facet" d={FACETS} />
+        <path className="lk-shard__crack" d={CRACKS} transform={flip} />
+        <path className="lk-shard__hot" d={CRACKS} transform={flip} />
+        <path className="lk-shard__edge" d={SHARDS[props.index] ?? SHARDS[0]} />
+      </svg>
+      <svg className="lk-icon" viewBox="0 0 96 96" aria-hidden="true">{props.icon}</svg>
+      <span className="lk-embers" aria-hidden="true">{[12, 26, 41, 55, 68, 80, 90].map((x, i) => <i key={x} style={{ left: `${String(x)}%`, animationDelay: `${String(i * -0.37)}s` }} />)}</span>
+    </>
+  );
+}
+
+/** Look B: a hoplite shield with the device in relief. */
+function Shield(props: { icon: ReactNode }) {
+  return (
+    <span className="lk-shieldwrap" aria-hidden="true">
+      <span className="lk-spear" />
+      <span className="lk-aspis">
+        <svg className="lk-face" viewBox="0 0 120 120">
+          <circle className="lk-studs" cx="60" cy="60" r="54" />
+          <circle className="lk-dentils" cx="60" cy="60" r="49" />
+          <circle className="lk-band" cx="60" cy="60" r="45.5" />
+          <g className="lk-icon" transform="translate(22 21) scale(0.79)">{props.icon}</g>
+        </svg>
+        <span className="lk-glint"><i /></span>
+      </span>
     </span>
   );
+}
+
+/** Look C: one doorway of a temple front, with its gilded relief and the torches on its columns. */
+function Doorway(props: { index: number; icon: ReactNode }) {
+  return (
+    <>
+      <span className="lk-col lk-col--l" aria-hidden="true"><i className="lk-torch" /></span>
+      {props.index === 3 && <span className="lk-col lk-col--r" aria-hidden="true"><i className="lk-torch" /></span>}
+      <svg className="lk-relief" viewBox="0 0 120 104" aria-hidden="true">
+        <g className="lk-icon" transform="translate(12 6) scale(1)">{props.icon}</g>
+        <path className="lk-ground" d="M4 100 H116" />
+      </svg>
+    </>
+  );
+}
+
+/** What a card shows above its name, in the look picked by ?look. */
+export function CardArt(props: { index: number; icon: ReactNode }) {
+  if (look === "a") return <Shard index={props.index} icon={props.icon} />;
+  if (look === "b") return <Shield icon={props.icon} />;
+  return <Doorway index={props.index} icon={props.icon} />;
 }

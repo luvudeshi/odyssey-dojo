@@ -1,115 +1,166 @@
-/* Draft round: three looks for the four main menu cards, one block each, switched by ?look= (src/ui/lookSwitch.ts).
-   Shared: the richer icons (menuCardLooks.tsx) and the hidden paint defs. Keep the picked block, delete the others. */
-.menu > .menu-cards .lk-defs, .lk-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
-html[data-look] .menu--title .menu-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-html[data-look] .menu-card .lk-icon { display: block; width: 92px; height: 92px; margin: 0 auto 8px; flex: none; }
+/* Draft round two: three looks for the four main menu cards, one block each, switched by ?look= (src/ui/lookSwitch.ts).
+   Markup in menuCardLooks.tsx. Keep the picked block, delete the others. */
+.lk-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+html[data-look] .menu--title .menu-cards { --lk-h: clamp(250px, 40vh, 380px); align-items: stretch; }
+html[data-look] .menu--title .menu-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: var(--lk-h);
+  border: 0; border-radius: 0; background: none; box-shadow: none; overflow: visible;
+}
+html[data-look] .menu--title .menu-card > :is(.style-card__name, small) { position: relative; z-index: 2; }
 html[data-look] .lk-icon .l, html[data-look] .lk-icon .s { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-html[data-look] .menu--title .menu-card > span:not(.lk-frame), html[data-look] .menu--title .menu-card > small { position: relative; z-index: 1; }
 
-/* ---- A: forged bronze. A cast plaque with a bevelled bronze rim, rivets, Greek key bands and molten-bronze icons;
-   hover and focus heat it like the Forge Fire bars. ---- */
-html[data-look="a"] .menu--title .menu-card {
-  --lk-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='14'%3E%3Cpath d='M0 13 H5 V1 H19 V10 H9 V5 H14 M14 13 H20' fill='none' stroke='%23d9a052' stroke-width='2'/%3E%3C/svg%3E");
-  padding: 30px 18px 32px; border: 4px solid transparent; border-radius: 12px; color: var(--pb-text);
+/* ================= A: Obsidian shards. Tall slabs of black volcanic glass rising out of the spray, lava in the cracks
+   tracing each emblem, the name burning in the glass. Hover floods the cracks and throws embers; focus rings the edge in ice. */
+html[data-look="a"] .menu--title .menu-cards { --lk-h: clamp(270px, 44vh, 430px); gap: 26px; }
+html[data-look="a"] .menu--title .menu-card { max-width: 16rem; padding: 40px 22px 50px; transition: transform 160ms; }
+html[data-look="a"] .menu--title .menu-card:focus-visible { outline: none; }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible), html[data-look="a"] .menu--title .menu-card:active:not(:disabled) { background: none; transform: translateY(-6px); }
+html[data-look="a"] .lk-shard { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.75)); }
+html[data-look="a"] .lk-shard__glass { fill: url(#lk-glass); stroke: #3a4458; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+html[data-look="a"] .lk-shard__heat { fill: url(#lk-heat); stroke: none; }
+html[data-look="a"] .lk-shard__facet { fill: none; stroke: rgba(150, 178, 220, 0.16); stroke-width: 1; vector-effect: non-scaling-stroke; }
+html[data-look="a"] .lk-shard__crack { fill: none; stroke: #ff6a1a; stroke-width: 6; stroke-linejoin: round; opacity: 0.35; vector-effect: non-scaling-stroke; filter: blur(3px); }
+html[data-look="a"] .lk-shard__hot { fill: none; stroke: #ffb347; stroke-width: 1.6; stroke-linejoin: round; opacity: 0.75; vector-effect: non-scaling-stroke; }
+html[data-look="a"] .lk-shard__edge { fill: none; stroke: transparent; stroke-width: 3; vector-effect: non-scaling-stroke; }
+/* The sea spray the shards rise out of. */
+html[data-look="a"] .menu--title .menu-card::after {
+  content: ""; position: absolute; left: -14%; right: -14%; bottom: -26px; height: 70px; pointer-events: none; z-index: 1;
+  background: radial-gradient(50% 60% at 50% 70%, rgba(200, 228, 236, 0.42), rgba(200, 228, 236, 0.12) 55%, transparent 75%);
+}
+html[data-look="a"] .menu-card .lk-icon { position: relative; z-index: 2; width: 104px; height: 104px; margin: 0 auto 12px; flex: none; filter: drop-shadow(0 0 6px rgba(255, 110, 30, 0.75)) drop-shadow(0 0 18px rgba(255, 90, 20, 0.35)); }
+html[data-look="a"] .lk-icon .f { fill: #0a0b10; stroke: #ff9a3a; stroke-width: 2.2; stroke-linejoin: round; }
+html[data-look="a"] .lk-icon .l { stroke: #ff8a2a; stroke-width: 3; }
+html[data-look="a"] .lk-icon .s { stroke: #ffcf7a; stroke-width: 1.4; }
+html[data-look="a"] .lk-icon .e { fill: #ffe08a; }
+html[data-look="a"] .lk-icon .h { fill: #ff7a1e; }
+html[data-look="a"] .menu--title .menu-card .style-card__name {
+  font: 800 25px/1.1 var(--pb-font-body); letter-spacing: 0.14em; text-transform: uppercase; color: #ffb347;
+  background: linear-gradient(#fff3c4, #ffc061 40%, #ff7a1e 75%, #c8400f); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 7px rgba(255, 110, 30, 0.7));
+}
+html[data-look="a"] .menu--title .menu-card small { margin-top: 10px; max-width: 13rem; color: #e6dccb; text-shadow: 0 1px 3px #000; }
+html[data-look="a"] .menu--title .menu-card--primary .lk-shard__glass { stroke: #ff9a3a; }
+html[data-look="a"] .menu--title .menu-card--primary .lk-shard__crack { opacity: 0.6; }
+/* Hover and focus: the lava floods the cracks and the glass glows from inside. */
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-shard__crack { opacity: 1; stroke-width: 12; }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-shard__hot { stroke: #fff1b8; stroke-width: 2.6; opacity: 1; }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-shard__glass { stroke: #ffb347; }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-shard { filter: drop-shadow(0 0 22px rgba(255, 110, 30, 0.55)) drop-shadow(0 18px 24px rgba(0, 0, 0, 0.75)); }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-icon { filter: drop-shadow(0 0 8px rgba(255, 150, 40, 1)) drop-shadow(0 0 26px rgba(255, 90, 20, 0.8)); }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-icon .f { fill: #3a1406; stroke: #ffe08a; }
+html[data-look="a"] .menu--title .menu-card:focus-visible .lk-shard__edge { stroke: #cdeeff; stroke-width: 3.5; filter: drop-shadow(0 0 5px #6cc4ff) drop-shadow(0 0 12px #3a9cff); }
+html[data-look="a"] .lk-embers { position: absolute; left: 8%; right: 8%; bottom: 10%; height: 75%; pointer-events: none; z-index: 1; opacity: 0; transition: opacity 200ms; }
+html[data-look="a"] .lk-embers i { position: absolute; bottom: 0; width: 4px; height: 4px; border-radius: 50%; background: #ffcf6a; box-shadow: 0 0 6px 2px rgba(255, 120, 30, 0.9); animation: lk-ember 2.6s linear infinite; }
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-embers { opacity: 1; }
+@keyframes lk-ember { from { transform: translate(0, 0); opacity: 1; } to { transform: translate(14px, -240px); opacity: 0; } }
+
+/* ================= B: Hoplite shields. Four great bronze aspides, each device in relief, the name on a bronze strap.
+   Hover tilts the shield toward you and runs a glint across it. */
+html[data-look="b"] .menu--title .menu-cards { gap: 18px; }
+html[data-look="b"] .menu--title .menu-card { justify-content: flex-start; padding: 6px 4px 8px; border-radius: 50% 50% 18px 18px / 40% 40% 18px 18px; perspective: 700px; }
+html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible), html[data-look="b"] .menu--title .menu-card:active:not(:disabled) { background: none; }
+html[data-look="b"] .menu--title .menu-card:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 6px; }
+html[data-look="b"] .lk-shieldwrap { --d: min(16vw, 31vh, 250px); position: relative; display: block; width: var(--d); height: var(--d); flex: none; }
+html[data-look="b"] .lk-aspis {
+  position: relative; display: block; width: 100%; height: 100%; border-radius: 50%;
   background:
-    radial-gradient(circle at 12px 12px, #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at calc(100% - 12px) 12px, #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at 12px calc(100% - 12px), #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(110% 60% at 50% 108%, rgba(255, 122, 26, 0.2), transparent 70%) padding-box,
-    linear-gradient(#2b1b10, #170e08 55%, #0e0805) padding-box,
-    linear-gradient(160deg, #ffe6b0, #d9a052 26%, #8e5522 56%, #3e2109 78%, #b07a3a) border-box;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 214, 150, 0.16), inset 0 2px 0 rgba(255, 230, 180, 0.12);
-  transition: transform 120ms, box-shadow 160ms;
+    radial-gradient(circle at 34% 28%, rgba(255, 244, 210, 0.55), transparent 32%),
+    radial-gradient(circle, transparent 79%, #3e2109 80%, #c98f37 82%, #ffe6b0 85%, #b97f2f 88%, #5a300f 92%, #2a1406 96%),
+    radial-gradient(circle at 50% 45%, #e6aa58, #b8762e 45%, #7a4416 78%);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.7), 0 0 0 2px #1a0d06, inset 0 -10px 24px rgba(40, 18, 4, 0.6);
+  transition: transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-html[data-look="a"] .menu--title .menu-card::before, html[data-look="a"] .menu--title .menu-card::after {
-  content: ""; position: absolute; left: 24px; right: 24px; height: 12px; background: var(--lk-key) repeat-x center / auto 100%; opacity: 0.85; pointer-events: none;
+html[data-look="b"] .lk-face { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; }
+html[data-look="b"] .lk-spear { /* a spear slung behind the shield */
+  position: absolute; left: 50%; top: 50%; width: 7px; height: 128%; margin: -64% 0 0 -3.5px; transform: rotate(-52deg);
+  background: linear-gradient(90deg, #3a2210, #8a5a2a 45%, #2a160a); border-radius: 3px; box-shadow: 0 6px 10px rgba(0, 0, 0, 0.6);
 }
-html[data-look="a"] .menu--title .menu-card::before { top: 7px; }
-html[data-look="a"] .menu--title .menu-card::after { bottom: 7px; }
-html[data-look="a"] .lk-icon { filter: drop-shadow(0 0 7px rgba(255, 140, 40, 0.3)); }
-html[data-look="a"] .lk-icon .f { fill: url(#lk-bronze); }
-html[data-look="a"] .lk-icon .l { stroke: #d9a052; stroke-width: 3.2; }
-html[data-look="a"] .lk-icon .s { stroke: #2a1406; stroke-width: 2; }
-html[data-look="a"] .lk-icon .e, html[data-look="a"] .lk-icon .h { fill: #2a1406; }
-html[data-look="a"] .menu--title .menu-card .style-card__name { color: #ffd99a; text-shadow: 0 2px 0 #2a1406, 0 0 14px rgba(255, 140, 40, 0.35); }
-html[data-look="a"] .menu--title .menu-card small { color: var(--pb-text); }
-html[data-look="a"] .menu--title .menu-card--primary {
-  border-width: 4px;
-  box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.55), 0 0 22px rgba(255, 122, 26, 0.3), 0 12px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 214, 150, 0.2);
+html[data-look="b"] .lk-spear::before { content: ""; position: absolute; left: 50%; top: -34px; width: 18px; height: 44px; margin-left: -9px; border-radius: 50% 50% 40% 40% / 80% 80% 20% 20%; background: linear-gradient(90deg, #ffe6b0, #c98f37 50%, #6b3f17); }
+html[data-look="b"] .lk-spear::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 10px; height: 22px; margin-left: -5px; border-radius: 2px 2px 50% 50%; background: linear-gradient(90deg, #ffe6b0, #a86424); }
+html[data-look="b"] .lk-dentils { fill: none; stroke: #3e2109; stroke-width: 5; stroke-dasharray: 4.2 3; opacity: 0.75; }
+html[data-look="b"] .lk-studs { fill: none; stroke: #ffe6b0; stroke-width: 3; stroke-dasharray: 0.1 10.4; stroke-linecap: round; opacity: 0.9; }
+html[data-look="b"] .lk-band { fill: none; stroke: #5a300f; stroke-width: 1.4; opacity: 0.6; }
+html[data-look="b"] .lk-face .lk-icon { filter: drop-shadow(-1px -1.5px 0 rgba(255, 238, 200, 0.85)) drop-shadow(2px 3px 1.5px rgba(40, 16, 2, 0.85)); }
+html[data-look="b"] .lk-icon .f { fill: url(#lk-bronze); }
+html[data-look="b"] .lk-icon .l { stroke: #f2c56e; stroke-width: 3.4; }
+html[data-look="b"] .lk-icon .s { stroke: #4a2408; stroke-width: 1.8; }
+html[data-look="b"] .lk-icon .e { fill: #fff1c9; }
+html[data-look="b"] .lk-icon .h { fill: #4a2408; }
+html[data-look="b"] .lk-glint { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; pointer-events: none; }
+html[data-look="b"] .lk-glint i { position: absolute; inset: -20%; background: linear-gradient(115deg, transparent 38%, rgba(255, 250, 230, 0.75) 48%, transparent 58%); transform: translateX(-120%); pointer-events: none; mix-blend-mode: screen; }
+html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-aspis { transform: rotateX(14deg) rotateY(-10deg) scale(1.05); box-shadow: 0 22px 34px rgba(0, 0, 0, 0.75), 0 0 0 2px #1a0d06, 0 0 30px rgba(255, 200, 110, 0.45), inset 0 -10px 24px rgba(40, 18, 4, 0.6); }
+html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-glint i { animation: lk-glint 900ms ease-out forwards; }
+@keyframes lk-glint { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
+/* The bronze strap with the name. */
+html[data-look="b"] .menu--title .menu-card .style-card__name {
+  margin-top: -16px; padding: 7px 26px 8px; font: 800 21px/1.1 var(--pb-font-body); letter-spacing: 0.1em; text-transform: uppercase; color: #2a1406; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.6);
+  background: linear-gradient(#ffe6b0, #e0a552 40%, #a86424); clip-path: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%);
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6));
 }
-html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) {
-  --lk-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='14'%3E%3Cpath d='M0 13 H5 V1 H19 V10 H9 V5 H14 M14 13 H20' fill='none' stroke='%23ffb347' stroke-width='2'/%3E%3C/svg%3E");
-  transform: translateY(-4px); border-color: transparent; color: var(--pb-text);
-  background:
-    radial-gradient(circle at 12px 12px, #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at calc(100% - 12px) 12px, #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at 12px calc(100% - 12px), #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
-    radial-gradient(120% 75% at 50% 112%, rgba(255, 122, 26, 0.5), transparent 72%) padding-box,
-    linear-gradient(#34200f, #1d1008 55%, #120905) padding-box,
-    linear-gradient(160deg, #fff1c9, #ffb347 26%, #e0641e 56%, #7a2a08 80%, #ffb347) border-box;
-  box-shadow: 0 0 0 1px #ffb347, 0 0 30px rgba(255, 122, 26, 0.6), 0 16px 34px rgba(0, 0, 0, 0.6);
-}
-html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-icon { filter: drop-shadow(0 0 10px rgba(255, 150, 50, 0.75)); }
+html[data-look="b"] .menu--title .menu-card small { margin-top: 10px; max-width: 14rem; color: var(--pb-text); text-shadow: 0 0 3px #000, 0 1px 4px #000, 0 0 12px #000; }
+html[data-look="b"] .menu--title .menu-card--primary .lk-aspis { box-shadow: 0 16px 30px rgba(0, 0, 0, 0.7), 0 0 0 3px #ffd99a, 0 0 26px rgba(255, 200, 110, 0.4), inset 0 -10px 24px rgba(40, 18, 4, 0.6); }
 
-/* ---- B: pebble mosaic. Each card is a mosaic panel of sea-blue stones in a laid border with the wave scroll on top,
-   and the icons are laid in ochre stones; hover and focus turn the ground terracotta. ---- */
-html[data-look="b"] .menu--title .menu-card {
-  padding: 46px 26px 30px; border: 0; border-radius: 12px; overflow: visible;
-  background: #10181d var(--pebble-dusk) repeat; box-shadow: 0 0 0 2px rgba(8, 5, 4, 0.8), 0 12px 30px rgba(0, 0, 0, 0.6);
-  transition: transform 120ms;
+/* ================= C: Temple front. The four cards are the doorways of one temple under a single pediment, columns
+   between them and a torch on each; a doorway lights from inside and its torches flare when it is pointed at or focused. */
+html[data-look="c"] .menu--title .menu-cards {
+  --lk-h: clamp(220px, 35vh, 340px); position: relative; gap: 0; width: min(68rem, 90%); padding: 56px 22px 0; margin-top: 0.4rem;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.7));
 }
-html[data-look="b"] .menu--title .menu-card::before {
-  content: ""; position: absolute; inset: 17px; border-radius: 5px; pointer-events: none;
-  background: radial-gradient(ellipse 70% 62% at 50% 56%, rgba(9, 7, 6, 0.88) 45%, rgba(9, 7, 6, 0.5) 100%);
+html[data-look="c"] .menu--title .menu-cards::before { /* the pediment and its cornice */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 60px; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 60' preserveAspectRatio='none'%3E%3Cpath d='M0 48 L500 2 L1000 48 Z' fill='%23e9dfcc' stroke='%23b88a3a' stroke-width='3'/%3E%3Cpath d='M70 44 L500 11 L930 44 Z' fill='%23c9bba2'/%3E%3Crect y='48' width='1000' height='12' fill='%23d8ccb6'/%3E%3Cpath d='M0 49 H1000 M0 59 H1000' stroke='%23b88a3a' stroke-width='2'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
-html[data-look="b"] .lk-frame { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-html[data-look="b"] .lk-frame canvas { display: block; }
-html[data-look="b"] .menu-card .lk-icon { position: relative; z-index: 1; }
-html[data-look="b"] .lk-icon .f { fill: url(#lk-pebbles); stroke: #0d0806; stroke-width: 1.4; }
-html[data-look="b"] .lk-icon .l { stroke: #e8dabb; stroke-width: 4.6; stroke-dasharray: 0.1 6.2; }
-html[data-look="b"] .lk-icon .s { stroke: #0d0806; stroke-width: 2.4; }
-html[data-look="b"] .lk-icon .h { fill: #0d0806; }
-html[data-look="b"] .lk-icon .e { fill: #b8553a; stroke: #0d0806; stroke-width: 1.2; }
-html[data-look="b"] .menu--title .menu-card .style-card__name { color: var(--pb-ochre-light); text-shadow: 0 0 3px #000, 0 2px 4px #000; }
-html[data-look="b"] .menu--title .menu-card small { color: var(--pb-text); text-shadow: 0 0 3px #000, 0 1px 3px #000; }
-html[data-look="b"] .menu--title .menu-card--primary { box-shadow: 0 0 0 3px var(--pb-ochre), 0 12px 30px rgba(0, 0, 0, 0.6); }
-html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) {
-  transform: translateY(-4px); color: var(--pb-text);
-  background: #1f0e0b var(--pebble-blood) repeat; box-shadow: 0 0 0 3px var(--pb-terra), 0 0 26px rgba(184, 85, 58, 0.6), 0 16px 34px rgba(0, 0, 0, 0.6);
+html[data-look="c"] .menu--title .menu-cards::after { /* the steps */
+  content: ""; position: absolute; left: -10px; right: -10px; bottom: -22px; height: 22px; pointer-events: none;
+  background: linear-gradient(#efe6d4 0 6px, #b9ab92 6px 7px, #e2d7c2 7px 14px, #a99a80 14px 15px, #d6cab3 15px);
 }
-html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-frame { filter: brightness(1.25) saturate(1.15); }
-html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-icon .l { stroke: #fff4dc; }
-
-/* ---- C: black-figure vase. A fired-clay panel with a vase's shoulder, a black meander band above and a band of rays below;
-   the icons are black figures with incised lines and added white. Hover and focus gild the rim. ---- */
 html[data-look="c"] .menu--title .menu-card {
-  padding: 46px 18px 42px; border: 3px solid #140c08; border-radius: 46% 46% 14px 14px / 15% 15% 14px 14px; color: #1b1410;
-  background: radial-gradient(120% 90% at 50% 38%, #e3905a, #cc6d3b 55%, #a24f28);
-  box-shadow: 0 0 0 2px rgba(241, 230, 207, 0.25), 0 14px 30px rgba(0, 0, 0, 0.65), inset 0 -10px 22px rgba(80, 30, 10, 0.35);
-  transition: transform 120ms, box-shadow 160ms;
+  flex: 1 1 13rem; max-width: 18.5rem; margin: 0; padding: 30px 46px 26px; justify-content: flex-start;
+  background: linear-gradient(90deg, #e6dcc8, #f1e9d8 50%, #ddd1bb); color: var(--pb-text);
 }
-html[data-look="c"] .menu--title .menu-card::before {
-  content: ""; position: absolute; left: 9%; right: 9%; top: 18px; height: 16px; pointer-events: none; border-radius: 2px;
-  background: #140c08 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='12'%3E%3Cpath d='M0 11 H4 V1 H15 V8 H7 V4 H11 M11 11 H16' fill='none' stroke='%23d27a46' stroke-width='1.7'/%3E%3C/svg%3E") repeat-x center / auto 12px;
+html[data-look="c"] .menu--title .menu-card::before { /* the dark doorway with its gilded frame */
+  content: ""; position: absolute; inset: 12px 30px 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(70% 45% at 50% 100%, rgba(255, 140, 50, 0.18), transparent 70%), linear-gradient(#0d0907, #1a110b);
+  box-shadow: 0 0 0 3px #c99a48, 0 0 0 5px #6b4a1e, inset 0 10px 18px rgba(0, 0, 0, 0.8); transition: background 200ms;
 }
-html[data-look="c"] .menu--title .menu-card::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; pointer-events: none; border-radius: 0 0 11px 11px;
-  background: #140c08 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='24'%3E%3Cpath d='M1 24 L7 6 L13 24 Z' fill='%23cc6d3b'/%3E%3C/svg%3E") repeat-x left bottom / auto 20px;
+html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible)::before {
+  background: radial-gradient(80% 70% at 50% 100%, rgba(255, 170, 70, 0.55), rgba(255, 110, 30, 0.12) 60%, transparent 85%), linear-gradient(#1c110a, #2e180c);
 }
-html[data-look="c"] .lk-icon .f { fill: #140c08; }
-html[data-look="c"] .lk-icon .l { stroke: #140c08; stroke-width: 3.4; }
-html[data-look="c"] .lk-icon .s { stroke: #d27a46; stroke-width: 1.8; }
-html[data-look="c"] .lk-icon .e { fill: #f1e6cf; }
-html[data-look="c"] .lk-icon .h { fill: #d4733f; }
-html[data-look="c"] .menu--title .menu-card .style-card__name { color: #140c08; text-shadow: 0 1px 0 rgba(255, 220, 180, 0.35); }
-html[data-look="c"] .menu--title .menu-card small { color: #2a140a; font-weight: 600; }
-html[data-look="c"] .menu--title .menu-card--primary { border-color: #140c08; box-shadow: 0 0 0 3px var(--pb-ochre-light), 0 14px 30px rgba(0, 0, 0, 0.65), inset 0 -10px 22px rgba(80, 30, 10, 0.35); }
-html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible) {
-  transform: translateY(-4px); border-color: #140c08; color: #1b1410;
-  background: radial-gradient(120% 90% at 50% 38%, #f0a46c, #d97a44 55%, #ad5a2e);
-  box-shadow: 0 0 0 3px #f2c56e, 0 0 30px rgba(242, 197, 110, 0.6), 0 16px 34px rgba(0, 0, 0, 0.65);
+html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible), html[data-look="c"] .menu--title .menu-card:active:not(:disabled) { background: linear-gradient(90deg, #e6dcc8, #f1e9d8 50%, #ddd1bb); color: var(--pb-text); }
+html[data-look="c"] .menu--title .menu-card:focus-visible { outline: none; }
+html[data-look="c"] .menu--title .menu-card:focus-visible::before { box-shadow: 0 0 0 3px #c99a48, 0 0 0 5px #6b4a1e, inset 0 0 0 4px #fff4cf, inset 0 0 24px rgba(255, 244, 207, 0.45); }
+html[data-look="c"] .lk-col { position: absolute; top: -4px; bottom: 0; width: 26px; z-index: 1; pointer-events: none;
+  background: repeating-linear-gradient(90deg, #f4ecdc 0 3px, #cdbfa6 3px 4px, #e9dfcc 4px 6px); box-shadow: inset 2px 0 0 #fff8ea, inset -2px 0 0 #b0a186; }
+html[data-look="c"] .lk-col::before { content: ""; position: absolute; left: -6px; right: -6px; top: 0; height: 12px; background: linear-gradient(#f4ecdc, #cdbfa6); border-radius: 6px 6px 2px 2px; }
+html[data-look="c"] .lk-col--l { left: -13px; }
+html[data-look="c"] .lk-col--r { right: -13px; }
+html[data-look="c"] .lk-torch { position: absolute; left: 50%; top: 32%; width: 10px; height: 18px; margin-left: -5px; background: linear-gradient(#6b4a1e, #3a2510); border-radius: 0 0 4px 4px; }
+html[data-look="c"] .lk-torch::after { /* the flame */
+  content: ""; position: absolute; left: 50%; bottom: 14px; width: 12px; height: 18px; margin-left: -6px; border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 50% 70%, #fff1b8, #ffb347 45%, #e0501e 80%); box-shadow: 0 0 10px 3px rgba(255, 140, 40, 0.5); transition: transform 200ms, box-shadow 200ms;
+}
+html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-torch::after,
+html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible) + .menu-card .lk-col--l .lk-torch::after { transform: scale(1.8); box-shadow: 0 0 22px 10px rgba(255, 150, 50, 0.7), 0 0 60px 20px rgba(255, 120, 30, 0.3); }
+html[data-look="c"] .lk-relief { position: relative; z-index: 2; width: 116px; height: 100px; margin: 2px auto 8px; flex: none; filter: drop-shadow(-1px -1px 0 rgba(255, 244, 207, 0.6)) drop-shadow(1.5px 2px 1px rgba(0, 0, 0, 0.9)); }
+html[data-look="c"] .lk-relief .lk-ground { fill: none; stroke: url(#lk-gold); stroke-width: 3; }
+html[data-look="c"] .lk-icon .f { fill: url(#lk-gold); }
+html[data-look="c"] .lk-icon .l { stroke: #f2c56e; stroke-width: 3.2; }
+html[data-look="c"] .lk-icon .s { stroke: #5a3a10; stroke-width: 1.8; }
+html[data-look="c"] .lk-icon .e { fill: #fff4cf; }
+html[data-look="c"] .lk-icon .h { fill: #1a110b; }
+html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-relief { filter: drop-shadow(-1px -1px 0 rgba(255, 244, 207, 0.8)) drop-shadow(1.5px 2px 1px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 14px rgba(255, 190, 90, 0.6)); }
+html[data-look="c"] .menu--title .menu-card .style-card__name { font: 800 23px/1.1 var(--pb-font-body); letter-spacing: 0.1em; text-transform: uppercase; color: #f2c56e; text-shadow: 0 2px 0 #000, 0 0 12px rgba(255, 170, 70, 0.35); }
+html[data-look="c"] .menu--title .menu-card small { margin-top: 8px; max-width: 12.5rem; color: #e9dfcc; }
+
+@media (max-height: 760px) {
+  html[data-look="c"] .menu--title .menu-card { padding: 22px 38px 18px; }
+  html[data-look="c"] .lk-relief { width: 92px; height: 80px; margin-bottom: 4px; }
+  html[data-look="c"] .menu--title .menu-card .style-card__name { font-size: 20px; }
 }
 
-@media (prefers-reduced-motion: reduce) { html[data-look] .menu--title .menu-card { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  html[data-look] .menu--title .menu-card, html[data-look] .lk-aspis { transition: none; }
+  html[data-look="a"] .lk-embers i { animation: none; }
+  html[data-look="a"] .lk-embers i:nth-child(odd) { bottom: 9%; } html[data-look="a"] .lk-embers i:nth-child(3n) { bottom: 16%; } html[data-look="a"] .lk-embers i:nth-child(4n) { bottom: 97%; }
+  html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-glint i { animation: none; transform: translateX(0); }
+}
