@@ -28,8 +28,8 @@ export const enemy: EnemySpec = {
     { name: "Blinded", belowHp: 0.3, attackIds: ["club_left", "club_right", "boulder"], telegraphScale: 0.65 },
   ],
   weakSpots: [
-    { id: "eye", label: "his one eye", position: [0, 3.7, 1.18], moves: ["jab", "cross", "overhead_strike", "reverse_punch", "hammer_fist", "rising_palm"] },
-    { id: "gut", label: "his gut", position: [0, 1.9, 0.92], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm", "front_kick", "knee"] },
+    { id: "eye", label: "his one eye", position: [0, 3.75, 1.45], moves: ["jab", "cross", "overhead_strike", "reverse_punch", "hammer_fist", "rising_palm"] },
+    { id: "gut", label: "his gut", position: [0, 2.5, 0.8], moves: ["hook", "cross", "spear_thrust", "uppercut", "reverse_punch", "double_palm", "front_kick", "knee"] },
   ],
   finisher: "stake_thrust",
   taunts: [
