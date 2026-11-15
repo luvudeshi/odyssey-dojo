@@ -20,5 +20,7 @@ limitSlowRequests(app.listen(config.port, () => {
     port: config.port,
     gemini: config.geminiKey !== null,
     elevenlabs: config.elevenLabsKey !== null,
+    // Only that the variable is set. Whether the database answers is what GET /api/account/status says.
+    accounts: (config.databaseUrl ?? null) !== null,
   });
 }));

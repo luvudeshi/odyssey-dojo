@@ -50,7 +50,7 @@ export const move: MoveDef = {
   hint: "Swing a bent arm across your body, either hand",
   key: "l",
   diagram: { leftElbow: [26, 32], leftWrist: [42, 28], rightElbow: [62, 42], rightWrist: [57, 26] },
-  teaches: "Swings come from the side, out of view, so always bring your hand back to your face",
+  teaches: "Swings curl round from the side, out of view, so keep your hands up to guard your face",
   detect: hook,
   quality(history) {
     const side = SIDES.find((each) => hookOn(history, each) >= 0.7) ?? "left";

@@ -90,7 +90,7 @@ export function EndPanel(props: {
           </div>
           {practised.length > 0 && (
             <div className="end-practised">
-              <h2>What you practised</h2>
+              <h2>What each move is for</h2>
               <ul>{practised.map((move) => <li key={move.id}><b>{move.name}</b> {move.teaches}</li>)}</ul>
             </div>
           )}
