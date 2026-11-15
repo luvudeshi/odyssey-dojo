@@ -8,6 +8,8 @@ Lines are short on purpose. A call must fit inside the fastest telegraph (1.1 s)
 
 A phase line is picked by the phase's own name, not its number (`phaseLineId` in `src/audio/athenaLines.ts`). The name is slugged: "The Meadow of Bones" plays `phase_the_meadow_of_bones`. Polyphemus's two clips keep their old ids: "The Club" plays `phase_1` and "Blinded" plays `phase_2`. A later phase with no line of its own plays `phase_any`, which names no one. To give a new phase a line, add a row with the id `phase_<slug of its name>` and generate the clip. Phase lines are at most 5 words and tell the fighter what to do about the attack that phase adds.
 
+A phase line is spoken when the strike that changes the phase lands. If the call for that strike is still playing, the call is cut so the phase line can start (`createVoice` in `src/audio/voice.ts`). The next defense call then cuts the phase line. With the engine's 0.7 s pause after a strike, only the first 0.7 s of the line is heard, so each line starts with what is new ("Her wand!", "Six heads!"). A phase change made by a god power is not announced while a call is playing.
+
 The script lives in `src/audio/athenaLines.ts`. This table must match it exactly; `tests/athenaLines.test.ts` fails if they differ. Ids are fixed: clips are named after them.
 
 | id | when it plays | text |
