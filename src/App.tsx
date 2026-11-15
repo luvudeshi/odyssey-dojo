@@ -1,7 +1,7 @@
 // Screen flow (see screens/flow.ts): main menu -> style -> quest map -> fight -> result -> map.
 import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { achievements, type Achievement } from "./account/achievements";
-import { getProfile, recordFight, useProfile } from "./account/store";
+import { getProfile, recordDojo, recordFight, recordRoom, useProfile } from "./account/store";
 import { newlyUnlocked } from "./account/unlocks";
 import { UnlockNotice } from "./account/ui/UnlockNotice";
 import "./screens/menus.css";
@@ -33,7 +33,7 @@ import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
 import type { HostLink } from "./net/host";
 import { WebcamGate } from "./screens/WebcamGate";
-import { useSettings } from "./settings/store";
+import { getSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 
@@ -54,13 +54,20 @@ export function App() {
   const recorded = useRef(0);
   // Achievements the last fight unlocked, shown over its result screen for a few seconds.
   const [fresh, setFresh] = useState<readonly Achievement[]>([]);
-  const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search)));
+  const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
 
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
   const [god, setGod] = useState<GodReveal | null>(null);
   const [scanned, setScanned] = useState(false);
+  // Writes to the profile through `change` and shows whatever that unlocked.
+  const noting = (change: () => void): void => {
+    const before = achievements(getProfile(), ENEMIES);
+    change();
+    setFresh(newlyUnlocked(before, achievements(getProfile(), ENEMIES)));
+  };
+  const unlocks = <UnlockNotice items={fresh} onDone={() => { setFresh([]); }} />;
   // A notice belongs to its own result screen: leaving it (retry, map, quit) drops what was left of it.
   useEffect(() => { if (flow.screen !== "result") setFresh([]); }, [flow.screen]);
   const { musicVolume } = useSettings();
@@ -108,10 +115,16 @@ export function App() {
     );
   };
 
+  // "Play on the keyboard" on the camera problem card, and Story mode when the setting says Keyboard.
+  const startKeyboard = (): void => { keyboardOnly.current = true; setCameraProblem(""); setTracker(null); dispatch({ type: "ready" }); };
+
   const openTraining = (): void => {
     setCameraProblem("");
     setPanel("training");
-    if (!tracker && !keyboardOnly.current) camera.start().then(setTracker, (error: unknown) => { log("warn", "tracker_failed", error); });
+    // The setting decides, each time the dojo opens: Keyboard drops a camera started earlier and asks for none.
+    keyboardOnly.current = getSettings().controls === "keyboard";
+    if (keyboardOnly.current) setTracker(null);
+    else if (!tracker) camera.start().then(setTracker, (error: unknown) => { log("warn", "tracker_failed", error); });
   };
 
   if (flow.screen === "title" && panel === "training") {
@@ -119,7 +132,11 @@ export function App() {
       <Dojo
         tracker={tracker}
         style={flow.style}
-        onDone={(summary) => { dispatch({ type: "warmed", assessment: assessmentFrom(summary) }); setPanel(null); }}
+        onDone={(summary) => {
+          if (summary.reps.length > 0) noting(() => { recordDojo(summary.moves.some((move) => move.reps > 0 && move.grades.excellent === move.reps)); });
+          dispatch({ type: "warmed", assessment: assessmentFrom(summary) });
+          setPanel(null);
+        }}
         onQuit={() => { setPanel(null); }}
       />
     );
@@ -146,22 +163,27 @@ export function App() {
   }
 
   if (flow.screen === "title") {
-    return (
+    return <>
       <MainMenu
         name={profile.name}
         notice={notice}
         problem={cameraProblem}
-        onStory={startCamera}
-        onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); setTracker(null); dispatch({ type: "ready" }); }}
+        onStory={() => { if (getSettings().controls === "keyboard") startKeyboard(); else startCamera(); }}
+        onCamera={startCamera}
+        onKeyboard={startKeyboard}
         onMultiplayer={() => { setPanel("multiplayer"); }}
         onTraining={openTraining}
         onAccount={() => { setPanel("account"); }}
       />
-    );
+      {unlocks}
+    </>;
   }
 
   if (flow.screen === "guest" && joined) {
-    return <GuestFight joined={joined} onLeave={() => { setJoined(null); dispatch({ type: "toTitle" }); }} />;
+    return <>
+      <GuestFight joined={joined} onOver={() => { noting(recordRoom); }} onLeave={() => { setJoined(null); dispatch({ type: "toTitle" }); }} />
+      {unlocks}
+    </>;
   }
 
   if (flow.screen === "style" && tracker && !scanned) {
@@ -204,7 +226,7 @@ export function App() {
         god={god?.god ?? null}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
         onQuit={() => { stopIntro.current(); hostLink?.stop(); dispatch({ type: "quit" }); }}
-        renderEnd={(won, score, mastery) => (
+        renderEnd={(won, score, mastery, tally) => (
           <EndPanel
             won={won}
             enemyId={enemy.id}
@@ -213,9 +235,8 @@ export function App() {
             onShown={() => {
               if (recorded.current !== flow.seed) {
                 recorded.current = flow.seed;
-                const before = achievements(getProfile(), ENEMIES);
-                recordFight({ enemyId: enemy.id, won, score, mastery });
-                setFresh(newlyUnlocked(before, achievements(getProfile(), ENEMIES)));
+                const styleId = flow.style?.id ?? "";
+                noting(() => { recordFight({ enemyId: enemy.id, won, score, mastery, styleId, tally }); });
               }
               dispatch({ type: "ended", enemyId: enemy.id, won });
             }}
@@ -225,7 +246,7 @@ export function App() {
           />
         )}
       />
-      <UnlockNotice items={fresh} onDone={() => { setFresh([]); }} />
+      {unlocks}
     </CameraPanelContext>
   );
 }
