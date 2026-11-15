@@ -3,13 +3,14 @@
 import type { CombatState } from "../core/types";
 import { MOVES } from "../moves/registry";
 import { Button } from "../ui/pebble";
+import "./sky/pad.css";
 
 export function TouchPad(props: { state: CombatState; strikes: readonly string[]; onStrike: (move: string) => void }) {
   const { state, strikes, onStrike } = props;
   const asked = state.phase.kind === "strike" || state.phase.kind === "finisher" ? state.phase.move : null;
   const askedName = asked === null ? "" : MOVES.get(asked)?.prompt ?? asked;
   return (
-    <div className="touchpad">
+    <div className="touchpad sky-pad">
       <Button
         primary
         className="touch-main"
