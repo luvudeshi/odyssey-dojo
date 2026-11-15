@@ -90,11 +90,11 @@ export function risingHand(history: PoseHistory, side: Side, bentBelow: number):
   return recent(history, 400).some((old) => wristRise(old, side) < -1);
 }
 
-const STRAIGHT = 145;
+export const STRAIGHT = 145;
 const NEARLY_STRAIGHT = 135;
-const BENT = 115;
+export const BENT = 115;
 /** A punch snaps: the elbow goes from bent to straight inside this many milliseconds. A reach takes longer. */
-const SNAP_MS = 200;
+export const SNAP_MS = 200;
 const OPENING_MS = 100;
 const OPENING_DEGREES = 20;
 
