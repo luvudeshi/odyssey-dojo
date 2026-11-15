@@ -226,7 +226,7 @@ export function step(
           STRIKE_DAMAGE * (1 + Math.min(state.combo, 5) * 0.1) * (0.5 + quality) * (together ? 2 : 1),
         );
         const enemyHp = Math.max(0, state.enemyHp - damage);
-        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality };
+        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality, ...(together ? { together: true as const } : {}) };
         const phaseIndex = phaseIndexFor(enemy, enemyHp);
         const next = {
           ...fill(learned(state, phase.move), quality >= GREAT_QUALITY ? POWER_PER_GREAT : 0),
