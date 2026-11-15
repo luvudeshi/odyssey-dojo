@@ -38,6 +38,7 @@ export function QuestMap(props: {
   open: (index: number) => boolean;
   onEnter: (index: number) => void;
   onStyle: () => void;
+  onMenu: () => void;
 }) {
   const { enemies, cleared } = props;
   const points = routePoints(enemies.length);
@@ -46,7 +47,7 @@ export function QuestMap(props: {
   return (
     <Panel as="main" ornament className="menu menu--map">
       <PebbleHeading as="h1" text="The Road Home" px={60} tone="ochre" />
-      <p>Choose your next stop on the sea.</p>
+      <p>Choose your next stop on the sea. The fight starts as soon as you pick one.</p>
       <div className="chart">
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
           {[62, 150, 238, 326, 392].map((y, i) => <path key={y} className="wave" d={wave(y, i % 2 === 0 ? 0 : 15)} />)}
@@ -79,7 +80,10 @@ export function QuestMap(props: {
           );
         })}
       </div>
-      <Button onClick={props.onStyle}>Change style</Button>
+      <div className="menu__row">
+        <Button onClick={props.onStyle}>Change style</Button>
+        <Button onClick={props.onMenu}>Main menu</Button>
+      </div>
     </Panel>
   );
 }

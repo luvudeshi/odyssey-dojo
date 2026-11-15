@@ -21,6 +21,7 @@ export function MonsterRig({ children }: { children: ReactNode }) {
     monsterMotion(m, battle, nowSeconds(), calmMotion());
     advance.current = MathUtils.damp(advance.current, m.advanceTarget, m.advanceLambda, dt);
     group.current?.position.set(m.x, m.y, MONSTER_Z + advance.current + m.z);
+    battle.rigX = m.x; battle.rigY = m.y; battle.rigZ = advance.current + m.z;
     group.current?.rotation.set(m.rx, 0, m.rz);
     group.current?.scale.set(1, m.sy, 1);
   });
