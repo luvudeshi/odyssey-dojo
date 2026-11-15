@@ -31,9 +31,9 @@ Each cell: fights won / mean length of all 200 fights / mean length of the fight
 | --- | --- | --- | --- |
 | Polyphemus | 88% / 95 s / 93 s when won | 100% / 58 s / 58 s when won | 100% / 35 s / 35 s when won |
 | Circe | 57% / 150 s / 149 s when won | 100% / 93 s / 93 s when won | 100% / 52 s / 52 s when won |
-| The Sirens | 46% / 149 s / 151 s when won | 100% / 97 s / 97 s when won | 100% / 55 s / 55 s when won |
-| Scylla | 35% / 136 s / 141 s when won | 100% / 91 s / 91 s when won | 100% / 51 s / 51 s when won |
-| Charybdis | 31% / 135 s / 141 s when won | 100% / 93 s / 93 s when won | 100% / 52 s / 52 s when won |
+| The Sirens | 48% / 151 s / 153 s when won | 100% / 98 s / 98 s when won | 100% / 55 s / 55 s when won |
+| Scylla | 35% / 137 s / 143 s when won | 100% / 93 s / 93 s when won | 100% / 52 s / 52 s when won |
+| Charybdis | 31% / 136 s / 143 s when won | 100% / 94 s / 94 s when won | 100% / 53 s / 53 s when won |
 | The Suitors | 26% / 171 s / 182 s when won | 100% / 117 s / 117 s when won | 100% / 65 s / 65 s when won |
 <!-- /table:now -->
 
@@ -137,5 +137,7 @@ The order of the stops, "fights won never rise", the 2-minute cap and every Poly
 - `hp` sets the length for everyone: at the Suitors, 10 health is about 2.5 s for the average player, and 30 less health (405) is 13 more fights of 200 for the beginner.
 - The Suitors are 3 s under the 2-minute cap for the average player, since the 3 s pause after a phase change added 4.6 s to every fight. If the cap fails, lower their `hp`: at 430 the fight is about 115 s and the beginner still wins about 25%.
 - The good player's health left is the tightest ordering on the route: 0.18 between the Sirens (96.89) and Scylla (96.71), and the test asks for more than 0.1.
+
+**Issue #33, a last move at every stop and a second attack in the Sirens' first phase.** The Sirens, Scylla and Charybdis now end on a called move, which adds 1 to 2 s to each of those fights. The Sirens' first phase asks for a dodge as well as the block. A swoop does 3 where the song does 5, so both swoops have weight 0.5: the song is two calls in three in the first phase and half of them in the second. The beginner wins 48% there (96 of 200), up from 46% (92). No `hp` or `damage` changed and every ordering test passes as it was.
 
 The run is seeded, so the numbers do not move by themselves.
