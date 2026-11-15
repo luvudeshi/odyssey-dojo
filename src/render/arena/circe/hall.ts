@@ -88,12 +88,12 @@ function table(): BufferGeometry[] {
 }
 
 /** Everything solid in and around the portico. */
-export function hallGeometry(): BufferGeometry {
+export function hallGeometry(codeColumns = true): BufferGeometry {
   const parts: BufferGeometry[] = [];
   parts.push(place(paint(box(21.5, PLATFORM_Y - GRASS_Y, 5.2), "#b9a98d", 0.03, 1), [0, (PLATFORM_Y + GRASS_Y) / 2, -9.6]));
   parts.push(place(paint(box(7, 0.16, 0.5), "#c9b99d", 0.03, 2), [0, 0.08, -6.75]));
   parts.push(place(paint(box(7.4, 0.3, 0.45), "#cbbb9f", 0.03, 3), [0, 0.15, -7.2]));
-  COLUMN_X.forEach((x, i) => { parts.push(...column(x, COLUMN_Z, 100 + i * 7)); });
+  if (codeColumns) COLUMN_X.forEach((x, i) => { parts.push(...column(x, COLUMN_Z, 100 + i * 7)); });
   parts.push(place(paint(box(22, 0.85, 1.3), "#e6d8bd", 0.03, 10), [0, 6.45, COLUMN_Z]));
   parts.push(place(paint(box(22, 0.6, 1.1), "#b8552e", 0.04, 11), [0, 7.2, COLUMN_Z - 0.05]));
   for (let i = 0; i < 21; i++) parts.push(place(paint(box(0.3, 0.6, 0.12), "#3b2a3a", 0.03, 120 + i), [-10 + i, 7.2, COLUMN_Z + 0.55]));

@@ -75,11 +75,9 @@ function umbrellaPine(x: number, z: number, height: number, hex: string, seed: n
   ];
 }
 
-/** Tall trees ringed round the clearing, the near ones framing the fight. */
-export function treeGeometry(): BufferGeometry {
+/** Where the trees stand: x, z and height in metres. Framing trees at the edges of the shot, then the ring. */
+export function treeSpots(): [number, number, number][] {
   const random = mulberry(5);
-  const parts: BufferGeometry[] = [];
-  const greens = ["#2f6a4a", "#3a7448", "#457a42", "#33645a"];
   const spots: [number, number, number][] = [];
   // Framing trees at the edges of the shot, then the ring.
   spots.push([-9.8, -0.5, 9], [10.2, -1.5, 10], [-11.5, 3, 11], [12.5, 2.5, 8.5]);
@@ -92,7 +90,14 @@ export function treeGeometry(): BufferGeometry {
     const side = i % 2 ? 1 : -1;
     spots.push([side * (13 + random() * 22), -18 + random() * 24, 9 + random() * 7]);
   }
-  spots.forEach(([x, z, h], i) => {
+  return spots;
+}
+
+/** Tall trees ringed round the clearing, the near ones framing the fight. */
+export function treeGeometry(): BufferGeometry {
+  const parts: BufferGeometry[] = [];
+  const greens = ["#2f6a4a", "#3a7448", "#457a42", "#33645a"];
+  treeSpots().forEach(([x, z, h], i) => {
     const hex = greens[i % greens.length] ?? "#2f6a4a";
     parts.push(...(i % 3 === 0 ? umbrellaPine(x, z, h * 0.8, hex, i * 9) : cypress(x, z, h, hex, i * 9)));
   });
@@ -135,7 +140,11 @@ function pig(x: number, z: number, yaw: number, seed: number): BufferGeometry[] 
   return parts;
 }
 
-function pen(): BufferGeometry[] {
+/** Where the animals stand: x, z and yaw. Exported so a look with real animal models puts them in the same places. */
+export const WOLVES: readonly (readonly [number, number, number])[] = [[-2.4, -9.2, 0.3], [2.4, -9.2, -0.3]];
+export const PIGS: readonly (readonly [number, number, number])[] = [[-7.2, -4.6, 0.7], [-8.2, -4.2, 2.2], [-6.6, -5.9, 4.1], [-7.9, -5.5, 5.5]];
+
+function pen(withPigs: boolean): BufferGeometry[] {
   const parts: BufferGeometry[] = [];
   const [x0, x1, z0, z1] = [-9.0, -5.9, -7.2, -3.2];
   const post = (px: number, pz: number, i: number): void => {
@@ -149,19 +158,19 @@ function pen(): BufferGeometry[] {
     for (const x of [x0, x1]) parts.push(place(paint(new BoxGeometry(0.07, 0.07, z1 - z0), "#7a4f2b", 0.05, 31), [x, GRASS_Y + y, (z0 + z1) / 2]));
   }
   parts.push(place(paint(new BoxGeometry(1.0, 0.5, 0.6), "#a8794a", 0.05, 32), [-8.2, GRASS_Y + 0.25, -6.5]));
-  const pigs: readonly (readonly [number, number, number])[] = [[-7.2, -4.6, 0.7], [-8.2, -4.2, 2.2], [-6.6, -5.9, 4.1], [-7.9, -5.5, 5.5]];
-  pigs.forEach(([px, pz, yaw], i) => {
+  if (!withPigs) return parts;
+  PIGS.forEach(([px, pz, yaw], i) => {
     parts.push(...pig(px, pz, yaw, 40 + i * 6));
   });
   return parts;
 }
 
 /** Everything standing in the yard that takes the sun. */
-export function yardGeometry(): BufferGeometry {
+export function yardGeometry(modelledAnimals = false): BufferGeometry {
   const parts: BufferGeometry[] = [];
   parts.push(...beast(-4.0, -7.4, 0.15, "#c8964a", "#7a4a22"), ...beast(4.0, -7.4, -0.15, "#c8964a", "#7a4a22"));
-  parts.push(...beast(-2.4, -9.2, 0.3, "#a6acb6", null, 0), ...beast(2.4, -9.2, -0.3, "#8d939e", null, 0));
-  parts.push(...pen());
+  if (!modelledAnimals) parts.push(...beast(-2.4, -9.2, 0.3, "#a6acb6", null, 0), ...beast(2.4, -9.2, -0.3, "#8d939e", null, 0));
+  parts.push(...pen(!modelledAnimals));
   for (const [x, , z] of BRAZIERS) {
     parts.push(place(paint(new CylinderGeometry(0.05, 0.09, BRAZIER_HEIGHT, 5), "#6b4a2a", 0.04, 50), [x, BRAZIER_HEIGHT / 2, z]));
     parts.push(place(paint(new CylinderGeometry(0.42, 0.18, 0.3, 7), "#b07a3a", 0.05, 51), [x, BRAZIER_HEIGHT + 0.1, z]));

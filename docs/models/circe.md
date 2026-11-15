@@ -54,3 +54,43 @@ Average per frame over 180 frames in the keyboard fight (headless Chrome, Metal)
 | Circe | low (`q`) | 75 | 25,186 |
 
 Circe has fewer draw calls on high and about 35% to 45% more triangles; the trees and hall are merged vertex-coloured meshes. Frame time was pinned at 17 ms (vsync) in both, so no GPU timing was measured.
+
+## Alternate looks (owner picks): `?look=a` and `?look=b`
+
+Nothing changes without the flag. Both looks use the same Quaternius Witch as Circe and the same Doric columns; they differ in robe colour, trees and ground. Files are in `public/models/circe/` and `public/textures/circe/`, about 5 MB in all. Screenshots: `docs/screenshots/circe-look-{base,a,b}-{wide,defend,strike,extra}.png`. Code: `src/render/monsters/models/Circe.tsx` (the figure), `src/render/arena/arenas/Circe.tsx` and `src/render/arena/circe/LookProps.tsx` (the courtyard). `hall.ts` and `yard.ts` only gained options (code columns, code wolves and pigs can be left out, tree spots exported); the base look is unchanged.
+
+| Look | Circe | Courtyard |
+|---|---|---|
+| base | code-built figure | code columns, trees, wolves, pigs |
+| a | Witch, purple robe | Doric columns, Quaternius pines, common trees and willows, bushes and rocks, modelled wolves and pigs, code hall and lions |
+| b | Witch, robe recoloured sea green (the base colour) | as a with willows and common trees first, and the grass takes the Ground037 texture |
+
+### Pieces
+
+| Piece | Source | Author | Licence | Size | Verdict |
+|---|---|---|---|---|---|
+| Witch (`witch.glb`, 24 clips) | https://poly.pizza/m/QBEOV9ZUT8 | Quaternius | CC-BY 3.0 (Poly Pizza page; Quaternius's own pack page says CC0, credit anyway) | 1.6 MB | Kept, fitted to 3.0 m, faces +z. Clips: Idle_Neutral, HitRecieve, Death, and for windups Punch_Right (wand_left), Punch_Left (wand_right), Wave (cup), Interact (spell). Weak spots at 2.0 and 2.2 m land on her torso |
+| Doric Greek Column (`doric.glb`) | https://poly.pizza/m/5VD5-v8NBZ4 | Victor Vina | CC-BY 3.0 | 87 KB | Kept, 6.3 m, six of them on the portico. White marble, the Greek look the base lacks |
+| Wolf (`wolf.glb`) | https://quaternius.com/packs/ultimateanimatedanimals.html | Quaternius | CC0 | 0.6 MB | Kept, 1.5 m, idle clip, in the code wolves' places |
+| Pig (`pig.glb`) | https://poly.pizza/m/TNvG3QUFlp (Quaternius Farm Animal Pack) | Quaternius | CC0 | 160 KB | Kept, 0.72 m, idle clip, four in the pen |
+| Pine, Common tree, Willow, Bush, Rock Moss | https://quaternius.com/packs/ultimatenature.html | Quaternius | CC0 (pack page says CC0) | 106, 159, 109, 21, 7 KB | Kept, trees at 0.62 of the code trees' heights. Darker and busier than the code trees at dusk |
+| Ground037 colour map | https://ambientcg.com/view?id=Ground037 | ambientCG | CC0 | 2.1 MB, 1024 px | Used in b only; barely visible under the dusk lighting, so b's gain here is small |
+| Medieval woman (Quaternius modular women pack, Poly Pizza single y9KWOVG21R) | page URL not recorded by the searcher | Quaternius | CC-BY 3.0 per the searcher, not re-checked | 1.6 MB | Rejected. Seen in the fight: a rogue in black trousers and a short top, not a sorceress. Not shipped |
+| KayKit Pillar | https://poly.pizza/m/1nt8n3rVKU | Kay Lousberg | CC0 | 23 KB | Rejected. Seen in the fight: squat grey hexagonal blocks, worse than the code columns. Not shipped |
+| Lion, Doric-like columns and others found by singles search | not identified to a page I could read | unknown | unclear | n/a | Not used: licence not verified. The lions stay code-built |
+| KayKit Mage, Quaternius Animals (Fox, Husky), Formal and Medieval modular women, wall and tower kit | candidates on disk | | CC0 | | Not used: Mage is chibi, the modular women have no clips, the medieval walls are not Greek |
+
+### Credit rows
+
+```
+| Witch | https://poly.pizza/m/QBEOV9ZUT8 | Quaternius | CC-BY 3.0 |
+| Doric Greek Column | https://poly.pizza/m/5VD5-v8NBZ4 | Victor Vina | CC-BY 3.0 |
+| Wolf (Ultimate Animated Animals) | https://quaternius.com/packs/ultimateanimatedanimals.html | Quaternius | CC0 |
+| Pig (Farm Animal Pack) | https://poly.pizza/m/TNvG3QUFlp | Quaternius | CC0 |
+| Pine, Common tree, Willow, Bush, Rock Moss (Ultimate Nature Pack) | https://quaternius.com/packs/ultimatenature.html | Quaternius | CC0 |
+| Ground037 (1K colour) | https://ambientcg.com/view?id=Ground037 | ambientCG | CC0 |
+```
+
+### Honest notes
+
+Her attacks read less clearly than the code figure: the Witch clips are generic punches, a wave and an interact, not a wand sweep, so left and right differ by arm but the cup (arm up) looks like a wave and the spell has no forward thrust. The Witch has no wand or goblet.
