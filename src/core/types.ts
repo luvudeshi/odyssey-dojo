@@ -181,6 +181,8 @@ export interface CombatInput {
   /** Defenses player 0 is holding. */
   readonly held: ReadonlySet<string>;
   readonly struck: readonly Strike[];
+  /** Strikes the webcam saw a real attempt at that fell short of counting (confidence 0.45 up to the firing level). */
+  readonly tried?: ReadonlySet<string>;
 }
 
 export type CombatEvent =

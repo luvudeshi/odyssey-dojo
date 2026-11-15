@@ -8,6 +8,8 @@ export type RoomEvent =
   | { readonly type: "video"; readonly track: MediaStreamTrack | null; readonly identity: string }
   /** The friend's microphone arrived or stopped. */
   | { readonly type: "audio"; readonly track: MediaStreamTrack | null; readonly identity: string }
+  /** Someone is in the room: already there on joining, or came in later. The answer path (answer.ts) waits for the FaceTime call this way. */
+  | { readonly type: "joined"; readonly identity: string }
   /** The far end left the room: the friend hung up, or the call was ended. */
   | { readonly type: "left"; readonly identity: string }
   /** This page lost the room. */

@@ -2,7 +2,8 @@
 import { describe, expect, test } from "vitest";
 import { bridgeReady } from "../src/facetime/bridge";
 import {
-  CALL_CAP_MS, FAILURE_MESSAGES, GOODBYE_AT_MS, GREET_DEADLINE_MS, IDLE, RING_TIMEOUT_MS, callMsLeft, callStep, clock, describe as say, greetMsLeft, isLive, isOpen,
+  CALL_CAP_MS, FAILURE_MESSAGES, GOODBYE_AT_MS, GREET_DEADLINE_MS, IDLE, PLATE_LINGER_MS, RING_TIMEOUT_MS, callMsLeft, callStep, clock, describe as say, greetMsLeft, isLive, isOpen,
+  partingLine,
 } from "../src/facetime/callMachine";
 import type { CallEffect, CallEvent, CallState } from "../src/facetime/callMachine";
 import { E164, PHONE_MESSAGES, maskPhone, normalizePhone, showPhone } from "../src/facetime/phone";
@@ -172,6 +173,19 @@ describe("the call's state machine", () => {
     expect(unanswered.effects).toEqual(["hang_up"]);
     // Nothing happens to a call that is over.
     expect(play([{ type: "hang_up", now: 1 }, { type: "tick", now: 2 }, { type: "bridge_ready", now: 3 }, { type: "fail", now: 4, why: "network" }], host.state)).toEqual({ state: host.state, effects: [] });
+  });
+
+  test("a call that ends or fails during a fight leaves the host a line on the plate for six seconds", () => {
+    const playing = play([...answered, { type: "greeted", now: 8300 }, { type: "fight_started", now: 8400 }]).state;
+    expect(PLATE_LINGER_MS).toBe(6000);
+    expect(partingLine(true, play([{ type: "remote_ended", now: 9000 }], playing).state, 9000)).toBe("Your friend hung up.");
+    expect(partingLine(true, play([{ type: "hang_up", now: 9000 }], playing).state, 9000)).toBe("The call has ended.");
+    expect(partingLine(true, play([{ type: "tick", now: 8000 + CALL_CAP_MS }], playing).state, 0)).toBe("The five minutes are up. The call has ended.");
+    expect(partingLine(true, play([{ type: "fail", now: 9000, why: "room_lost" }], playing).state, 9000)).toBe(FAILURE_MESSAGES.room_lost);
+    // Not in a fight: the card is on screen and says it. And nothing is said while the call is still on.
+    expect(partingLine(false, play([{ type: "remote_ended", now: 9000 }], playing).state, 9000)).toBeNull();
+    expect(partingLine(true, playing, 9000)).toBeNull();
+    expect(partingLine(true, IDLE, 9000)).toBeNull();
   });
 
   test("a failure says why in plain words and a new dial starts clean", () => {

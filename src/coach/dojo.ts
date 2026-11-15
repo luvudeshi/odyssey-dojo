@@ -232,6 +232,11 @@ export function tickDojo(state: DojoState, nowMs: number, frame: PoseFrame | nul
       hit = { atMs: nowMs, quality: sure ? finite(move.quality?.(history) ?? confidence) : confidence, sure };
     }
   }
+  // A loosened detector counts a strike early in the motion; the best look in the settle window is the one scored.
+  if (fresh && hit?.sure && hit.atMs !== nowMs) {
+    const later = finite(move.quality?.(history) ?? 0);
+    if (later > hit.quality) hit = { ...hit, quality: later };
+  }
   const going = { ...timed, frames, hit };
   if ((hit && nowMs - hit.atMs >= state.config.settleMs) || elapsed >= state.phaseMs) return judged(going, move, nowMs);
   return going;
