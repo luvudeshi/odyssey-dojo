@@ -121,7 +121,7 @@ export function FightScreen(props: {
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
       setLost(false);
-      const own = mergeInputs(keys, readPose(history));
+      const own = mergeInputs(keys, readPose(history, current.phase.kind === "strike" ? current.phase.move : null));
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
