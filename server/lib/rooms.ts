@@ -124,8 +124,10 @@ export function createRoomStore(now: () => number = Date.now) {
           if (room.guest !== null) deliver(room.guest, peerEvent(false));
         }
         if (room.guest !== null && gone(room.guest)) {
-          if (room.guest.here) deliver(room.host, peerEvent(false));
+          const guest = room.guest;
+          // The seat is emptied before the host is told, so a held poll this answers says the guest is not here.
           room.guest = null;
+          if (guest.here) deliver(room.host, peerEvent(false));
         }
         continue;
       }
