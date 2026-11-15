@@ -41,7 +41,7 @@ export function Dialog(props: { title: string; children: ReactNode; onEscape?: (
   return (
     <div className="ui-backdrop">
       <div ref={ref} className="ui-panel" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} onKeyDown={onKeyDown}>
-        <PebbleHeading as="h2" className="ui-title" text={props.title.toUpperCase()} px={36} tone="ochre" />
+        <PebbleHeading as="h2" className="ui-title" text={props.title} px={36} tone="ochre" />
         {props.children}
       </div>
     </div>

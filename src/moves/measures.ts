@@ -163,7 +163,17 @@ const rising = (side: Side, bentBelow: number): Measure[] => [
   atMost(`${side} wrist above the shoulder line, shoulder widths`, 1.3, now((frame) => wristRise(frame, side))),
   atMost(`${side} wrist out to its side, shoulder widths`, 1, now((frame) => wristOut(frame, side))),
   atMost(`${side} elbow bent, degrees`, bentBelow, now(elbow(side))),
+  atMost(`${side} elbow opening in ${String(OPENING_MS)} ms, degrees`, OPENING_DEGREES, (history) =>
+    now(elbow(side))(history) - Math.min(...recent(history, OPENING_MS).map((old) => elbowAngle(old, side)))),
   atMost(`ms since ${side} wrist was at the waist (1 below the shoulders)`, 400, since((frame) => wristRise(frame, side) < -1)),
+  // Both hands coming up together are a guard or a push. CHEST (-0.6) and WAIST (-1) are written out in handSignals.ts.
+  {
+    name: `${otherSide(side)} hand not coming up too`,
+    anyOf: [
+      atMost(`${otherSide(side)} wrist above the shoulder line, shoulder widths`, -0.6, now((frame) => wristRise(frame, otherSide(side)))),
+      over(`ms since ${otherSide(side)} wrist was at the waist`, 400, since((frame) => wristRise(frame, otherSide(side)) < -1)),
+    ],
+  },
 ];
 /** Overhead strike, hammer fist and thunderbolt: the hand was up, and is now down. */
 const chop = (down: Single, wasUp: string, ms: number, up: (frame: PoseFrame) => boolean): Measure[] =>
@@ -241,7 +251,13 @@ const eitherSide = (build: (side: Side) => Measure[]): Measure[][] => SIDES.map(
 export const MEASURES: Readonly<Record<string, readonly (readonly Measure[])[]>> = {
   jab: one(...oneHanded("left")),
   cross: one(...oneHanded("right")),
-  spear_thrust: one(...punch("left"), ...punch("right")),
+  spear_thrust: one(
+    {
+      name: "arms not both flung out to their sides",
+      anyOf: SIDES.map((side) => atMost(`${side} fist out to its side, shoulder widths`, FLUNG, now((frame) => wristOut(frame, side)))),
+    },
+    ...punch("left"), ...punch("right"),
+  ),
   double_palm: one(...thrust("left"), ...thrust("right"), under("gap between the wrists, shoulder widths", 0.8, now(wristGap))),
   chain_punch: eitherSide(chain),
   reverse_punch: one(
