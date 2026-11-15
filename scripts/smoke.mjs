@@ -51,6 +51,8 @@ const SCREEN_TIMEOUT_MS = 15_000;
 /** With --shots: the picture is taken on this prompt card of the fight, once it has been up this long. */
 const SHOT_CARD = 5;
 const SHOT_AFTER_MS = 500;
+/** The main menu's way in without a webcam: the name of the link under the three cards (src/screens/MainMenu.tsx). */
+const KEYBOARD_LINK = "Play on the keyboard instead";
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -161,8 +163,6 @@ function readRenderer() {
   return gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "unknown";
 }
 
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 /** Runs in the page: the first button under `main` whose text, tooltip or label holds one of `texts`. */
 function findButton(texts) {
   const buttons = [...document.querySelectorAll("main button")];
@@ -184,20 +184,20 @@ async function waitForButton(page, texts, what) {
 }
 
 /**
- * Title -> Keyboard only -> the style -> this stop on the map -> intro button -> fight. Returns the name of the
- * style picked, or null when the map keeps this stop locked (a stop with no 3D model stays locked, see `playable`
- * in flow.ts). `style` null means the first style the screen offers.
+ * Main menu -> "Play on the keyboard instead" -> the style -> this stop on the map -> fight. A stop on the map
+ * starts its fight at once. Returns the name of the style picked, or null when the map keeps this stop locked (a stop
+ * with no 3D model stays locked, see `playable` in flow.ts). `style` null means the first style the screen offers.
  *
- * Nothing here reads a heading or a CSS look. The style card is the button that starts with a style's name, the stop
- * is the button that holds the stop's place or its monster's name, the intro button is the one that holds the monster's name:
- * all three texts come from the game's own definitions in src/. A locked stop is a disabled button.
+ * Nothing here reads a heading or a CSS look. The keyboard link is the button with that name (see MainMenu.tsx), the
+ * style card is the button that starts with a style's name, the stop is the button that holds the stop's place or its
+ * monster's name: those two texts come from the game's own definitions in src/. A locked stop is a disabled button.
  */
 async function enterFight(page, base, stop, style, styles, query) {
   await page.goto(`${base}/?stop=${stop.id}${query ? `&${query}` : ""}`);
-  // The title: the keyboard button by its name, or failing that the second button (the first is the webcam).
-  await page.locator("main button").first().waitFor({ timeout: SCREEN_TIMEOUT_MS });
-  const byName = page.getByRole("button", { name: /keyboard/i });
-  await ((await byName.count()) > 0 ? byName.first() : page.locator("main button").nth(1)).click();
+  // The main menu: the small link under the three cards. The cards start the webcam, so there is no fallback.
+  const keyboard = page.getByRole("button", { name: KEYBOARD_LINK, exact: true });
+  await keyboard.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the main menu has no "${KEYBOARD_LINK}" button`); });
+  await keyboard.click();
 
   const offered = style ? [style] : styles;
   const card = await waitForButton(page, offered.map((one) => one.name), "the style screen");
@@ -211,16 +211,8 @@ async function enterFight(page, base, stop, style, styles, query) {
   await onMap.locator.click();
   await page.waitForFunction((element) => !element.isConnected, mapButton, { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("the map did not close after the stop was clicked"); });
 
-  // The intro: its begin button names the monster ("Face Scylla"). If the map opened another stop, no button does.
-  const begin = page.getByRole("button", { name: new RegExp(escapeRegExp(stop.name), "i") });
-  try {
-    await begin.first().waitFor({ timeout: SCREEN_TIMEOUT_MS });
-  } catch {
-    const shown = ((await page.locator("main").textContent().catch(() => "")) ?? "").trim().slice(0, 80);
-    throw new Error(`no intro button names "${stop.name}"; the screen says "${shown}"`);
-  }
-  await begin.first().click();
-  await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_TIMEOUT_MS });
+  // The click on the stop starts the fight: there is no screen in between.
+  await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the fight did not open after "${stop.name}" was clicked on the map`); });
   return picked.name;
 }
 
@@ -507,8 +499,8 @@ ${parts.map(section).join("\n\n")}
 
 ## How to read it
 
-- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: Keyboard only, the style, the open stop on the map, then the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
-- The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name, the intro button is the one that names the monster. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
+- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu, "${KEYBOARD_LINK}", the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
+- The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name. The keyboard link on the main menu is found by its name. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).
 - **seconds** is from the fight's canvas appearing to the result panel.
