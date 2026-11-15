@@ -14,11 +14,17 @@ import {
 
 /** How long ago the hands may have been at the chest, in milliseconds. Generous: this move should land first try. */
 export const WINDUP_MS = 700;
+/** The widest the fists may be and still grip one stake, in shoulder widths. */
+export const GRIP = 0.9;
+/** How far below the shoulders the hands must be driven, in shoulder widths: 60% of the way from a grip at the chest (0.45) to a full thrust (1.3). */
+export const DRIVEN_DROP = 0.8;
+/** The less straight elbow at the finish, in degrees. A loaded elbow is under 120, so a still pose cannot be both. */
+export const DRIVEN_ELBOW = 125;
 
 /** Both fists close enough to be gripping one stake. */
 function handsTogether(frame: PoseFrame): boolean {
   const gap = distance2d(joint(frame.image, JOINT.leftWrist), joint(frame.image, JOINT.rightWrist));
-  return gap < shoulderWidth(frame) * 0.75;
+  return gap < shoulderWidth(frame) * GRIP;
 }
 
 /** How far below the shoulders the hands are, in shoulder widths. Negative means above. */
@@ -45,9 +51,9 @@ export function loaded(frame: PoseFrame): boolean {
 function driven(frame: PoseFrame): boolean {
   return (
     handsTogether(frame) &&
-    handsDrop(frame) > 0.9 &&
-    elbowAngle(frame, "left") > 135 &&
-    elbowAngle(frame, "right") > 135
+    handsDrop(frame) > DRIVEN_DROP &&
+    elbowAngle(frame, "left") > DRIVEN_ELBOW &&
+    elbowAngle(frame, "right") > DRIVEN_ELBOW
   );
 }
 
