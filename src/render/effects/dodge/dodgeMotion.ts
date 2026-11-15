@@ -25,7 +25,8 @@ export interface DodgeLook {
 }
 
 /** The numbers to nudge. */
-export const LOOK: DodgeLook = { dist: 1.6, stiff: 650, zeta: 0.8, antic: 0.1, anticS: 0.05, lean: 0.5, crouch: 0.85, hold: 0.22, share: 0.55 };
+// 1.05 m keeps a left dodge clear of the camera panel in a 1200 px window; 1.6 put him behind it.
+export const LOOK: DodgeLook = { dist: 1.05, stiff: 650, zeta: 0.8, antic: 0.1, anticS: 0.05, lean: 0.5, crouch: 0.85, hold: 0.22, share: 0.55 };
 
 /** The body turns about this height, so a lean keeps the feet near the floor. */
 export const PIVOT_Y = 0.6;
