@@ -6,6 +6,8 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
 import { MathUtils, Vector3 } from "three";
 import type { Color, Group, Material, Mesh, Object3D } from "three";
+import { anchorsFor } from "../../characters/anchors";
+import { loadCharacter } from "../../characters/characters";
 import type { PoseFrame } from "../../core/types";
 import { battle, calmMotion, nowSeconds } from "../battle";
 import { ErrorBoundary } from "../ErrorBoundary";
@@ -208,5 +210,7 @@ function GhostedHero({ candidate, poseRef }: { candidate: HeroCandidate; poseRef
 useGLTF.preload(spartan.url);
 
 export function Hero({ poseRef }: { poseRef: RefObject<PoseFrame | null> }) {
-  return <GhostedHero candidate={spartan} poseRef={poseRef} />;
+  // The chosen character's gear on the spartan's body. Read once per fight: the choice is made on a menu screen.
+  const candidate = useMemo(() => ({ ...spartan, anchors: anchorsFor(loadCharacter()) }), []);
+  return <GhostedHero candidate={candidate} poseRef={poseRef} />;
 }
