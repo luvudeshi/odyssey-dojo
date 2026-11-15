@@ -5,7 +5,7 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { log } from "../../src/core/log";
-import { createGate } from "./accountLimits";
+import { createGate, createKnownSessions } from "./accountLimits";
 import type { Gate } from "./accountLimits";
 import { nameKey, saveSchema } from "./accountRules";
 import type { Save } from "./accountRules";
@@ -27,10 +27,14 @@ export const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
 export const MAX_SESSIONS = 5;
 /** Accounts the database holds at most. Past it sign-up is refused; with 32 KB a save that is 64 MB of saves at the very most. */
 export const MAX_ACCOUNTS = 2000;
+/** Places no stranger can take, so the laptop that runs the server can still make an account when strangers have filled the rest. */
+export const ACCOUNTS_KEPT_FOR_THIS_MACHINE = 100;
 /** After a failed start the database is tried again this often, and no more often. */
 export const RETRY_MS = 15_000;
-/** How long an answer to "is the database there" is believed. After a failed query every call fails at once for this long. */
+/** How long an answer to "is the database there" is believed. While it is believed gone every call fails at once. */
 export const STATUS_CACHE_MS = 5_000;
+/** Queries that must fail one after another, with none working between them, before the database is believed gone. One slow query is not an outage. */
+export const FAILURES_TO_GIVE_UP = 3;
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const PREFIX = /^(?:[a-z][a-z0-9_]{0,30})?$/;
@@ -127,13 +131,19 @@ export interface Stored {
 export interface Accounts {
   /** Whether the database answers. Never throws. Asked at most once every STATUS_CACHE_MS. */
   readonly available: () => Promise<boolean>;
-  /** `name` is already cleaned (accountName). `urgent` waits for a hash however long the line is. */
+  /** `name` is already cleaned (accountName). `urgent` is this machine: it waits for a hash however long the line is, and may use the places kept for it. */
   readonly signUp: (name: string, password: string, urgent?: boolean) => Promise<Signed | "name_taken" | "full">;
   /** Null for an unknown name and for a wrong password alike, after the same work. */
   readonly signIn: (name: string, password: string, urgent?: boolean) => Promise<Signed | null>;
   readonly signOut: (token: string) => Promise<void>;
   /** The id of the account a token belongs to, or null when the token is unknown or its session has run out. */
   readonly accountOf: (token: string) => Promise<string | null>;
+  /**
+   * The same, without asking the database: the account when accountOf found this token in the last KNOWN_SESSION_MS
+   * (./accountLimits) and it was not signed out since, else null. A session that ran out or was ended to make room
+   * for a newer one can stay good here for that long at most.
+   */
+  readonly remembered: (token: string) => string | null;
   readonly readSave: (accountId: string) => Promise<Stored>;
   readonly writeSave: (accountId: string, save: Save) => Promise<{ readonly updatedAt: string }>;
   readonly close: () => Promise<void>;
@@ -182,6 +192,8 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
   let checkedAt = Number.NEGATIVE_INFINITY;
   let answers = false;
   let checking: Promise<boolean> | null = null;
+  let failures = 0;
+  const known = createKnownSessions(now);
 
   const believe = (up: boolean): void => {
     answers = up;
@@ -212,7 +224,10 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     return opening;
   };
 
-  /** One statement. Any failure is logged without secrets, turns the routes off for STATUS_CACHE_MS and becomes Unavailable. */
+  /**
+   * One statement. A failure is logged without secrets and becomes Unavailable. No connection at all, or
+   * FAILURES_TO_GIVE_UP failures in a row, also turn the routes off for STATUS_CACHE_MS.
+   */
   const run = async (text: string, params: readonly unknown[]): Promise<unknown[]> => {
     if (now() - checkedAt < STATUS_CACHE_MS && !answers) throw new Unavailable();
     const found = await link();
@@ -222,11 +237,13 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     }
     try {
       const rows = await found.query<unknown>(text, params);
+      failures = 0;
       believe(true);
       return rows;
     } catch (error) {
       log("warn", "accounts_query_failed", redact(error));
-      believe(false);
+      failures += 1;
+      if (failures >= FAILURES_TO_GIVE_UP) believe(false);
       throw new Unavailable();
     }
   };
@@ -260,7 +277,8 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
 
     signUp: async (name, password, urgent = false) => {
       const [count] = rowsOf(countRow, await run(`select count(*)::int as n from ${t.accounts}`, []));
-      if (count === undefined || count.n >= MAX_ACCOUNTS) return "full";
+      // The last places are kept for this machine (`urgent`), so strangers cannot fill the database to the brim.
+      if (count === undefined || count.n >= MAX_ACCOUNTS - (urgent ? 0 : ACCOUNTS_KEPT_FOR_THIS_MACHINE)) return "full";
       const salt = randomBytes(SALT_BYTES);
       const hash = await gate(() => hashPassword(password, salt), urgent);
       const token = makeToken();
@@ -303,6 +321,8 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     },
 
     signOut: async (token) => {
+      // Forgotten first: whatever the database says, this server no longer takes the token on trust.
+      known.forget(tokenHash(token));
       await run(`delete from ${t.sessions} where token_hash = decode($1::text, 'hex')`, [tokenHash(token)]);
     },
 
@@ -311,8 +331,12 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
         `select account_id::text as id from ${t.sessions} where token_hash = decode($1::text, 'hex') and expires_at > $2::timestamptz`,
         [tokenHash(token), iso(now())],
       );
-      return rowsOf(idRow, rows)[0]?.id ?? null;
+      const id = rowsOf(idRow, rows)[0]?.id ?? null;
+      if (id !== null) known.remember(tokenHash(token), id);
+      return id;
     },
+
+    remembered: (token) => known.get(tokenHash(token)),
 
     readSave: async (accountId) => {
       const row = rowsOf(saveRow, await run(

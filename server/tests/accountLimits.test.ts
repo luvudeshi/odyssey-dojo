@@ -1,10 +1,12 @@
-// The account limits on their own, on a clock the test moves: each budget, who is counted, and the gate for password hashes.
+// The account limits on their own, on a clock the test moves: each budget, who is counted, what is given back, and the gates.
 import { expect, test } from "vitest";
 import {
-  Busy, HASHES_AT_ONCE, HASHES_WAITING, REQUESTS_OVERALL, REQUESTS_PER_ADDRESS, SAVES_PER_ACCOUNT, SIGNINS_OVERALL, SIGNINS_PER_ADDRESS, SIGNINS_PER_NAME,
-  SIGNIN_NAME_WINDOW_MS, SIGNUPS_OVERALL, SIGNUPS_PER_ADDRESS, SIGNUP_WINDOW_MS, WRONG_TOKENS_PER_ADDRESS, createAccountLimits, createGate,
+  ATTEMPTS_PER_ADDRESS, Busy, HASHES_AT_ONCE, HASHES_WAITING, KNOWN_SESSION_MS, REQUESTS_PER_ACCOUNT, SAVES_PER_ACCOUNT, SIGNINS_PER_ADDRESS, SIGNINS_PER_NAME,
+  SIGNINS_PER_NAME_AND_ADDRESS, SIGNIN_NAME_WINDOW_MS, SIGNUPS_OVERALL, SIGNUPS_PER_ADDRESS, SIGNUP_WINDOW_MS, STRANGERS_AT_ONCE, STRANGERS_WAITING,
+  WRONG_TOKENS_PER_ADDRESS, createAccountLimits, createGate, createKnownSessions,
 } from "../lib/accountLimits";
-import { MAX_ACCOUNTS } from "../lib/accounts";
+import { ACCOUNTS_KEPT_FOR_THIS_MACHINE, MAX_ACCOUNTS } from "../lib/accounts";
+import { MAX_CONNECTIONS } from "../lib/db";
 import { MINUTE_MS, THIS_MACHINE } from "../lib/roomLimits";
 
 /** Takes `times` from a budget and says how many were let through. */
@@ -14,16 +16,33 @@ function passed(take: () => number, times: number): number {
   return through;
 }
 
-test("one address signs up ten times in ten minutes, and all strangers together thirty times", () => {
+test("sign-up and sign-in requests are counted per address before the body is read, and one address cannot use up another's", () => {
+  let now = 0;
+  const limits = createAccountLimits(() => now);
+  expect(passed(() => limits.attempt("a"), ATTEMPTS_PER_ADDRESS + 20)).toBe(ATTEMPTS_PER_ADDRESS);
+  expect(limits.attempt("a")).toBe(60);
+  // Nothing is shared: however many addresses are used up, the next one is untouched.
+  for (let index = 0; index < 50; index += 1) passed(() => limits.attempt(`flood ${String(index)}`), ATTEMPTS_PER_ADDRESS + 5);
+  expect(limits.attempt("b")).toBe(0);
+  now += MINUTE_MS;
+  expect(limits.attempt("a")).toBe(0);
+});
+
+test("only an account that was made is counted: forty an address and 120 for all strangers in ten minutes", () => {
   let now = 1_000;
   const limits = createAccountLimits(() => now);
-  expect(passed(() => limits.signUp("a"), SIGNUPS_PER_ADDRESS)).toBe(SIGNUPS_PER_ADDRESS);
+  // A taken name, a full database or a failure gives the place back, any number of times.
+  for (let index = 0; index < 500; index += 1) {
+    expect(limits.signUp("a")).toBe(0);
+    limits.signUpNotMade("a");
+  }
+  expect(passed(() => limits.signUp("a"), SIGNUPS_PER_ADDRESS + 5)).toBe(SIGNUPS_PER_ADDRESS);
   expect(limits.signUp("a")).toBe(SIGNUP_WINDOW_MS / 1000);
-  // Another address has a budget of its own, and a refused attempt uses up nothing of the shared one.
+  // A refused attempt uses up nothing of the shared budget.
   expect(passed(() => limits.signUp("a"), 50)).toBe(0);
-  expect(passed(() => limits.signUp("b"), SIGNUPS_PER_ADDRESS + 5)).toBe(SIGNUPS_PER_ADDRESS);
+  expect(passed(() => limits.signUp("b"), SIGNUPS_PER_ADDRESS)).toBe(SIGNUPS_PER_ADDRESS);
   expect(passed(() => limits.signUp("c"), SIGNUPS_PER_ADDRESS + 5)).toBe(SIGNUPS_OVERALL - 2 * SIGNUPS_PER_ADDRESS);
-  // The shared budget is used up: a fourth address that has done nothing waits too.
+  // The shared budget is used up by accounts really made: a fourth address waits too.
   expect(limits.signUp("d")).toBeGreaterThan(0);
   now += SIGNUP_WINDOW_MS - 1_500;
   expect(limits.signUp("d")).toBe(2);
@@ -32,69 +51,89 @@ test("one address signs up ten times in ten minutes, and all strangers together 
   expect(limits.signUp("a")).toBe(0);
 });
 
-test("the laptop that runs the server is never refused, whatever strangers have used up", () => {
+test("the laptop that runs the server is never refused, whatever strangers have used up, and is not counted against anybody", () => {
   const limits = createAccountLimits(() => 0);
   for (const address of ["a", "b", "c", "d"]) {
+    passed(() => limits.attempt(address), ATTEMPTS_PER_ADDRESS);
     passed(() => limits.signUp(address), SIGNUPS_PER_ADDRESS);
-    passed(() => limits.signIn(address), SIGNINS_PER_ADDRESS);
-    passed(() => limits.request(address), REQUESTS_PER_ADDRESS);
+    for (let index = 0; index < SIGNINS_PER_ADDRESS; index += 1) limits.signIn(address, `name ${String(index)}`);
+    passed(() => limits.lookup(address), WRONG_TOKENS_PER_ADDRESS);
+    passed(() => limits.request(address, "account-1"), REQUESTS_PER_ACCOUNT);
   }
-  expect([limits.signUp("e"), limits.signIn("e")].every((wait) => wait > 0)).toBe(true);
-  expect(passed(() => limits.signUp(THIS_MACHINE), 200)).toBe(200);
-  expect(passed(() => limits.signIn(THIS_MACHINE), 200)).toBe(200);
-  expect(passed(() => limits.request(THIS_MACHINE), 2_000)).toBe(2_000);
-  expect(passed(() => limits.signInName(THIS_MACHINE, "odysseus"), 200)).toBe(200);
-  for (let index = 0; index < 200; index += 1) limits.wrongTokenCount(THIS_MACHINE);
-  expect(limits.wrongTokenWait(THIS_MACHINE)).toBe(0);
-  // And what the laptop does is not counted against anybody else.
-  expect(limits.signInName("f", "odysseus")).toBe(0);
+  expect([limits.attempt("a"), limits.signUp("e"), limits.signIn("a", "penelope"), limits.lookup("a"), limits.request("e", "account-1")].every((wait) => wait > 0)).toBe(true);
+  expect(passed(() => limits.attempt(THIS_MACHINE), 500)).toBe(500);
+  expect(passed(() => limits.signUp(THIS_MACHINE), 500)).toBe(500);
+  expect(passed(() => limits.signIn(THIS_MACHINE, "odysseus"), 500)).toBe(500);
+  expect(passed(() => limits.lookup(THIS_MACHINE), 500)).toBe(500);
+  expect(passed(() => limits.request(THIS_MACHINE, "account-1"), 2_000)).toBe(2_000);
+  // Giving back on the laptop's behalf takes nothing from what strangers have used.
+  limits.signUpNotMade(THIS_MACHINE);
+  limits.signedIn(THIS_MACHINE, "odysseus");
+  limits.tokenKnown(THIS_MACHINE);
+  expect([limits.signUp("e"), limits.lookup("a")].every((wait) => wait > 0)).toBe(true);
 });
 
-test("one address signs in twenty times a minute, all strangers together sixty times", () => {
+test("one address signs in thirty times a minute, and no other address pays for it", () => {
   let now = 0;
   const limits = createAccountLimits(() => now);
-  expect(passed(() => limits.signIn("a"), SIGNINS_PER_ADDRESS + 10)).toBe(SIGNINS_PER_ADDRESS);
-  expect(limits.signIn("a")).toBe(60);
-  expect(passed(() => limits.signIn("b"), SIGNINS_PER_ADDRESS)).toBe(SIGNINS_PER_ADDRESS);
-  expect(passed(() => limits.signIn("c"), SIGNINS_PER_ADDRESS)).toBe(SIGNINS_PER_ADDRESS);
-  expect(SIGNINS_OVERALL).toBe(3 * SIGNINS_PER_ADDRESS);
-  expect(limits.signIn("d")).toBe(60);
-  // Sign-ups are counted apart.
-  expect(limits.signUp("d")).toBe(0);
+  const names = (index: number): string => `name ${String(index)}`;
+  let through = 0;
+  for (let index = 0; index < SIGNINS_PER_ADDRESS + 10; index += 1) if (limits.signIn("a", names(index)) === 0) through += 1;
+  expect(through).toBe(SIGNINS_PER_ADDRESS);
+  expect(limits.signIn("a", "one more")).toBe(60);
+  // No budget for all strangers together: the hundredth address signs in like the first.
+  for (let index = 0; index < 100; index += 1) expect(limits.signIn(`address ${String(index)}`, names(index))).toBe(0);
   now += MINUTE_MS;
-  expect(limits.signIn("d")).toBe(0);
-  expect(limits.signIn("a")).toBe(0);
+  expect(limits.signIn("a", "one more")).toBe(0);
 });
 
-test("one name gets ten attempts in ten minutes from other devices, whichever addresses they come from", () => {
+test("ten wrong passwords on a name from one address hold only that address, and a right password is not counted", () => {
   let now = 0;
   const limits = createAccountLimits(() => now);
-  for (let index = 0; index < SIGNINS_PER_NAME; index += 1) expect(limits.signInName(`address ${String(index)}`, "odysseus")).toBe(0);
-  expect(limits.signInName("one more address", "odysseus")).toBe(SIGNIN_NAME_WINDOW_MS / 1000);
-  expect(limits.signInName("one more address", "penelope")).toBe(0);
+  expect(passed(() => limits.signIn("guesser", "odysseus"), SIGNINS_PER_NAME_AND_ADDRESS + 5)).toBe(SIGNINS_PER_NAME_AND_ADDRESS);
+  expect(limits.signIn("guesser", "odysseus")).toBe(SIGNIN_NAME_WINDOW_MS / 1000);
+  // The owner, on another address, is not kept out, and neither is the guesser from another name.
+  expect(limits.signIn("owner", "odysseus")).toBe(0);
+  expect(limits.signIn("guesser", "penelope")).toBe(0);
+  // Signing in with the right password any number of times never uses the name up.
+  for (let index = 0; index < 25; index += 1) {
+    now += MINUTE_MS;
+    expect(limits.signIn("owner", "odysseus"), String(index)).toBe(0);
+    limits.signedIn("owner", "odysseus");
+  }
+});
+
+test("a hundred wrong passwords on a name from many addresses hold the name for everybody but the laptop", () => {
+  let now = 0;
+  const limits = createAccountLimits(() => now);
+  for (let index = 0; index < SIGNINS_PER_NAME; index += 1) expect(limits.signIn(`address ${String(index)}`, "odysseus")).toBe(0);
+  expect(limits.signIn("one more address", "odysseus")).toBe(SIGNIN_NAME_WINDOW_MS / 1000);
+  expect(limits.signIn("one more address", "penelope")).toBe(0);
+  expect(limits.signIn(THIS_MACHINE, "odysseus")).toBe(0);
   now += SIGNIN_NAME_WINDOW_MS;
-  expect(limits.signInName("one more address", "odysseus")).toBe(0);
-  // At this rate one account gets 1,440 guesses a day.
-  expect((24 * 60 * MINUTE_MS / SIGNIN_NAME_WINDOW_MS) * SIGNINS_PER_NAME).toBe(1_440);
+  expect(limits.signIn("one more address", "odysseus")).toBe(0);
+  // At this rate one account gets 14,400 guesses a day at most, from however many addresses.
+  expect((24 * 60 * MINUTE_MS / SIGNIN_NAME_WINDOW_MS) * SIGNINS_PER_NAME).toBe(14_400);
 });
 
-test("requests with a token: 120 a minute an address, 600 for all strangers, and twenty unknown tokens a minute", () => {
+test("unknown tokens are counted before the database is asked, a known one is given back, and a known account is counted for itself", () => {
   let now = 0;
   const limits = createAccountLimits(() => now);
-  expect(passed(() => limits.request("a"), REQUESTS_PER_ADDRESS + 30)).toBe(REQUESTS_PER_ADDRESS);
-  expect(limits.request("a")).toBe(60);
-  for (const address of ["b", "c", "d", "e"]) expect(passed(() => limits.request(address), REQUESTS_PER_ADDRESS)).toBe(REQUESTS_PER_ADDRESS);
-  expect(REQUESTS_OVERALL).toBe(5 * REQUESTS_PER_ADDRESS);
-  expect(limits.request("f")).toBe(60);
-
-  for (let index = 0; index < WRONG_TOKENS_PER_ADDRESS; index += 1) {
-    expect(limits.wrongTokenWait("a")).toBe(0);
-    limits.wrongTokenCount("a");
+  // A signed-in player can ask as often as the account's own budget allows without using up the address.
+  for (let index = 0; index < 500; index += 1) {
+    expect(limits.lookup("a")).toBe(0);
+    limits.tokenKnown("a");
   }
-  expect(limits.wrongTokenWait("a")).toBe(60);
-  expect(limits.wrongTokenWait("b")).toBe(0);
+  // Thirty lookups sent together all hold a place before any answer is back: the thirty-first waits.
+  expect(passed(() => limits.lookup("a"), WRONG_TOKENS_PER_ADDRESS + 10)).toBe(WRONG_TOKENS_PER_ADDRESS);
+  expect(limits.lookup("a")).toBe(60);
+  expect(limits.lookup("b")).toBe(0);
+
+  expect(passed(() => limits.request("a", "account-1"), REQUESTS_PER_ACCOUNT + 30)).toBe(REQUESTS_PER_ACCOUNT);
+  expect(limits.request("b", "account-1")).toBe(60);
+  expect(limits.request("a", "account-2")).toBe(0);
   now += MINUTE_MS;
-  expect([limits.wrongTokenWait("a"), limits.request("a"), limits.request("f")]).toEqual([0, 0, 0]);
+  expect([limits.lookup("a"), limits.request("a", "account-1")]).toEqual([0, 0]);
 });
 
 test("one account is written sixty times a minute at most, and the laptop is counted too", () => {
@@ -107,13 +146,36 @@ test("one account is written sixty times a minute at most, and the laptop is cou
   expect(limits.save("account-1")).toBe(0);
 });
 
-test("the numbers bound what strangers can cost: accounts made, and time spent hashing", () => {
-  // Filling the database to its cap takes more than eleven hours at the fastest.
-  expect((MAX_ACCOUNTS / SIGNUPS_OVERALL) * SIGNUP_WINDOW_MS).toBeGreaterThan(11 * 60 * MINUTE_MS);
-  // Hashes a minute, at about 0.2 s each: under a quarter of one core.
-  const hashes = SIGNINS_OVERALL + SIGNUPS_OVERALL / (SIGNUP_WINDOW_MS / MINUTE_MS);
-  expect(hashes * 0.2).toBeLessThan(15);
+test("a token the database knew is remembered for five minutes, forgotten on sign-out, and the list cannot grow without end", () => {
+  let now = 0;
+  const known = createKnownSessions(() => now, KNOWN_SESSION_MS, 3);
+  expect(known.get("hash-1")).toBeNull();
+  known.remember("hash-1", "account-1");
+  expect(known.get("hash-1")).toBe("account-1");
+  now += KNOWN_SESSION_MS - 1;
+  expect(known.get("hash-1")).toBe("account-1");
+  now += 1;
+  expect(known.get("hash-1")).toBeNull();
+
+  known.remember("hash-2", "account-2");
+  known.forget("hash-2");
+  expect(known.get("hash-2")).toBeNull();
+
+  // Full: the ones that ran out go first, and when none has, all go. A forgotten one only costs a lookup.
+  for (const hash of ["a", "b", "c"]) known.remember(hash, "account-3");
+  known.remember("d", "account-4");
+  expect([known.get("a"), known.get("d")]).toEqual([null, "account-4"]);
+});
+
+test("the numbers bound what strangers can cost: accounts made, and connections held", () => {
+  // Filling the database as far as strangers may takes more than two and a half hours at the fastest, and the laptop keeps places past that.
+  expect(((MAX_ACCOUNTS - ACCOUNTS_KEPT_FOR_THIS_MACHINE) / SIGNUPS_OVERALL) * SIGNUP_WINDOW_MS).toBeGreaterThan(150 * MINUTE_MS);
+  expect(ACCOUNTS_KEPT_FOR_THIS_MACHINE).toBe(100);
+  // One hash at a time whoever asks, so strangers get one core at most.
   expect([HASHES_AT_ONCE, HASHES_WAITING]).toEqual([1, 8]);
+  // Strangers' database work leaves connections free for the laptop.
+  expect([STRANGERS_AT_ONCE, STRANGERS_WAITING]).toEqual([2, 16]);
+  expect(MAX_CONNECTIONS - STRANGERS_AT_ONCE).toBeGreaterThanOrEqual(2);
 });
 
 /** Work that ends when the test says so. */

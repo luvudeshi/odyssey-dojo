@@ -2,7 +2,7 @@
 // no part of the connection string. The drivers here are made up, to fail in each way; what a real Postgres does is
 // in accountsDb.test.ts.
 import { afterEach, expect, test, vi } from "vitest";
-import { CONNECT_MS, DRIVER, MAX_CONNECTIONS, QUERY_MS, dbSecrets, openDb } from "../lib/db";
+import { CONNECT_MS, DRIVER, MAX_CONNECTIONS, QUERY_MS, dbRedactor, dbSecrets, isEncrypted, openDb, withoutAddresses } from "../lib/db";
 import { TimeoutError } from "../lib/timeout";
 import { captureLog, timed } from "./support/drill";
 
@@ -75,6 +75,50 @@ test("a string that is not a Postgres address is refused before the driver is ev
     vi.restoreAllMocks();
   }
   expect(loaded).toBe(0);
+});
+
+test("an address that does not ask for an encrypted connection is refused, unless the database is on this machine", async () => {
+  let loaded = 0;
+  const load = (): Promise<unknown> => { loaded += 1; return Promise.resolve(driver(never)); };
+  const plain = [
+    `postgres://dojo:${SECRET_PASSWORD}@${HOST}:5432/dojo`,
+    `postgres://dojo:${SECRET_PASSWORD}@${HOST}:5432/dojo?sslmode=disable`,
+    `postgres://dojo:${SECRET_PASSWORD}@${HOST}:5432/dojo?sslmode=prefer`,
+    // The line from .env.example with its note left behind the value.
+    `postgres://dojo:${SECRET_PASSWORD}@${HOST}:5432/dojo?sslmode=require   (the Tiger Data connection string)`,
+  ];
+  for (const url of plain) {
+    const log = captureLog();
+    expect(isEncrypted(url), url).toBe(false);
+    expect(await openDb(url, { load }), url).toBeNull();
+    expect(reason(log.lines)).toBe("not_encrypted");
+    noSecret(log.lines);
+    vi.restoreAllMocks();
+  }
+  expect(loaded).toBe(0);
+  for (const url of [SECRET_URL, `postgresql://u:p@${HOST}/d?sslmode=verify-full`, `postgres://u:p@${HOST}/d?application_name=x&sslmode=require`]) expect(isEncrypted(url), url).toBe(true);
+  // A Postgres on this machine, for the database tests: nothing leaves the laptop.
+  for (const url of ["postgres://u:p@localhost:5432/d", "postgres://u:p@127.0.0.1/d", "postgres://u:p@[::1]:5432/d"]) expect(isEncrypted(url), url).toBe(true);
+  expect(isEncrypted("not an address")).toBe(false);
+});
+
+test("the user, the database name and network addresses are cut from a log line too", () => {
+  const url = `postgres://tsdbadmin:${SECRET_PASSWORD}@${HOST}:5432/tsdb-made-up?sslmode=require`;
+  expect(dbSecrets(url)).toEqual(expect.arrayContaining(["tsdbadmin", "tsdb-made-up"]));
+  // A name of three letters or fewer is an everyday word, and cutting it would only cut up the line.
+  expect(dbSecrets(`postgres://me:${SECRET_PASSWORD}@${HOST}:5432/db?sslmode=require`)).not.toEqual(expect.arrayContaining(["me"]));
+  expect(dbSecrets(`postgres://me:${SECRET_PASSWORD}@${HOST}:5432/db?sslmode=require`)).not.toEqual(expect.arrayContaining(["db"]));
+  expect(dbSecrets("postgres://us%65r1:pw@h.example/d%62name")).toEqual(expect.arrayContaining(["us%65r1", "user1", "d%62name", "dbname"]));
+
+  const redact = dbRedactor(url);
+  expect(redact(new Error("connect ECONNREFUSED 10.9.8.7:5432"))).toBe("connect ECONNREFUSED [host]");
+  expect(redact(new Error("connect ETIMEDOUT 2001:db8:85a3::8a2e:370:7334:5432"))).not.toMatch(/2001|db8|7334/);
+  expect(redact(new Error('password authentication failed for user "tsdbadmin"'))).toBe('password authentication failed for user "[key]"');
+  expect(redact(new Error('database "tsdb-made-up" does not exist'))).toBe('database "[key]" does not exist');
+  expect(redact(new Error(`getaddrinfo ENOTFOUND ${HOST}`))).toBe("getaddrinfo ENOTFOUND [key]");
+  // What is left says what went wrong.
+  expect(withoutAddresses("canceling statement due to timeout after 3000 ms")).toBe("canceling statement due to timeout after 3000 ms");
+  expect(dbRedactor(null)(new Error("no database"))).toBe("no database");
 });
 
 test("a machine without the driver has no accounts, and says so once without the path the error names", async () => {
