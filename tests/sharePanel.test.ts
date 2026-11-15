@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { GODS } from "../src/ai/gods/gods";
 import { MAX_CARD_BYTES, MAX_VIDEO_BYTES, ReplayMetaSchema } from "../src/replay/contracts";
-import { IDLE, PORTRAIT_WAIT_MS, PREPARING, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, portraitWithin, replayMeta, runShare, shareStep, statusLine } from "../src/replay/ui/shareFlow";
+import { IDLE, PORTRAIT_WAIT_MS, PREPARING, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, oneShareAtATime, portraitWithin, replayMeta, runShare, shareStep, statusLine } from "../src/replay/ui/shareFlow";
 import type { ShareEvent, ShareFight, ShareState } from "../src/replay/ui/shareFlow";
 import { SharePanel } from "../src/replay/ui/SharePanel";
 import type { ReplayLinks, uploadReplay } from "../src/replay/upload";
@@ -74,15 +74,23 @@ test("before the press the line says what will be uploaded, and afterwards how i
   expect(statusLine(uploading, null, video)).toBe("Making the replay page...");
   expect(statusLine(sendingVideo, png, video)).toBe("Sending the fight video...");
   expect(statusLine({ kind: "failed" }, png, video)).toContain("Sharing is unavailable");
-  expect(statusLine(shared, png, video, true)).toBe("Scan the code, or open the link, to see it on a phone.");
+  expect(statusLine(shared, png, video, { qr: true })).toBe("Scan the code, or open the link, to see it on a phone.");
   expect(statusLine({ ...shared, videoFailed: true }, png, video)).toBe("The fight video did not upload. The link opens the page without it.");
 });
 
 test("when the QR code did not load, the line offers the link and no code to scan", () => {
-  expect(statusLine(shared, png, video, false)).toBe("Open the link to see it on a phone.");
+  expect(statusLine(shared, png, video, { qr: false })).toBe("Open the link to see it on a phone.");
   // Unless it is told the code is on the page, the line never promises one.
   expect(statusLine(shared, png, video)).not.toContain("Scan");
-  expect(statusLine({ ...shared, videoFailed: true }, png, video, false)).not.toContain("Scan");
+  expect(statusLine({ ...shared, videoFailed: true }, png, video, { qr: false })).not.toContain("Scan");
+});
+
+test("when the player's portrait is on the card, the line says it is uploaded with the card", () => {
+  expect(statusLine(IDLE, png, null, { portrait: true })).toBe("Share uploads this card, with your portrait on it, to this game's server. Anyone with the link can see it.");
+  expect(statusLine(IDLE, png, video, { portrait: true })).toContain("uploads this card, with your portrait on it, and the video of your fight (2.5 MB) to");
+  // A card with no portrait, and a card that would not be sent, do not mention one.
+  expect(statusLine(IDLE, png, null, { portrait: false })).not.toContain("portrait");
+  expect(statusLine(IDLE, null, video, { portrait: true })).not.toContain("portrait");
 });
 
 test("Share is held until the card on screen is the finished one, so the placeholder card is never uploaded", () => {
@@ -196,11 +204,13 @@ test("a server that is off, an upload that throws and a listener that throws all
   await expect(runShare(job, thrower, { upload: () => Promise.resolve(links) })).resolves.toBeUndefined();
 });
 
-/** A request that never answers: it ends only when its signal is aborted, as fetch does. */
+/** A request that never answers: it ends only when its signal is aborted (or already was), as fetch does. */
 function hangs(init: RequestInit | undefined): Promise<Response> {
   return new Promise((_resolve, reject) => {
     const signal = init?.signal;
-    signal?.addEventListener("abort", () => { reject(signal.reason instanceof Error ? signal.reason : new Error("aborted")); });
+    const end = (): void => { reject(signal?.reason instanceof Error ? signal.reason : new Error("aborted")); };
+    if (signal?.aborted === true) end();
+    else signal?.addEventListener("abort", end);
   });
 }
 
@@ -247,6 +257,64 @@ test("a share stopped just as the page is made does not go on to send the video"
   };
   await runShare(job, () => undefined, { fetcher, signal: stop.signal });
   expect(calls).toEqual(["POST"]);
+});
+
+test("presses that land together make one upload, and Share works again once that one has ended", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  let answer: (response: Response) => void = () => undefined;
+  const posts: string[] = [];
+  const fetcher: typeof fetch = (_input, init) => {
+    posts.push(init?.method ?? "GET");
+    return new Promise((resolve) => { answer = resolve; });
+  };
+  const share = oneShareAtATime();
+  const events: ShareEvent[] = [];
+  const send = (event: ShareEvent): void => { events.push(event); };
+  const cardOnly = { ...job, video: null };
+  const presses = [share(cardOnly, send, { fetcher }), share(cardOnly, send, { fetcher }), share(cardOnly, send, { fetcher })];
+  await vi.waitFor(() => { expect(posts).toHaveLength(1); });
+  answer(new Response("no", { status: 500 }));
+  await Promise.all(presses);
+  expect(posts).toEqual(["POST"]);
+  expect(events.map((event) => event.type)).toEqual(["start", "done"]);
+  // The first share failed and is over, so a new press is a new try.
+  const again = share(cardOnly, send, { fetcher });
+  await vi.waitFor(() => { expect(posts).toHaveLength(2); });
+  answer(Response.json(created));
+  await again;
+  expect(events.at(-1)).toEqual({ type: "done", links, videoFailed: false });
+});
+
+test("in a browser with no AbortSignal.any a share still uploads, and closing the panel still cancels it", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const any = Object.getOwnPropertyDescriptor(AbortSignal, "any");
+  Object.defineProperty(AbortSignal, "any", { value: undefined, configurable: true, writable: true });
+  try {
+    const calls: string[] = [];
+    const works: typeof fetch = (_input, init) => {
+      calls.push(init?.method ?? "GET");
+      return Promise.resolve(Response.json(init?.method === "POST" ? created : { ok: true }));
+    };
+    expect(await states((send) => runShare(job, send, { fetcher: works, signal: new AbortController().signal }))).toEqual([uploading, sendingVideo, shared]);
+    expect(calls).toEqual(["POST", "PUT"]);
+
+    const stop = new AbortController();
+    const signals: AbortSignal[] = [];
+    const stuck: typeof fetch = (_input, init) => {
+      if (init?.signal) signals.push(init.signal);
+      return hangs(init);
+    };
+    const run = states((send) => runShare(job, send, { fetcher: stuck, signal: stop.signal }));
+    await vi.waitFor(() => { expect(signals).toHaveLength(1); });
+    expect(signals[0]?.aborted).toBe(false);
+    stop.abort();
+    expect(signals[0]?.aborted).toBe(true);
+    expect(await run).toEqual([uploading, { kind: "failed" }]);
+    // A share that was already stopped when it began is cancelled at once.
+    expect(await states((send) => runShare(job, send, { fetcher: stuck, signal: stop.signal }))).toEqual([uploading, { kind: "failed" }]);
+  } finally {
+    if (any) Object.defineProperty(AbortSignal, "any", any);
+  }
 });
 
 // A server render runs no effects, so these cover the first markup only: no portrait has settled and no card is painted.

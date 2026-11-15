@@ -1,8 +1,9 @@
-/* The share panel. Its colours come only from the theme's variables (src/theme.css) or from where the panel is mounted, so it follows the theme.
-   Every rule sits under .share-panel with two classes, so each one outranks the theme's "button", ".menu p" and ".overlay p" rules and touches nothing else.
-   Share, Save and Close are theme buttons: only their size is set here. Text is not faded. */
+/* The share panel. Its colours come only from the theme's variables (src/theme.css) or from the text colour where the panel is mounted, so it follows the theme.
+   Each variable has a fallback, so a theme that renames one still shows the progress bar.
+   Every rule but the root's sits under .share-panel with two classes, so each one outranks the theme's "button", ".menu p" and ".overlay p" rules and touches nothing else.
+   Share, Save and Close are theme buttons: only their size is set here, and a held Share is dimmed. Text is not faded. */
 section.share-panel { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; justify-content: center; margin: 0.8rem 0; }
-.share-panel .share-card { display: block; height: min(40vh, 22rem); aspect-ratio: 4 / 5; border: 2px solid var(--ink); }
+.share-panel .share-card { display: block; height: min(40vh, 22rem); aspect-ratio: 4 / 5; border: 2px solid currentColor; }
 .share-panel .share-empty { display: grid; place-items: center; padding: 1rem; font-size: 1rem; }
 .share-panel .share-side { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; width: 17rem; max-width: 100%; }
 /* Share and Save fill the column, whatever width the theme gives a button. */
@@ -14,8 +15,9 @@ section.share-panel { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: 
 /* The code shrinks on a short window, so that the column with the code, the link and Save is no taller than the card. */
 .share-panel .share-qr { display: block; width: min(11rem, 16vh); height: min(11rem, 16vh); }
 .share-panel .share-link { color: inherit; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.9rem; word-break: break-all; }
-.share-panel .share-progress { width: 100%; height: 6px; background: var(--ink); }
-.share-panel .share-progress span { display: block; height: 100%; width: 35%; background: var(--clay-light); transition: width 0.5s; animation: share-pulse 1.2s ease-in-out infinite; }
+/* The bar's edge is the text colour, which shows on any ground. The fill and the track never fall back to the same thing. */
+.share-panel .share-progress { box-sizing: border-box; width: 100%; height: 8px; border: 1px solid currentColor; background: var(--ink, transparent); }
+.share-panel .share-progress span { display: block; height: 100%; width: 35%; background: var(--clay-light, currentColor); transition: width 0.5s; animation: share-pulse 1.2s ease-in-out infinite; }
 .share-panel .share-stage-video span { width: 80%; }
 @keyframes share-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {

@@ -34,7 +34,16 @@ export interface UploadOptions {
 /** Ends a request when its time is up or when the caller stops the upload, whichever comes first. */
 function until(timeoutMs: number, stop: AbortSignal | undefined): AbortSignal {
   const timeout = AbortSignal.timeout(timeoutMs);
-  return stop === undefined ? timeout : AbortSignal.any([timeout, stop]);
+  if (stop === undefined) return timeout;
+  // Browsers from before 2024 have no AbortSignal.any. They get the same signal built by hand, so Share still works there.
+  const any: unknown = Reflect.get(AbortSignal, "any");
+  if (typeof any === "function") return AbortSignal.any([timeout, stop]);
+  const either = new AbortController();
+  for (const signal of [timeout, stop]) {
+    if (signal.aborted) either.abort(signal.reason);
+    else signal.addEventListener("abort", () => { either.abort(signal.reason); }, { once: true });
+  }
+  return either.signal;
 }
 
 async function cardDataUrl(card: Blob | null): Promise<string | null> {
