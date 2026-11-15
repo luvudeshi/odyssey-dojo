@@ -63,54 +63,56 @@ export function DojoSetup(props: DojoSetupProps) {
   };
 
   return (
-    <section className="dojo-setup" aria-labelledby="dojo-setup-title">
-      <h1 id="dojo-setup-title" className="dojo-setup-title">Pick what to practise</h1>
-      <fieldset className="dojo-set-group dojo-set-styles">
-        <legend>Fighting style</legend>
-        <div className="dojo-set-row">
-          {first.styles.map((each) => (
-            <button key={each.id} type="button" className="dojo-set-button dojo-set-style" aria-pressed={each.id === style.id} onClick={() => { chooseStyle(each); }}>{each.name}</button>
+    <div className="dojo-setup">
+      <h1 id="dojo-setup-title" className="dojo-setup-title set-sub">Pick what to practise</h1>
+      <section className="dojo-set-panel set-panel" aria-labelledby="dojo-setup-title">
+        <fieldset className="dojo-set-group dojo-set-styles">
+          <legend>Fighting style</legend>
+          <div className="dojo-set-row">
+            {first.styles.map((each) => (
+              <button key={each.id} type="button" className="set-btn dojo-set-button dojo-set-style" aria-pressed={each.id === style.id} onClick={() => { chooseStyle(each); }}>{each.name}</button>
+            ))}
+          </div>
+          {style.line && <p className="dojo-set-note">{style.line}</p>}
+        </fieldset>
+        <div className="dojo-set-row dojo-set-tools">
+          <button type="button" className="set-btn dojo-set-button" onClick={() => { setTicked(menuIds(menu)); }}>Select all</button>
+          <button type="button" className="set-btn dojo-set-button" onClick={() => { setTicked([]); }}>Clear</button>
+          <p className="dojo-set-count" aria-live="polite">{picked.length === 0 ? "Tick at least one move." : `${String(picked.length)} ${picked.length === 1 ? "move" : "moves"} picked`}</p>
+        </div>
+        <div className="dojo-set-moves">
+          {menu.map((group) => (
+            <fieldset key={group.id} className="dojo-set-group" data-group={group.id}>
+              <legend>{group.title}</legend>
+              {group.note && <p className="dojo-set-note">{group.note}</p>}
+              <ul className="dojo-set-list">
+                {group.moves.map((each) => (
+                  <li key={each.id}>
+                    <label className="dojo-set-move">
+                      <input type="checkbox" value={each.id} checked={ticked.includes(each.id)} onChange={(event) => { tick(each.id, event.target.checked); }} />
+                      <span>{each.name}</span>
+                      {each.wholeBody && group.id !== "kicks" && <small>whole body in view</small>}
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </fieldset>
           ))}
         </div>
-        {style.line && <p className="dojo-set-note">{style.line}</p>}
-      </fieldset>
-      <div className="dojo-set-row dojo-set-tools">
-        <button type="button" className="dojo-set-button" onClick={() => { setTicked(menuIds(menu)); }}>Select all</button>
-        <button type="button" className="dojo-set-button" onClick={() => { setTicked([]); }}>Clear</button>
-        <p className="dojo-set-count" aria-live="polite">{picked.length === 0 ? "Tick at least one move." : `${String(picked.length)} ${picked.length === 1 ? "move" : "moves"} picked`}</p>
-      </div>
-      <div className="dojo-set-moves">
-        {menu.map((group) => (
-          <fieldset key={group.id} className="dojo-set-group" data-group={group.id}>
-            <legend>{group.title}</legend>
-            {group.note && <p className="dojo-set-note">{group.note}</p>}
-            <ul className="dojo-set-list">
-              {group.moves.map((each) => (
-                <li key={each.id}>
-                  <label className="dojo-set-move">
-                    <input type="checkbox" value={each.id} checked={ticked.includes(each.id)} onChange={(event) => { tick(each.id, event.target.checked); }} />
-                    <span>{each.name}</span>
-                    {each.wholeBody && group.id !== "kicks" && <small>whole body in view</small>}
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </fieldset>
-        ))}
-      </div>
-      <fieldset className="dojo-set-group dojo-set-reps">
-        <legend>Tries at each move</legend>
-        <div className="dojo-set-row">
-          {repsChoices.map((count) => (
-            <label key={count} className="dojo-set-move">
-              <input type="radio" name="dojo-reps" value={count} checked={count === reps} onChange={() => { setReps(count); }} />
-              <span>{String(count)}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <p className="dojo-set-camera">{camera ? "The camera is on: stand where it sees your whole body." : "No camera: you will press a key for each move."}</p>
-      <button type="button" className="dojo-set-button dojo-set-start" autoFocus disabled={picked.length === 0} onClick={begin}>Start training</button>
-    </section>
+        <fieldset className="dojo-set-group dojo-set-reps">
+          <legend>Tries at each move</legend>
+          <div className="dojo-set-row">
+            {repsChoices.map((count) => (
+              <label key={count} className="dojo-set-move">
+                <input type="radio" name="dojo-reps" value={count} checked={count === reps} onChange={() => { setReps(count); }} />
+                <span>{String(count)}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <p className="dojo-set-camera">{camera ? "The camera is on: stand where it sees your whole body." : "No camera: you will press a key for each move."}</p>
+        <button type="button" className="set-btn set-btn--primary dojo-set-button dojo-set-start" autoFocus disabled={picked.length === 0} onClick={begin}>Start training</button>
+      </section>
+    </div>
   );
 }
