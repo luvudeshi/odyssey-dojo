@@ -18,6 +18,15 @@ test("each bad field falls back alone and the good ones are kept", () => {
   expect(parsed).toEqual({ ...DEFAULT_SETTINGS, musicVolume: 1, voiceVolume: 0.25, keyHints: false });
 });
 
+test("the control choice defaults to the camera, keeps keyboard, and refuses anything else", () => {
+  expect(DEFAULT_SETTINGS.controls).toBe("camera");
+  expect(parseSettings(JSON.stringify({ controls: "keyboard" })).controls).toBe("keyboard");
+  expect(parseSettings(JSON.stringify({ controls: "gamepad" })).controls).toBe("camera");
+  const storage = memory();
+  createSettingsStore(storage).set({ controls: "keyboard" });
+  expect(createSettingsStore(storage).get().controls).toBe("keyboard");
+});
+
 test("a change is saved, notifies, and survives a new store on the same storage", () => {
   const storage = memory();
   const store = createSettingsStore(storage);

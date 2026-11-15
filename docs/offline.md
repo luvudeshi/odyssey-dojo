@@ -10,7 +10,7 @@ Run on 14 November 2026 on `main` at `7557bdf`. Apple M4, macOS 15.6, Chrome 157
 
 | Path | Result |
 | --- | --- |
-| Keyboard fight (main menu, "Play on the keyboard instead", Boxer, map, Polyphemus, fight, end screen, map) | Nothing left localhost. The page did not throw. Exit 0 with `--no-camera`. |
+| Keyboard fight (main menu with the "Play with" setting on Keyboard, Story mode, Boxer, map, Polyphemus, fight, end screen, map) | Nothing left localhost. The page did not throw. Exit 0 with `--no-camera`. |
 | Story mode card with a fake camera (pose tracker, god scan, style, map, calibration) | **One request tried to leave localhost.** The page did not throw. Exit 1. |
 
 The one request is `POST https://odml.pa.googleapis.com/v1/log`. It is a usage log sent by `@mediapipe/tasks-vision` 1.2.3, 60 seconds after the pose tracker starts. See "The pose library's log" below.

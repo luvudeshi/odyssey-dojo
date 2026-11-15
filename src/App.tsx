@@ -33,7 +33,7 @@ import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
 import type { HostLink } from "./net/host";
 import { WebcamGate } from "./screens/WebcamGate";
-import { useSettings } from "./settings/store";
+import { getSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 
@@ -108,10 +108,16 @@ export function App() {
     );
   };
 
+  // "Play on the keyboard" on the camera problem card, and Story mode when the setting says Keyboard.
+  const startKeyboard = (): void => { keyboardOnly.current = true; setCameraProblem(""); setTracker(null); dispatch({ type: "ready" }); };
+
   const openTraining = (): void => {
     setCameraProblem("");
     setPanel("training");
-    if (!tracker && !keyboardOnly.current) camera.start().then(setTracker, (error: unknown) => { log("warn", "tracker_failed", error); });
+    // The setting decides, each time the dojo opens: Keyboard drops a camera started earlier and asks for none.
+    keyboardOnly.current = getSettings().controls === "keyboard";
+    if (keyboardOnly.current) setTracker(null);
+    else if (!tracker) camera.start().then(setTracker, (error: unknown) => { log("warn", "tracker_failed", error); });
   };
 
   if (flow.screen === "title" && panel === "training") {
@@ -151,8 +157,9 @@ export function App() {
         name={profile.name}
         notice={notice}
         problem={cameraProblem}
-        onStory={startCamera}
-        onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); setTracker(null); dispatch({ type: "ready" }); }}
+        onStory={() => { if (getSettings().controls === "keyboard") startKeyboard(); else startCamera(); }}
+        onCamera={startCamera}
+        onKeyboard={startKeyboard}
         onMultiplayer={() => { setPanel("multiplayer"); }}
         onTraining={openTraining}
         onAccount={() => { setPanel("account"); }}
