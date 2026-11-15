@@ -100,8 +100,9 @@ function readRules() {
   };
 }
 
-/** The reverse of `keyName` in src/coach/ui/Dojo.tsx: what the key hint shows for a move's key. */
-const keyLabel = (key) => (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
+/** As `keyName` in src/coach/ui/keyName.ts: what the key hint shows for a move's key (an arrow key is its glyph). */
+const ARROWS = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" };
+const keyLabel = (key) => ARROWS[key] ?? (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
 
 // ---------- the browser and the server (as in scripts/smoke.mjs) ----------
 
