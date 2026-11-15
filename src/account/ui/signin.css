@@ -1,0 +1,16 @@
+/* The account lines in the Hero card, and the sign-in dialog. All text here is 20 px or more. */
+.menu .acc-card .acc-signin p { margin: 0 0 2px; font: 500 20px/1.25 var(--pb-font-body); color: var(--pb-text); overflow-wrap: anywhere; }
+.menu .acc-card .acc-signin.is-quiet p { color: var(--pb-text-dim); }
+.menu .acc-card .acc-signin p b { color: var(--pb-ochre-light); }
+.acc-card .acc-signin .pb-btn { margin-top: 6px; font-size: 20px; }
+
+.acc-signin__form { display: flex; flex-direction: column; gap: 12px; width: min(84vw, 26rem); margin: 0 auto 14px; text-align: left; font: 600 20px/1.25 var(--pb-font-body); color: var(--pb-text); }
+.acc-signin__form label { display: flex; flex-direction: column; gap: 4px; }
+.ui-panel .acc-signin__form input[type] { box-sizing: border-box; width: 100%; padding: 8px 12px; font: 600 22px var(--pb-font-body); color: var(--pb-text); background: var(--pb-ground-deep); border: 2px solid var(--pb-lead); border-radius: var(--pb-radius); cursor: text; }
+.ui-panel .acc-signin__form input[type]:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 2px; }
+.ui-panel .acc-signin__form input[type]:read-only { opacity: 0.6; }
+.acc-signin__say { min-height: 2.5em; margin: 0; font: 500 20px/1.25 var(--pb-font-body); color: var(--pb-text-dim); }
+.acc-signin__say.is-error { font-weight: 700; color: var(--pb-ochre-light); }
+.acc-signin__buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.acc-signin__buttons .pb-btn { min-width: 0; padding: 10px 8px; font-size: 20px; }
+.ui-panel:has(.acc-signin__form) > .pb-btn { font-size: 20px; }

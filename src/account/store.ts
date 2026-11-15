@@ -73,6 +73,8 @@ export interface ProfileStore {
   readonly get: () => Profile;
   readonly rename: (name: string) => void;
   readonly record: (fight: FightResult) => void;
+  /** Puts a whole profile in place of this one (a save coming back from the account). It is checked like stored JSON. */
+  readonly replace: (profile: unknown) => void;
   readonly subscribe: (listener: () => void) => () => void;
 }
 
@@ -97,6 +99,7 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
     get: () => current,
     rename: (name) => { save({ ...current, name: cleanName(name) }); },
     record: (fight) => { save(withFight(current, fight)); },
+    replace: (profile) => { save(parseProfile(JSON.stringify(profile ?? null))); },
     subscribe(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
@@ -109,6 +112,8 @@ const shared = createProfileStore(browserStorage());
 export const getProfile = shared.get;
 export const renameProfile = shared.rename;
 export const recordFight = shared.record;
+export const replaceProfile = shared.replace;
+export const subscribeProfile = shared.subscribe;
 
 export function useProfile(): Profile {
   return useSyncExternalStore(shared.subscribe, shared.get, shared.get);
