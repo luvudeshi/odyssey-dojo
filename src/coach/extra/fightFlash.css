@@ -1,0 +1,58 @@
+/* A grade in the fight's flash (src/hud/MissFlash.tsx): the MISS flash's element, in the same place and on the same
+   black glass (RiftPlate), with two lines in it: the grade word and "+N", then one short tip. It keeps .hb-rating's
+   place from src/hud/sky/top.css (left of the hero, under the bars, clear of the prompt card at the right edge, the
+   camera panel and the crescent below) and its type (the carved capitals with a black stroke). Only what differs
+   is here. Four grades, four looks, told apart by size and plate as well as colour:
+     EXCELLENT          white-hot letters, the largest, lava-edged glass with blades at both ends
+     GREAT              amber letters on lava-edged glass
+     GOOD               plain: pale letters on plain glass
+     NEEDS IMPROVEMENT  ice-blue letters, the smallest, on ice-edged glass; the tip is the biggest thing on it
+   MISS stays red (missFlash.css). No pictures, no fonts of its own, and it never takes a click (.sky-hud does not). */
+.sky-hud .hb-rating.hb-feedback, .hb-rating.hb-feedback {
+  --fb-word: 40px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; width: auto; padding: 12px 34px 15px;
+  font-size: var(--fb-word); line-height: 1; letter-spacing: 0.08em; color: #ffe6c0; pointer-events: none;
+  animation: fb-flash 1900ms linear both;
+}
+.hb-feedback__top { display: flex; align-items: baseline; gap: 0.4em; }
+.hb-feedback__top strong { font-weight: 700; }
+/* The bonus: a size smaller than the word, in a figure face so +150 reads as a number. */
+.hb-feedback__top b { font: 700 0.8em/1 "Gill Sans", "Gill Sans MT", "Trebuchet MS", sans-serif; letter-spacing: 0.02em; color: #fff4d8; }
+/* The tip: sentence case, plain type, never smaller than 20px. */
+.hb-feedback__tip {
+  font: 700 22px/1.15 Optima, "Gill Sans", Candara, "Trebuchet MS", sans-serif; letter-spacing: 0.02em; text-transform: none;
+  color: #fff6ea; -webkit-text-stroke: 0; text-shadow: 0 2px 3px #000, 0 0 4px #000;
+}
+
+.sky-hud .hb-feedback[data-feedback="excellent"], .hb-feedback[data-feedback="excellent"] { --fb-word: 46px; letter-spacing: 0.05em; color: #fff4c4; }
+.hb-feedback[data-feedback="excellent"] .rift-plate__seam { height: 7px; }
+.sky-hud .hb-feedback[data-feedback="great"], .hb-feedback[data-feedback="great"] { --fb-word: 44px; color: #ffb02e; }
+.sky-hud .hb-feedback[data-feedback="good"], .hb-feedback[data-feedback="good"] { --fb-word: 36px; color: #e9e0ff; }
+.hb-feedback[data-feedback="good"] .hb-feedback__top b { color: #d6c8ff; }
+.sky-hud .hb-feedback[data-feedback="needs-improvement"], .hb-feedback[data-feedback="needs-improvement"] { --fb-word: 26px; letter-spacing: 0.06em; color: #9fd8ff; }
+.hb-feedback[data-feedback="needs-improvement"] .hb-feedback__top b { color: #cdeeff; }
+.hb-feedback[data-feedback="needs-improvement"] .hb-feedback__tip { font-size: 26px; color: #fff; }
+
+/* While a grade is up, the GOOD / GREAT / PERFECT word (RatingFlash, the same place) stands down: one word at a time. */
+.sky-hud:has(.hb-feedback) .hb-rating:not(.hb-feedback):not(.hb-miss) { display: none; }
+
+/* In over 160 ms, still for 1400 ms, out over 340 ms (fightFlash.ts). Transform and opacity only; the translate keeps
+   .hb-rating's centring. */
+@keyframes fb-flash {
+  0% { opacity: 0; transform: translateX(-50%) scale(1.3); }
+  8.4% { opacity: 1; transform: translateX(-50%) scale(1); }
+  82.1% { opacity: 1; transform: translateX(-50%) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(1); }
+}
+/* Reduced motion: it appears, stands and goes. Nothing moves and nothing fades. */
+@keyframes fb-flash-still { 0%, 99.9% { opacity: 1; transform: translateX(-50%); } 100% { opacity: 0; transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .sky-hud .hb-rating.hb-feedback, .hb-rating.hb-feedback { animation-name: fb-flash-still; animation-timing-function: step-end; }
+}
+
+/* A phone held upright: .hb-rating is centred there; the words shrink to fit the width. */
+@media (max-width: 760px) {
+  .sky-hud .hb-rating.hb-feedback { --fb-word: 26px; padding: 9px 20px 12px; }
+  .sky-hud .hb-feedback[data-feedback="needs-improvement"] { --fb-word: 17px; }
+  .sky-hud .hb-feedback .hb-feedback__tip { font-size: 20px; }
+}
