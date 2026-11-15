@@ -43,8 +43,9 @@ export const DEFEND_GAIN = 0.6;
 /** The chime plays over the result screen's music and Homer's line: about as loud as his voice, and under Athena's. */
 export const UNLOCK_GAIN = 0.45;
 /**
- * The horn starts through this, in the same frame as Athena's phase line: about 7 LU over the fight music at full and
- * 5 LU under her. docs/audio-levels.md has the numbers.
+ * The horn starts through this, in the same frame as Athena's phase line: about 10 LU over the fight music at full and
+ * 2 LU under her as it comes in. Taken whole, with the drop below, it is about 7 LU over the music and 5 LU under her.
+ * docs/audio-levels.md has the numbers.
  */
 export const PHASE_GAIN = 0.7;
 /**
