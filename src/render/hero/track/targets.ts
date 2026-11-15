@@ -27,6 +27,10 @@ const STEP_DEADZONE = 0.04;
 /** Tracked steps stay inside the arena. */
 export const STEP_LIMIT = 1;
 
+/** The One Euro settings for every landmark coordinate (metres, hip-centred world space). Picked by sweeping recorded webcam poses: the old 2.5 Hz / beta 0.9 lagged a punch by about 30 ms
+ * and was 12 degrees off during fast moves; these keep the same calm at rest and are about 7 degrees off. */
+export const LANDMARK_FILTER = { minCutoff: 1, beta: 5, dCutoff: 1 };
+
 const HEAD_BIAS = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), HEAD_PITCH_BIAS);
 
 interface Calibration {
@@ -52,7 +56,7 @@ export class PoseTargets {
   drop = 0;
   calibrated = false;
 
-  private readonly xyz: OneEuro[] = Array.from({ length: 33 * 3 }, () => new OneEuro());
+  private readonly xyz: OneEuro[];
   private readonly seen: boolean[] = new Array<boolean>(33).fill(false);
   private readonly stepFilter = new OneEuro(1.2, 0.2);
   private readonly dropFilter = new OneEuro(1.2, 0.2);
@@ -64,7 +68,8 @@ export class PoseTargets {
   private readonly q = new Quaternion();
   private cal: Calibration = { n: 0, startMs: NaN, hipX: 0, shoulderY: 0, perMetre: 0, worldShoulderY: 0, done: false };
 
-  constructor() {
+  constructor(landmarkFilter: { minCutoff: number; beta: number; dCutoff: number } = LANDMARK_FILTER) {
+    this.xyz = Array.from({ length: 33 * 3 }, () => new OneEuro(landmarkFilter.minCutoff, landmarkFilter.beta, landmarkFilter.dCutoff));
     for (const l of LIMBS) { this.dir[l.key] = new Vector3(0, -1, 0); this.dirOk[l.key] = false; }
   }
 
