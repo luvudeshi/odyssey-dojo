@@ -4,6 +4,7 @@ import { clamp01, elbowAngle, latest, recent } from "../../pose/signals";
 import { THROW_MS, cameFromOverhead, punchedJustNow, travel, upperArmLift, wristRise } from "../handSignals";
 import type { Side } from "../handSignals";
 import { SIDES } from "../legSignals";
+import { armWent } from "../looseSignals";
 
 /** The elbow keeps a bend between these, in degrees, through the swing. Straighter is a slap. */
 export const HOOK_BENT = 30;
@@ -52,6 +53,10 @@ export const move: MoveDef = {
   diagram: { leftElbow: [26, 32], leftWrist: [42, 28], rightElbow: [62, 42], rightWrist: [57, 26] },
   teaches: "Swings curl round from the side, out of view, so keep your hands up to guard your face",
   detect: hook,
+  // Asked for a hook, either hand swept toward or past the centre line counts, at any height and bend.
+  detectAsked(history) {
+    return Math.max(hook(history), ...SIDES.map((side) => armWent(history, side, "across")));
+  },
   quality(history) {
     const side = SIDES.find((each) => hookOn(history, each) >= 0.7) ?? "left";
     return strikeQuality(history, { sides: [side], straight: false, tolerance: 1 });

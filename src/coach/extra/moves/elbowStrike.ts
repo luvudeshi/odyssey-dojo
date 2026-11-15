@@ -8,6 +8,7 @@ import type { Side } from "../../../moves/handSignals";
 import { strikeQuality } from "../../../pose/quality";
 import { elbowAngle, latest, recent } from "../../../pose/signals";
 import { atLeast, atMost, eitherSide, elbowOut, now } from "../signals";
+import { armWent, legRose } from "../../../moves/looseSignals";
 
 /** The elbow ends bent at most this far, in degrees: forearm folded back against the upper arm. */
 export const FOLDED = 80;
@@ -50,6 +51,9 @@ export const move: MoveDef = {
   teaches: "Too close to swing a fist, your elbow is a hard point that can make room to leave.",
   detect(history) {
     return strike.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(armWent(history, "left", "across"), armWent(history, "right", "across"));
   },
   quality(history) {
     const side = strike.side(history);
