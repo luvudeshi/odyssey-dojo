@@ -98,8 +98,8 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
             <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={150} height={150} />
             <div className="mp-qr__text">
               <b>Scan to enter</b>
-              <p className="room-url">{phase.url}</p>
             </div>
+            <p className="room-url">{phase.url.split(/(?<=[/.?=])/).map((part, at) => <span key={at}>{part}<wbr /></span>)}</p>
           </section>
         </div>
         <RoomTags friend={friend} />
