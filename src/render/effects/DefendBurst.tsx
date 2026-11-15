@@ -13,6 +13,8 @@ import { burstFade, burstKind, burstProgress, burstVariant, easeOut } from "./de
 import { SHIELD_FRONT, SHIELD_Y } from "./GuardShield";
 import { createPool, emit, stepPool } from "./sparks";
 import { makeSoftTextures } from "./softTextures";
+import { DodgeFx } from "./dodge/DodgeFx";
+import { dodge } from "./dodge/dodgeMotion";
 
 const VARIANT = burstVariant(window.location.search);
 const GOLD = 0xffd36b;
@@ -62,7 +64,8 @@ export function DefendBurst() {
     const dir = battle.defendedMove === "dodge_left" ? -1 : 1;
     const x = battle.heroX + battle.reachX;
     const z = HOME_Z + battle.heroZ + battle.reachZ;
-    const isDodge = kind === "dodge";
+    // With a ?dodge look in force, DodgeFx draws the dodge and the soft bursts below stay out of it.
+    const isDodge = kind === "dodge" && dodge.variant === 0;
 
     if (battle.defendedAt !== seenAt.current && now >= battle.defendedAt) {
       seenAt.current = battle.defendedAt;
@@ -128,6 +131,7 @@ export function DefendBurst() {
 
   return (
     <>
+      <DodgeFx />
       <mesh ref={ground} visible={false} rotation={[-Math.PI / 2, 0, 0]} geometry={kit.plane} material={kit.ground} />
       <mesh ref={body} visible={false} geometry={kit.plane} material={kit.body} />
       <mesh ref={line} visible={false} geometry={kit.plane} material={kit.line} />
