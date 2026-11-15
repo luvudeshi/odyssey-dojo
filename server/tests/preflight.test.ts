@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import {
-  POSE_MODEL,
+  POSE_MODELS,
   POSE_WASM_DIR,
   checkClips,
   checkElevenLabs,
@@ -171,21 +171,58 @@ test("an AI server that started without a key we have here is a warning that say
 });
 
 test("the pose files pass when all are there, and one missing or empty file is a fail that names it", () => {
-  put(POSE_MODEL);
+  for (const model of POSE_MODELS) put(model);
   put(`${POSE_WASM_DIR}/vision_wasm_internal.js`);
   put(`${POSE_WASM_DIR}/vision_wasm_internal.wasm`, "");
   const line = checkPoseFiles(dir);
   expect(line.level).toBe("FAIL");
   expect(line.detail).toContain("mediapipe/wasm/vision_wasm_internal.wasm");
-  expect(line.detail).not.toContain(POSE_MODEL);
+  for (const model of POSE_MODELS) expect(line.detail).not.toContain(model);
   put(`${POSE_WASM_DIR}/vision_wasm_internal.wasm`);
   expect(checkPoseFiles(dir).level).toBe("PASS");
+  // Every model the tracker may load is checked, not only the first.
+  for (const model of POSE_MODELS) {
+    rmSync(join(dir, model));
+    const without = checkPoseFiles(dir);
+    expect(without.level, model).toBe("FAIL");
+    expect(without.detail, model).toContain(model);
+    put(model);
+  }
 });
 
+/** The pose paths in the tracker's source, without the leading slash. The tracker runs only in a browser, so this
+ *  reads its text: the folder handed to the MediaPipe loader, and the model path filled in from each plan. */
+function trackerPosePaths(source: string): { readonly models: readonly string[]; readonly wasmDir: string } {
+  // The tracker writes its model path as a template with this slot in it.
+  const slot = ["$", "{plan.model}"].join("");
+  const wasmDir = /forVisionTasks\(\s*"\/([^"]+)"/.exec(source)?.[1];
+  const template = /modelAssetPath:\s*[`"]\/([^`"]+)[`"]/.exec(source)?.[1];
+  const plans = /const PLANS = \[([\s\S]*?)\]/.exec(source)?.[1];
+  if (wasmDir === undefined || template === undefined || plans === undefined) {
+    throw new Error("src/pose/tracker.ts no longer names its pose files the way this test reads them; teach the test the new shape");
+  }
+  const names = [...plans.matchAll(/model:\s*"([^"]+)"/g)].map((match) => match[1] ?? "");
+  const models = template.includes(slot) ? names.map((name) => template.replace(slot, name)) : [template];
+  for (const model of models) if (model.includes("${")) throw new Error(`the test cannot fill in the tracker's model path: ${model}`);
+  return { models: [...new Set(models)].sort(), wasmDir };
+}
+
 test("the pose paths checked are the ones the tracker loads", () => {
-  const tracker = readFileSync(resolve(process.cwd(), "src/pose/tracker.ts"), "utf8");
-  expect(tracker).toContain(`"/${POSE_MODEL}"`);
-  expect(tracker).toContain(`"/${POSE_WASM_DIR}"`);
+  const loaded = trackerPosePaths(readFileSync(resolve(process.cwd(), "src/pose/tracker.ts"), "utf8"));
+  expect(loaded.models.length).toBeGreaterThan(0);
+  expect([...POSE_MODELS].sort()).toEqual(loaded.models);
+  expect(POSE_WASM_DIR).toBe(loaded.wasmDir);
+});
+
+test("reading the tracker's pose paths follows its plans, and refuses a shape it does not know", () => {
+  const source = (plans: string, path: string): string =>
+    `const PLANS = [${plans}] as const;\nforVisionTasks("/a/wasm");\nbaseOptions: { modelAssetPath: ${path}, delegate }`;
+  const tick = "`";
+  const two = source('{ model: "full", delegate: "GPU" }, { model: "lite", delegate: "GPU" }, { model: "lite", delegate: "CPU" }', `${tick}/a/pose_\${plan.model}.task${tick}`);
+  expect(trackerPosePaths(two)).toEqual({ models: ["a/pose_full.task", "a/pose_lite.task"], wasmDir: "a/wasm" });
+  expect(trackerPosePaths(source('{ model: "lite" }', '"/a/one.task"')).models).toEqual(["a/one.task"]);
+  expect(() => trackerPosePaths(source('{ model: "lite" }', `${tick}/a/pose_\${other}.task${tick}`))).toThrow("cannot fill in");
+  expect(() => trackerPosePaths("nothing here")).toThrow("teach the test");
 });
 
 test("a line is plain text, and a key that slipped into a detail is hidden", () => {
