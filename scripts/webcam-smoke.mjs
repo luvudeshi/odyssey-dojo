@@ -114,11 +114,12 @@ if (deny) {
   await browser.close();
   process.exit(0);
 }
-// The god scan comes up when the camera is. Its Skip button may sit off the page, so the key it names is the fallback.
-await step("god scan", async () => {
+// The character screen comes up when the camera is. A build that still has the god scan shows the scan first: its
+// Skip button may sit off the page, so the key it names is the fallback.
+await step("camera", async () => {
   const skip = page.locator("button.scan-skip");
-  await skip.waitFor({ timeout: 90_000 });
-  await skip.click({ timeout: 3000 }).catch(() => page.keyboard.press("Escape"));
+  await skip.or(page.locator("button.character-done")).first().waitFor({ timeout: 90_000 });
+  if (await skip.isVisible()) await skip.click({ timeout: 3000 }).catch(() => page.keyboard.press("Escape"));
 });
 // The character already chosen ("Fight as ..."), then the first style card (the screen's first button is "Back").
 await step("character", () => page.locator("button.character-done").click());

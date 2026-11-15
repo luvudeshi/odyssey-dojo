@@ -236,7 +236,7 @@ async function enterFight(page, base, stop, style, styles, query) {
   await onMap.locator.click();
   await page.waitForFunction((element) => !element.isConnected, mapButton, { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("the map did not close after the stop was clicked"); });
 
-  // The click on the stop starts the fight: there is no screen in between.
+  // The click on the stop starts the fight. Where the build plays a boss cutscene first, it ends by itself well inside the wait.
   await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the fight did not open after "${stop.name}" was clicked on the map`); });
   return picked.name;
 }
