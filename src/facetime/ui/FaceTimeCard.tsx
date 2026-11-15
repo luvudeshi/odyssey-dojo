@@ -9,6 +9,7 @@ import { describe, isLive, isOpen } from "../callMachine";
 import { normalizePhone } from "../phone";
 import type { FaceTimeSession } from "../session";
 import { standInLink } from "../standIn";
+import { AnswerStart, AnswerWaiting, answeredLine, useAnswering } from "./AnswerPanel";
 import "../../screens/account.css";
 import "../../screens/multiplayer.css";
 import "./faceTimeCard.css";
@@ -42,6 +43,8 @@ export function FaceTimeCard(props: {
   session?: FaceTimeSession;
   /** Asks the server whether FaceTime is set up. */
   status?: () => Promise<{ readonly ready: boolean; readonly missing: readonly string[]; readonly standIn?: boolean }>;
+  /** Answering a call that comes in (AnswerPanel.tsx): the page's own answerer and server by default. */
+  answering?: Parameters<typeof useAnswering>[0];
 }) {
   const [session, setSession] = useState<FaceTimeSession | null>(props.session ?? null);
   const [setup, setSetup] = useState<Setup>({ kind: "asking" });
@@ -49,6 +52,7 @@ export function FaceTimeCard(props: {
   const [number, setNumber] = useState("");
   const [, setBeat] = useState(0);
   const askStatus = props.status;
+  const answering = useAnswering(props.answering);
 
   useEffect(() => {
     if (session) return;
@@ -92,7 +96,7 @@ export function FaceTimeCard(props: {
   const waiting = state !== null && (state.phase === "dialing" || state.phase === "ringing");
 
   // Nothing to offer: no phone line on this server and no stand-in. The Multiplayer screen then shows two choices.
-  if (idle && setup.kind !== "ready" && !offerStandIn) return null;
+  if (idle && setup.kind !== "ready" && !offerStandIn && !answering.offered) return null;
 
   return (
     <section className="acc-card rooms__card ft-card">
@@ -102,7 +106,16 @@ export function FaceTimeCard(props: {
         </svg>
         Call a friend on FaceTime
       </h2>
-      {setup.kind === "missing" && idle ? (
+      {idle && answering.on ? (
+        <AnswerWaiting answering={answering} />
+      ) : idle && answering.offered && setup.kind !== "ready" ? (
+        <>
+          {/* No phone can be rung from here, but a call can come in: that is the whole card. */}
+          <p>Your friend makes a FaceTime call from an iPhone. No app. They see the fight and strike with their own body.</p>
+          <AnswerStart answering={answering} only />
+          {offerStandIn && <StandInStart disabled={!session} onStart={startStandIn} />}
+        </>
+      ) : setup.kind === "missing" && idle ? (
         <>
           <p className="notice" role="alert">{NOT_SET_UP}</p>
           {setup.names.length > 0 && <small>Missing on the server: {setup.names.join(", ")}. See docs/facetime.md.</small>}
@@ -127,12 +140,13 @@ export function FaceTimeCard(props: {
             <small id="ft-help">{number !== "" && !typed.ok ? typed.why : "They must have texted the game's number once. A call lasts 5 minutes."}</small>
             <Button primary type="submit" disabled={!session || !typed.ok || setup.kind !== "ready"}>Call</Button>
           </form>
+          {answering.offered && <AnswerStart answering={answering} />}
           {offerStandIn && <StandInStart disabled={!session} onStart={startStandIn} />}
         </>
       ) : (
         <div className="room">
           <p className="notice" role={state.phase === "failed" ? "alert" : "status"}>
-            {friendLink && waiting ? "Waiting for the stand-in friend. Open the link, allow the camera and press Answer." : describe(state, now)}
+            {friendLink && waiting ? "Waiting for the stand-in friend. Open the link, allow the camera and press Answer." : (answering.on ? answeredLine(state) : null) ?? describe(state, now)}
           </p>
           {friendLink && open && (
             <small className="ft-standin__link">
@@ -169,7 +183,8 @@ export function FaceTimeCard(props: {
               <Button onClick={() => { session?.hangUp(performance.now()); }}>Hang up</Button>
             </>
           )}
-          {over && <Button primary onClick={() => { session?.reset(); }}>Call again</Button>}
+          {over && !answering.on && <Button primary onClick={() => { session?.reset(); }}>Call again</Button>}
+          {over && answering.on && <small>The game is getting ready for the next call.</small>}
         </div>
       )}
     </section>

@@ -23,12 +23,15 @@ export async function openLivekitRoom(): Promise<FaceTimeRoom> {
     if (track.kind === Track.Kind.Video) tell({ type: "video", track: null, identity: participant.identity });
     else if (track.kind === Track.Kind.Audio) tell({ type: "audio", track: null, identity: participant.identity });
   });
+  room.on(Events.ParticipantConnected, (participant) => { tell({ type: "joined", identity: participant.identity }); });
   room.on(Events.ParticipantDisconnected, (participant) => { tell({ type: "left", identity: participant.identity }); });
   room.on(Events.Disconnected, (reason) => { tell({ type: "disconnected", reason: reason === undefined ? "" : String(reason) }); });
 
   return {
     async connect(url, token) {
       await room.connect(url, token);
+      // Whoever was here first raises no event either. Told before the metadata, so an answered call hears the ready sign.
+      room.remoteParticipants.forEach((participant) => { tell({ type: "joined", identity: participant.identity }); });
       // Metadata set before this page joined does not raise the changed event.
       if (room.metadata !== undefined && room.metadata !== "") tell({ type: "metadata", metadata: room.metadata });
     },
