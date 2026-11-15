@@ -23,7 +23,7 @@ export function createMissWatch(): MissWatch {
     if (ask === null || shown) return false;
     // Keyboard wrong key and webcam wrong move both arrive as a strike with another id; a frame with a power move is the god gesture.
     const power = input.struck.some((s) => POWER_MOVES.has(s.move));
-    const wrongStrike = phase.kind !== "defend" && !power && input.struck.some((s) => s.move !== ask);
+    const wrongStrike = phase.kind !== "defend" && !power && input.struck.some((s) => s.move !== ask) && !input.struck.some((s) => s.move === ask);
     const wrongDefend = phase.kind === "defend" && !input.held.has(ask) && [...input.held].some((id) => !atStart.has(id));
     if (phase.kind !== "defend" && input.tried?.has(ask)) nearMiss = true;
     const whiffed = nearMiss && events.some((e) => e.type === "whiffed");

@@ -202,6 +202,16 @@ function upperArmSideways(frame: PoseFrame, side: Side): number {
   return length === 0 ? 0 : ((side === "left" ? -1 : 1) * (elbow.x - shoulder.x)) / length;
 }
 
+/** A joint counts as in front of the shoulder when it is that share of the shoulder-to-joint distance nearer the camera (world z grows away). */
+const FORWARD = 0.25;
+
+/** True when the joint is out in front of its shoulder: an arm swung backward is not a punch. */
+function forward(frame: PoseFrame, side: Side, index: number): boolean {
+  const shoulder = joint(frame.world, armJoints(side).shoulder);
+  const at = joint(frame.world, index);
+  return shoulder.z - at.z >= FORWARD * Math.hypot(at.x - shoulder.x, at.y - shoulder.y, at.z - shoulder.z);
+}
+
 /** A fist may sit this many height rulers above or below its shoulder and still be punching (0.5 m on 0.5 m). */
 const PUNCH_HEIGHT = 1;
 /** A punching upper arm is lifted at least this far from hanging, in degrees: an arm dropped to the side is not out. */
@@ -241,6 +251,7 @@ export function armReach(frame: PoseFrame, side: Side, baseline: Baseline | null
   const lift = upperArmLift(frame, side);
   // An upper arm pointing out to its own side is raised or flung sideways, not punched forward.
   if (lift > 140 || lift < PUNCH_LIFT || upperArmSideways(frame, side) > SIDE_ON) return 0;
+  if (!forward(frame, side, seen(frame, ids.wrist) ? ids.wrist : ids.elbow)) return 0;
   if (seen(frame, ids.wrist)) {
     const shoulder = joint(frame.world, ids.shoulder);
     const fist = joint(frame.world, ids.wrist);
@@ -308,6 +319,18 @@ export function heldReach(history: PoseHistory, side: Side): number {
   return Math.min(now, armReach(before, side, history.baseline, settled(before, earlier)));
 }
 
+/** The elbow closing this much, or the upper arm dropping by DROPPED, inside FOLD_MS is an arm folding up, not a punch. */
+const FOLD_MS = 150;
+const FOLDED = 15;
+const DROPPED = 8;
+
+/** True when the arm is folding or dropping now: a hand coming up to the face has the shape of a rough punch otherwise. */
+export function folding(history: PoseHistory, side: Side): boolean {
+  const frame = latest(history);
+  return !!frame && recent(history, FOLD_MS).some((old) =>
+    elbowAngle(old, side) - elbowAngle(frame, side) >= FOLDED || upperArmLift(old, side) - upperArmLift(frame, side) >= DROPPED);
+}
+
 /** How far the fist travelled sideways over THROW_MS, in shoulder widths, when that was at least as far as it rose; else 0. */
 export function sidewaysTravel(history: PoseHistory, side: Side): number {
   const { across, up } = travel(history, side, THROW_MS);
@@ -321,7 +344,7 @@ export function sidewaysTravel(history: PoseHistory, side: Side): number {
  */
 export function strike(history: PoseHistory, side: Side): number {
   const reach = heldReach(history, side);
-  if (reach === 0 || !thrown(history, side) || cameFromOverhead(history, side)) return 0;
+  if (reach === 0 || !thrown(history, side) || cameFromOverhead(history, side) || folding(history, side)) return 0;
   return sidewaysTravel(history, side) >= SIDEWAYS ? 0 : reach;
 }
 
