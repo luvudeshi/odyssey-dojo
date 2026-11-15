@@ -117,7 +117,9 @@ against the line between the shoulders.
 |  | height of the lower wrist against the shoulder line | "Keep your hands up" |
 
 "Left" and "right" are the player's own. "Turn your hips into it" is read from the shoulders, which turn with
-the hips, because a desk camera often cannot see the hips. The speed tips come from the strike's quality score,
+the hips, because a desk camera often cannot see the hips. A webcam sees almost every punch square-on, so the
+turn is weighted 0.2: on its own it never costs a grade or gives a tip, and a clean square-on cross is EXCELLENT
+(GREAT when slow). The speed tips come from the strike's quality score,
 so they are only given when the fight passes that score in.
 
 "Extend your arm fully" (and "Extend both arms fully") is only given under about 128 degrees at the elbow. A fist
@@ -131,6 +133,5 @@ the half-bent punches in the tests (111 and 118 degrees), which the detector als
   They have not been tuned on a real camera: the repo has no recorded trace of a real body yet (the three files
   in `tests/fixtures/poses/` are made up).
 - Most checks are stricter than the detector that counts the move, so a move can count and still get a tip.
-  That is meant for form coaching, but on a real camera it may fire too often. "Turn your hips into it" fires on
-  every square-on cross, which the detector counts in full.
+  That is meant for form coaching, but on a real camera it may fire too often.
 - Showing the pop-up in the fight is a change to the fight screen and the HUD, which the lead owns.
