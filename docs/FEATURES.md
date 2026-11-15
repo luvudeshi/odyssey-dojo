@@ -14,12 +14,12 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **in the game** Damage scales with how well the strike is thrown, shown as GOOD, GREAT or PERFECT.
 - **in the game** Monster phases, with a 3 second pause after each change so the coach's line is heard.
 - **in the game** A finishing move ends each fight (Polyphemus: the stake, key T).
-- **in the game** Divine power: defends fill a meter, a god gesture spends it. The game has no god scan now, so the power in every fight is Athena's.
+- **in the game** Divine power: defends fill a meter, a god gesture spends it. The power follows the hero picked on the character screen (PR #422): Zeus Thunderbolt, Poseidon Trident Sweep, Athena Aegis Push, Odysseus Moon Arrow, Achilles Swift Dash. The banner and the hero card name it.
 - **in the game** Every move has a key, so a whole fight plays with no camera, no network and no server.
 - **in the game** Pause menu in the fight.
 - **in the game** Balance: tuned so a first-time player wins the first fight and has a chance at the later ones. Checked with a simulated player, not with people.
 - **built, not mounted** Difficulty that adapts during the quest (`src/ai/director.ts`). Nothing in the game calls it. The only tuning a player gets is from the optional warm-up.
-- **open PR** Lenient defends: rough or waist-up blocks, ducks and dodges count (PR #242).
+- **in the game** Lenient moves: while a move is asked for, a rough or waist-up attempt at it counts, for defends and strikes (PRs #242, #393, #399). Checked on made-up poses only.
 
 ## Moves and styles
 
@@ -32,19 +32,19 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **open PR** Move guide: an animated figure of the move on the prompt card with a live checklist of what the detector sees (PR #246).
 - **built, not mounted** The figure from myth for each style (`src/styles/heroes.ts`, PR #77). The style menu does not show it.
 - **built, not mounted** Five characters to choose from: Odysseus, Poseidon, Zeus, Athena, Achilles (`src/characters/`, PR #241). Seen only on a demo page (`tools/characters/`); no screen offers the picker and the fight always shows the spartan.
-- **planned** Player figure dressed for the chosen style (#18).
+- **dropped** Player figure dressed for the chosen style (#18, closed): the player picks one of five heroes, each drawn with its own gear, and the styles carry no figure.
 
 ## Tracking and camera
 
 - **in the game** Webcam pose tracking in the browser (MediaPipe, model shipped with the game). One camera for the whole session.
 - **in the game** Calibration before a fight, and a "step back" pause when you leave the frame. A camera failure is shown; the game never drops to the keyboard without saying so.
 - **in the game** A player seen only from the waist up can calibrate and fight (shoulders are enough).
-- **built, not mounted** Waist-up move swapping: never ask for a kick the camera cannot see (`src/moves/waistUp.ts`, PR #243, issue #239). The fight does not call it yet, so a waist-up player is still asked for kicks.
+- **in the game** Waist-up move swapping: never ask for a kick the camera cannot see (`src/moves/waistUp.ts`, PR #243; wired into the fight in PR #419). Not tried on a real webcam. In a room the host's camera decides for both players.
 - **in the game** Live camera panel on the fight screen with your tracked skeleton drawn on it.
 - **in the game** The spartan hero follows your body in real time, seen from behind in a third-person battle view.
 - **in the game** Detectors written to hold for any body size, distance and a 30 degree turn. Tested on made-up poses only: no trace recorded from a real body is in the repo yet.
 - **in the game** Graphics drop to low quality when frames run slow with the camera on.
-- **built, not mounted** Two players on one camera (issue #28): telling which body is which (`src/pose/players.ts`, PR #99), and the rest of it in `src/duo/`: seats, a move reader for each body, the link that makes the second body the fight's second player, the second hero and the Multiplayer card. Four small changes in lead files mount it ([docs/duo.md](duo.md)). Never tried with two real people on a real camera.
+- **in the game** Two players on one camera (issue #28), the "Two players, one camera" card on the Multiplayer screen (PRs #408, #414, #427, #432): telling which body is which (`src/pose/players.ts`, PR #99), and the rest of it in `src/duo/`: seats, a move reader for each body, the link that makes the second body the fight's second player, the second hero and the Multiplayer card. See [docs/duo.md](duo.md). Never tried with two real people on a real camera.
 - **planned** Detector tuning on real bodies, and one full webcam fight on the demo laptop (#17, #7).
 
 ## Enemies and stops
@@ -60,8 +60,8 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **in the game** Optional 15 second warm-up before a fight (camera only). It scores the moves you make and tunes that monster to you.
 - **in the game** "What you practised" on the result screen: the moves you got right and what each teaches.
 - **built, not mounted** A fuller lesson list from the fight's events: defences held, longest clean run (`src/lessons/lessons.ts`, PR #173). The result screen uses the shorter list above.
-- **built, not mounted** Practice mode, the pure parts: one move ten times, a tip for the weakest part, a summary (`src/coach/practice.ts`, PR #189). There is no practice screen and no menu entry.
-- **planned** Training mode as a screen (#172, from #161), after the freeze.
+- **built, not mounted** Practice mode, the pure parts: one move ten times, a tip for the weakest part, a summary (`src/coach/practice.ts`, PR #189). The Training Dojo on the next line is its screen.
+- **in the game** Training Dojo on the main menu (#172, from #161): practise one move at a time, with a grade and a tip after each try (`src/coach/ui/Dojo.tsx`). Not tried on a real webcam.
 
 ## God scan and AI
 
@@ -111,8 +111,8 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 
 - No full webcam fight on a real body on the demo laptop yet (#7). Tracking and the body-following hero have only run on made-up frames and a fake camera in our tests.
 - Detectors are not tuned on the three of us (#17). The numbers are first guesses backed by tests.
-- A waist-up player is still asked for kicks: the swap code is merged but the fight does not call it (#239).
-- Nine things are merged but unreachable by a player: adaptive difficulty, the style figures, the character picker, waist-up swapping, two players on one camera, the fuller lesson list, practice mode, the god scan, and the replay and god card. Each needs a line in a screen that only the lead's agent edits.
+- Waist-up swapping is wired (PR #419) but untested on a real webcam, and in a room a waist-up guest can still be asked for a kick.
+- Listed here earlier as merged but unreachable, and not rechecked on 15 November: adaptive difficulty, the style figures, the fuller lesson list and the replay. The character picker, waist-up swapping, two players on one camera, the Training Dojo and the hero card are in the game now. The god scan was taken out on purpose (PR #392).
 - Frame rate is measured headless only, not on the demo laptop.
 - Rooms have not been shown to work between two real machines over the internet in anything this doc could check.
 - No Devpost page, demo video or backup recording yet.
