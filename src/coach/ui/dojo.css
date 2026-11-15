@@ -1,0 +1,122 @@
+/* The training dojo. A dark screen of its own: colours and type come from the theme's variables (src/theme.css)
+   where they exist, with fallbacks, so it reads the same wherever it is mounted. Laid out for 1280 x 720. */
+.dojo {
+  --dj-bg: var(--pb-ground, #15100e);
+  --dj-deep: var(--pb-ground-deep, #0d0a09);
+  --dj-ink: var(--pb-text, #f6eedc);
+  --dj-dim: var(--pb-text-dim, #d3c7ad);
+  --dj-accent: var(--pb-ochre, #d9a34a);
+  --dj-edge: var(--pb-terra, #b8553a);
+  --dj-line: var(--pb-lead, #9c9b93);
+  --dj-focus: var(--pb-focus, #f6eedc);
+  --dj-excellent: #8fd67a;
+  --dj-good: var(--pb-ochre-light, #e2b25d);
+  --dj-needs: #f0957c;
+  --dojo-time: 0;
+  position: relative; box-sizing: border-box; display: flex; flex-direction: column; gap: 1rem;
+  width: 100%; min-height: 100vh; padding: 1.25rem 2rem 1.5rem; overflow: hidden;
+  color: var(--dj-ink); background: var(--dj-bg); text-align: left; line-height: 1.2;
+  font-family: var(--pb-font-body, Optima, "Gill Sans", Palatino, "Trebuchet MS", sans-serif);
+}
+.dojo p, .dojo h1, .dojo h2, .dojo ul, .dojo ol { margin: 0; padding: 0; }
+
+.dojo-top { display: flex; align-items: center; gap: 2rem; min-height: 3rem; }
+.dojo-title { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dj-accent); }
+.dojo-title span { color: var(--dj-dim); letter-spacing: 0.04em; }
+.dojo-progress { font-size: 1.4rem; color: var(--dj-dim); }
+.dojo-quit { margin-left: auto; }
+.dojo-points + .dojo-quit { margin-left: 0; }
+.dojo-points { margin-left: auto !important; font-size: 1.5rem; color: var(--dj-dim); }
+.dojo-points span { letter-spacing: 0.12em; text-transform: uppercase; }
+.dojo-points b { display: inline-block; min-width: 3ch; font-size: 2.5rem; line-height: 1; text-align: right; color: var(--dj-ink); font-variant-numeric: tabular-nums; }
+
+.dojo-button {
+  padding: 0.55rem 1.4rem; font-family: inherit; font-size: 1.25rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.06em; cursor: pointer;
+  color: var(--dj-ink); background: var(--dj-deep); border: 2px solid var(--dj-line); border-radius: var(--pb-radius, 7px);
+}
+.dojo-button:hover { border-color: var(--dj-accent); }
+.dojo-button.primary { color: var(--pb-text-on-ochre, #1b1410); background: var(--dj-accent); border-color: var(--dj-accent); }
+.dojo-button:focus-visible { outline: 3px solid var(--dj-focus); outline-offset: 4px; }
+
+.dojo-stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 2.5rem; min-height: 0; }
+.dojo-outline { flex: none; }
+/* The outline keeps its figure and its checklist; the name and the how line are said once, large, beside it. */
+.dojo-outline .mg-kind, .dojo-outline .mg-name, .dojo-outline .mg-how { display: none; }
+.dojo-outline .move-guide { --mg-figure: 440px; }
+.dojo-outline .mg-words { width: 17rem; min-width: 0; }
+.dojo[data-phase="go"] .dojo-outline .move-guide { border-color: var(--dj-accent); }
+
+.dojo-side { flex: 1 1 22rem; min-width: 18rem; max-width: 30rem; display: flex; flex-direction: column; gap: 0.8rem; }
+.dojo-cue { font-size: 1.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-dim); }
+.dojo[data-phase="go"] .dojo-cue { color: var(--dj-accent); }
+.dojo-name { font-size: 4.25rem; font-weight: 700; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; overflow-wrap: break-word; }
+.dojo-how { font-size: 1.9rem; line-height: 1.2; min-height: 2.4em; }
+.dojo-time { height: 1rem; background: var(--dj-deep); border: 2px solid var(--dj-line); border-radius: 0.5rem; overflow: hidden; }
+.dojo-time-fill { height: 100%; background: var(--dj-dim); transform-origin: left center; transform: scaleX(var(--dojo-time)); }
+.dojo[data-phase="go"] .dojo-time-fill { background: var(--dj-accent); }
+.dojo-key { font-size: 1.25rem; color: var(--dj-dim); }
+.dojo-key kbd { padding: 0.05em 0.5em; font: inherit; font-weight: 700; color: var(--dj-ink); border: 2px solid var(--dj-line); border-radius: 5px; }
+
+/* The grade: the largest words on the screen, with the points and one tip under them. */
+.dojo-result { display: flex; flex-direction: column; gap: 0.35rem; min-height: 11rem; animation: dojo-pop 0.22s ease-out; }
+.dojo-grade { font-size: 4.5rem; font-weight: 700; line-height: 1; letter-spacing: 0.01em; }
+.dojo-gain { font-size: 3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.dojo-tip { font-size: 1.6rem; line-height: 1.25; color: var(--dj-ink); }
+.dojo[data-tier="excellent"] .dojo-grade, .dojo[data-tier="excellent"] .dojo-gain { color: var(--dj-excellent); }
+.dojo[data-tier="good"] .dojo-grade, .dojo[data-tier="good"] .dojo-gain { color: var(--dj-good); }
+.dojo[data-tier="needs_work"] .dojo-grade, .dojo[data-tier="needs_work"] .dojo-gain { color: var(--dj-needs); }
+.dojo[data-tier="needs_work"] .dojo-grade { font-size: 4rem; }
+@keyframes dojo-pop { from { transform: scale(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* One stone per repetition: empty, then the colour of its grade with its points under it. */
+.dojo-dots { display: flex; gap: 1.1rem; list-style: none; margin-top: 0.4rem !important; }
+.dojo-dots li { display: grid; justify-items: center; gap: 0.3rem; min-width: 3.4rem; font-size: 1.25rem; font-weight: 700; color: var(--dj-dim); font-variant-numeric: tabular-nums; }
+.dojo-dot { width: 2rem; height: 2rem; box-sizing: border-box; border: 3px solid var(--dj-line); border-radius: 50%; background: var(--dj-deep); }
+.dojo-dots li[data-now] .dojo-dot { border-color: var(--dj-ink); box-shadow: 0 0 0 3px var(--dj-accent); }
+.dojo-dots li[data-tier="excellent"] { color: var(--dj-excellent); }
+.dojo-dots li[data-tier="good"] { color: var(--dj-good); }
+.dojo-dots li[data-tier="needs_work"] { color: var(--dj-needs); }
+.dojo-dots li[data-tier="excellent"] .dojo-dot { background: var(--dj-excellent); border-color: var(--dj-excellent); }
+.dojo-dots li[data-tier="good"] .dojo-dot { background: var(--dj-good); border-color: var(--dj-good); }
+.dojo-dots li[data-tier="needs_work"] .dojo-dot { border-color: var(--dj-needs); border-style: dashed; }
+
+/* The end: the total, the highlights, and what to work on. */
+.dojo-end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; text-align: center; }
+.dojo-end-title { font-size: 2.25rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-accent); }
+.dojo-total { font-size: 2rem; color: var(--dj-ink); }
+.dojo-total b { font-size: 5rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.dojo-total span { color: var(--dj-dim); }
+.dojo-closing { font-size: 1.6rem; color: var(--dj-dim); }
+.dojo-columns { display: flex; align-items: stretch; justify-content: center; gap: 1.5rem; width: 100%; max-width: 72rem; margin-top: 0.4rem; }
+.dojo-card { flex: 1 1 0; padding: 1.1rem 1.5rem 1.3rem; text-align: left; background: var(--dj-deep); border: 3px solid var(--dj-edge); border-radius: var(--pb-radius-panel, 14px); }
+.dojo-card:first-child { flex: 0 1 24rem; }
+.dojo-card h2 { margin-bottom: 0.6rem; font-size: 1.5rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-accent); }
+.dojo-card ul { display: grid; gap: 0.55rem; list-style: none; }
+.dojo-card li, .dojo-card p { font-size: 1.4rem; line-height: 1.3; }
+.dojo-card li span { color: var(--dj-dim); }
+.dojo-card li[data-tier="excellent"] b { color: var(--dj-excellent); }
+.dojo-card li[data-tier="good"] b { color: var(--dj-good); }
+.dojo-card li[data-tier="needs_work"] b { color: var(--dj-needs); }
+.dojo-buttons { display: flex; gap: 1.25rem; margin-top: 0.8rem; }
+.dojo-buttons .dojo-button { padding: 0.75rem 2rem; font-size: 1.5rem; }
+
+/* Opened before a style was chosen: one button per style. */
+.dojo-pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; text-align: center; }
+.dojo-pick .dojo-closing { max-width: 46rem; }
+.dojo-styles { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; max-width: 72rem; margin: 0.6rem 0; }
+.dojo-style { display: grid; gap: 0.35rem; width: 13.5rem; padding: 1rem 0.9rem; text-align: center; border-width: 3px; }
+.dojo-style b { font-size: 1.75rem; color: var(--dj-accent); }
+.dojo-style span { font-size: 1.15rem; font-weight: 500; letter-spacing: 0; line-height: 1.3; color: var(--dj-ink); }
+
+/* The player's own picture, small, in the corner. Flipped so it moves like a mirror. */
+.dojo-camera { position: absolute; right: 2rem; bottom: 1.5rem; }
+.dojo-camera video { display: block; width: 11rem; transform: scaleX(-1); border: 2px solid var(--dj-line); border-radius: 6px; }
+
+@media (max-width: 62rem) {
+  .dojo-stage { flex-direction: column; }
+  .dojo-columns { flex-direction: column; }
+  .dojo-card:first-child { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dojo-result { animation: none; }
+}

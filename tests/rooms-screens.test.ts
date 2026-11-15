@@ -10,21 +10,21 @@ const style = STYLES[0];
 if (!style) throw new Error("no styles");
 
 test("title to host to style, with the fight shared", () => {
-  const flow = run([{ type: "together" }, { type: "hostRoom" }, { type: "hosted", together: true }]);
+  const flow = run([{ type: "hostRoom" }, { type: "hosted", together: true }]);
   expect(flow.screen).toBe("style");
   expect(flow.hosting).toBe(true);
   expect(run([{ type: "pickStyle", style }], flow).screen).toBe("map");
 });
 
 test("playing alone from the host screen is single play", () => {
-  const flow = run([{ type: "together" }, { type: "hostRoom" }, { type: "hosted", together: false }]);
+  const flow = run([{ type: "hostRoom" }, { type: "hosted", together: false }]);
   expect(flow.screen).toBe("style");
   expect(flow.hosting).toBe(false);
 });
 
 test("title to join to guest, and every room screen goes back to the title", () => {
-  expect(run([{ type: "together" }, { type: "joinRoom" }, { type: "joined" }]).screen).toBe("guest");
-  for (const path of [["together"], ["together", "hostRoom"], ["together", "joinRoom"], ["together", "joinRoom", "joined"]] as const) {
+  expect(run([{ type: "joinRoom" }, { type: "joined" }]).screen).toBe("guest");
+  for (const path of [["hostRoom"], ["joinRoom"], ["joinRoom", "joined"]] as const) {
     const flow = run([...path.map((type): FlowAction => ({ type })), { type: "toTitle" }]);
     expect(flow.screen).toBe("title");
     expect(flow.hosting).toBe(false);
@@ -32,10 +32,13 @@ test("title to join to guest, and every room screen goes back to the title", () 
 });
 
 test("room actions out of place change nothing", () => {
-  for (const action of [{ type: "hostRoom" }, { type: "joinRoom" }, { type: "joined" }, { type: "hosted", together: true }, { type: "toTitle" }] as const) {
+  for (const action of [{ type: "joined" }, { type: "hosted", together: true }, { type: "toTitle" }] as const) {
     expect(flowReducer(START, action)).toBe(START);
   }
-  expect(flowReducer({ ...START, screen: "map" }, { type: "together" }).screen).toBe("map");
+  const fighting: Flow = { ...START, screen: "fight" };
+  for (const action of [{ type: "hostRoom" }, { type: "joinRoom" }, { type: "toTitle" }] as const) {
+    expect(flowReducer(fighting, action)).toBe(fighting);
+  }
 });
 
 test("a link with a room code opens the join screen; without one the game opens as before", () => {

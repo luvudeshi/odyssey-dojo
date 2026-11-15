@@ -25,8 +25,10 @@ export function shiftBattleTimes(battle: Battle, ms: number, now: number = nowSe
   battle.lostAt += s;
   battle.struckAt += s;
   battle.reachAt += s;
-  // The burst and the shield take a changed defendedAt for a new defend and throw their dust again, so it moves
-  // only when the pause began inside the burst. A burst that was already over stays over either way.
+  battle.powerAt += s;
+  // The burst, the shield's flash and shieldUp all time themselves from defendedAt over BURST_S. The burst and the
+  // shield also take a changed defendedAt for a new defend and throw their dust again, so it moves only when the
+  // pause began inside the burst. A burst that was already over stays over either way.
   const pausedAt = now - s;
   if (pausedAt - battle.defendedAt < BURST_S) battle.defendedAt += s;
 }

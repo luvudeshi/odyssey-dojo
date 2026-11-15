@@ -4,7 +4,7 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
-import { MathUtils } from "three";
+import { MathUtils, Vector3 } from "three";
 import type { Color, Group, Material, Mesh, Object3D } from "three";
 import type { PoseFrame } from "../../core/types";
 import { battle, nowSeconds } from "../battle";
@@ -16,6 +16,9 @@ import { candidate as spartan } from "./defs/spartan";
 import { chooseHeroPose, decideHeroPose } from "./heroClips";
 import { newInput, readInput } from "./heroInput";
 import type { MutableInput } from "./heroInput";
+import { KICKS, contactPoint, leapAt, newLeap } from "../strikeReach";
+import { createLeapPose } from "./leapPose";
+import type { Act, LeapPose } from "./leapPose";
 import { createReach } from "./reach";
 import type { HeroReach } from "./reach";
 import { trackShare } from "./track/blend";
@@ -63,6 +66,10 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
   const trackers = useRef(new WeakMap<Object3D, BodyTracker>());
   const tracker = useRef<BodyTracker | null>(null);
   const reaches = useRef(new WeakMap<Object3D, HeroReach>());
+  const posers = useRef(new WeakMap<Object3D, LeapPose>());
+  const poser = useRef<LeapPose | null>(null);
+  const leap = useRef(newLeap());
+  const target = useRef({ at: [0, 0, 0] as [number, number, number], v: new Vector3() });
   const home = useRef<[number, number, number]>([0, 0, 0]);
   const input = useRef<MutableInput>(newInput());
   const prepare = useMemo(() => {
@@ -73,6 +80,8 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
       const t = createBodyTracker(root);
       if (t) trackers.current.set(root, t);
       reaches.current.set(root, createReach(root));
+      const p = createLeapPose(root);
+      if (p) posers.current.set(root, p);
     };
   }, [candidate]);
   useEffect(() => { if (DEBUG) Object.assign(window, { __heroGroup: group.current, __battle: battle, __now: nowSeconds, __bodyTrack: () => tracker.current?.debug }); }, []);
@@ -82,7 +91,7 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
     if (!g) return;
     const h = home.current;
     h[0] = battle.heroX + (tracker.current?.stepX ?? 0); h[1] = 0; h[2] = HOME_Z + battle.heroZ;
-    g.position.set(h[0] + battle.reachX, battle.reachY, h[2] + battle.reachZ);
+    g.position.set(h[0] + battle.reachX, battle.reachY + (poser.current?.lift ?? 0), h[2] + battle.reachZ);
     // A tracked duck lowers the pelvis itself; squashing the whole model on top would double it.
     g.scale.y = MathUtils.damp(g.scale.y, battle.held.has("duck") && !tracker.current?.active ? (candidate.rig.duck?.squash ?? 1) : 1, 14, Math.min(delta, 0.05));
   });
@@ -102,7 +111,18 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
             trackableRef.current = true;
             t.update(poseRef.current, now, delta, trackShare(readInput(input.current, now), candidate.rig.hurt.seconds));
           }
-          if (group.current) reaches.current.get(root)?.update(group.current, home.current, now);
+          // Act the jump out with his legs, then measure the striking limb in that pose and move him along the leap.
+          const l = leapAt(battle.hitSpot ? now - battle.reachAt : -1, leap.current);
+          const p = posers.current.get(root) ?? null;
+          poser.current = p;
+          if (p) {
+            const move = battle.struckMove;
+            // A kick is thrown only in the leap; a later held jump tucks both legs.
+            const kick: Act["kick"] = l.air > 0 && KICKS.has(move) ? (move === "knee" ? "knee" : "front_kick") : null;
+            const t = target.current;
+            p.update(l, battle.held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta);
+          }
+          if (group.current) reaches.current.get(root)?.update(group.current, home.current, now, l);
         }}
         decide={(available, out) => {
           const i = readInput(input.current, nowSeconds());

@@ -37,8 +37,11 @@ export interface HeroInput {
   readonly finisherMove: string | null;
 }
 
-/** The clip starts this far before the contact frame, so the player sees the blow land as the engine reports it. */
-export const CONTACT_LEAD = 0.08;
+/**
+ * The clip starts this far before its contact frame, so the blow is thrown in the air and lands as the hero arrives on
+ * the weak spot: the same as REACH.out in ../strikeReach.ts (a test holds them together).
+ */
+export const CONTACT_LEAD = 0.14;
 const TWO_HANDED: ReadonlySet<string> = new Set(["stake_thrust", "double_palm", "spear_thrust"]);
 
 export function isThrust(move: string, finisherMove: string | null): boolean {
@@ -69,6 +72,8 @@ export function chooseHeroPose(rig: Pick<HeroRig, "punch" | "thrust" | "hurt">, 
 }
 
 const LOOPING: ReadonlySet<HeroPose> = new Set<HeroPose>(["idle", "block", "duck"]);
+/** The dodges play faster than authored: a snap aside, not a stroll. */
+const SNAPPY: Readonly<Partial<Record<HeroPose, number>>> = { dodgeLeft: 1.7, dodgeRight: 1.7 };
 
 /** Writes the decision into `out`; a pose whose clips are all missing shows idle and never throws. */
 export function decideHeroPose(rig: HeroRig, pose: HeroPose, input: HeroInput, available: ReadonlySet<string>, out: ClipDecision = newDecision()): ClipDecision {
@@ -85,5 +90,5 @@ export function decideHeroPose(rig: HeroRig, pose: HeroPose, input: HeroInput, a
     scrub = Math.min(1, strikeStart(timed) + input.sinceStrike / timed.seconds);
   } else if (pose === "duck") scrub = rig.duck?.hold ?? null;
   else if (pose === "hurt") scrub = Math.min(1, input.sinceHurt / rig.hurt.seconds);
-  return Object.assign(out, { clip, loop: LOOPING.has(pose), scrub, timeScale: 1 });
+  return Object.assign(out, { clip, loop: LOOPING.has(pose), scrub, timeScale: SNAPPY[pose] ?? 1 });
 }

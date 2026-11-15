@@ -14,12 +14,11 @@ const ENEMIES = [stop("a"), stop("b"), stop("c"), stop("d")];
 
 const run = (actions: readonly FlowAction[], from: Flow = START): Flow => actions.reduce(flowReducer, from);
 
-test("title to style to map to intro to fight to result to map", () => {
+test("title to style to map to fight to result to map: a stop on the map starts its fight at once", () => {
   const steps: [FlowAction, string][] = [
     [{ type: "ready" }, "style"],
     [{ type: "pickStyle", style }, "map"],
-    [{ type: "enter", index: 0 }, "intro"],
-    [{ type: "begin", seed: 7 }, "fight"],
+    [{ type: "enter", index: 0, seed: 7 }, "fight"],
     [{ type: "ended", enemyId: "a", won: true }, "result"],
     [{ type: "toMap" }, "map"],
   ];
@@ -33,19 +32,18 @@ test("title to style to map to intro to fight to result to map", () => {
 });
 
 test("a loss records nothing, a repeat win records once, retry reseeds", () => {
-  const atFight = run([{ type: "ready" }, { type: "pickStyle", style }, { type: "enter", index: 0 }, { type: "begin", seed: 1 }]);
+  const atFight = run([{ type: "ready" }, { type: "pickStyle", style }, { type: "enter", index: 0, seed: 1 }]);
   const lost = flowReducer(atFight, { type: "ended", enemyId: "a", won: false });
   expect(lost.cleared).toEqual([]);
   const retried = flowReducer(lost, { type: "retry", seed: 2 });
   expect(retried).toMatchObject({ screen: "fight", seed: 2 });
   const won = run([{ type: "ended", enemyId: "a", won: true }], retried);
-  const again = run([{ type: "toMap" }, { type: "enter", index: 0 }, { type: "begin", seed: 3 }, { type: "ended", enemyId: "a", won: true }], won);
+  const again = run([{ type: "toMap" }, { type: "enter", index: 0, seed: 3 }, { type: "ended", enemyId: "a", won: true }], won);
   expect(again.cleared).toEqual(["a"]);
 });
 
 test("actions from the wrong screen are ignored", () => {
-  expect(flowReducer(START, { type: "enter", index: 1 })).toBe(START);
-  expect(flowReducer(START, { type: "begin", seed: 1 })).toBe(START);
+  expect(flowReducer(START, { type: "enter", index: 1, seed: 1 })).toBe(START);
   expect(flowReducer(START, { type: "ended", enemyId: "a", won: true })).toBe(START);
   expect(flowReducer(START, { type: "retry", seed: 1 })).toBe(START);
   expect(flowReducer(START, { type: "toMap" })).toBe(START);
@@ -79,7 +77,27 @@ test("route has a point for each stop plus Troy and Ithaca, inside the chart", (
   }
 });
 
-// The optional warm-up on the intro screen.
+// The main menu: Story mode, and back to it from the map.
+test("the main menu is reachable from the style screen and the map, and Story mode returns to the map once a style is chosen", () => {
+  const atStyle = run([{ type: "ready" }]);
+  expect(flowReducer(atStyle, { type: "toTitle" }).screen).toBe("title");
+  const atMap = run([{ type: "pickStyle", style }], atStyle);
+  const menu = flowReducer(atMap, { type: "toTitle" });
+  expect(menu.screen).toBe("title");
+  expect(flowReducer(menu, { type: "ready" }).screen).toBe("map");
+  const fighting = flowReducer(atMap, { type: "enter", index: 0, seed: 1 });
+  expect(flowReducer(fighting, { type: "toTitle" })).toBe(fighting);
+});
+
+test("rooms are hosted and joined from the title: there is no room menu in between", () => {
+  expect(flowReducer(START, { type: "hostRoom" }).screen).toBe("host");
+  expect(flowReducer(START, { type: "joinRoom" }).screen).toBe("join");
+  expect(run([{ type: "hostRoom" }, { type: "toTitle" }]).screen).toBe("title");
+  const atMap = run([{ type: "ready" }, { type: "pickStyle", style }]);
+  expect(flowReducer(atMap, { type: "hostRoom" })).toBe(atMap);
+});
+
+// The Training Dojo's result tunes the monsters.
 const beginner: Assessment = { level: "beginner", focus: [], strong: [], habits: [], steps: [] };
 const firstReal = (): EnemySpec => {
   const real = REAL_ENEMIES[0];
@@ -87,19 +105,17 @@ const firstReal = (): EnemySpec => {
   return real;
 };
 
-test("the warm-up result is kept while on the intro and never changes the screen", () => {
-  const atIntro = run([{ type: "ready" }, { type: "pickStyle", style }, { type: "enter", index: 0 }]);
-  expect(atIntro.assessment).toBeNull();
-  const warmed = flowReducer(atIntro, { type: "warmed", assessment: beginner });
-  expect(warmed.screen).toBe("intro");
-  expect(warmed.assessment).toBe(beginner);
-  const fighting = flowReducer(warmed, { type: "begin", seed: 3 });
+test("a training result is kept from the title through the fights and never changes the screen", () => {
+  const trained = flowReducer(START, { type: "warmed", assessment: beginner });
+  expect(trained.screen).toBe("title");
+  expect(trained.assessment).toBe(beginner);
+  const fighting = run([{ type: "ready" }, { type: "pickStyle", style }, { type: "enter", index: 0, seed: 3 }], trained);
   expect(fighting.screen).toBe("fight");
   expect(run([{ type: "ended", enemyId: "a", won: true }, { type: "toMap" }], fighting).assessment).toBe(beginner);
 });
 
-test("a warm-up result outside the intro is ignored, and a quest without one is untouched", () => {
-  expect(flowReducer(START, { type: "warmed", assessment: beginner })).toBe(START);
+test("a quest with no training result is untouched", () => {
+  expect(START.assessment).toBeNull();
   expect(enemyFor(firstReal(), null)).toBe(firstReal());
 });
 

@@ -44,10 +44,10 @@ test("standing still is never called out", () => {
   expect(play(() => null, 200).shown).toEqual([]);
 });
 
-test("each defend has its own word, and the callout says Safe", () => {
+test("each defend has its own one-word chip, with no Safe line and no arrow", () => {
   const words = ["dodge_left", "dodge_right", "block", "duck", "jump"].map(defendWord);
-  expect(new Set(words).size).toBe(5);
-  expect(words.join(" ")).toMatch(/DODGED.*DODGED.*BLOCKED.*DUCKED.*JUMPED/);
+  expect(new Set(words).size).toBe(4);
+  expect(words).toEqual(["DODGED", "DODGED", "BLOCKED", "DUCKED", "JUMPED"]);
   // Nothing is shown until a defend counts.
   expect(renderToStaticMarkup(createElement(DefendFlash, { phase: { kind: "intro", msLeft: 100 } }))).toBe("");
 });
