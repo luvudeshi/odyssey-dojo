@@ -2,7 +2,7 @@
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
-import { clipUrl, phaseLineId } from "./athenaLines";
+import { clipUrl, isPhaseLine, phaseLineId } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
@@ -51,7 +51,7 @@ const RESULT = 4;
 function urgency(id: string): number {
   if (id === "win" || id === "loss") return RESULT;
   // A phase line comes once or twice a fight and the calls never stop, so it outranks them or it is never heard.
-  if (id.startsWith("phase_")) return PHASE;
+  if (isPhaseLine(id)) return PHASE;
   if (id.startsWith("call_")) return CALL;
   // Homer's lines sit with the fight start; a taunt sent to this voice is as easily talked over as praise.
   return id === "fight_start" || id.startsWith("homer_") ? MOMENT : SHORT;
@@ -250,32 +250,45 @@ function quieter(deps: VoiceDeps, gain: number): VoiceDeps {
 const sharedDeps = browserDeps(STORY_INDEX_URLS);
 const shared = createVoice(sharedDeps);
 
+const monsters = createVoice(quieter(sharedDeps, TAUNT_VOLUME), "taunt");
+/** True from the frame a fight is won or lost until the next fight begins. No taunt starts meanwhile. */
+let fightOver = false;
+
 /**
  * The monsters' own channel: a taunt plays over Athena's calls and is not cut by them, and it never holds her voice.
- * One taunt at a time: a second one asked for while the first plays is refused.
+ * One taunt at a time: a second one asked for while the first plays is refused. So is any taunt once the fight is over.
  */
-export const tauntVoice: Pick<Voice, "speak" | "playing" | "stop"> = createVoice(quieter(sharedDeps, TAUNT_VOLUME), "taunt");
-
-/** Silences the monster, whatever it is saying. */
-function stopTaunt(): void {
-  const id = tauntVoice.playing();
-  if (id !== null) tauntVoice.stop(id);
-}
+export const tauntVoice: Pick<Voice, "speak" | "playing" | "stop"> = {
+  speak: (id) => !fightOver && monsters.speak(id),
+  playing: () => monsters.playing(),
+  stop: (id) => {
+    monsters.stop(id);
+  },
+};
 
 export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): void {
-  // The monster falls silent when the fight ends, so the result lines are heard clean.
-  if (events.some((event) => event.type === "won" || event.type === "lost")) stopTaunt();
+  if (events.some((event) => event.type === "won" || event.type === "lost")) {
+    // The monster falls silent when the fight ends, so the result lines are heard clean. A taunt still waiting is refused.
+    fightOver = true;
+    const taunt = monsters.playing();
+    if (taunt !== null) monsters.stop(taunt);
+  } else if (events.length > 0) {
+    // The engine emits nothing after the result, so these events are a new fight's.
+    fightOver = false;
+  }
   shared.handle(events, phase);
 }
 
 /** For lines no combat event triggers, such as "fight_start" or Homer's "homer_title". */
 export function speakLine(id: string): boolean {
+  if (id === "fight_start") fightOver = false;
   return shared.speak(id);
 }
 
 /**
- * Has the monster taunt the player on its own channel, if it has a taunt recorded and is not already taunting.
- * Works for every stop of the quest. speakMonsterTaunt in storyVoice.ts does the same and says when the taunt is over.
+ * Has the monster taunt the player on its own channel, at once, if it has a taunt recorded, is not already taunting and
+ * the fight is not over. Works for every stop of the quest. speakMonsterTaunt in storyVoice.ts waits for Athena's phase
+ * line first and says when the taunt is over; the fight screen uses that one.
  */
 export function speakTaunt(enemyId: string): boolean {
   const id = pickTaunt(enemyId, Math.random);
