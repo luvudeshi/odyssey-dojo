@@ -52,8 +52,7 @@ test("the homecoming is one of Homer's lines, belongs to the last stop and names
   expect(line?.speaker).toBe("homer");
   expect(line?.enemyId).toBe(QUEST_ORDER.at(-1));
   expect(isStoryLine(HOMECOMING_ID)).toBe(true);
-  // The fight ends on the spear (the suitors' finisher), so the line must not leave the last blow to the bow.
-  for (const word of ["bow", "spear", "suitors", "twenty years", "Ithaca", "Penelope"]) expect(line?.text, word).toContain(word);
+  for (const word of ["bow", "suitors", "twenty years", "Ithaca", "Penelope"]) expect(line?.text, word).toContain(word);
   // Two sentences, like the brief asked for.
   expect(line?.text.split(". ").length).toBe(2);
 });

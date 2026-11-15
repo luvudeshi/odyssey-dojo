@@ -21,7 +21,7 @@ npx tsx --env-file=<path to .env> server/tools/hearClips.ts --check    # the sam
 
 Scylla's second and third taunts (`taunts/taunt_scylla_2.mp3` and `taunts/taunt_scylla_3.mp3`) were added later the same day and sent once each, after levelling. Both came back "same": every word of the line, none under 0.95, and no sign of a cut end. That makes 84 clips: 53 same, 0 differ, 2 may be cut, 29 unsure. The counts in the rest of this page are for the first 82.
 
-**Added after that run:** `narration/homer_homecoming.mp3`, Homer's closing line, made and levelled on the evening of 14 November 2026 and sent once: every word came back as written, with "last" at 0.89, so it reads "unsure?" like the 29 below. It is not in any count or table on this page. Nobody has listened to it either. Its words changed on 15 November 2026, because the fight ends on the spear and not the bow: until the clip is made again (`npx tsx server/tools/genClips.ts story --only=homer_homecoming --force`), it speaks the old line while the screen shows the new one.
+**Added after that run:** `narration/homer_homecoming.mp3`, Homer's closing line, made and levelled on the evening of 14 November 2026 and sent once: every word came back as written, with "last" at 0.89, so it reads "unsure?" like the 29 below. It is not in any count or table on this page. Nobody has listened to it either.
 
 No clip has a word that speech to text heard differently from its line. **One clip is not confirmed all the same: `athena/call_knee.mp3`.** ElevenLabs hears "Knee"; a second engine hears "Me" more often than "Knee". A person has to listen to it.
 
