@@ -1,0 +1,134 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 6e65f80..71ae241 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -16,6 +16,7 @@ import { characterFromScan, confirmCharacter } from "./characters/godCharacter";
+ import { assessmentFrom } from "./coach";
+ import { Dojo } from "./coach/ui/Dojo";
+ import { log } from "./core/log";
++import { duoCamera } from "./duo/duoCamera";
+ import { ENEMIES } from "./enemies/registry";
+ import { CameraPanelContext } from "./hud/cameraPanel";
+ import { cameraErrorMessage } from "./pose/cameraError";
+@@ -63,6 +64,8 @@ export function App() {
+   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
+   const [hostLink, setHostLink] = useState<HostLink | null>(null);
+   const [joined, setJoined] = useState<Joined | null>(null);
++  // Two players on one camera stays on for the fights started from its card, and goes off with them.
++  useEffect(() => { if (!flow.hosting && flow.screen !== "host") duoCamera.setOn(false); }, [flow.hosting, flow.screen]);
+ 
+   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
+   const [god, setGod] = useState<GodReveal | null>(null);
+diff --git a/src/hud/CameraView.tsx b/src/hud/CameraView.tsx
+index f11a69b..d667087 100644
+--- a/src/hud/CameraView.tsx
++++ b/src/hud/CameraView.tsx
+@@ -4,6 +4,7 @@
+ import { memo, useContext, useEffect, useRef } from "react";
+ import type { RefObject } from "react";
+ import type { PoseFrame } from "../core/types";
++import { duoCamera } from "../duo/duoCamera";
+ import { MOVES } from "../moves/registry";
+ import type { PoseTracker } from "../pose/tracker";
+ import { battle } from "../render/battle";
+@@ -65,7 +66,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
+       const frame = poseRef.current;
+       const presence = presenceOf(frame, performance.now());
+       const tracking = presence.ok;
+-      if (frame && tracking && !pausedRef.current) draw(context, frame, mirrorRef.current, width, height, ratio);
++      if (frame && tracking && !pausedRef.current) draw(context, duoCamera.seen(frame), mirrorRef.current, width, height, ratio);
+       const now = performance.now() / 1000;
+       flash = nextFlash(flash, battle, now, nameOf);
+       const text = presence.ok ? "Tracking your body" : presence.reason;
+diff --git a/src/pose/tracker.ts b/src/pose/tracker.ts
+index 9068c61..86a97bf 100644
+--- a/src/pose/tracker.ts
++++ b/src/pose/tracker.ts
+@@ -4,6 +4,7 @@ import { FilesetResolver, PoseLandmarker } from "@mediapipe/tasks-vision";
+ import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
+ import { log } from "../core/log";
+ import type { Landmark, PoseFrame } from "../core/types";
++import { duoCamera } from "../duo/duoCamera";
+ import { createFreshFrame, createRateMeter, tooSlow, watchCameraFrames } from "./freshFrame";
+ 
+ export interface PoseTracker {
+@@ -67,8 +68,10 @@ export async function startTracker(): Promise<PoseTracker> {
+   const build = (plan: Plan): Promise<PoseLandmarker> => PoseLandmarker.createFromOptions(fileset, {
+     baseOptions: { modelAssetPath: `/mediapipe/pose_landmarker_${plan.model}.task`, delegate: plan.delegate },
+     runningMode: "VIDEO",
+-    numPoses: 1,
++    numPoses: duoCamera.wanted(),
+   });
++  // Two players on one camera (src/duo): how many bodies the model in use was last told to look for.
++  let looking = duoCamera.wanted();
+   let lastT = 0;
+   // The first call on a new landmarker compiles GPU programs (0.6 to 2 s). Do it now, off the fight.
+   const warm = (made: PoseLandmarker): void => {
+@@ -178,6 +181,10 @@ export async function startTracker(): Promise<PoseTracker> {
+       lastCaptured = captured;
+       const t = Math.max(captured, lastT + 1);
+       lastT = t;
++      if (looking !== duoCamera.wanted()) {
++        looking = duoCamera.wanted();
++        void landmarker.setOptions({ numPoses: looking }).catch((error: unknown) => { log("warn", "pose_options_failed", error); });
++      }
+       let result: PoseLandmarkerResult;
+       try {
+         result = landmarker.detectForVideo(video, t);
+@@ -198,6 +205,15 @@ export async function startTracker(): Promise<PoseTracker> {
+         slowSince ||= now;
+         if (now - slowSince > 3000) { note("too-slow"); slowSince = 0; }
+       } else slowSince = 0;
++      if (duoCamera.on()) {
++        // Every body goes to the seats; player one's frame comes back and is handed out as the one pose always was.
++        const bodies = result.landmarks.map((image, i) => ({ image: mirrored(image, (x) => 1 - x), world: mirrored(result.worldLandmarks[i] ?? [], (x) => -x) }));
++        const first = duoCamera.take(bodies, t);
++        if (!first) { stats.noPerson++; return null; }
++        stats.poses++;
++        keep(stats.poseTimes, t);
++        return first;
++      }
+       const image = result.landmarks[0];
+       const world = result.worldLandmarks[0];
+       if (!image || !world) { stats.noPerson++; return null; }
+diff --git a/src/render/Scene.tsx b/src/render/Scene.tsx
+index 6fb6864..2e6fb52 100644
+--- a/src/render/Scene.tsx
++++ b/src/render/Scene.tsx
+@@ -21,6 +21,7 @@ import { MonsterRig } from "./MonsterRig";
+ import { finisherSpot } from "./strikeReach";
+ import { MONSTER_MODELS } from "./monsters/registry";
+ import { Hero } from "./hero/Hero";
++import { SecondFigure } from "../duo/SecondFigure";
+ import { GhostFigure } from "./GhostFigure";
+ import { MOVE_GHOST_ON } from "./ghost/ghostSwitch";
+ import { QualityContext, useQualityToggle } from "./quality";
+@@ -104,6 +105,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
+           <PowerStrike />
+           <CameraRig />
+           <Hero poseRef={poseRef} />
++          <SecondFigure />
+           <GuardShield />
+           <DefendBurst />
+           {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
+diff --git a/src/screens/Multiplayer.tsx b/src/screens/Multiplayer.tsx
+index c6d38d0..2f09dff 100644
+--- a/src/screens/Multiplayer.tsx
++++ b/src/screens/Multiplayer.tsx
+@@ -4,6 +4,7 @@
+ // (RoomHost). Rooms need the game's own server (/api/rooms).
+ import { useProfile } from "../account/store";
+ import { Icon } from "../account/ui/icons";
++import { DuoCard } from "../duo/ui/DuoCard";
+ import { FaceTimeCard } from "../facetime/ui/FaceTimeCard";
+ import type { HostLink } from "../net/host";
+ import { useEffect } from "react";
+@@ -65,6 +66,8 @@ export function Multiplayer(props: {
+               <p>Scanned a friend's QR code? The code is already filled in.</p>
+               <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
+             </section>
++            {/* Two players on this computer's one camera (src/duo): no room and no server. */}
++            <DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
+             {/* The FaceTime call: drawn only when the server has it set up (the card returns nothing otherwise, and the
+                 slab hides with it). It comes after the join card so the room code box stays the first text box. */}
+             <div className="mp-card mp-card--call">
