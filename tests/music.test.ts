@@ -266,7 +266,7 @@ test("every scene has a committed clip that is listed and credited, and together
     bytes += statSync(file).size;
   }
   expect(bytes).toBeGreaterThan(100_000);
-  // Three full-length CC BY tracks at 128 kbps and two stings: 6.9 MB.
+  // Three full-length CC BY tracks at 128 kbps and two stings: 7.7 MB.
   expect(bytes).toBeLessThan(8_000_000);
 });
 
