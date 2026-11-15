@@ -74,7 +74,7 @@ export const MOVEMENTS: Readonly<Record<string, readonly PoseFrame[]>> = {
   cross: move(READY, pose(RIGHT_OUT, READY), 0.4),
   reverse_punch: move(READY, pose(RIGHT_OUT, READY), 0.4),
   hook: move(READY, RIGHT_ACROSS, 0.6),
-  uppercut: move(READY, RIGHT_RISE, 0.6),
+  uppercut: move(READY, RIGHT_RISE, 0.75),
   knife_hand: move(READY, RIGHT_SIDE, 0.4),
   hammer_fist: move(READY, LEFT_DROP, 0.6),
   double_palm: move(READY, BOTH_OUT, 0.4),
@@ -92,3 +92,31 @@ export const MOVEMENTS: Readonly<Record<string, readonly PoseFrame[]>> = {
   dodge_right: move(STANDING, pose({ step: 0.15 }), 1),
   jump: move(STANDING, pose({ drop: -0.15 }), 1),
 };
+
+/** A seeded linear congruential generator, uniform in [-1, 1). Never Math.random, so a failure replays. */
+function lcg(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return (state / 2 ** 32) * 2 - 1;
+  };
+}
+
+export const ARM_JOINTS: readonly number[] = [J.leftShoulder, J.rightShoulder, J.leftElbow, J.rightElbow, J.leftWrist, J.rightWrist];
+/** One shoulder width in the fixtures' picture and in their 3D body (metres). */
+const SHOULDER_IMAGE = 0.16;
+const SHOULDER_WORLD = 0.4;
+
+/** Random per-frame shake of up to `spread` shoulder widths per axis on `joints` (the shoulders, elbows and wrists by default; null for every joint), in the picture and in 3D. */
+export function shaken(frames: readonly PoseFrame[], seed: number, spread: number, joints: readonly number[] | null = ARM_JOINTS): PoseFrame[] {
+  const next = lcg(seed);
+  const hit = (k: number): boolean => joints === null || joints.includes(k);
+  return frames.map((frame): PoseFrame => ({
+    ...frame,
+    image: frame.image.map((p, k) => (hit(k) ? { ...p, x: p.x + next() * spread * SHOULDER_IMAGE, y: p.y + next() * spread * SHOULDER_IMAGE } : p)),
+    world: frame.world.map((p, k) => (hit(k) ? { ...p, x: p.x + next() * spread * SHOULDER_WORLD, y: p.y + next() * spread * SHOULDER_WORLD, z: p.z + next() * spread * SHOULDER_WORLD } : p)),
+  }));
+}
+
+/** Seeds for the random-shake tests. */
+export const SEEDS: readonly number[] = [1, 2, 3, 4, 5];

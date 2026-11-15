@@ -4,9 +4,10 @@ import { expect, test } from "vitest";
 import type { PoseFrame, PoseHistory } from "../../src/core/types";
 import { createPoseInput } from "../../src/input/poseInput";
 import { MOVES } from "../../src/moves/registry";
-import { EMPTY_HISTORY, JOINT, pushFrame } from "../../src/pose/signals";
+import { EMPTY_HISTORY, pushFrame } from "../../src/pose/signals";
 import { LEFT_OUT, READY, RIGHT_OUT, STANDING, blend, pose, recording } from "../poseFixture";
 import type { BodyPose } from "../poseFixture";
+import { SEEDS, shaken } from "./looseMoves";
 
 /** Every move struck at each frame, as the fight reads the pose when the prompt is `ask` from the first frame on. */
 function struck(frames: readonly PoseFrame[], ask: string | null): Set<string> {
@@ -90,15 +91,7 @@ for (const { id, rough, wrong } of CASES) {
     }
   });
 
-  test(`${id}: standing still with the wrists jittering a tenth of a shoulder width does not count (d)`, () => {
-    const still = recording([[READY, 1500]]);
-    const jitter = still.map((frame, i): PoseFrame => {
-      const dx = (i % 2 === 0 ? 1 : -1) * 0.016;
-      const dy = (i % 3 === 0 ? 1 : -1) * 0.016;
-      const wrists: number[] = [JOINT.leftWrist, JOINT.rightWrist];
-      return { ...frame, image: frame.image.map((p, k) => (wrists.includes(k) ? { ...p, x: p.x + dx, y: p.y + dy } : p)) };
-    });
-    expect(struck(jitter, id)).not.toContain(id);
-    expect(struck(recording([[STANDING, 1500]]), id)).not.toContain(id);
+  test.each(SEEDS)(`${id}: standing still with random shake of a tenth of a shoulder width does not count (d), seed %i`, (seed) => {
+    for (const stance of [READY, STANDING]) expect(struck(shaken(recording([[stance, 33], [stance, 3000]]), seed, 0.1), id)).not.toContain(id);
   });
 }

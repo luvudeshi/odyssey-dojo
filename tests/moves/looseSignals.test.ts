@@ -7,6 +7,7 @@ import { loadTrace } from "../../tools/recorder/trace";
 import type { StoredTrace } from "../../tools/recorder/trace";
 import { LEFT_OUT, READY, RIGHT_OUT, STANDING, blend, pose, recording } from "../poseFixture";
 import type { BodyPose, Step } from "../poseFixture";
+import { SEEDS, shaken } from "./looseMoves";
 
 const WAYS: readonly ArmWay[] = ["forward", "across", "up", "down", "out"];
 const BODY_WAYS: readonly BodyWay[] = ["left", "right", "up", "down"];
@@ -67,17 +68,18 @@ test("both arms together: armsWent reads, and no one-arm rule does", () => {
   expect(armsWent(after(READY, pose(LEFT_OUT, READY)))).toBe(0);
 });
 
-test("standing still with a tenth of a shoulder width of jitter gives 0 for everything", () => {
-  const jittered = recording([[STANDING, 1500]]).map((frame, i): PoseFrame => {
-    const dx = (i % 2 === 0 ? 1 : -1) * 0.016;
-    const dy = (i % 3 === 0 ? 1 : -1) * 0.016;
-    return { ...frame, image: frame.image.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy * (i % 2 === 0 ? 1 : -1) })) };
-  });
-  const h = historyOf(jittered);
-  for (const side of ["left", "right"] as const) expect(ways(h, side)).toEqual([]);
-  expect(armsWent(h)).toBe(0);
-  expect(BODY_WAYS.map((w) => bodyWent(h, w))).toEqual([0, 0, 0, 0]);
-  expect(legRose(h)).toBe(0);
+test.each(SEEDS)("seed %i: standing still with random shake of a tenth of a shoulder width gives 0 for everything, at every frame", (seed) => {
+  for (const stance of [STANDING, READY]) {
+    let h: PoseHistory = EMPTY_HISTORY;
+    for (const frame of shaken(recording([[stance, 33], [stance, 3000]]), seed, 0.1, null)) {
+      h = pushFrame(h, frame);
+      if (frame.t < 1300) continue; // the stance is still settling
+      for (const side of ["left", "right"] as const) expect(ways(h, side)).toEqual([]);
+      expect(armsWent(h)).toBe(0);
+      expect(BODY_WAYS.map((w) => bodyWent(h, w))).toEqual([0, 0, 0, 0]);
+      expect(legRose(h)).toBe(0);
+    }
+  }
 });
 
 test("a sidestep or a duck, arms kept on the body, is no arm movement", () => {
@@ -117,7 +119,11 @@ test("a leg rose: 0 when the legs are out of view, 1 for a raised knee in view",
 });
 
 const FILES = import.meta.glob<StoredTrace>("../fixtures/poses/*.json", { eager: true, import: "default" });
-const trace = (name: string) => loadTrace(Object.entries(FILES).find(([path]) => path.endsWith(name))?.[1] as StoredTrace);
+const trace = (name: string) => {
+  const found = Object.entries(FILES).find(([path]) => path.endsWith(name));
+  if (!found) throw new Error(`no pose fixture ${name}`);
+  return loadTrace(found[1]);
+};
 
 test("the block recording gives 0 for every one-arm rule at every frame", () => {
   const block = trace("block-madeup-1.json");
