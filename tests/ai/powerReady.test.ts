@@ -7,7 +7,7 @@ import { GODS, GOD_IDS } from "../../src/ai/gods/gods";
 import type { GodId } from "../../src/ai/gods/gods";
 import { PowerReady } from "../../src/ai/power/PowerReady";
 import {
-  LENDER, MAX_ANNOUNCEMENTS, READY_START, REMIND_MS, RETRY_MS, missed, nextCheckIn, powerPrompt, powerUsable, trackReady,
+  LENDER, MAX_ANNOUNCEMENTS, READY_START, REMIND_MS, RETRY_MS, champion, missed, nextCheckIn, powerPrompt, powerUsable, trackReady,
 } from "../../src/ai/power/powerPrompt";
 import type { ReadyTrack } from "../../src/ai/power/powerPrompt";
 import { ATHENA_LINES } from "../../src/audio/athenaLines";
@@ -156,8 +156,36 @@ describe("trackReady", () => {
 describe("the PowerReady banner", () => {
   const html = (props: Parameters<typeof PowerReady>[0]): string => renderToStaticMarkup(createElement(PowerReady, props));
 
-  test("draws nothing until the meter is full", () => {
-    for (const power of [0, 0.4, 0.99, Number.NaN]) expect(html({ god: "zeus", power, keyboard: false })).toBe("");
+  test("with no god it draws nothing until the meter is full", () => {
+    for (const power of [0, 0.4, 0.99, Number.NaN]) expect(html({ god: null, power, keyboard: true, phase: "defend" })).toBe("");
+  });
+
+  test.each(GOD_IDS)("%s: while the meter fills, a still plate names the god the player is the champion of, in the god's colour", (god) => {
+    for (const power of [0, 0.4, 0.99]) {
+      for (const phase of ["intro", "defend", "strike", "recover", undefined]) {
+        const out = html(phase === undefined ? { god, power, keyboard: false } : { god, power, keyboard: false, phase });
+        expect(out).toMatch(new RegExp(`^<div class="power-ready power-ready--champion power-ready--${god}"`));
+        expect(out).toContain(">Champion of<");
+        expect(out).toContain(`>${GODS[god].name}<`);
+        expect(out).toContain(`--power-ready-accent:${GODS[god].accent}`);
+        // It is not the banner: nothing to press, and it is not read out.
+        expect(out).not.toContain("power-ready--live");
+        expect(out).not.toContain("<kbd");
+        expect(out).not.toContain("aria-live");
+      }
+    }
+  });
+
+  test("the plate leaves when the banner comes (it names the god itself), and for the finishing move and the result", () => {
+    expect(html({ god: "poseidon", power: 1, keyboard: false, phase: "defend" })).not.toContain("power-ready--champion");
+    for (const phase of ["finisher", "won", "lost"]) {
+      expect(html({ god: "poseidon", power: 0.5, keyboard: false, phase })).toBe("");
+      expect(champion("poseidon", 0.5, phase)).toBeNull();
+    }
+    expect(champion("poseidon", 0.5, "strike")).toEqual({ name: "Poseidon", god: "poseidon", accent: GODS.poseidon.accent });
+    expect(champion(null, 0.5, "strike")).toBeNull();
+    expect(champion("hades" as GodId, 0.5, "strike")).toBeNull();
+    expect(html({ god: "hades" as GodId, power: 0.5, keyboard: false })).toBe("");
   });
 
   test.each(WHO)("%s: shows the title, the move, the gesture and the key, in the god's colour", (god) => {

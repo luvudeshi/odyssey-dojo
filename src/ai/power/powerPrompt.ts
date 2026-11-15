@@ -60,6 +60,23 @@ export function powerUsable(power: number, phase?: string): boolean {
   return Number.isFinite(power) && power >= 1 && !(phase !== undefined && SPENT_PHASES.has(phase));
 }
 
+export interface Champion {
+  /** The god's name as written, for example "Poseidon". */
+  readonly name: string;
+  readonly god: GodId;
+  readonly accent: string;
+}
+
+/**
+ * Whose champion the player is, for the small plate beside the power ring while the meter is filling. Null with no god
+ * (keyboard play, a skipped scan), while the banner is up (it names the god itself), and in the phases with no ring.
+ */
+export function champion(god: GodId | null, power: number, phase?: string): Champion | null {
+  if (god === null || powerUsable(power, phase) || (phase !== undefined && SPENT_PHASES.has(phase))) return null;
+  const owner = (GODS as Partial<Record<string, (typeof GODS)[GodId]>>)[god];
+  return owner ? { name: owner.name, god: owner.id, accent: owner.accent } : null;
+}
+
 /** How long a full, unspent meter waits before Athena says it once more. */
 export const REMIND_MS = 10_000;
 /** How soon to try again when the voice was held by a more urgent line. Longer than the longest phase line (2.9 s). */
