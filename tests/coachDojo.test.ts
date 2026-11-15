@@ -114,6 +114,27 @@ describe("one repetition", () => {
     expect(end.reps[0]?.reactMs).toBeLessThan(1200);
   });
 
+  test("another move during the turn does not end it or use up the repetition; the right move still counts after", () => {
+    let state = startDojo({ moves: ["jab"], reps: 1 }, 0);
+    let now = 0;
+    const feed = (frames: ReturnType<typeof attempt>): void => {
+      for (const frame of frames) {
+        now = base + frame.t;
+        state = tickDojo(state, now, frame);
+        if (state.phase !== "go") return;
+      }
+    };
+    state = tickDojo(state, state.config.showMs, null);
+    const base = state.config.showMs;
+    expect(state.phase).toBe("go");
+    feed(attempt(guideOf("block"), GOOD, 700, 1200));
+    expect(state.phase).toBe("go");
+    expect(state.reps).toEqual([]);
+    feed(attempt(guideOf("jab"), GOOD, 700, 2400, 1300));
+    expect(state.phase).toBe("result");
+    expect(state.last?.result.counted).toBe(true);
+  });
+
   test("a sloppy one still counts: Good, 100 points; a missed one needs improvement, 25 points, with one tip", () => {
     const end = play({ moves: ["jab"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
     expect(end.reps.map((each) => each.grade.label)).toEqual(["Excellent!", "Good", "Needs improvement"]);

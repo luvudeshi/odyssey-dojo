@@ -8,7 +8,7 @@ export type Ending = "smash" | "shatter" | "miss";
 
 /** Where the rock lies before he picks it up, and where his raised hand holds it. */
 export const PICKUP: Spot = { x: 0.2, y: 0.5, z: 1.6 };
-export const HAND: Spot = { x: 1.45, y: 4.6, z: 0.9 };
+export const HAND: Spot = { x: 0.3, y: 5.5, z: 0.6 };
 /** The hurl takes this long, ending as the telegraph ends. */
 export const THROW_MS = 400;
 /** Share of the lift that is the rock rising off the ground; the rest he holds it overhead. */

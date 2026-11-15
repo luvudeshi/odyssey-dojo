@@ -47,7 +47,7 @@ export const model: MonsterModel = {
 
 ## Trying it
 
-Add `&debug` and read `window.__modelDebug` (`clip`, `time`, `scrub`, `loop`, `clips`) to see what the mixer is playing.
+`/?model=dev` swaps Polyphemus for the CC0 test robot. Add `&debug` and read `window.__modelDebug` (`clip`, `time`, `scrub`, `loop`, `clips`) to see what the mixer is playing.
 
 ## The hero: the spartan
 
@@ -88,15 +88,27 @@ Removed from the repo (files, tests, screenshots and URL ids), with the reason:
 - Warrior: the owner preferred the spartan.
 - Universal Base Character (bare mannequin, never shipped): realistic and bare-chested, clashes with the low-poly cave. Screenshot kept: `docs/screenshots/hero-base-idle-rejected.png`.
 
-Add `&debug` and read `window.__modelDebug` (`clip`, `time`, `scrub`, `loop`, `clips`) to see what the mixer is playing.
+`/?model=<id>` swaps Polyphemus for a candidate: `dev` (CC0 test robot), `giant`, `classic` (table in `src/render/models/candidates.ts`; the default look is unchanged without the flag). Add `&debug` and read `window.__modelDebug` (`clip`, `time`, `scrub`, `loop`, `clips`) to see what the mixer is playing.
 
 `RiggedModel` also takes `tweakMaterial(material)`, run once on each instance's own copy of every material, to recolour or flat-shade a pack. `BoneMount` (`src/render/models/boneMount.tsx`) parents a prop to a bone and cancels the bone's scale (the Quaternius rigs carry a 100x armature) so the prop is sized in metres. GLTFLoader strips dots from node names, so the bone `Arm.R_end` is anchored as `ArmR_end`. A node ending `_end_end` is not a bone and sits in the wrong place; anchor to `_end`.
 
-## Polyphemus
+## Polyphemus candidates
 
-There is one Polyphemus: the hand-built, flat-shaded model in `src/render/monsters/models/Polyphemus.tsx` (eye, club and stake from `src/render/models/polyphemusProps.tsx`). It is built in code, so nothing loads and nothing swaps in; there is no `?model=` flag. Phase 2 puts the club in his right hand, phase 3 shows the ruined eye with the stake, and the arms swing by the attack's windup. The weak spots sit on its body: eye `[0, 3.7, 1.18]`, gut `[0, 1.9, 0.92]` (the model is scaled 0.9).
+The giant is the default. Try the others with the keyboard: `http://localhost:5173/?model=giant`, `?model=classic`, `?model=dev` (add `&debug` to read `window.__modelDebug`). Screenshots from a full keyboard fight (a bot played each one to the end) are in `docs/screenshots/polyphemus-<id>-{idle,attack,hit,blinded,death}.png`.
 
-History: the Quaternius giant GLB (and a `?model=` switch with a test robot) was tried on Saturday 14 Nov (PRs 98 and 105) and removed when the owner picked this model. The GLB pipeline (`RiggedModel`, `monsterFromGlb`, `fitModel`, `boneMount`, `clipMap`) stays: the hero, the suitors and Charybdis use it.
+Ranking: 1. `giant`, 2. `classic`. No other confirmed-CC0 giant is on disk (the Bestiary has only an Imp and a Puglin, and the sea-monster and tentacle files are for Scylla), so there is no third candidate.
+
+## Model log
+
+| Name | Source | Licence | Size | Target height / scale / rotation | Clips used | Verdict |
+|---|---|---|---|---|---|---|
+| giant (Quaternius Giant) | https://poly.pizza/m/BldaiPtyJa | CC0 | 245 KB | 4.6 m (about 2.6 hero heights), scale from bone box (x1.19 here), rotationY 0 (already faces +z), feet on the floor | Idle, Attack (scrubbed by windup, used for all four attack ids), HitRecieve, Death, Walk (Blinded idle); speed 1 / 1.15 / 1.5 per phase | Kept as the lead candidate. Blocky but reads as a stylized giant, animates for real, feet on the ground. Needed: warm tint and flat shading (pack is bright and shiny), a big code-built eye covering its two eyes, a code-built club on `ArmR_end` from the Club phase, a stake in the eye when Blinded. Jump rejected for the boulder: the pose at the end of the windup looked like standing. Club swings do not differ left and right (one Attack clip). |
+| classic (hand-built Polyphemus) | `src/render/monsters/models/Polyphemus.tsx`, restyled in `classicPolyphemus.tsx` | Ours | 0 KB | 5 m, no fit needed | none: arms swing by windup, falls over on defeat | Fallback, resized by hand. Flat-shaded, darker skin (the first tint was washed out by the cave light), cloth, club, stake. Weak-spot rings sit exactly on eye and gut. Looks like a doll next to the giant; arms are two capsules. |
+| polyphemusProps (eye, stake, club) | built in code | Ours | 0 KB | metres | none | Kept. The first club colour was invisible against the dark rock behind it; lightened. |
+
+Weak spots (changed): measured on the scaled giant in the running fight (`window.__giantEye`, `window.__giantRoot` under `&debug`). The eye prop sits at about y 3.87, z 1.35 in the monster's frame, not 4.3, so the eye is `[0, 3.75, 1.45]` (ring just in front of the eye disc) and the gut is `[0, 2.5, 0.8]` (the torso front is at about z 0.55). Hit sparks use the same positions. Shots: `docs/screenshots/giant-default-strike-eye-p0.png`, `-strike-gut-p0.png`, `-strike-eye-p2.png`.
+
+The giant is now the default Polyphemus with no flag. `?model=classic` keeps the code-built one, `?model=dev` the test robot, anything else gets the giant (`polyphemusChoice`). The GLB is preloaded at import; until it has loaded, or if it fails, the code-built model shows, so there is no blank or T-pose. Checked with a full keyboard fight, all three phases, windups, hits, Blinded, the finisher and the fall (`docs/screenshots/giant-default-*.png`). The eye was a pale plate with a tiny hexagon pupil; it is now amber with a tall dark slit pupil and a lower glow (`docs/screenshots/giant-eye-slit.png`). Known: the giant looks pale and flat while the finisher camera is close and in death; the club is a thin stick from behind; the pack has one Attack clip, so left and right club swings look alike.
 
 ## Cave mouth at dusk: model log
 
@@ -116,7 +128,7 @@ Every model or set piece brought into the fight, looked at in the running Polyph
 | Sea | built in code shader, `cave/Sea.tsx` | ours | 1 quad | y=-1.5, runs to the horizon, reflects the same sky function as the dome | shader time | resized | Now mirrors the dusk sky so the horizon is seamless. Earlier: checker pattern showed at the horizon; ripple tilt softened and faded with distance. Low quality drops the ripples. |
 | Light shafts, dust motes | built in code | ours | 6 beams | high only | pulse | kept | Gone on low as required. |
 | Hero (boxer, then the knight) | existing in repo, not mine | n/a | n/a | about 1.8 m | existing | not changed | Boxer seen in every shot; the knight was only seen at idle and has since been removed (the spartan is the hero now). Both stood on the floor, face the giant, scale right. Nothing sits between the camera and the hero. |
-| Polyphemus | existing in repo, not mine | n/a | n/a | about 5 m | existing | not changed | Seen through idle, every windup (club left/right, grab, boulder), strikes, Blinded, finisher, death and loss. Head and raised club clear the roof (7 m). The giant turns pale peach for about 0.4 s when the killing blow lands (a 70-unit point light from HitEffects plus the hit flash); the rest of the finisher it is dark rust (re-checked in `cave-mouth-finisher.png`). Left as deliberate impact feedback. |
+| Polyphemus | existing in repo, not mine | n/a | n/a | about 5 m | existing | not changed | Seen with `?model=giant` (GLB) through idle, every windup (club left/right, grab, boulder), strikes, Blinded, finisher, death and loss. Head and raised club clear the roof (7 m). The giant turns pale peach for about 0.4 s when the killing blow lands (a 70-unit point light from HitEffects plus the hit flash); the rest of the finisher it is dark rust (re-checked in `cave-mouth-finisher.png`). Left as deliberate impact feedback. |
 
 Not brought in and not tested in the fight: the Poly Haven photoscans (boulder_01, stone_fire_pit, antique_ceramic_vase_01, rock_face_01, namaqualand_cliff_02, mountainside, marble_bust) and the small_harbour_sunset HDRI. Photo textures on large shapes break the flat-shaded look, so the set pieces are built in code instead.
 

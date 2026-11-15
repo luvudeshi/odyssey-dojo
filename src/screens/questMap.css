@@ -42,8 +42,8 @@
 .qm-face::after { content: ""; position: absolute; inset: 2.6%; border-radius: 50%; border: 3px dotted #ffe6b0; opacity: 0.85; }
 .qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-face { transform: scale(1.08); }
 .qm-stop:focus-visible .qm-face { box-shadow: 0 0 0 3px #1a0d06, 0 0 0 8px #fff3c4, 0 0 0 11px #1a0d06, 0 0 22px 8px rgba(255, 230, 160, 0.9); }
-.qm-badge { position: absolute; left: -3%; top: -3%; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font: 800 20px/1 var(--pb-font-body); color: #2a1406; text-shadow: none; background: linear-gradient(#ffe6b0, #c98f37); box-shadow: 0 0 0 2px #2a1406, 0 3px 6px #000; }
-.qm-badge svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.qm-badge { position: absolute; left: -3%; top: -3%; z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; font: 800 18px/1 var(--pb-font-body); color: #2a1406; text-shadow: none; background: linear-gradient(#ffe6b0, #c98f37); box-shadow: 0 0 0 2px #2a1406, 0 3px 6px #000; }
+.qm-badge svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
 .qm-glow { position: absolute; inset: -28%; border-radius: 50%; opacity: 0; pointer-events: none; transition: opacity 180ms; mix-blend-mode: screen; background: radial-gradient(closest-side, rgba(255, 226, 150, 0.9), rgba(255, 170, 70, 0.3) 58%, transparent); }
 .qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-glow { opacity: 1; }
 .qm-stop.cleared .qm-glow { opacity: 0.7; }
@@ -69,9 +69,6 @@
 
 /* ---- the title and the way back ---- */
 .menu > .qm-head { position: absolute; top: 16px; left: 0; right: 0; z-index: 3; text-align: center; pointer-events: none; }
-.menu .qm-title { margin: 0; font: 800 clamp(2.4rem, 4.4vw, 3.6rem)/1.05 var(--pb-font-body); letter-spacing: 0.16em; text-transform: uppercase; color: #f2d9a0; text-shadow: 0 3px 0 #2a1406, 0 0 18px rgba(0, 0, 0, 0.9), 0 0 2px #000; }
-.menu > .qm-head p { margin: 0.2rem auto 0; max-width: 46rem; font: 500 19px/1.35 var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 4px #000, 0 1px 4px #000; }
-.is-home > .qm-head p { color: #f2d9a0; }
 .menu > .qm-foot { position: absolute; left: 50%; bottom: 18px; z-index: 3; display: flex; gap: 6px; transform: translateX(-50%); }
 
 @media (prefers-reduced-motion: reduce) {
