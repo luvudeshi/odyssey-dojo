@@ -7,7 +7,7 @@ import type { RefObject } from "react";
 import { MathUtils, Vector3 } from "three";
 import type { Color, Group, Material, Mesh, Object3D } from "three";
 import type { PoseFrame } from "../../core/types";
-import { battle, nowSeconds } from "../battle";
+import { battle, calmMotion, nowSeconds } from "../battle";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { RiggedModel } from "../models/RiggedModel";
 import { HOME_Z, PlayerFigure } from "../PlayerFigure";
@@ -19,6 +19,7 @@ import type { MutableInput } from "./heroInput";
 import { KICKS, contactPoint, leapAt, newLeap } from "../strikeReach";
 import { createLeapPose } from "./leapPose";
 import type { Act, LeapPose } from "./leapPose";
+import { newPowerPose, powerPoseAt, WEBCAM_SHARE } from "./powerPose";
 import { createReach } from "./reach";
 import type { HeroReach } from "./reach";
 import { trackShare } from "./track/blend";
@@ -75,6 +76,7 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
   const input = useRef<MutableInput>(newInput());
   const turn = useRef({ x: 0, y: 0 });
   const kept = useRef(new Set<string>());
+  const power = useRef(newPowerPose());
   const prepare = useMemo(() => {
     const tint = tinter(candidate.tint);
     return (root: Object3D): void => {
@@ -134,7 +136,9 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
               for (const m of battle.held) if (m !== "dodge_left" && m !== "dodge_right") kept.current.add(m);
               held = kept.current;
             }
-            p.update(l, held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta, dodge.active ? dodge.crouch : 0);
+            p.update(l, held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta, dodge.active ? dodge.crouch : 0,
+              // Reduced motion skips the pose; on webcam play he only adds a share, so it does not fight the tracked arms.
+              !calmMotion() && powerPoseAt(battle.powerGod, now - battle.powerAt, tracker.current?.active ? WEBCAM_SHARE : 1, power.current) ? power.current : null);
           }
           if (group.current) reaches.current.get(root)?.update(group.current, home.current, now, l);
         }}

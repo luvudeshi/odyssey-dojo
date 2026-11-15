@@ -4,7 +4,7 @@ import type { EnemySpec } from "../src/core/types";
 import { ENEMIES as REAL_ENEMIES } from "../src/enemies/registry";
 import { enemyFor, flowReducer, playable, START } from "../src/screens/flow";
 import type { Flow, FlowAction } from "../src/screens/flow";
-import { routePoints } from "../src/screens/QuestMap";
+import { routePoints, shipSpot } from "../src/screens/QuestMap";
 import { STYLES } from "../src/styles/registry";
 
 const style = STYLES[0];
@@ -62,15 +62,25 @@ test("every stop with a model is playable from the start; unbuilt ones are not",
   expect(playable(ENEMIES, new Map([["a", 1], ["b", 1]]))).toEqual([true, true, false, false]);
 });
 
-test("route has a point for each stop plus Troy and Ithaca, inside the chart", () => {
+test("route has a point for each stop plus Troy and Ithaca, inside the 1600 x 900 scene", () => {
   const points = routePoints(5);
   expect(points).toHaveLength(7);
   for (const [x, y] of points) {
     expect(x).toBeGreaterThan(0);
-    expect(x).toBeLessThan(1000);
+    expect(x).toBeLessThan(1600);
     expect(y).toBeGreaterThan(0);
-    expect(y).toBeLessThan(420);
+    expect(y).toBeLessThan(900);
   }
+});
+
+test("the ship sits mid-leg on open water, and moves off a place or a name that covers the middle", () => {
+  const leg = [[0, 0], [100, 0], [200, 0], [300, 0]] as const;
+  expect(shipSpot(leg, [])).toEqual([150, 0]);
+  const name = [100, -80, 100, 120] as const;
+  const [x, y] = shipSpot(leg, [name]);
+  const shipBox = [x - 44, y - 58, 88, 80] as const;
+  const clear = shipBox[0] + shipBox[2] <= name[0] || name[0] + name[2] <= shipBox[0] || shipBox[1] + shipBox[3] <= name[1] || name[1] + name[3] <= shipBox[1];
+  expect(clear).toBe(true);
 });
 
 // The main menu: Story mode, and back to it from the map.

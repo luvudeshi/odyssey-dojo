@@ -3,6 +3,7 @@
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
 import { releaseAudio } from "./release";
+import { tapVoice } from "./soundTap";
 import { tabHidden, watchTab } from "./tab";
 
 export type Speaker = "athena" | "homer" | "monster";
@@ -44,7 +45,7 @@ export async function speakLine(speaker: Speaker, text: string): Promise<boolean
   // Nothing starts in a hidden tab: the line would be heard with no screen to go with it.
   if (url === null || typeof Audio === "undefined" || tabHidden()) return false;
   stopNarration();
-  const audio = Object.assign(new Audio(url), { volume: getSettings().voiceVolume });
+  const audio = tapVoice(Object.assign(new Audio(url), { volume: getSettings().voiceVolume }));
   current = audio;
   return new Promise((resolve) => {
     let over = false;
