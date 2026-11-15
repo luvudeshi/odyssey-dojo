@@ -273,7 +273,7 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
 
   test("signing out ends that session and no other, and always answers 204", async () => {
     const name = hero();
-    await signUp(name);
+    const first = await signUp(name);
     const second = await signIn(name);
     expect(await call("POST", "/api/account/signout", { token: first.token })).toEqual({ status: 204, body: null });
     expect((await call("GET", "/api/account/save", { token: first.token })).status).toBe(401);
@@ -514,11 +514,16 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
       return work();
     });
     expect(raced).toBe("conflict");
-    // The account removed between the check and the update is gone, which the route answers 401.
+    // The account removed between the check and the update is gone, which the route answers 401. A fresh account: the
+    // one above no longer has PASSWORD.
+    const last = hero();
+    const third = await signUp(last);
+    const [gone] = await sql<{ id: string }>(`select id::text as id from ${t.accounts} where name = $1::text`, [last]);
+    const goneId = gone?.id ?? "";
     reached = 0;
-    const lost = await accounts.changePassword(otherId, PASSWORD, OTHER_PASSWORD, second.token, false, async (work) => {
+    const lost = await accounts.changePassword(goneId, PASSWORD, OTHER_PASSWORD, third.token, false, async (work) => {
       reached += 1;
-      if (reached === 2) await sql(`delete from ${t.accounts} where id = $1::uuid`, [otherId]);
+      if (reached === 2) await sql(`delete from ${t.accounts} where id = $1::uuid`, [goneId]);
       return work();
     });
     expect(lost).toBe("gone");
