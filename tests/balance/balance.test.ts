@@ -106,3 +106,30 @@ test("Polyphemus: every fight a beginner wins goes through all three phases", ()
   // A phase counts as seen when the player had to defend at least one attack in it.
   for (const player of PLAYERS) expect(row("polyphemus", player.id).fewestPhasesInAWin, player.id).toBe(3);
 });
+
+// Issue #127, part 2: the five stops after Polyphemus. docs/balance.md says how each stop's numbers were chosen.
+test("the average player wins at least 60% of fights at every stop", () => {
+  for (const enemy of ENEMIES) {
+    const fight = row(enemy.id, "average");
+    // If this fails after a retune, lower `damage` in that stop's file: damage sets who wins.
+    expect(fight.wins, `${enemy.id}: ${String(fight.wins)} of ${String(FIGHTS)}`).toBeGreaterThanOrEqual(FIGHTS * 0.6);
+  }
+});
+
+test("from Circe on, no stop is easier for the beginner than the one before, and the last is harder than Circe", () => {
+  const later = ENEMIES.filter((enemy) => enemy.id !== "polyphemus");
+  expect(later[0]?.id).toBe("circe");
+  later.forEach((enemy, index) => {
+    const before = later[index - 1];
+    if (!before) return;
+    const here = row(enemy.id, "beginner").wins;
+    const there = row(before.id, "beginner").wins;
+    expect(here, `${enemy.id} (${String(here)}) after ${before.id} (${String(there)})`).toBeLessThanOrEqual(there);
+  });
+  const first = later[0];
+  const last = later.at(-1);
+  if (!first || !last) throw new Error("no stops after Polyphemus");
+  expect(row(last.id, "beginner").wins).toBeLessThan(row(first.id, "beginner").wins);
+  // The first stop is the one tuned for the beginner: every later stop is far harder for them.
+  expect(row(first.id, "beginner").wins).toBeLessThan(row("polyphemus", "beginner").wins);
+});

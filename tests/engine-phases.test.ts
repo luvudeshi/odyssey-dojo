@@ -89,6 +89,8 @@ test("two players landing together double the damage, one alone does not", () =>
   expect(100 - both.state.enemyHp).toBe(24);
   expect(100 - solo.state.enemyHp).toBe(12);
   expect(100 - oneP.state.enemyHp).toBe(12);
+  expect(both.events[0]).toMatchObject({ together: true });
+  expect(solo.events[0]).not.toHaveProperty("together");
 });
 
 test("finisher flow: zero hp enters finisher, only the move wins, timeout re-prompts", () => {
