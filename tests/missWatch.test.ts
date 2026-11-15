@@ -7,12 +7,12 @@ import { EMPTY_HISTORY, pushFrame } from "../src/pose/signals";
 import { LEFT_OUT, READY, RIGHT_OUT, STANDING, blend, pose, recording } from "./poseFixture";
 import type { Step } from "./poseFixture";
 
-const strikePhase = (move: string): CombatPhase => ({ kind: "strike", weakSpot: { x: 0, y: 0 } as never, move, msLeft: 1000, totalMs: 2000 });
+const strikePhase = (move: string): CombatPhase => ({ kind: "strike", weakSpot: { id: "head", label: "Head", position: [0, 0, 0], moves: [move] }, move, msLeft: 1000, totalMs: 2000 });
 const idle: CombatInput = { held: new Set(), struck: [] };
 const threw = (move: string): CombatInput => ({ held: new Set(), struck: [{ move, quality: 0.7, player: 0 }] });
 
 const T = 10_000;
-const defendPhase = (counter: string): CombatPhase => ({ kind: "defend", attack: { counter } as never, msLeft: 800, totalMs: 1000 });
+const defendPhase = (counter: string): CombatPhase => ({ kind: "defend", attack: { id: "swing", name: "Swing", telegraphMs: 1000, damage: 1, counter }, msLeft: 800, totalMs: 1000 });
 const near: CombatInput = { held: new Set(), struck: [], tried: new Set(["jab"]) };
 const holding = (...ids: string[]): CombatInput => ({ held: new Set(ids), struck: [] });
 
@@ -161,7 +161,7 @@ test("a fresh near miss after a landed move still counts as a try", () => {
 });
 
 test("askedMove is the strike, the finisher or the counter, and null for nothing", () => {
-  const defend = { kind: "defend", attack: { counter: "duck" }, msLeft: 1, totalMs: 2 } as unknown as CombatPhase;
+  const defend: CombatPhase = { kind: "defend", attack: { id: "swing", name: "Swing", telegraphMs: 1000, damage: 1, counter: "duck" }, msLeft: 1, totalMs: 2 };
   expect(askedMove(strikePhase("hook"))).toBe("hook");
   expect(askedMove({ kind: "finisher", move: "stake", msLeft: 1, totalMs: 2 })).toBe("stake");
   expect(askedMove(defend)).toBe("duck");
