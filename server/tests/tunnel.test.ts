@@ -178,14 +178,21 @@ async function game(built = true): Promise<{ port: number; pageUrl: () => Promis
   return { port, pageUrl };
 }
 
+/** What the real server answers when the host's page, opened on Vite's port, asks which address a phone should open. */
+async function roomBase(port: number): Promise<unknown> {
+  const response = await fetch(`http://127.0.0.1:${String(port)}/api/rooms/address?port=5173`);
+  return ((await response.json()) as { base?: unknown }).base;
+}
+
 /**
- * A server that says which address it hands to phones, as the room screens' /api/rooms/address does.
+ * A server that says which address it hands to phones, as /api/rooms/address does, or has no such route when `base` is null.
  * With `guarded` false it stands for a server started before the tunnel guard: a marked GET /api/level gets that server's 404, not a 403.
  */
-async function gameThatSays(base: string, guarded = true): Promise<number> {
+async function gameThatSays(base: string | null, guarded = true): Promise<number> {
   const server = createServer((request, response) => {
     const says = request.url === "/api/rooms/address";
     if (request.url === "/api/level") response.writeHead(guarded && "cf-ray" in request.headers ? 403 : 404).end();
+    else if (says && base === null) response.writeHead(404).end();
     else response.writeHead(200, { "Content-Type": says ? "application/json" : "text/html" }).end(says ? JSON.stringify({ base }) : "<!doctype html>");
   });
   server.listen(0, "127.0.0.1");
@@ -247,8 +254,9 @@ test("it opens a tunnel to the running game, the server hands out the https addr
   const script = tunnel("up", [String(port)], { TUNNEL_BEAT_MS: "100" });
   await until("the last line", () => script.out().includes("Press Ctrl+C"));
   expect(script.out()).toContain(`Tunnel is up: ${ADDRESS}\n`);
-  // The room screens' /api/rooms/address is not on main yet, so the script cannot ask and says how the server learns it.
-  expect(script.out()).toContain("The server reads this address on its next request.");
+  // The script asked the real /api/rooms/address, the route the room QR code is drawn from, and got the tunnel's address back.
+  expect(script.out()).toContain("The server hands out this address: the room QR code uses it now.");
+  expect(await roomBase(port)).toBe(ADDRESS);
   expect(script.err()).toBe("");
   expect(starts().map((start) => start.args)).toEqual([["tunnel", "--url", `http://127.0.0.1:${String(port)}`]]);
   expect(JSON.parse(readFileSync(join(dataDir, TUNNEL_FILE), "utf8"))).toEqual({ url: ADDRESS, pid: script.pid });
@@ -273,6 +281,8 @@ test("it opens a tunnel to the running game, the server hands out the https addr
   expect(existsSync(join(dataDir, TUNNEL_FILE))).toBe(false);
   expect(isRunning(starts()[0]?.pid ?? 0)).toBe(false);
   expect(new URL(await pageUrl()).origin).toBe(lan);
+  // Back to plain http: the Wi-Fi address, or this machine's own name when there is no network.
+  expect(await roomBase(port)).toMatch(/^http:\/\//);
 });
 
 test("SIGTERM and a closed terminal stop it the same way", async () => {
@@ -406,4 +416,11 @@ test("it asks the server which address it hands out, and warns when that is not 
   const fixed = tunnel("up", [String(await gameThatSays("http://192.168.1.20:8787"))]);
   await until("the last line", () => fixed.out().includes("Press Ctrl+C"));
   expect(fixed.out()).toContain("Warning: the server still hands out http://192.168.1.20:8787.");
+  fixed.signal("SIGINT");
+  expect(await fixed.done).toBe(0);
+
+  // A server from before the room screens has no such route, so the script only says how the address is read.
+  const silent = tunnel("up", [String(await gameThatSays(null))]);
+  await until("the last line", () => silent.out().includes("Press Ctrl+C"));
+  expect(silent.out()).toContain("The server reads this address on its next request.");
 });
