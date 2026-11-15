@@ -37,3 +37,5 @@
 .dojo-track-chip[data-status="done"][data-tier="good"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-good); }
 .dojo-track-chip[data-status="done"][data-tier="needs_work"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-needs); }
 .dojo-track-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Soft fade at both edges so a chip cut by the scroll does not end mid-word. */
+.dojo-track-row { -webkit-mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); }
