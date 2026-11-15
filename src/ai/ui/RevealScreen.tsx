@@ -197,7 +197,7 @@ function Frame(props: { title: string; titleClass?: string; accent?: string; kic
     <main className="reveal" style={props.accent === undefined ? undefined : { ["--god" as string]: props.accent }}>
       <Panel ornament className="reveal-panel">
         {props.kicker !== undefined && <p className="reveal-kicker">{props.kicker}</p>}
-        <PebbleHeading as="h1" className={props.titleClass ?? ""} text={props.title.toUpperCase()} px={props.title.length <= 12 ? 52 : props.title.length > 22 ? 32 : 40} tone="ochre" />
+        <PebbleHeading as="h1" className={props.titleClass ?? ""} text={props.title} px={props.title.length <= 12 ? 52 : props.title.length > 22 ? 32 : 40} tone="ochre" />
         {props.children}
       </Panel>
     </main>

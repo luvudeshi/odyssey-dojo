@@ -51,7 +51,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
 
   return (
     <Panel as="main" ornament className="menu room">
-      <PebbleHeading as="h1" text={"Fight together".toUpperCase()} px={48} tone="ochre" />
+      <PebbleHeading as="h1" text="Fight together" px={60} tone="ochre" />
       {phase.kind === "making" && <p className="notice">Opening a room...</p>}
       {phase.kind === "failed" && (
         <>

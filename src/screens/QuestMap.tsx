@@ -45,7 +45,7 @@ export function QuestMap(props: {
   const at = (p: Point) => ({ left: `${String(p[0] / 10)}%`, top: `${String((p[1] / H) * 100)}%` });
   return (
     <Panel as="main" ornament className="menu menu--map">
-      <PebbleHeading as="h1" text={"The Road Home".toUpperCase()} px={48} tone="ochre" />
+      <PebbleHeading as="h1" text="The Road Home" px={60} tone="ochre" />
       <p>Choose your next stop on the sea.</p>
       <div className="chart">
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
@@ -65,16 +65,15 @@ export function QuestMap(props: {
               key={enemy.id}
               className={`stop ${state} ${pos(i + 1)[1] < H * 0.48 ? "above" : "below"}`}
               style={at(pos(i + 1))}
+              title={enemy.place}
               disabled={!open}
               onClick={() => { props.onEnter(i); }}
             >
               <span className="dot"><Isle state={state} /><b>{state === "cleared" ? "✓" : i + 1}</b></span>
               <span className="lbl">
-                {enemy.place ?? enemy.name}
-                <small>
-                  {enemy.book ? `Book ${String(enemy.book)}` : ""}
-                  {state === "locked" ? " (ahead)" : ""}
-                </small>
+                {enemy.name}
+                {/* Short lines, so neighbouring labels fit side by side on one line each. */}
+                <small>{state === "locked" ? "Ahead" : enemy.book ? `Book ${String(enemy.book)}` : ""}</small>
               </span>
             </button>
           );
