@@ -26,8 +26,13 @@ export async function createApp(deps: Deps): Promise<Express> {
   const app = express();
   app.disable("x-powered-by");
   app.use(localOnly);
-  // Webcam snapshots arrive as base64 inside JSON.
-  app.use(express.json({ limit: "6mb" }));
+  // Webcam snapshots arrive as base64 inside JSON. The room relay is open to other devices, so it reads its own,
+  // much smaller bodies (routes/rooms.ts) and this parser never sees them. Express matches paths without regard to case.
+  const json = express.json({ limit: "6mb" });
+  app.use((request, response, next) => {
+    if (/^\/api\/rooms(\/|$)/i.test(request.path)) next();
+    else json(request, response, next);
+  });
 
   const router = express.Router();
   const files = readdirSync(ROUTES).filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts")).sort();
