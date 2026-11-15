@@ -3,7 +3,7 @@
 import { expect, test } from "vitest";
 import type { Landmark } from "../src/core/types";
 import { createSeating } from "../src/duo/assign";
-import { GIVE_UP, HALF_SHARE, PROBE_EVERY, createPairFinder, createSlowWatch, fromHalf, halfStart, pairOf, sameBody } from "../src/duo/halves";
+import { GIVE_UP, HALF_SHARE, LOOK_BACK_EVERY, LOOK_BACK_TIMES, PROBE_EVERY, createPairFinder, createSlowWatch, fromHalf, halfStart, pairOf, sameBody } from "../src/duo/halves";
 import type { PairFinder, Side } from "../src/duo/halves";
 import { homeOf } from "../src/duo/split";
 import type { Body } from "../src/duo/split";
@@ -106,11 +106,38 @@ test("two people the whole picture reads as one are found by the halves within h
   while (finder.reader() === "whole" && pictures < 60) { scene.play(1); pictures += 1; }
   expect(pictures).toBeLessThanOrEqual(2 * PROBE_EVERY + 1);
   expect(xs(scene.play(1))).toEqual([0.41, 0.59]);
-  // From then on only the halves are read: two reads a picture, as many as the whole picture costs for two bodies.
+  // From then on the halves are read, two reads a picture, and the whole picture is looked at once in LOOK_BACK_EVERY.
   scene.count();
-  scene.play(30);
-  expect(scene.wholeReads).toBe(0);
-  expect(scene.halfReads).toBe(60);
+  scene.play(LOOK_BACK_EVERY);
+  expect(scene.wholeReads).toBe(1);
+  expect(scene.halfReads).toBe(2 * LOOK_BACK_EVERY);
+  expect(finder.reader()).toBe("halves");
+});
+
+test("once the two have stepped apart the whole picture takes over again, so nobody on the middle line loses an arm to a half's edge", () => {
+  const finder = createPairFinder();
+  const scene = stage(finder);
+  scene.whole = [body(0.5, 0.2)];
+  scene.halves = [body(0.41), body(0.59)];
+  let pictures = 0;
+  while (finder.reader() === "whole" && pictures < 60) { scene.play(1); pictures += 1; }
+  expect(finder.reader()).toBe("halves");
+  // They part: the whole picture now shows two different people. The halves still find two.
+  scene.whole = [body(0.3), body(0.7)];
+  scene.halves = [body(0.3), body(0.7)];
+  scene.play(LOOK_BACK_EVERY + LOOK_BACK_TIMES);
+  expect(finder.reader()).toBe("whole");
+  expect(xs(scene.play(1))).toEqual([0.3, 0.7]);
+  // One person the whole picture finds twice is not "two people": the halves keep reading.
+  const twice = createPairFinder();
+  const again = stage(twice);
+  again.whole = [body(0.5, 0.2)];
+  again.halves = [body(0.41), body(0.59)];
+  pictures = 0;
+  while (twice.reader() === "whole" && pictures < 60) { again.play(1); pictures += 1; }
+  again.whole = [body(0.5, 0.2), body(0.51, 0.2)];
+  again.play(3 * LOOK_BACK_EVERY);
+  expect(twice.reader()).toBe("halves");
 });
 
 test("someone alone stays with the whole picture, also on the middle line where both halves see them", () => {
