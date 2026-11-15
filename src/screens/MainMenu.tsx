@@ -1,8 +1,10 @@
 // The main menu: Story mode (the quest map), the Training Dojo and the Account, as three cards under the logo.
 // Story mode and the dojo start the webcam; the small link under the cards plays on the keyboard instead.
+// Behind them: the storm in Scylla's strait (MenuScene).
 import type { ReactNode } from "react";
 import { speakLine } from "../audio/voice";
 import { Button, Logo, Panel } from "../ui/pebble";
+import { MenuScene } from "./MenuScene";
 
 const SHIP = (
   <>
@@ -49,8 +51,9 @@ export function MainMenu(props: {
   const keyboard = (): void => { speakLine("homer_title"); props.onKeyboard(); };
   return (
     <Panel as="main" ornament className="menu menu--title">
+      <MenuScene />
       <h1 className="sr-only">Odyssey Fighter</h1>
-      <Logo height={Math.min(220, Math.max(140, Math.round(window.innerHeight * 0.27)))} />
+      <Logo height={Math.min(190, Math.max(130, Math.round(window.innerHeight * 0.22)))} />
       <p className="verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
       <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Your body is the controller.</p>
       <nav className="menu-cards" aria-label="Main menu">
