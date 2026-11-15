@@ -13,7 +13,6 @@
 .menu .pb-heading { margin: 0 auto 0.6rem; max-width: 100%; }
 .notice { min-height: 1.5em; font-style: normal; color: var(--pb-text-dim); }
 .menu p.notice { font-size: 18px; }
-.verse { max-width: 34rem; font-style: italic; }
 .menu p.lead { color: var(--pb-ochre-light); font-weight: 700; }
 .menu .pb-btn { margin: 6px 12px; }
 .menu__row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin: 0.3rem 0; }
@@ -39,7 +38,6 @@
 
 /* Intro. */
 .intro-place { color: var(--pb-text-dim); }
-.menu .verse + .notice { color: var(--pb-ochre-light); }
 
 @media (prefers-reduced-motion: reduce) { .menu .style-card { animation: none; transition: none; } }
 

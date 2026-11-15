@@ -64,7 +64,7 @@ Shape parts are plain; parts in *italics* are how the player got there.
 | | arm | elbow over 125 degrees | Open your arm out nearly straight as the sweep finishes. |
 | block | guard | both wrists near the nose (the detector's own reading) | Bring both fists right up to your cheeks. Hands at your chest leave your head open. |
 | | *hold* | the guard stayed up for the detector's 200 ms | Keep your fists up for a beat so the guard reads clearly. Once is enough. |
-| duck | depth | shoulders 0.6 widths under where they stood | Drop lower: bend your knees until your head is under where it was. |
+| duck | depth | shoulders 0.6 widths under where they stood | Drop lower: bend your knees until your head would clear a swing. |
 | | knees | hips dropped at least half as far as the shoulders (not in the detector) | Bend your knees, not your waist, and keep your eyes up on what is coming. |
 | dodge left, dodge right | distance | shoulders 0.6 widths to the side (the detector's own reading) | Step further: move your whole body off the line, not only your head. |
 | | *staying off* | stayed there for the detector's 200 ms | Stay off the line for a moment. Do not sway straight back into it. |
