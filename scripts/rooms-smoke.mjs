@@ -3,7 +3,7 @@
 // phone size with touch. Prints one line per step.
 //
 //   node scripts/rooms-smoke.mjs [--no-build | --dev] [--runs=fight,rejoin,host-leaves] [--poll] [--cap=240]
-//                                [--port=6040] [--no-host-camera] [--shots=folder]
+//                                [--port=6040] [--no-host-camera] [--shots=folder] [--url=https://the.hosted.copy]
 //
 // The three runs:
 //   fight        the host makes a room, the guest types its code, they play one whole fight; at first the host only
@@ -859,23 +859,27 @@ async function main() {
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
   try {
-    if (!dev && !flag("no-build")) {
+    // --url: play against a copy that is already running (the hosted site), with no build and no server of our own.
+    const live = option("url", "").replace(/\/$/, "");
+    if (!live && !dev && !flag("no-build")) {
       say("Building...");
       await build();
     }
-    if (!dev && !existsSync(join(ROOT, "dist", "index.html"))) throw new Error("dist/ has no build: run without --no-build, or with --dev");
+    if (!live && !dev && !existsSync(join(ROOT, "dist", "index.html"))) throw new Error("dist/ has no build: run without --no-build, or with --dev");
     const port = option("port", "") ? Number(option("port", "")) : await freePort();
     const api = `http://127.0.0.1:${String(port)}`;
-    server = startServer(port);
-    await waitForServer(`${api}/api/health`, server);
-    let base = api;
-    if (dev) {
+    if (!live) {
+      server = startServer(port);
+      await waitForServer(`${api}/api/health`, server);
+    }
+    let base = live || api;
+    if (!live && dev) {
       const devPort = await freePort();
       base = `http://127.0.0.1:${String(devPort)}`;
       devServer = startDev(devPort, api);
       await waitForServer(base, devServer);
     }
-    say(`${dev ? `Server at ${api}, the source through vite dev at ${base}` : `Server and built game at ${base}`}; the guest's link uses ${poll ? "long polling (its event stream is kept silent)" : "the event stream"}; the host ${hostCamera ? "has Chrome's fake camera" : "is refused the camera"}`);
+    say(`${live ? `The copy running at ${base}` : dev ? `Server at ${api}, the source through vite dev at ${base}` : `Server and built game at ${base}`}; the guest's link uses ${poll ? "long polling (its event stream is kept silent)" : "the event stream"}; the host ${hostCamera ? "has Chrome's fake camera" : "is refused the camera"}`);
     const channel = process.env.FPS_CHANNEL ?? "chrome";
     browser = await chromium.launch({ headless: true, args: glArgs(), ...(channel ? { channel } : {}) });
     // One page first, as scripts/smoke.mjs does: it names the GPU, and the browser's first page load is not timed inside a run.
@@ -893,7 +897,7 @@ async function main() {
     }
     const bad = rows.filter(failed);
     if (bad.length > 0) {
-      const relay = server.lines.filter((line) => /"level":"(warn|error)"/.test(line));
+      const relay = (server?.lines ?? []).filter((line) => /"level":"(warn|error)"/.test(line));
       if (relay.length > 0) say(`\nServer warnings and errors:\n${relay.join("\n")}`);
       say(`\nFAIL: ${bad.map((row) => row.id).join(", ")}`);
       process.exitCode = 1;
