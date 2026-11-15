@@ -52,7 +52,7 @@ export interface MoveDiagram {
 export interface MoveDef {
   readonly id: string;
   readonly name: string;
-  /** "defend" moves are held when an attack lands; "strike" moves are thrown once. */
+  /** "defend" moves count when made once while the attack is coming (or held as it lands); "strike" moves are thrown once. */
   readonly kind: "defend" | "strike";
   /** The word on the prompt card, e.g. "BLOCK". */
   readonly prompt: string;
@@ -133,7 +133,14 @@ export interface EnemySpec {
 
 export type CombatPhase =
   | { readonly kind: "intro" | "recover"; readonly msLeft: number }
-  | { readonly kind: "defend"; readonly attack: EnemyAttack; readonly msLeft: number; readonly totalMs: number }
+  | {
+      readonly kind: "defend";
+      readonly attack: EnemyAttack;
+      readonly msLeft: number;
+      readonly totalMs: number;
+      /** "ready": the counter has been seen not held since the attack was shown. "met": it was then made, so the attack will miss. */
+      readonly seen?: "ready" | "met";
+    }
   | {
       readonly kind: "strike";
       readonly weakSpot: WeakSpot;

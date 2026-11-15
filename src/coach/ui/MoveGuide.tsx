@@ -203,7 +203,7 @@ export function MoveGuide(props: MoveGuideProps) {
         </div>
       )}
       <div className="mg-words">
-        <p className="mg-kind">{move.kind === "defend" ? "Defend: hold it" : "Strike"}</p>
+        <p className="mg-kind">{move.kind === "defend" ? "Defend" : "Strike"}</p>
         <h2 className="mg-name">{guide?.title ?? move.name}</h2>
         <p className="mg-how">{guide?.how ?? move.hint}</p>
         {msTotal !== undefined && <div className="mg-time" role="presentation"><div className="mg-time-fill" /></div>}
