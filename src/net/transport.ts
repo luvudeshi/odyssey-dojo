@@ -11,8 +11,8 @@ export interface RoomTransport {
   /** Called for every well-formed message from the other member, and for the relay's "peer" messages. */
   onMessage(listener: (message: NetMessage) => void): void;
   /**
-   * The member is leaving the room for good: stops the link and tells the relay (the leave call), so the other member
-   * hears of it at once and a guest's seat is free at once. Not for a page that is only being loaded again.
+   * The member is leaving the room: stops the link and tells the relay (the leave call), so the other member hears
+   * of it at once and a guest's seat is free at once. A guest's kept seat is forgotten with it.
    */
   close(): void;
 }
@@ -41,11 +41,20 @@ export interface NetDeps {
   /** Never open the event stream: long polling from the start. Default: the build's VITE_ROOMS_POLL setting. */
   readonly pollOnly?: boolean;
   /**
-   * Calls `gone` when the page is being thrown away (the browser's "pagehide") and returns what stops the watching.
-   * Only a host's link uses it, to send the leave call when the host shuts the tab: a host's page cannot come back
-   * to its room, because its token is kept nowhere. A guest's link never does: a guest's page that is loaded again
-   * comes back with the token it kept (joinRoomAgain), and a leave call on the way out would have given that seat away.
-   * Without it only close() sends the leave call.
+   * The browser's navigator.sendBeacon: a POST that goes out although the page is closing, and whose answer nobody
+   * reads. True when the browser took it. The leave call goes this way when it is given; a string body leaves as
+   * text/plain, which the relay's leave route reads as JSON. Without it, or when it says no, deps.fetch is used
+   * with keepalive.
+   */
+  readonly beacon?: (url: string, body: string) => boolean;
+  /**
+   * Calls `gone` when the page is being thrown away (the browser's "pagehide", not one that is only put aside to be
+   * shown again) and returns what stops the watching. The link closes itself then, which sends the leave call.
+   * For a host that is safe by the relay's rules: the host keeps its seat and token and the room stays.
+   * For a guest it gives the seat up, also when the page is only being loaded again: the new page's kept token is
+   * refused, joinRoomAgain forgets it and joins as new, with no wait because the seat is free. That costs a reload
+   * nothing, and a guest who shuts the tab frees the seat and is reported at once, not 20 seconds later.
+   * Without it only close() sends the leave call, and a guest's reload comes back on its kept token.
    */
   readonly onPageGone?: (gone: () => void) => () => void;
 }
@@ -149,6 +158,14 @@ function keepSeat(store: SeatStore | null, room: { code: string; token: string }
   }
 }
 
+function forgetSeat(store: SeatStore): void {
+  try {
+    store.removeItem(SEAT_KEY);
+  } catch {
+    // Storage is closed to this page: there is nothing kept to forget.
+  }
+}
+
 function keptSeat(store: SeatStore, code: string): string | null {
   try {
     const kept: unknown = JSON.parse(store.getItem(SEAT_KEY) ?? "null");
@@ -220,16 +237,19 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
   /**
    * Tells the relay the holder of `seat` has gone. Nothing waits for the answer, and nothing is done about a failure:
    * the relay then finds out by itself, AWAY_MS after the last poll. Asked with keepalive, so it gets out of a page
-   * that is closing.
+   * that is closing. By the beacon when the page gave one.
    */
   const sayLeft = (seat: string): void => {
+    const url = `${path}/leave`;
+    const body = JSON.stringify({ token: seat });
     try {
-      void Promise.resolve(deps.fetch(`${path}/leave`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: seat }),
-        keepalive: true,
-      })).catch(() => undefined);
+      if (deps.beacon?.(url, body) === true) return;
+    } catch {
+      // No beacon after all: the request below.
+    }
+    try {
+      // No Content-Type: a string then leaves as text/plain like a beacon's, which needs no preflight from another origin.
+      void Promise.resolve(deps.fetch(url, { method: "POST", body, keepalive: true })).catch(() => undefined);
     } catch {
       // No way out to the relay: see above.
     }
@@ -377,10 +397,27 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
   const leave = (): void => {
     if (saidLeft) return;
     saidLeft = true;
-    if (!seatLost && !sitting) sayLeft(token);
+    if (seatLost || sitting) return;
+    sayLeft(token);
+    // The token is dead at the relay now: forgotten, so the next page joins as new without first being refused.
+    if (isGuest && seatStore !== null && keptSeat(seatStore, code) === token) forgetSeat(seatStore);
   };
-  // A host's page that is thrown away cannot come back to its room, so the guest is told now. See NetDeps.onPageGone.
-  const stopWatching = isGuest ? undefined : deps.onPageGone?.(leave);
+  const close = (): void => {
+    if (state.closed) return;
+    state.closed = true;
+    stopWatching?.();
+    clearTimeout(proof);
+    clearTimeout(quiet);
+    stream.onmessage = null;
+    stream.onerror = null;
+    stream.close();
+    inFlight?.abort();
+    // After the poll is given up: the relay takes a host's next poll as the host being back.
+    leave();
+  };
+  // The page is being thrown away: the link is closed and the other member is told now. Closed, not only a leave:
+  // the relay ends the held poll, and the next poll would bring a host back and send a guest to join again.
+  const stopWatching = deps.onPageGone?.(close);
   return {
     async send(message) {
       const answer = await post(deps, `${path}/send`, { token, message });
@@ -393,17 +430,6 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     onMessage(listener) {
       listeners.push(listener);
     },
-    close() {
-      if (state.closed) return;
-      state.closed = true;
-      stopWatching?.();
-      leave();
-      clearTimeout(proof);
-      clearTimeout(quiet);
-      stream.onmessage = null;
-      stream.onerror = null;
-      stream.close();
-      inFlight?.abort();
-    },
+    close,
   };
 }
