@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { MONSTER_MODELS } from "../src/render/monsters/registry";
+import { readFileSync } from "node:fs";
 import { model } from "../src/render/monsters/models/Polyphemus";
 import { enemy } from "../src/enemies/defs/polyphemus";
 
 describe("Polyphemus model", () => {
   it("is the one hand-built model, registered with no URL switch", () => {
-    expect(MONSTER_MODELS.get("polyphemus")).toBe(model.Component);
+    expect(model.enemyId).toBe("polyphemus");
+    const registry = readFileSync("src/render/monsters/registry.ts", "utf8");
+    expect(registry).not.toMatch(/URLSearchParams|\.glb|polyphemus/);
   });
 });
 
