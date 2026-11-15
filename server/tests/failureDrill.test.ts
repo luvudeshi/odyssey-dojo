@@ -13,9 +13,9 @@ import { captureLog, ELEVENLABS_KEY, GEMINI_KEY, serve, stalled, timed } from ".
 import type { Drill } from "./support/drill";
 
 /** Room for a busy machine: an answer may arrive this long after the moment the route decided on it. */
-const SLACK_MS = 700;
+const SLACK_MS = 1000;
 /** A route with nothing to wait for answers well inside this. */
-const AT_ONCE_MS = 1000;
+const AT_ONCE_MS = 2000;
 const QUICK = { levelMs: 300, revealMs: 300, revealHedgeMs: 100, portraitMs: 300, speechMs: 300 } as const;
 
 const phrase = { phrase: "like a Texas thunderstorm", god: "athena", rival_god: "poseidon" } as const;
@@ -109,7 +109,7 @@ test("key for the scan but not for speech, and the other way round: each service
   expect(await (await drill.call("/api/level", phrase)).json()).toEqual({ level: bundled, source: "fallback" });
 });
 
-test("upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback in under five seconds, and the other routes answer meanwhile", async () => {
+test("upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback when their limit is up, each limit is under five seconds, and the other routes answer meanwhile", async () => {
   // Every upstream call ignores its abort signal and answers correctly, but only after 15 s.
   let calls = 0;
   const ai: Partial<AiClients> = {

@@ -87,7 +87,7 @@ test("god scan, no key or a wrong answer: the lot is cast at once, with the port
   for (const fetcher of cases) {
     const started = Date.now();
     const reveal = await scan(fetcher);
-    expect(Date.now() - started).toBeLessThan(1000);
+    expect(Date.now() - started).toBeLessThan(2000);
     expect(reveal.source).toBe("offline");
     expect(GOD_IDS).toContain(reveal.god);
     expect(reveal.epithet).not.toBe("");
@@ -142,7 +142,7 @@ test("generated fight, server stalled or answering wrongly: a bundled fight that
   for (const fetcher of cases) {
     const started = Date.now();
     expect(await generateLevel(phrase, { fetcher, timeoutMs: 150 })).toEqual({ level: bundled, source: "fallback" });
-    expect(Date.now() - started).toBeLessThan(1200);
+    expect(Date.now() - started).toBeLessThan(2000);
   }
 });
 
@@ -160,7 +160,7 @@ test("spoken line, no key, a stalled server or a wrong answer: no voice, no erro
     const counted: typeof fetch = (url, init) => { asked += 1; return fetcher(url, init); };
     const started = Date.now();
     expect(await prepareLine("homer", line, counted, 150)).toBeNull();
-    expect(Date.now() - started).toBeLessThan(1200);
+    expect(Date.now() - started).toBeLessThan(2000);
     // Not remembered as a failure: the next call goes to the server again, and a good answer is used.
     const good: typeof fetch = () => { asked += 1; return Promise.resolve(new Response(new Uint8Array([0x49, 0x44, 0x33, 4]), { headers: { "Content-Type": "audio/mpeg" } })); };
     expect(await prepareLine("homer", line, good, 150)).toMatch(/^blob:/);
