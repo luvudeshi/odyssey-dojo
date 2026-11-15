@@ -13,8 +13,9 @@ import { createApp } from "../app";
 import type { Deps } from "../app";
 import type { Config } from "../env";
 import { WRONG_TOKENS_PER_ADDRESS } from "../lib/accountLimits";
-import { Unavailable, makeToken } from "../lib/accounts";
+import { FAILURES_TO_GIVE_UP, Unavailable, createAccounts, makeToken, statementsOf } from "../lib/accounts";
 import type { Accounts, Statement } from "../lib/accounts";
+import type { Db } from "../lib/db";
 import { FIGHTS_OVERALL, FIGHTS_PER_ACCOUNT, FIGHTS_PER_ACCOUNT_HOUR, HALL_CACHE_MS, HALL_READS_PER_ADDRESS, createHeroLimits } from "../lib/heroLimits";
 import { COMBO_MAX, FIGHT_BODY_BYTES, SCORE_MAX, SECONDS_MAX, SECONDS_MIN, parseFightBody } from "../lib/heroRules";
 import { ACTIVITY_BUCKETS, ACTIVITY_MINUTES, BOARD_SIZE, RETRY_MS, createHeroes, heroSchemaSql, heroTables } from "../lib/heroes";
@@ -462,6 +463,59 @@ test("tables that could not be made are tried again after fifteen seconds and no
   broken = false;
   expect((await heroes.hall()).tonight).toEqual([]);
   expect(await heroes.record(ACCOUNT_ID, { ...FIGHT, hero: null })).toBe(true);
+});
+
+test("a hall whose statement fails never turns sign-in off, and the database is asked about it once in five seconds", async () => {
+  captureLog();
+  // The real accounts and the real hall over a stand-in database in which only the hall's reading fails. Not a database.
+  let now = 1_800_000_000_000;
+  let broken = true;
+  const asked = { hall: 0, sessions: 0 };
+  const db: Db = {
+    query: (text) => {
+      if (text.includes("time_bucket_gapfill")) {
+        asked.hall += 1;
+        return broken ? Promise.reject(Object.assign(new Error("column f.made_up does not exist"), { code: "42703" })) : Promise.resolve([HALL_ROW] as never[]);
+      }
+      if (text.includes("pg_extension")) return Promise.resolve([{ n: 1 }] as never[]);
+      if (text.includes("select account_id::text as id from sessions")) asked.sessions += 1;
+      return Promise.resolve([]);
+    },
+    close: () => Promise.resolve(),
+  };
+  const accounts = createAccounts(() => Promise.resolve(db), { now: () => now });
+  const statement = statementsOf(accounts);
+  if (statement === null) throw new Error("accounts made by createAccounts have a door");
+  const heroes = createHeroes(statement, { now: () => now });
+  expect(await accounts.available()).toBe(true);
+
+  // Far more failures in a row than turn the accounts off when they are the accounts' own.
+  for (let index = 0; index < FAILURES_TO_GIVE_UP * 4; index += 1) await expect(heroes.hall()).rejects.toBeInstanceOf(Unavailable);
+  // The first one asked; the rest were told what it found.
+  expect(asked.hall).toBe(1);
+  expect(await accounts.available()).toBe(true);
+  expect(await accounts.accountOf(makeToken())).toBeNull();
+  expect(asked.sessions).toBe(1);
+
+  // Somebody reads the hall every second for a minute. Sign-in is never off, and the hall is tried once in five seconds.
+  let off = 0;
+  for (let second = 0; second < 60; second += 1) {
+    now += 1_000;
+    await heroes.hall().catch(() => null);
+    if (!(await accounts.available())) off += 1;
+    await accounts.accountOf(makeToken());
+  }
+  expect(off).toBe(0);
+  expect(asked.sessions).toBe(61);
+  expect(asked.hall).toBe(1 + 60_000 / HALL_CACHE_MS);
+
+  // Mended, it is back with the next try, and a reading that works is shared as before.
+  broken = false;
+  now += HALL_CACHE_MS;
+  expect((await heroes.hall()).tonight).toEqual([]);
+  await heroes.hall();
+  expect(asked.hall).toBe(2 + 60_000 / HALL_CACHE_MS);
+  await accounts.close();
 });
 
 test("everybody who asks within five seconds shares one reading of the hall, and the next reading has the clock's times in it", async () => {

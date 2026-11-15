@@ -117,7 +117,10 @@ export function schemaSql(prefix = ""): readonly string[] {
   ];
 }
 
-/** One statement through the accounts' own door: the tables are made first, a failure is logged and becomes Unavailable. */
+/**
+ * One statement through the accounts' own door: the tables are made first, a failure is logged and becomes Unavailable.
+ * It is refused while the accounts are off, but its own failures never turn them off.
+ */
 export type Statement = (text: string, params: readonly unknown[]) => Promise<unknown[]>;
 const doors = new WeakMap<object, Statement>();
 
@@ -234,9 +237,10 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
 
   /**
    * One statement. A failure is logged as its short code, never its message, and becomes Unavailable. No connection at all, or
-   * FAILURES_TO_GIVE_UP failures in a row, also turn the routes off for STATUS_CACHE_MS.
+   * FAILURES_TO_GIVE_UP failures in a row, also turn the routes off for STATUS_CACHE_MS. A statement that is not
+   * `counted` (the hall's, see `doors` below) is never one of those failures: the hall can fail while the accounts work.
    */
-  const run = async (text: string, params: readonly unknown[]): Promise<unknown[]> => {
+  const run = async (text: string, params: readonly unknown[], counted = true): Promise<unknown[]> => {
     if (now() - checkedAt < STATUS_CACHE_MS && !answers) throw new Unavailable();
     const found = await link();
     if (found === null) {
@@ -245,13 +249,17 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     }
     try {
       const rows = await found.query<unknown>(text, params);
-      failures = 0;
-      believe(true);
+      if (counted) {
+        failures = 0;
+        believe(true);
+      }
       return rows;
     } catch (error) {
       log("warn", "accounts_query_failed", failureCode(error));
-      failures += 1;
-      if (failures >= FAILURES_TO_GIVE_UP) believe(false);
+      if (counted) {
+        failures += 1;
+        if (failures >= FAILURES_TO_GIVE_UP) believe(false);
+      }
       throw new Unavailable();
     }
   };
@@ -382,6 +390,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       await held?.close();
     },
   };
-  doors.set(made, run);
+  // Anybody may read the hall, so its statements are not held against the accounts: a hall that fails must not turn sign-in off.
+  doors.set(made, (text, params) => run(text, params, false));
   return made;
 }
