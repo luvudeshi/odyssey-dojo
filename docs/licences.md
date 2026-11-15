@@ -19,9 +19,9 @@ It needs no server, no keys and no network. It is not part of `make check`, beca
 - It lists every file under `public/`, with its size.
 - For each file it looks for a line that names it in `CREDITS.md`, `docs/models.md` or `docs/models/*.md`, and reads the licence from that same line.
 - Each file is in one of two classes. The folder decides, nothing else:
-  - **Bundled software and model files:** everything under `public/draco/` and `public/mediapipe/`. Allowed: Apache-2.0, MIT, and BSD with 2 or 3 clauses. The credit line must also name the author and link to the source.
+  - **Bundled software and model files:** everything under `public/draco/` and `public/mediapipe/`. Allowed: Apache-2.0, MIT, and BSD with 2 or 3 clauses. The credit line must also name the author and link to the source, and it must name the file by its exact path. A folder or a `*` pattern is not a credit for these files, so a file added to one of the folders is a gap until it has a line of its own.
   - **Art and sound:** everything else. Allowed: CC0, CC BY with the author, and made by the team.
-- The two lists do not mix. `MIT` on the credit line of a model, a sound or an icon is reported as not allowed. `CC0` or "made by the team" on a file in a software folder is reported as not allowed too.
+- The two lists do not mix. `MIT` on the credit line of a model, a sound or an icon is reported as not allowed. `CC0`, CC BY or "made by the team" on a file in a software folder is reported as not allowed too, also when the same line names a software licence.
 - The software folders are the list `SOFTWARE_ROOTS` in `scripts/credits-report.mjs`. A new folder of bundled software is checked as art, and so reported, until it is added to that list.
 - A file is a **gap** when:
   - no line names it (`no credit`),
@@ -42,7 +42,9 @@ One asset per line, with the path and the licence on the same line.
    - a `*` pattern: `public/textures/rock_surface_*` (a `*` does not cross a `/`)
    - a folder with a trailing slash: `public/audio/sfx/` (covers everything under it)
 
-   The pattern and folder forms count only in `CREDITS.md`. A model log has to name the exact file. `public/` alone names nothing.
+   The pattern and folder forms count only in `CREDITS.md`, and only for art and sound. A model log has to name the exact file, and so does a line for a file in a software folder.
+
+   One line cannot credit the whole folder. `public/` alone names nothing, and neither do `public/*`, `public/**`, `public/*/*` or any other pattern whose first part under `public/` has no letter or digit in it. This holds in bold and italics too (`**public/**`, `*public/*`). `public/*.svg` is read: it names the SVG files at the top of the folder.
 2. **Give the licence on that line.** In a table that has a `Licence` column, that cell is read. On any other line the whole line is read. For art and sound these are accepted:
    - `CC0` (also `CC0 1.0`)
    - `CC BY 4.0`, and the line must also say `by <Author>`, for example `"Cyclops Rig" by DM-913 is licensed under CC BY 4.0`. The author must start with a capital letter, a digit or `@`, and must not start with "the". This is so that "used by the Polyphemus fight" is not taken for an author. A lower-case handle (`by sam_pie`) is reported as a gap: write `by @sam_pie`.
@@ -54,8 +56,8 @@ One asset per line, with the path and the licence on the same line.
 
    The line must also say `by <Author>`, by the same author rule as CC BY, and carry a link that starts with `http://` or `https://`. End the author's name with a comma or a bracket, or the words after it are read as part of the name. For example:
 
-   `| Draco mesh decoder by Google (the glTF build) | public/draco/ | https://github.com/google/draco | Apache-2.0 |`
-4. Anything else in a `Licence` cell (`unknown`, a tool's terms of service, a licence of the other class), and any of CC BY-NC, BY-ND, BY-SA, "non-commercial", "royalty-free", "all rights reserved" or "editorial use" anywhere on the line, is reported as not allowed. "not CC0" and "non-CC0" are not read as CC0.
+   `| Draco mesh decoder by Google (the glTF build) | public/draco/draco_decoder.js, public/draco/draco_decoder.wasm | https://github.com/google/draco | Apache-2.0 |`
+4. Anything else in a `Licence` cell (`unknown`, a tool's terms of service, a licence of the other class), and any of CC BY-NC, BY-ND, BY-SA, "non-commercial", "royalty-free", "all rights reserved" or "editorial use" anywhere on the line, is reported as not allowed. "not CC0" and "non-CC0" are not read as CC0, and the same goes for "not Apache-2.0", "not MIT", "non-MIT" and "not BSD-3-Clause". Only those two forms are caught: "not under MIT" is still read as MIT.
 
 Write the path bare or in backticks, starting with `public/`. These are not read, or change the meaning:
 
@@ -77,20 +79,21 @@ The matching rules are tested in `tests/creditsReport.test.ts`.
 
 ## Third report
 
-Run on branch `154-licence-gaps` at `43a6c5e` (`main` at `9d4ae2b` plus this branch's changes to the script and `CREDITS.md`), Saturday 6:22 PM, with `public/mediapipe/` filled. This is a snapshot: run `make credits` for the current one.
+Run on branch `154-licence-gaps` at `f791c52`, which has `main` at `9578330` merged in, Saturday 6:35 PM, with `public/mediapipe/` filled. This is a snapshot: run `make credits` for the current one.
 
-Other runs, for comparison:
+Other runs on the same tree, for comparison:
 
-- The same script with the `CREDITS.md` of `main` at `9d4ae2b`: `154 files, 57.7 MB (57713409 bytes). 147 assets: 134 credited, 13 gaps. 7 not assets.` The 13 were the three Draco files, the five pose tracker files, the four icons and the favicon, all `no credit`, and the suitor model had the note of the second report.
-- The script as it was on `main` did not look in those folders. At `532abb2` it said `128 files, 20.7 MB (20673282 bytes). 121 assets: 121 credited, 0 gaps. 7 not assets.`
+- The script of this branch with the `CREDITS.md` of `main` at `9578330`: `154 files, 57.7 MB (57713409 bytes). 147 assets: 134 credited, 13 gaps. 7 not assets.` The 13 were the three Draco files, the five pose tracker files, the four icons and the favicon, all `no credit`. The suitor model had the note of the second report.
+- The script as it is on `main` at `9578330` does not look in those folders. Run on this tree, with this branch's `CREDITS.md`, it said `141 files, 21.2 MB (21163915 bytes). 134 assets: 134 credited, 0 gaps. 7 not assets.`
 - This branch with `public/mediapipe/` moved away, as on a clone where `make setup` has not run: `149 files, 21.9 MB (21930923 bytes). 142 assets: 142 credited, 0 gaps. 7 not assets.`, then a note that `public/mediapipe/` has no files.
+- This branch with an empty `zz_dummy.png` put in `public/draco/` and an empty `zz_dummy.mp3` in `public/mediapipe/wasm/`: `156 files, 57.7 MB (57713409 bytes). 149 assets: 147 credited, 2 gaps. 7 not assets.`, both `no credit`, exit 1. The two files were removed again.
 
 What changed since the second report:
 
-- **The script** walks all of `public/`, not four folders of it, and has the class for bundled software and model files described above.
-- **Bundled software:** `CREDITS.md` has a new section with a row for `public/draco/`, one for `public/mediapipe/wasm/` and one for the pose model.
+- **The script** walks all of `public/`, not four folders of it, and has the class for bundled software and model files described above. A line can no longer name the whole `public/` folder.
+- **Bundled software:** `CREDITS.md` has a new section. One row names the three Draco files, one names the four files of the pose tracker's runtime, and one names the pose model.
 - **Icons:** `CREDITS.md` has rows for the four files in `public/ui/` and for `public/favicon.svg`.
-- **Models:** the suitor model has its row in `CREDITS.md`, so the note of the second report is gone. The hero row now links to the two itch.io pages that state CC0. The dev robot row spells its author as the three.js README does.
+- **Models:** the suitor model has its row in `CREDITS.md`, so the note of the second report is gone. The hero and suitor rows link to the pack pages on quaternius.com and on itch.io, which state CC0. The dev robot row spells its author as the three.js README does.
 - **Skies and textures:** each Poly Haven row names the author its page names.
 - **Audio:** 13 new Athena clips came in on `main` (PR #167). The row for `public/audio/athena/` covers them, and that PR updated its text. Not changed here.
 
@@ -228,17 +231,17 @@ What changed since the second report:
 | `public/audio/taunts/taunt_suitors_1.mp3` | 66 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
 | `public/audio/taunts/taunt_suitors_2.mp3` | 74 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
 | `public/audio/taunts/taunt_suitors_3.mp3` | 70 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
-| `public/draco/draco_decoder.js` | 512 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:144 |
-| `public/draco/draco_decoder.wasm` | 192 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:144 |
-| `public/draco/draco_wasm_wrapper.js` | 58 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:144 |
+| `public/draco/draco_decoder.js` | 512 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
+| `public/draco/draco_decoder.wasm` | 192 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
+| `public/draco/draco_wasm_wrapper.js` | 58 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
 | `public/favicon.svg` | 270 B | Drawn by the team | CREDITS.md:59 |
 | `public/hdri/qwantani_dusk_2_puresky_1k.hdr` | 1.2 MB | CC0 | CREDITS.md:18 |
 | `public/hdri/small_cave_1k.hdr` | 1.8 MB | CC0 | CREDITS.md:17 |
-| `public/mediapipe/pose_landmarker_lite.task` | 5.8 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
-| `public/mediapipe/wasm/vision_wasm_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:145 |
-| `public/mediapipe/wasm/vision_wasm_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:145 |
-| `public/mediapipe/wasm/vision_wasm_module_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:145 |
-| `public/mediapipe/wasm/vision_wasm_module_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:145 |
+| `public/mediapipe/pose_landmarker_lite.task` | 5.8 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:148 |
+| `public/mediapipe/wasm/vision_wasm_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/mediapipe/wasm/vision_wasm_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/mediapipe/wasm/vision_wasm_module_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/mediapipe/wasm/vision_wasm_module_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
 | `public/models/dev/RobotExpressive.glb` | 464 KB | CC0 | CREDITS.md:30 |
 | `public/models/hero/spartan.glb` | 758 KB | CC0 | CREDITS.md:36 |
 | `public/models/polyphemus/giant.glb` | 246 KB | CC0 | CREDITS.md:44 |
@@ -263,21 +266,22 @@ All on 2026-11-14. "Fetched" means the page was read through a tool that returns
 | The two skies and six textures | Fetched each asset's Poly Haven page. Read `https://api.polyhaven.com/info/<asset>` for the authors | CC0 on all four pages. Authors: Andreas Mischok (Small Cave), Greg Zaal and Jarod Guest (Qwantani Dusk 2 Puresky), Amal Kumar (Rock Surface, Rocky Trail) |
 | The dev robot | Read the README at three.js tag `r187`. Compared our file's git blob hash with the one GitHub lists for that tag | "Model by Tomás Laulhé", "Modifications by Don McCurdy", "CC0 1.0". The hashes are equal |
 | The giant | Fetched the Poly Pizza page | "Public Domain (CC0)", author Quaternius |
-| The hero | Fetched the itch.io pages of Universal Animation Library 1 and 2, and the viewer page | Both itch.io pages say "(CC0 License)", author Quaternius. The viewer page states no licence |
-| The suitor | Fetched the itch.io pages of Universal Base Characters and Universal Animation Library 2 | Both say "(CC0 License)", author Quaternius |
+| The hero | Fetched the pack pages of Universal Animation Library 1 and 2 on quaternius.com (`https://quaternius.com/packs/universalanimationlibrary.html` and `.../universalanimationlibrary2.html`), their itch.io pages, and the viewer page | All four pack pages say "(CC0 License)", author Quaternius. On the two quaternius.com pages the word "CC0" links to `https://creativecommons.org/publicdomain/zero/1.0/`. The viewer page states no licence |
+| The suitor | Fetched the pack pages of Universal Base Characters and Universal Animation Library 2 on quaternius.com (`https://quaternius.com/packs/universalbasecharacters.html` and `.../universalanimationlibrary2.html`) and their itch.io pages | All four say "(CC0 License)", author Quaternius. The quaternius.com pages link "CC0" to the same deed |
 | The generated clips and music | Fetched the ElevenLabs Terms of Service and Music Terms again | Both last updated 09 October 2026. The points read again match `CREDITS.md`: the user keeps the rights in their output, paid plans may use it commercially, the Creator plan's music rights leave out film, TV, radio and "Studio Games", and paid plans need no attribution. The indie game limits were not read again |
-| The icons and the favicon | Read the files, their git history and the PR text | PR #134: "ship, owl, palmette and laurel SVGs drawn in code". PR #105 adds the favicon. Each file is a few plain shapes with no editor or stock-site data in it |
-| The Draco decoder | Compared SHA-256 with `node_modules/three/examples/jsm/libs/draco/gltf/` (three 0.187.0). Read the README one folder up. Fetched `LICENSE` of github.com/google/draco | Hashes equal. README: "Apache License 2.0". The `LICENSE` file is the Apache License 2.0 |
-| The MediaPipe runtime | Compared SHA-256 with `node_modules/@mediapipe/tasks-vision/wasm/` (1.2.3). Read its `package.json`. Fetched `LICENSE` of github.com/google-ai-edge/mediapipe | Hashes equal. `"license": "Apache-2.0"`, author `mediapipe@google.com`. The `LICENSE` file is the Apache License 2.0 |
+| The icons and the favicon | Read the files, their git history and the PR text | PR #134: "ship, owl, palmette and laurel SVGs drawn in code". PR #105 says only "public/favicon.svg linked in index.html"; the file came in with the lead's commit `aea5e7a`. Each file is a few plain shapes with no editor or stock-site data in it |
+| The Draco decoder | Compared SHA-256 with `node_modules/three/examples/jsm/libs/draco/gltf/` (three 0.187.0), and again, byte for byte, at `f791c52`. Read the README one folder up. Fetched `LICENSE` of github.com/google/draco | Hashes equal. README: "Apache License 2.0". The `LICENSE` file is the Apache License 2.0 |
+| The MediaPipe runtime | Compared SHA-256 with `node_modules/@mediapipe/tasks-vision/wasm/` (1.2.3), and again, byte for byte, at `f791c52`. Read its `package.json`. Fetched `LICENSE` of github.com/google-ai-edge/mediapipe | Hashes equal. `"license": "Apache-2.0"`, author `mediapipe@google.com`. The `LICENSE` file is the Apache License 2.0 |
 | The pose model | Compared the file's MD5 with the one Google's server reports for the address in `scripts/vendor-pose.sh`. Read the model card PDF that Google's Pose Landmarker page links | MD5 equal. Model card: "Licensed under Apache License, Version 2.0", authors Valentin Bazarevsky, Ivan Grishchenko and Eduard Gabriel Bazavan of Google, dated 16 April 2021 |
 
 ## Not confirmed
 
-- **Quaternius's own site shows a different licence.** `https://quaternius.com/license.html` (last updated 8/28/2026) is the "Quaternius Asset License (QAL) v1.0". It allows use in a game with no credit and forbids passing the assets on as assets. It does not mention CC0. The itch.io pages of the same packs still say CC0, and so does Poly Pizza for the giant. The model logs say the hero's packs came through the viewer on quaternius.com and that `License.txt` in them was CC0. That file is not in the repo, so it was not checked here. Someone who has the downloaded packs should read `License.txt` and say which licence they carry.
+- **`License.txt` in the downloaded Quaternius packs.** The model logs say it reads "CC0 1.0 Universal". The packs are not in the repo, so that file was not read here. The pack pages on quaternius.com and itch.io say CC0 (see the table above). The site also has a general page, `https://quaternius.com/license.html` (last updated 8/28/2026), with a "Quaternius Asset License (QAL) v1.0" that does not mention CC0 and does not say which packs it covers. Someone who has the downloaded packs should read `License.txt` and confirm it is CC0.
+- **The giant.** Its CC0 is confirmed by its Poly Pizza page only. A page for it on quaternius.com was not looked for.
 - **Whether our three Quaternius GLB files are the pack files.** They were trimmed and edited, so there is no hash to compare.
 - **Code from other projects inside the MediaPipe runtime.** The `.wasm` files are compiled, and the package has no licence or notice file. Only the package's own licence was checked.
 - **A copy of the Apache License 2.0.** That licence asks that a copy of it goes with the files (section 4). `CREDITS.md` links to the text. The repo and the built game do not carry a copy.
-- **The favicon.** PR #105 does not say how it was made. "Drawn by the team" rests on the file itself and its commit.
+- **The favicon.** PR #105 does not say how it was made. "Drawn by the team" rests on the file itself (four plain shapes, no editor data) and on its commit by the lead. The lead should confirm it was written by hand.
 - **Which ElevenLabs plan the account is on.** `CREDITS.md` says Creator. That was not looked at again.
 
 ## Second report
