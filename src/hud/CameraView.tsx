@@ -85,7 +85,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
   }, [video, poseRef]);
 
   return (
-    <figure className={mirror ? "camera-view mirror" : "camera-view"} aria-label="Your camera">
+    <figure className={`camera-view${mirror ? " mirror" : ""}${shown === "keyboard" ? " camera-view--keys" : ""}`} aria-label="Your camera">
       <div className="camera-frame" ref={holder}>
         <canvas ref={canvas} />
       </div>

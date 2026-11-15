@@ -142,10 +142,9 @@ export const DISC = (() => {
 
 // ---- the prompt card: a glass slab measured in px, so its facets keep their size as the card grows ----
 export interface CardGlass { readonly outline: string; readonly inner: string; readonly facets: Facet[]; readonly topEdge: string; readonly cracks: string; readonly glints: readonly Pt[] }
-const BLUE = ["#22324a", "#121a26", "#3a5272", "#0c121a", "#1c2a3e", "#4a6a92"] as const;
 const EMBER = ["#3a1a16", "#1a0c0a", "#52261a", "#120806", "#2c1410", "#6a2e18"] as const;
 
-/** DEFEND is a broad flat-topped slab with chipped corners; STRIKE and FINISH rise to a spear point. */
+/** DEFEND is a broad flat-topped slab with chipped corners; STRIKE and FINISH rise to a spear point. Both are cut from molten-dark rock. */
 export function cardGlass(w: number, h: number, pointed: boolean): CardGlass {
   const cx = w / 2;
   const out: Pt[] = pointed
@@ -153,7 +152,7 @@ export function cardGlass(w: number, h: number, pointed: boolean): CardGlass {
     : [[22, 1], [w * 0.4, -6], [w * 0.62, 2], [w - 18, -4], [w + 4, 30], [w - 2, h * 0.5], [w + 4, h - 40], [w - 26, h + 4], [w * 0.5, h - 4], [20, h + 2], [-4, h - 34], [2, h * 0.45], [-6, 34]];
   const kx = 1 - 30 / w, ky = 1 - 32 / h;
   const inner: Pt[] = out.map((p) => [cx + (p[0] - cx) * kx, h / 2 + (p[1] - h / 2) * ky]);
-  const shades = pointed ? EMBER : BLUE, facets: Facet[] = [];
+  const shades = EMBER, facets: Facet[] = [];
   out.forEach((a, i) => {
     const b = out[(i + 1) % out.length], c = inner[(i + 1) % inner.length], d = inner[i];
     if (!b || !c || !d) return;
@@ -161,14 +160,12 @@ export function cardGlass(w: number, h: number, pointed: boolean): CardGlass {
   });
   const r = rng(5);
   let cr = "";
-  if (pointed) {
-    for (let i = 0; i < 9; i++) {
-      const p = out[Math.floor(r() * out.length)] ?? out[0] ?? [0, 0];
-      let x = p[0], y = p[1];
-      const line: Pt[] = [[x, y]];
-      for (let k = 0; k < 4; k++) { x += (cx - x) * 0.07 + (r() - 0.5) * 10; y += (r() - 0.5) * 16; line.push([x, y]); }
-      cr += poly(line);
-    }
+  for (let i = 0; i < 9; i++) {
+    const p = out[Math.floor(r() * out.length)] ?? out[0] ?? [0, 0];
+    let x = p[0], y = p[1];
+    const line: Pt[] = [[x, y]];
+    for (let k = 0; k < 4; k++) { x += (cx - x) * 0.07 + (r() - 0.5) * 10; y += (r() - 0.5) * 16; line.push([x, y]); }
+    cr += poly(line);
   }
   return { outline: `${poly(out)}Z`, inner: `${poly(inner)}Z`, facets, topEdge: poly(inner.slice(0, 4)), cracks: cr, glints: pointed ? [] : [[22, 6], [w - 18, -2], [w + 2, h * 0.5], [4, h - 36]] };
 }
