@@ -4,6 +4,7 @@
 // At the end: the total, the highlights, and what to work on with a line on how.
 // Thin on purpose: the session is the pure state machine in ../dojo, ticked once per animation frame from a ref.
 // React renders only when the phase, the move or the repetition changes; the time bar is written straight to the page.
+import { keyName } from "./keyName";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FightingStyle, PoseFrame, PoseHistory } from "../../core/types";
 import { ENEMIES } from "../../enemies/registry";
@@ -68,7 +69,6 @@ const viewOf = (state: DojoState): View => ({
 });
 
 const TIER_WORD: Readonly<Record<GradeTier, string>> = { excellent: "Excellent", good: "Good", needs_work: "Needs improvement" };
-const keyName = (key: string): string => (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
 
 export function Dojo(props: DojoProps) {
   const { tracker, onDone, onQuit, timing } = props;

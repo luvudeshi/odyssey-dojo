@@ -70,6 +70,7 @@ export function App() {
   // The character shown in the picker (the scan's, or the stored one), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
   const [characterPicked, setCharacterPicked] = useState(false);
+  const [confirmed, setConfirmed] = useState<CharacterId | null>(null);
   // Writes to the profile through `change` and shows whatever that unlocked.
   const noting = (change: () => void): void => {
     const before = achievements(getProfile(), ENEMIES);
@@ -202,9 +203,13 @@ export function App() {
   // After the scan, before the style: the five characters, with the god's one already chosen.
   if (flow.screen === "style" && !characterPicked) {
     return (
-      <main className="menu">
-        <CharacterPicker value={character} onChange={setCharacter} onDone={(id) => { setCharacter(confirmCharacter(id)); setCharacterPicked(true); }} />
-      </main>
+      <CharacterPicker
+        value={character}
+        onChange={setCharacter}
+        onDone={(id) => { setCharacter(confirmCharacter(id)); setConfirmed(id); setCharacterPicked(true); }}
+        // Opened from "Change character": back to the style choice with the old character. First visit: back to the menu.
+        onBack={() => { if (confirmed === null) { dispatch({ type: "toTitle" }); } else { setCharacter(confirmed); setCharacterPicked(true); } }}
+      />
     );
   }
 
