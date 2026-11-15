@@ -1,6 +1,6 @@
 # Credits
 
-Every file the game ships has a row here. There are three kinds:
+Every file in the game's `public` folder has a row here. There are three kinds:
 
 - Art we downloaded: skies, textures and models. All of it is CC0 (public domain).
 - Things the team made: the voices, sounds and music (generated with ElevenLabs) and the icons (drawn in code).
