@@ -120,7 +120,7 @@ Accounts and a Hall of heroes are built on Tiger Data. Every finished fight of a
 
 ## ElevenLabs: Athena is the coach
 
-A coach has to talk. Athena, Homer and the monsters speak with ElevenLabs. We generated the clips ahead of time with our own account, 135 files in all, and they ship with the game, so a normal fight never calls ElevenLabs.
+A coach has to talk. Athena, Homer and the monsters speak with ElevenLabs. We generated the clips ahead of time with our own account, 141 files in all, and they ship with the game, so a normal fight never calls ElevenLabs.
 
 - **Athena** calls every defense and every strike, praises a hit and warns after one. Her voice is Sarah.
 - **Homer** narrates before and after each stop. His voice is George.
