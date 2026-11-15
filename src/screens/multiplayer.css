@@ -1,123 +1,183 @@
-/* The Multiplayer screen (Multiplayer.tsx, RoomHost.tsx, RoomJoin.tsx, RoomTags.tsx, RoomArt.tsx), on the layout of the
-   owner's Dance Fantasy rooms in the Mosaic floor look: a sea-blue pebble floor, cream stone cards ringed in terracotta
-   pebbles, bronze. Cream stone takes a dark focus ring; the floor keeps the cream one. */
-.menu.mp { justify-content: flex-start; gap: 12px; padding: 3rem 2rem 1.6rem; background: #10181d var(--pebble-dusk) repeat; }
-.menu.mp::before { background: radial-gradient(ellipse 75% 65% at 50% 45%, rgba(8, 14, 18, 0.1), rgba(6, 10, 12, 0.55)); }
+/* The Multiplayer screen (Multiplayer.tsx, RoomHost.tsx, RoomJoin.tsx, RoomTags.tsx, RoomArt.tsx): the Dance Fantasy
+   room layout in the fight HUD's Obsidian Rift look. Black volcanic glass, lava through the cracks, ice-blue for the cold
+   side. The textures are painted once (riftHall.ts: --mp-hall, --mp-veins, --mp-melt). Only transform and opacity move;
+   reduced motion gets the still version. Slabs are cut with clip-path on pseudo layers, never on a focusable element,
+   so focus rings are never clipped. */
+.menu.mp {
+  --rift-font: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif;
+  --rift-violet: #d6c8ff;
+  --rift-text: #efe8ff;
+  --rift-dim: #c9bfe0;
+  --rift-ice: #8fd0ff;
+  --lava-text: linear-gradient(#fff4c0, #ffd040 30%, #ff8410 62%, #c8300a);
+  justify-content: flex-start; gap: 12px; padding: 1.6rem 2rem 1.6rem; color: var(--rift-text);
+  border-color: #2c2538; box-shadow: 0 0 0 3px #000;
+  background: radial-gradient(ellipse 90% 42% at 50% 110%, rgba(255, 90, 10, 0.5), rgba(160, 30, 6, 0.18) 50%, transparent 76%),
+    radial-gradient(ellipse 55% 45% at 50% 38%, rgba(80, 60, 130, 0.2), transparent 70%), linear-gradient(rgba(3, 2, 6, 0.5), rgba(3, 2, 6, 0.5)), #07060a var(--mp-hall) repeat;
+  background-size: auto, auto, auto, 640px 640px;
+}
+.menu.mp::before { inset: 0; border-radius: inherit; background: radial-gradient(ellipse 85% 75% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.62)); }
 
-/* Cream stone, ringed with terracotta pebbles (a dotted mask on a frame round the box). */
-.mp-card, .mp-bar, .mp-qr__card, .mp-tag {
-  --pb-focus: #2a1208; position: relative; color: #241a14;
-  background: radial-gradient(ellipse 90% 70% at 30% 20%, #fbf4e4, #eadcbc 70%, #dccaa4);
-  box-shadow: 0 0 0 3px #10181d, 0 10px 22px rgba(0, 0, 0, 0.55);
+/* Embers rising off the lava below. */
+.menu.mp > .mp-embers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.mp-embers i { position: absolute; bottom: -8px; width: 3px; height: 3px; border-radius: 50%; background: #ffc06a; box-shadow: 0 0 6px 2px rgba(255, 120, 30, 0.7); opacity: 0; animation: mp-rise 9s linear infinite; }
+.mp-embers i:nth-child(2n) { width: 2px; height: 2px; animation-duration: 12s; animation-delay: -4s; }
+.mp-embers i:nth-child(3n) { animation-duration: 7s; animation-delay: -2s; }
+.mp-embers i:nth-child(4n + 1) { animation-delay: -6s; }
+.mp-embers i:nth-child(5n) { animation-duration: 10s; animation-delay: -8s; }
+@keyframes mp-rise { 0% { opacity: 0; transform: translate(0, 0); } 10% { opacity: 1; } 70% { opacity: 0.7; } 100% { opacity: 0; transform: translate(40px, -78vh); } }
+
+/* Burned letters: lava in the glass, as the fight HUD sets the monster's name. Static, so the glow is drawn once. */
+.menu.mp .mp-burn {
+  margin: 0 -0.2em 0 0; font: 700 clamp(44px, 4.4vw, 66px)/1.05 var(--rift-font); letter-spacing: 0.2em; text-transform: uppercase;
+  color: transparent; background: var(--lava-text); -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 1px #2a0602;
+  filter: drop-shadow(0 0 8px rgba(255, 90, 10, 0.75)) drop-shadow(0 3px 2px #000);
 }
-.mp-card::after, .mp-bar::after {
-  content: ""; position: absolute; inset: -12px; border-radius: inherit; pointer-events: none; padding: 9px;
-  background: radial-gradient(circle at 50% 50%, #c9684a 0 3.2px, #93402c 3.6px, transparent 4.4px) 0 0 / 10px 10px;
-  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-}
-.mp-kicker { display: block; font: italic 600 22px/1.1 var(--pb-font-body); letter-spacing: 0.02em; text-transform: none; color: #8a5a2a; }
+.mp-kicker { display: block; font: italic 600 22px/1.1 var(--pb-font-body); letter-spacing: 0.04em; text-transform: none; color: var(--rift-violet); }
 
 /* The bar along the top: the game, the hero, the way back. */
 .mp-top { display: flex; align-items: center; gap: 14px; width: min(90rem, 100%); }
-.mp-top__brand { margin-right: auto; font: 700 24px var(--pb-font-body); letter-spacing: 0.04em; color: #f6eedc; text-shadow: 0 2px 0 #0a1014; }
-.mp-top__brand b { color: #e2b25d; }
-.mp-top__hero { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 8px; border: 2px solid #c98f37; border-radius: 24px; background: #223039; font: 700 17px var(--pb-font-body); color: #f6eedc; }
-.mp-top__hero .acc-icon { width: 28px; height: 28px; padding: 3px; border-radius: 50%; background: #10181d; stroke: #e2b25d; }
-.menu.mp .mp-top__back { min-height: 44px; margin: 0; padding: 6px 18px; border: 3px solid #93402c; border-radius: 24px; background: #f1e6cf; color: #241a14; font-size: 17px; }
-.menu.mp .mp-top__back:hover { background: #fff6e6; }
+.mp-top__brand { margin-right: auto; font: 700 22px var(--rift-font); letter-spacing: 0.16em; text-transform: uppercase; color: var(--rift-text); text-shadow: 0 2px 2px #000; }
+.mp-top__brand b { color: transparent; background: var(--lava-text); -webkit-background-clip: text; background-clip: text; text-shadow: none; filter: drop-shadow(0 0 5px rgba(255, 90, 10, 0.6)); }
+.mp-top__hero { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 8px; border: 1.5px solid #6a5a8a; border-radius: 6px; background: linear-gradient(#1f1a2a, #0b0910); font: 700 17px var(--pb-font-body); color: var(--rift-text); }
+.mp-top__hero .acc-icon { width: 26px; height: 26px; stroke: #ffc070; }
+
+/* Buttons: dark glass with a violet edge; the one to press is molten and breathes. */
+.menu.mp .pb-btn { border: 1.5px solid #7a6a9a; border-radius: 6px; background: linear-gradient(#251f30, #0d0b12); color: var(--rift-text); box-shadow: inset 0 1px 0 rgba(214, 200, 255, 0.18), 0 4px 10px rgba(0, 0, 0, 0.6); }
+.menu.mp .pb-btn:hover:not(:disabled) { border-color: #ff9a3a; background: linear-gradient(#3a2228, #160c10); color: #fff; }
+.menu.mp .pb-btn--primary:not(:disabled) {
+  border: 2px solid #ffe6a0; color: #2a0802; background: #ff8410 var(--mp-melt) center / 100% 100%; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+  box-shadow: 0 0 0 2px #000, 0 0 22px rgba(255, 110, 20, 0.55), inset 0 -4px 8px rgba(120, 20, 0, 0.5);
+}
+.menu.mp .pb-btn--primary:not(:disabled):hover { border-color: #fff; color: #1a0400; background: #ff9a2a var(--mp-melt) center / 100% 100%; }
+.menu.mp .pb-btn--primary:not(:disabled)::after { content: ""; position: absolute; inset: -5px; border-radius: 9px; pointer-events: none; box-shadow: 0 0 26px 6px rgba(255, 120, 30, 0.6); opacity: 0.35; animation: mp-breathe 2.2s ease-in-out infinite alternate; }
+@keyframes mp-breathe { to { opacity: 1; } }
+.menu.mp .pb-btn:disabled { border: 1.5px dashed #4a3e5e; background: #110e16; color: #a89cc0; box-shadow: none; opacity: 1; }
+.menu.mp .mp-top__back { min-height: 44px; margin: 0; padding: 6px 18px; font-size: 17px; }
+
+/* A slab: a faceted piece of black glass. ::before is its glowing edge, ::after its body; both cut by --slab. */
+.mp-card, .mp-bar, .mp-tag { position: relative; isolation: isolate; }
+.mp-card::before, .mp-bar::before, .mp-tag::before, .mp-card::after, .mp-bar::after, .mp-tag::after { content: ""; position: absolute; pointer-events: none; clip-path: var(--slab); }
+.mp-card::before, .mp-bar::before, .mp-tag::before { inset: -3px; z-index: -2; background: linear-gradient(160deg, #ffe08a, #ff7a14 26%, #6a1204 52%, #ff8a1a 80%, #ffd27a); }
+.mp-card::after, .mp-bar::after, .mp-tag::after {
+  inset: 0; z-index: -1;
+  background: radial-gradient(ellipse 90% 38% at 50% 104%, rgba(255, 90, 10, 0.4), transparent 72%), linear-gradient(165deg, rgba(70, 56, 96, 0.5), rgba(10, 8, 14, 0.15) 38%, rgba(0, 0, 0, 0.5)),
+    linear-gradient(rgba(5, 4, 9, 0.62), rgba(5, 4, 9, 0.62)), #0b0910 var(--mp-hall) 0 0 / 640px 640px;
+}
 
 /* ---- the choices ---- */
-.mp-head { display: flex; flex-direction: column; align-items: center; margin-top: auto; }
-.menu.mp .mp-head .pb-heading { margin: 0 auto 0.2rem; }
-.menu.mp .mp-head .lead { margin: 0; color: #f6eedc; text-shadow: 0 2px 0 #0a1014, 0 0 8px #0a1014; }
+.mp-head { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: auto; }
+.menu.mp .mp-head .lead { margin: 0; color: var(--rift-text); font-weight: 600; text-shadow: 0 2px 3px #000; }
 /* One row; a third card fits beside these two at 1280 px and wider, and the row wraps below that. */
-.mp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 24rem)); justify-content: center; align-items: stretch; gap: 30px 52px; width: min(84rem, 100%); margin: 44px 0 auto; }
-.mp-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 50px 28px 24px; border-radius: 18px; text-align: center; }
-.mp-card__sticker { position: absolute; top: -46px; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
-.mp-card h2 { margin: 0; font: 700 44px/1 var(--pb-font-body); letter-spacing: 0.06em; text-transform: uppercase; color: #8a3a26; }
-.menu.mp .mp-card > p { margin: 0; font-size: 18px; line-height: 1.3; color: #3a2c22; }
-.menu.mp .mp-card > .mp-card__as { display: flex; flex-direction: column; gap: 2px; align-self: stretch; margin-top: 14px; font-size: 15px; color: #5a4636; }
-.mp-card__as small:first-child { font: 700 16px var(--pb-font-body); color: #3a2c22; }
-.mp-card__as b { margin: 4px 0; padding: 10px 14px; border: 3px solid #c9a46a; border-radius: 16px; background: #fffaf0; box-shadow: inset 0 2px 6px rgba(80, 50, 20, 0.2); font: 700 26px var(--pb-font-body); color: #241a14; }
-.menu.mp .mp-card .pb-btn { align-self: stretch; min-height: 60px; margin: 0; border-radius: 32px; font-size: 22px; }
+.mp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 24rem)); justify-content: center; align-items: stretch; gap: 30px 60px; width: min(84rem, 100%); margin: 50px 0 auto; }
+.mp-card {
+  --slab: polygon(9% 0, 50% 1.2%, 91% 0, 100% 7%, 98.6% 52%, 100% 92%, 90% 100%, 50% 98.6%, 10% 100%, 0 93%, 1.4% 50%, 0 7%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 54px 30px 30px; text-align: center;
+}
+.mp-card::after { background: var(--mp-veins) 0 0 / 100% 100% no-repeat, radial-gradient(ellipse 90% 34% at 50% 104%, rgba(255, 90, 10, 0.45), transparent 72%), linear-gradient(165deg, rgba(70, 56, 96, 0.55), rgba(10, 8, 14, 0.2) 38%, rgba(0, 0, 0, 0.55)), linear-gradient(rgba(5, 4, 9, 0.62), rgba(5, 4, 9, 0.62)), #0b0910 var(--mp-hall) 0 0 / 640px 640px; }
+.mp-card--ice::before { background: linear-gradient(160deg, #f2fbff, #8fd0ff 26%, #1c3256 52%, #6ab4f0 80%, #d8f0ff); }
+.mp-card--ice::after { background: var(--mp-veins) 0 0 / 100% 100% no-repeat, radial-gradient(ellipse 90% 40% at 50% -4%, rgba(110, 180, 255, 0.28), transparent 72%), linear-gradient(165deg, rgba(56, 70, 110, 0.55), rgba(10, 8, 14, 0.2) 38%, rgba(0, 0, 0, 0.6)), linear-gradient(rgba(5, 4, 9, 0.62), rgba(5, 4, 9, 0.62)), #0b0910 var(--mp-hall) 0 0 / 640px 640px; }
+.mp-card .mp-card__sticker { position: absolute; top: -44px; left: 50%; z-index: 2; margin-left: -42px; }
+.mp-card h2 { display: flex; flex-direction: column; align-items: center; margin: 0; font: 700 50px/1 var(--rift-font); letter-spacing: 0.14em; text-transform: uppercase; color: transparent; }
+.mp-card h2 { background: var(--lava-text); -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 1px #2a0602; }
+.mp-card h2 .mp-kicker { margin-bottom: 4px; -webkit-text-stroke: 0; color: var(--rift-violet); background: none; }
+.mp-card--ice h2 { background: linear-gradient(#ffffff, #cfeaff 35%, #8fd0ff 70%, #4a8ad0); -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 1px #06142a; }
+.menu.mp .mp-card > p { margin: 0; font-size: 18px; line-height: 1.3; color: var(--rift-dim); }
+.menu.mp .mp-card > .mp-card__as { display: flex; flex-direction: column; gap: 2px; align-self: stretch; margin-top: 14px; font-size: 16px; color: var(--rift-dim); }
+.mp-card__as small { font: 500 16px var(--pb-font-body); }
+.mp-card__as small:first-child { font-weight: 700; color: var(--rift-text); }
+.mp-card__as b { margin: 4px 0; padding: 9px 14px; border: 1.5px solid #7a6a9a; border-radius: 6px; background: rgba(4, 3, 8, 0.75); box-shadow: inset 0 2px 8px #000; font: 700 26px var(--pb-font-body); color: #ffd890; }
+.menu.mp .mp-card .pb-btn { align-self: stretch; min-height: 60px; margin: 0; font-size: 22px; }
 .menu.mp .mp-card > .pb-btn { margin-top: auto; }
-.menu.mp .mp-card .pb-btn--primary, .menu.mp .mp-bar .pb-btn--primary { border: 3px solid #6b2e1e; background: #b8553a; color: #fff6e6; box-shadow: 0 4px 0 #6b2e1e; }
-.menu.mp .mp-card .pb-btn--primary:hover:not(:disabled), .menu.mp .mp-bar .pb-btn--primary:hover:not(:disabled) { background: #93402c; }
-.menu.mp .mp-card .pb-btn:disabled, .menu.mp .mp-bar .pb-btn:disabled { background: #d8cbb0; color: #6a5a4a; border-color: #b0a088; box-shadow: none; opacity: 1; }
-.menu.mp .mp-card .pb-btn:not(.pb-btn--primary), .menu.mp .mp-bar .pb-btn:not(.pb-btn--primary) { border: 3px solid #93402c; background: #fbf4e4; color: #241a14; }
-.menu.mp .mp-card .pb-btn:not(.pb-btn--primary):hover:not(:disabled), .menu.mp .mp-bar .pb-btn:not(.pb-btn--primary):hover:not(:disabled) { background: #f1d9b8; }
 
-/* The join card's form (RoomJoin.tsx): the code field big across the card, then the button. */
+/* The join card's form (RoomJoin.tsx): the code field big across the slab, then the button. */
 .mp-card .room { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin-top: 6px; }
-.mp-card .room label { font: 700 16px var(--pb-font-body); color: #3a2c22; }
-.mp-card .room .room-input { box-sizing: border-box; width: 100%; padding: 0.15em 0.2em; font-size: 2.6rem; color: #241a14; background: #fffaf0; border: 3px solid #c9a46a; border-radius: 16px; box-shadow: inset 0 2px 6px rgba(80, 50, 20, 0.2); }
-.mp-card .room .room-input:focus-visible { outline-color: #2a1208; }
+.mp-card .room label { font: 700 16px var(--pb-font-body); color: var(--rift-text); }
+.mp-card .room .room-input { box-sizing: border-box; width: 100%; padding: 0.15em 0.2em; font-size: 2.6rem; color: #eaf6ff; background: rgba(4, 3, 8, 0.8); border: 2px solid var(--rift-ice); border-radius: 6px; box-shadow: inset 0 2px 10px #000, 0 0 16px rgba(110, 180, 255, 0.3); }
 .mp-card .room .notice:empty { display: none; }
-.menu.mp .mp-card .room .notice { margin: 0; font-size: 16px; color: #8a2a16; }
-.menu.mp .mp-card .room .mode-note { max-width: none; margin: 0; font-size: 14px; line-height: 1.3; color: #4a3c30; }
+.menu.mp .mp-card .room .notice { margin: 0; font-size: 16px; color: #ffb08a; }
+.menu.mp .mp-card .room .mode-note { max-width: none; margin: 0; font-size: 16px; line-height: 1.3; color: var(--rift-dim); }
 
 /* ---- the room ---- */
-.mp-wait { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: auto 0; }
-.mp-lobby { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: 20px 52px; flex: 1 1 0; min-height: 0; width: min(90rem, 100%); text-align: left; }
+.mp-wait { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: auto 0; }
+.mp-lobby { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: 20px 56px; flex: 1 1 0; min-height: 0; width: min(90rem, 100%); text-align: left; }
 .mp-lobby__side { display: flex; align-items: center; justify-content: center; min-height: 0; }
-.mp-frame { position: relative; height: min(100%, 900px); aspect-ratio: 0.74; max-width: 100%; }
+.mp-frame { position: relative; height: min(100%, 900px); aspect-ratio: 0.72; max-width: 100%; }
 .mp-frame__glass {
-  position: absolute; inset: 64px 38px 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-align: center;
-  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(30, 48, 58, 0.2), rgba(8, 14, 18, 0.75)), #10181d var(--pebble-dusk) repeat;
+  position: absolute; inset: 88px 52px 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden; text-align: center;
+  background: radial-gradient(ellipse 95% 50% at 50% 104%, rgba(255, 110, 20, 0.75), rgba(200, 48, 10, 0.28) 48%, transparent 76%),
+    radial-gradient(ellipse 70% 34% at 50% 50%, rgba(255, 140, 40, 0.24), transparent 72%), linear-gradient(rgba(8, 6, 14, 0.55), rgba(8, 6, 14, 0.8)), #07060a var(--mp-hall) 0 0 / 640px 640px;
 }
-.mp-frame__glare { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(120deg, transparent 22%, rgba(241, 230, 207, 0.1) 23%, rgba(241, 230, 207, 0.1) 29%, transparent 30%, transparent 35%, rgba(241, 230, 207, 0.06) 36%, rgba(241, 230, 207, 0.06) 38%, transparent 39%); }
+.mp-frame__heat { position: absolute; inset: 20% -10% -10%; pointer-events: none; background: radial-gradient(ellipse 60% 40% at 50% 52%, rgba(255, 150, 50, 0.35), transparent 70%); animation: mp-flicker 3.4s ease-in-out infinite alternate; }
+@keyframes mp-flicker { 0% { opacity: 0.55; transform: scale(0.96); } 40% { opacity: 1; } 100% { opacity: 0.7; transform: scale(1.04); } }
 .mp-frame__stones { position: absolute; left: 0; top: 0; pointer-events: none; }
-.menu.mp .mp-frame__kicker { position: relative; margin: 0; font: italic 600 clamp(16px, 1.5vw, 22px) var(--pb-font-body); color: #f1e6cf; }
-.menu.mp .mp-frame__note { position: relative; margin: 6px 0 0; font: 600 clamp(14px, 1.2vw, 18px) var(--pb-font-body); color: #cfe0e4; }
+.menu.mp .mp-frame__kicker { position: relative; margin: 0; font: italic 600 clamp(17px, 1.5vw, 23px) var(--pb-font-body); color: var(--rift-text); text-shadow: 0 2px 3px #000; }
+.menu.mp .mp-frame__note { position: relative; margin: 8px 0 0; font: 700 clamp(16px, 1.3vw, 19px) var(--pb-font-body); color: #ffd9a8; text-shadow: 0 2px 3px #000; }
 .mp .room .room-code {
-  position: relative; margin: 0; padding-left: 0.1em; font-size: clamp(3.2rem, 5.4vw, 6.4rem); letter-spacing: 0.1em; line-height: 1.05;
-  background: linear-gradient(#fff3c8, #f0c870 45%, #c98f37 80%); -webkit-background-clip: text; background-clip: text; color: transparent;
-  text-shadow: none; filter: drop-shadow(0 3px 0 #0a1014) drop-shadow(0 0 10px rgba(226, 178, 93, 0.35));
+  position: relative; margin: 0; padding-left: 0.08em; font: 700 clamp(3.6rem, 6.4vw, 7.4rem)/1.05 var(--rift-font); letter-spacing: 0.08em;
+  color: transparent; background: var(--lava-text); -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 1.5px #2a0602;
+  text-shadow: none; filter: drop-shadow(0 0 14px rgba(255, 100, 10, 0.85)) drop-shadow(0 4px 2px #000);
 }
 
 .mp-lobby__main { display: flex; flex-direction: column; justify-content: center; gap: 22px; min-width: 0; min-height: 0; }
 .mp-lobby__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 24px; }
 .mp-lobby__titles { margin: 0; }
-.mp-lobby__titles .mp-kicker { margin-bottom: -14px; font-size: 34px; color: #e2b25d; text-shadow: 0 2px 0 #0a1014; }
-.menu.mp .mp-lobby__titles .pb-heading { margin: 2px 0 8px; }
-.menu.mp .mp-lobby__enter { max-width: 26rem; margin: 0; font-size: 19px; color: #f6eedc; text-shadow: 0 2px 0 #0a1014; }
-.mp-qr { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 0; }
-.mp-qr__card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 12px 8px; border-radius: 14px; transform: rotate(4deg); box-shadow: 0 0 0 3px #10181d, 0 0 0 7px #c98f37, 0 0 0 9px #10181d, 0 12px 24px rgba(0, 0, 0, 0.6); }
-.mp .room .room-qr { display: block; padding: 0; border: 0; border-radius: 4px; background: #fff; }
-.mp-qr__caption { font: 700 17px var(--pb-font-body); color: #241a14; }
-.menu.mp .mp-qr .room-url { max-width: 13rem; margin: 0; font: 600 13px/1.3 var(--pb-font-body); color: #cfe0e4; text-align: center; }
+.mp-lobby__titles .mp-kicker { font-size: 30px; }
+.menu.mp .mp-burn--room { margin: 0 0 10px; font-size: clamp(64px, 7vw, 112px); }
+.menu.mp .mp-lobby__enter { max-width: 26rem; margin: 0; font-size: 19px; color: var(--rift-text); text-shadow: 0 2px 3px #000; }
 
-.mp-tags h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0 0 12px; font: italic 600 26px var(--pb-font-body); color: #f6eedc; text-shadow: 0 2px 0 #0a1014; }
-.mp-tags__count { font: 700 16px var(--pb-font-body); font-style: normal; letter-spacing: 0.04em; color: #e2b25d; }
-.mp-tags ul { display: flex; flex-wrap: wrap; gap: 18px 26px; margin: 0; padding: 0; list-style: none; }
+/* The QR stays dark on light with its quiet zone, on a small tilted card of pale stone in an obsidian rim. */
+.mp-qr { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 0; }
+.mp-qr__card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 12px 8px; border-radius: 6px; background: #f3ece0; transform: rotate(4deg); box-shadow: 0 0 0 5px #0b0910, 0 0 0 7px #ff8a1a, 0 0 26px 4px rgba(255, 100, 20, 0.45), 0 16px 28px rgba(0, 0, 0, 0.8); }
+.mp .room .room-qr { display: block; padding: 0; border: 0; border-radius: 0; background: #fff; }
+.mp-qr__caption { font: 700 17px var(--pb-font-body); color: #1a1018; }
+.menu.mp .mp-qr .room-url { max-width: 15rem; margin: 0; font: 600 16px/1.3 var(--pb-font-body); color: var(--rift-dim); text-align: center; word-break: break-all; }
+
+/* Fighters: glass shards, lit from inside when someone is there, cold blue while the place is open. */
+.mp-tags h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0 0 14px; font: 700 22px var(--rift-font); letter-spacing: 0.12em; text-transform: uppercase; color: var(--rift-text); text-shadow: 0 2px 3px #000; }
+.mp-tags__count { font: 700 17px var(--pb-font-body); letter-spacing: 0.02em; text-transform: none; color: #ffc070; }
+.mp-tags ul { display: flex; flex-wrap: wrap; gap: 18px 30px; margin: 0; padding: 0; list-style: none; }
 .mp-tags li { display: flex; flex-direction: column; align-items: center; }
-.mp-tag { display: flex; flex-direction: column; align-items: center; margin-top: -8px; padding: 14px 16px 8px; border-radius: 10px; text-align: center; box-shadow: 0 0 0 3px #10181d, 0 0 0 5px #c98f37, 0 8px 16px rgba(0, 0, 0, 0.5); }
-.mp-tag::before { content: ""; position: absolute; top: 5px; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #93402c; }
-.mp-tag b { font: 700 19px var(--pb-font-body); color: #241a14; }
-.mp-tag i { font: italic 600 15px var(--pb-font-body); color: #6a4a32; }
-.mp-tag small { font: 600 14px var(--pb-font-body); color: #5a4636; }
+.mp-tag { --slab: polygon(7% 0, 60% 5%, 100% 0, 96% 55%, 100% 100%, 30% 95%, 0 100%, 4% 45%); display: flex; flex-direction: column; align-items: center; min-width: 9rem; margin-top: -6px; padding: 14px 20px 10px; text-align: center; }
+.mp-tag::after { background: radial-gradient(ellipse 80% 70% at 50% 110%, rgba(255, 120, 30, 0.6), transparent 72%), linear-gradient(#2a1e2a, #0d0910); }
+.mp-tag b { font: 700 19px var(--pb-font-body); color: #fff; }
+.mp-tag i { font: italic 600 16px var(--pb-font-body); color: #ffd9a8; }
+.mp-tag small { font: 600 16px var(--pb-font-body); color: var(--rift-dim); }
+.mp-tags .is-open .mp-tag::before { background: linear-gradient(160deg, #9fb8d8, #3a5a80 50%, #8fb0d0); opacity: 0.7; }
+.mp-tags .is-open .mp-tag::after { background: linear-gradient(#141a26, #090b12); }
+.mp-tags .is-open .mp-tag b { color: #c8daf0; }
+.mp-tags .is-open .mp-tag small { color: #a8b8d0; }
 
-/* The host's controls, together: the status line, Start right after it (rooms-smoke.mjs), playing alone, closing. */
-.mp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 40px; }
-.menu.mp .mp-bar__status { display: inline-flex; align-items: center; gap: 10px; margin: 0 auto 0 0; padding: 8px 16px 8px 12px; border-radius: 24px; background: #223039; font: 700 16px var(--pb-font-body); color: #f6eedc; }
-.mp-bar__status::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #e2b25d; box-shadow: 0 0 0 3px rgba(226, 178, 93, 0.3); }
-.mp-bar__status[data-friend="here"]::before { background: #8d9a5b; box-shadow: 0 0 0 3px rgba(141, 154, 91, 0.4); }
-.menu.mp .mp-bar .pb-btn { min-width: 0; min-height: 50px; margin: 0; padding: 8px 16px; border-radius: 28px; font-size: 17px; }
+/* The host's controls on one slab: the status line, Start right after it (rooms-smoke.mjs), playing alone, closing. */
+.mp-bar { --slab: polygon(1.5% 0, 98.5% 0, 100% 50%, 98.5% 100%, 1.5% 100%, 0 50%); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 22px; }
+.menu.mp .mp-bar__status { display: inline-flex; align-items: center; gap: 10px; margin: 0 auto 0 0; padding: 7px 14px 7px 10px; border: 1.5px solid #4a3e5e; border-radius: 6px; background: rgba(4, 3, 8, 0.8); font: 700 17px var(--pb-font-body); color: var(--rift-text); }
+.mp-bar__status::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--rift-ice); box-shadow: 0 0 10px 2px rgba(110, 180, 255, 0.7); }
+.mp-bar__status[data-friend="here"]::before { background: #ffc040; box-shadow: 0 0 12px 3px rgba(255, 130, 30, 0.85); }
+.menu.mp .mp-bar .pb-btn { min-width: 0; min-height: 50px; margin: 0; padding: 8px 16px; font-size: 17px; }
 .menu.mp .mp-bar .pb-btn--primary { min-width: 6.5rem; }
 
-/* A short window: smaller heading, tighter cards. */
+/* The round gem (RoomArt.tsx): black glass with a lava heart; ice for the join slab, cold and dark for an open place. */
+.mp-token { position: relative; display: inline-grid; place-items: center; flex: none; border-radius: 50%; background: radial-gradient(circle at 50% 58%, #ffb040 0, #ff6a10 22%, #8a1804 44%, #1a0c10 64%, #07060a 72%); box-shadow: 0 0 0 2px #000, 0 0 0 4px #c8b8f0, 0 0 0 6px #000, 0 0 24px 6px rgba(255, 100, 20, 0.55); }
+.mp-token__icon { position: relative; width: 52%; height: 52%; stroke: #fff6d8; stroke-width: 4.4; }
+.mp-token--ice { background: radial-gradient(circle at 50% 58%, #e8f8ff 0, #8fd0ff 22%, #1c4a80 46%, #0c1424 64%, #07060a 72%); box-shadow: 0 0 0 2px #000, 0 0 0 4px #c8e4ff, 0 0 0 6px #000, 0 0 24px 6px rgba(110, 180, 255, 0.5); }
+.mp-token--ice .mp-token__icon { stroke: #06142a; }
+.mp-token--cold { background: radial-gradient(circle at 50% 58%, #2a3a52 0, #141c2a 50%, #07060a 72%); box-shadow: 0 0 0 2px #000, 0 0 0 4px #5a6a88, 0 0 0 6px #000; }
+.mp-token--cold .mp-token__icon { stroke: #8fa4c4; }
+.mp-token:not(.mp-token--ice, .mp-token--cold) .mp-token__icon { stroke: #2a0802; }
+
+/* A short window: smaller titles, tighter slabs. */
 @media (max-height: 820px) {
-  .menu.mp { padding-top: 2.8rem; gap: 8px; }
-  .mp-head .pb-heading { zoom: 0.8; }
-  .mp-cards { margin-top: 40px; }
-  .mp-card { gap: 6px; padding: 44px 24px 20px; }
-  .mp-card h2 { font-size: 36px; }
+  .menu.mp { padding-top: 1.2rem; gap: 8px; }
+  .menu.mp .mp-head .mp-burn { font-size: 46px; }
+  .mp-cards { margin-top: 46px; }
+  .mp-card { gap: 6px; padding: 48px 26px 24px; }
+  .mp-card h2 { font-size: 40px; }
   .menu.mp .mp-card > .mp-card__as { margin-top: 6px; }
   .mp-card__as b { padding: 6px 12px; font-size: 22px; }
   .mp-card .room .room-input { font-size: 2.2rem; }
   .menu.mp .mp-card .pb-btn { min-height: 52px; font-size: 20px; }
   .mp-lobby__main { gap: 16px; }
-  .mp-lobby__titles .pb-heading { zoom: 0.8; }
+  .menu.mp .mp-burn--room { font-size: 72px; }
   .mp-lobby { margin-top: 8px; }
 }
 
@@ -127,8 +187,11 @@
   .mp-top__hero { display: none; }
 }
 
-/* The round token (RoomArt.tsx): stones on a canvas, the line icon on top. */
-.mp-token { position: relative; display: inline-block; flex: none; }
-.mp-token canvas { position: absolute; inset: 0; }
-.mp-token__icon { position: absolute; inset: 24%; width: 52%; height: 52%; stroke: #fbf4e4; stroke-width: 4.6; filter: drop-shadow(0 1px 1px #0a1014) drop-shadow(0 0 2px #0a1014); }
-.mp-card__sticker.mp-token { position: absolute; z-index: 2; }
+@media (prefers-reduced-motion: reduce) {
+  .mp-embers i { animation: none; opacity: 0.55; }
+  .mp-embers i:nth-child(odd) { transform: translateY(-14vh); }
+  .mp-embers i:nth-child(3n) { transform: translateY(-36vh); }
+  .mp-embers i:nth-child(4n) { transform: translateY(-58vh); }
+  .menu.mp .pb-btn--primary:not(:disabled)::after { animation: none; opacity: 0.75; }
+  .mp-frame__heat { animation: none; }
+}
