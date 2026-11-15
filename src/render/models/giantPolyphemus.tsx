@@ -1,14 +1,17 @@
 // Candidate "giant": Quaternius Giant (CC0) dressed as Polyphemus: one big glowing eye, a club in the Club phase,
 // a stake in the ruined eye once he is Blinded. Skin and cloth are tinted to sit in the dusk cave.
-import { Suspense, useMemo } from "react";
+import { Suspense, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import { Color } from "three";
-import type { Material, Object3D } from "three";
+import type { Group, Material, Object3D } from "three";
 import type { MonsterProps } from "../../core/types";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { BoneMount } from "./boneMount";
 import { Club, Eye } from "./polyphemusProps";
 import { decideMonsterClip } from "./clipMap";
 import { RiggedModel } from "./RiggedModel";
+import { giantLean } from "./giantWindup";
+import type { Lean } from "./giantWindup";
 import { GIANT_CLIPS, GIANT_FIT, GIANT_URL } from "./giantClips";
 import { model as classic } from "../monsters/models/Polyphemus";
 
@@ -56,10 +59,20 @@ export function GiantPolyphemus(props: MonsterProps) {
     }),
     [phase, props.weakSpotId, props.hitFlash],
   );
+  const body = useRef<Group>(null);
+  const lean = useRef<Lean>({ roll: 0, yaw: 0, pitch: 0, x: 0, z: 0 });
+  useFrame(() => {
+    const g = body.current;
+    if (!g) return;
+    const l = giantLean(props.attackId, props.windup, lean.current);
+    g.rotation.set(l.pitch, l.yaw, l.roll);
+    g.position.set(l.x, 0, l.z);
+  });
   const Fallback = classic.Component;
   return (
     <ErrorBoundary label="monster-glb:giant" fallback={<Fallback {...props} />}>
       <Suspense fallback={<Fallback {...props} />}>
+        <group ref={body}>
         <RiggedModel
           url={GIANT_URL}
           fit={GIANT_FIT}
@@ -69,6 +82,7 @@ export function GiantPolyphemus(props: MonsterProps) {
           anchors={anchors}
           decide={(available, out) => (clips ? decideMonsterClip(clips, props, available, out) : out)}
         />
+        </group>
       </Suspense>
     </ErrorBoundary>
   );
