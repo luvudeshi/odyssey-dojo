@@ -1,15 +1,10 @@
-/* Structure of the menu UI. Every colour, font, radius, border and shadow is a --ui-* variable from theme.css. */
+/* Structure of the pause and settings dialog: a pebble-ground panel over a dimmed backdrop. Colours, fonts, radii and borders are --ui-* variables from theme.css. */
 .ui-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: var(--ui-backdrop); font-family: var(--ui-font); color: var(--ui-text); }
-.ui-panel { min-width: min(92vw, 26rem); max-width: 92vw; max-height: 92vh; overflow: auto; padding: 1.5rem 2rem; background: var(--ui-panel-bg); border: var(--ui-border); border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); text-align: center; }
+.ui-panel { position: relative; min-width: min(92vw, 28rem); max-width: 92vw; max-height: 92vh; overflow: auto; padding: 1.4rem 2rem 1.6rem; background: var(--pb-ground-deep) var(--pebble-ground) repeat; border: var(--ui-border); border-radius: var(--pb-radius-panel); box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.75); text-align: center; }
 .ui-panel:focus { outline: none; }
-.ui-title { margin: 0 0 1rem; font-size: var(--ui-title-size); color: var(--ui-accent); letter-spacing: 0.08em; }
-.ui-menu { display: flex; flex-direction: column; gap: 0.5rem; }
-.ui-button { font: inherit; font-size: var(--ui-button-size); color: var(--ui-on-accent); background: var(--ui-accent); border: 0; border-radius: var(--ui-radius); box-shadow: var(--ui-shadow); padding: 0.7rem 1.4rem; margin: 0; cursor: pointer; }
-.ui-button.danger { background: var(--ui-danger); color: var(--ui-text); }
-.ui-button:focus-visible, .ui-control input:focus-visible, .ui-control select:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
-.ui-rows { display: flex; flex-direction: column; gap: 0.9rem; margin: 0 0 1.2rem; text-align: left; }
-.ui-control { display: grid; grid-template-columns: 1fr minmax(8rem, 12rem) 3rem; align-items: center; gap: 0.8rem; font-size: var(--ui-label-size); }
-.ui-control .value { font-family: var(--ui-font-body); font-size: 0.9rem; color: var(--ui-text-dim); text-align: right; }
-.ui-control input[type="range"] { width: 100%; accent-color: var(--ui-accent); background: var(--ui-track-bg); border-radius: var(--ui-radius); }
-.ui-control input[type="checkbox"] { width: 1.5rem; height: 1.5rem; accent-color: var(--ui-accent); justify-self: start; margin: 0; }
-.ui-control select { font: inherit; font-size: 1rem; color: var(--ui-text); background: var(--ui-panel-bg); border: var(--ui-border); border-radius: var(--ui-radius); padding: 0.3rem 0.5rem; }
+.ui-panel > * { position: relative; }
+.ui-title { margin: 0 auto 1rem; max-width: 100%; }
+.ui-menu { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.ui-menu .pb-btn { min-width: 15rem; }
+.ui-rows { display: flex; flex-direction: column; gap: 0.3rem; margin: 0 0 1.2rem; text-align: left; }
+.ui-panel > .pb-btn { margin: 0 auto; display: block; }

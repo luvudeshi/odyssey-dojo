@@ -1,12 +1,15 @@
 // "Fight together": host a room or join one.
+import { Button, Panel, PebbleHeading } from "../ui/pebble";
 export function RoomMenu(props: { onHost: () => void; onJoin: () => void; onBack: () => void }) {
   return (
-    <main className="menu room">
-      <h1>Fight together</h1>
+    <Panel as="main" ornament className="menu room">
+      <PebbleHeading as="h1" text="Fight together" px={60} tone="ochre" />
       <p>Two fighters, one monster. Strike the same move together to hit twice as hard.</p>
-      <button onClick={props.onHost}>Host a room</button>
-      <button onClick={props.onJoin}>Join a room</button>
-      <button className="quiet" onClick={props.onBack}>Back</button>
-    </main>
+      <div className="menu__row">
+        <Button primary onClick={props.onHost}>Host a room</Button>
+        <Button onClick={props.onJoin}>Join a room</Button>
+        <Button onClick={props.onBack}>Back</Button>
+      </div>
+    </Panel>
   );
 }

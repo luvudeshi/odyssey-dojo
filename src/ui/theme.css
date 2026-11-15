@@ -1,21 +1,21 @@
-/* The look of the menu, settings and pause UI. Replace this one block to change the theme; nothing else in src/ui holds a colour, font, radius, border or shadow. Defaults match the title and map screens. */
+/* The look of the menu, settings and pause UI. Replace this one block to change the theme; nothing else in src/ui holds a colour, font, radius, border or shadow. Now reads the pebble palette from src/theme.css. */
 :root {
-  --ui-font: "Cinzel", "Trajan Pro", Georgia, serif;
-  --ui-font-body: system-ui, sans-serif;
-  --ui-text: #f1ead9;
-  --ui-text-dim: #f1ead9b3;
-  --ui-accent: #e8b84a;
-  --ui-on-accent: #140c22;
-  --ui-danger: #c0392b;
-  --ui-backdrop: #140c22cc;
-  --ui-panel-bg: #140c22f2;
-  --ui-track-bg: #f1ead933;
-  --ui-focus: #f1ead9;
-  --ui-radius: 0;
-  --ui-border: 3px solid var(--ui-accent);
+  --ui-font: var(--pb-font-body);
+  --ui-font-body: var(--pb-font-body);
+  --ui-text: var(--pb-text);
+  --ui-text-dim: #d3c7adcc;
+  --ui-accent: var(--pb-ochre);
+  --ui-on-accent: var(--pb-text-on-ochre);
+  --ui-danger: var(--pb-terra);
+  --ui-backdrop: #0d0a09cc;
+  --ui-panel-bg: #15100ef2;
+  --ui-track-bg: #f1e6cf33;
+  --ui-focus: var(--pb-focus);
+  --ui-radius: var(--pb-radius);
+  --ui-border: 3px solid var(--pb-lead);
   --ui-shadow: none;
   --ui-title-size: clamp(1.8rem, 4vw, 2.6rem);
-  --ui-button-size: 1.3rem;
+  --ui-button-size: 1.1rem;
   --ui-label-size: 1.05rem;
   --ui-focus-ring: 3px solid var(--ui-focus);
 }

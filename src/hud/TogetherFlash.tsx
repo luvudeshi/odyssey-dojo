@@ -23,8 +23,8 @@ export function TogetherFlash({ two }: { two: boolean }) {
   }, []);
   return (
     <>
-      {two && <div className="duo">You + Friend</div>}
-      {id > 0 && <div className="together" key={id}>Together! x2</div>}
+      {two && <div className="hb-duo">You + Friend</div>}
+      {id > 0 && <div className="hb-together" key={id}>Together! x2</div>}
     </>
   );
 }

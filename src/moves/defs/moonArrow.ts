@@ -5,27 +5,34 @@ import { armOut } from "../handSignals";
 type Side = "left" | "right";
 
 /** Distance from the hand to its own shoulder, in shoulder widths. */
-function handToShoulder(frame: PoseFrame, side: Side): number {
+export function handToShoulder(frame: PoseFrame, side: Side): number {
   const left = side === "left";
   const wrist = joint(frame.image, left ? JOINT.leftWrist : JOINT.rightWrist);
   return distance2d(wrist, joint(frame.image, left ? JOINT.leftShoulder : JOINT.rightShoulder)) / shoulderWidth(frame);
 }
 
-function drawn(frame: PoseFrame, bow: Side, pull: Side, baseline: Baseline | null): boolean {
-  return armOut(frame, bow, baseline) && handToShoulder(frame, pull) < 0.6 && elbowAngle(frame, pull) < 100;
+/** The string hand this near its shoulder, in shoulder widths, with the elbow bent under DRAW_ELBOW, is drawn. */
+export const DRAW_REACH = 0.65;
+export const DRAW_ELBOW = 115;
+/** It is loosed once it is this far from the shoulder: further than the draw allows, so a shaky draw is not a release. */
+export const RELEASE = 0.75;
+/** How long the draw has to be held, in milliseconds. */
+export const DRAW_MS = 100;
+
+export function drawn(frame: PoseFrame, bow: Side, pull: Side, baseline: Baseline | null): boolean {
+  return armOut(frame, bow, baseline) && handToShoulder(frame, pull) < DRAW_REACH && elbowAngle(frame, pull) < DRAW_ELBOW;
 }
 
 function released(history: PoseHistory, bow: Side, pull: Side): boolean {
   const frame = latest(history);
-  // The string hand has to clear its shoulder by more than the draw allows, so a shaky draw is not a release.
-  if (!frame || !armOut(frame, bow, history.baseline) || handToShoulder(frame, pull) < 0.75) return false;
+  if (!frame || !armOut(frame, bow, history.baseline) || handToShoulder(frame, pull) < RELEASE) return false;
   let since: number | null = null;
   for (const old of recent(history, 500)) {
     if (!drawn(old, bow, pull, history.baseline)) {
       since = null;
     } else {
       since ??= old.t;
-      if (old.t - since >= 150) return true;
+      if (old.t - since >= DRAW_MS) return true;
     }
   }
   return false;

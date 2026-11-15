@@ -8,3 +8,6 @@ export type { Assess, Assessment, Focus, SkillLevel, StepResult, WarmupStep } fr
 // Practice mode: judge one repetition, give a tip for its weakest part, sum up ten.
 export { KEYBOARD_REP, PRACTICE_TIPS, PRAISE, REPS, TABLED_MOVES, judgeRep, nextRep, startPractice, summarise } from "./practice";
 export type { PracticeState, PracticeSummary, PracticeTip, RepResult, Trend } from "./practice";
+// The move guide: a looping figure per move and a live checklist of what its detector sees. The component is ./ui/MoveGuide.
+export { guideFor, liveChecks, poseAt, toScreen } from "./guide";
+export type { Guide, GuideKeyframe, LiveCheck, LiveChecks } from "./guide";

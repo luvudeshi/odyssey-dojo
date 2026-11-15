@@ -42,7 +42,7 @@ test("a landed strike sparks at the weak spot, and the killing blow also fires f
   state = advance(state, blocking, 1000).state;
   expect(state.phase.kind).toBe("strike");
   const next = step(state, enemy, style, jabbing, 16).state;
-  expect(fxBetween(state, next)).toEqual([{ type: "enemyHit", at: [1, 2, 3] }]);
+  expect(fxBetween(state, next)).toEqual([{ type: "enemyHit", at: [1, 2, 3], delay: 0 }]);
 
   state = advance(next, idle, 1000).state;
   state = advance(state, blocking, 1000).state;
@@ -61,7 +61,7 @@ test("a whiffed strike and a held block fire nothing", () => {
 
 test("a hit with no open weak spot lands on the chest", () => {
   const start = startFight(enemy, 1);
-  expect(fxBetween(start, { ...start, enemyHp: start.enemyHp - 5 })).toEqual([{ type: "enemyHit", at: MONSTER_CHEST }]);
+  expect(fxBetween(start, { ...start, enemyHp: start.enemyHp - 5 })).toEqual([{ type: "enemyHit", at: MONSTER_CHEST, delay: 0 }]);
 });
 
 test("sparks fly out, fade and die, and the pool never overflows", () => {

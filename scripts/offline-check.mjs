@@ -136,19 +136,24 @@ async function platformFonts(context, page, selector) {
   }
 }
 
-/** Runs in the page: what the HUD shows right now. */
+/**
+ * Runs in the page: what the HUD shows right now. Every selector names the pebble HUD (hb-, pb-) and the star-chart
+ * HUD (sky-, sk-) side by side. Health is read from the bars' meter role, which both have: a whole percentage.
+ */
 function readHud() {
-  const card = document.querySelector(".fight .hud .prompt");
-  const width = (side) => Number.parseFloat(document.querySelector(`.fight .bar.${side} .bar-fill`)?.style.width ?? "");
+  const card = document.querySelector(".fight .hb-card, .fight .sky-card");
+  const bars = [...document.querySelectorAll('.fight [role="meter"][aria-label$=" health"]')];
+  const mine = (bar) => bar.getAttribute("aria-label") === "You health";
+  const percent = (bar) => Number.parseFloat(bar?.getAttribute("aria-valuenow") ?? "");
   const ended = document.querySelector(".fight .overlay button") !== null;
   return {
-    kind: card ? (card.classList.contains("defend") ? "defend" : "strike") : null,
+    kind: card ? (card.matches(".pb-card--defend, .sky-card--defend") ? "defend" : "strike") : null,
     key: card?.querySelector("kbd")?.textContent ?? null,
-    word: card?.querySelector(".prompt-word")?.textContent ?? "",
-    target: card?.querySelector(".prompt-target")?.textContent ?? "",
-    score: Number.parseInt(document.querySelector(".fight .score")?.textContent ?? "", 10),
-    you: width("left"),
-    enemy: width("right"),
+    word: card?.querySelector(".pb-move, .sky-card__word")?.textContent ?? "",
+    target: card?.querySelector(".pb-target, .sky-card__target")?.textContent ?? "",
+    score: Number.parseInt(document.querySelector(".fight .hb-score, .fight .sk-score__num")?.textContent ?? "", 10),
+    you: percent(bars.find(mine)),
+    enemy: percent(bars.find((bar) => !mine(bar))),
     ended,
     heading: ended ? (document.querySelector(".fight .overlay h1")?.textContent ?? "") : "",
     learned: ended ? [...document.querySelectorAll(".fight .overlay .learned li")].map((item) => item.textContent ?? "") : [],
@@ -228,7 +233,8 @@ async function keyboardPass(browser, base, log, maxMs) {
   log.stage = "style";
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
   const styleButton = page.locator("main.menu button").first();
-  const style = (await styleButton.innerText()).split("\n")[0].trim();
+  // textContent of the name, not innerText: the CSS may show it in upper case.
+  const style = await styleButton.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
   await styleButton.click();
   log.stage = "map";
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
@@ -241,7 +247,8 @@ async function keyboardPass(browser, base, log, maxMs) {
   log.stage = "fight";
   log.fightAt = Date.now() - log.t0;
   await page.getByRole("button", { name: `Face ${STOP}` }).click();
-  await page.locator(".fight canvas").waitFor();
+  // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
+  await page.locator(".fight canvas").first().waitFor();
   const fight = await playFight(page, log, maxMs);
   if (fight.ended) {
     log.stage = "result";
@@ -282,16 +289,21 @@ async function cameraPass(browser, base, log, ms) {
     await scan.click();
     const begin = page.getByRole("button", { name: "Begin the journey" });
     await begin.waitFor({ timeout: 40_000 });
-    god = (await page.locator("main.reveal .reveal-name").innerText()).trim();
+    // The god's name is laid in pebbles on a canvas: its words are in aria-label (plain text is the fallback).
+    god = (await page.locator("main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
     await begin.click();
     await styles.waitFor();
     await page.locator("main.menu button").first().click();
     await page.locator("button.stop.open").first().click();
     await page.getByRole("button", { name: `Face ${STOP}` }).click();
     // Calibration feeds camera pictures to the model. Nobody is in the test pattern, so it only has to keep running.
-    calibration = (await page.locator(".overlay h1").first().innerText()).trim();
+    calibration = ((await page.locator(".calibration h1, .overlay h1").first().textContent()) ?? "").trim();
     await page.waitForTimeout(Math.max(0, ms - (Date.now() - startedAt)));
-    ending = await page.evaluate(() => (document.querySelector(".fight .hud") ? "the fight" : (document.querySelector("h1")?.textContent ?? "nothing")));
+    ending = await page.evaluate(() => {
+      if (document.querySelector(".fight .hud, .fight .sky-hud")) return "the fight";
+      const heading = document.querySelector("h1");
+      return (heading?.getAttribute("aria-label") ?? heading?.textContent ?? "").trim() || "nothing";
+    });
   }
   await context.close();
   return { started, notice, god, calibration, ending, seconds: (Date.now() - startedAt) / 1000 };

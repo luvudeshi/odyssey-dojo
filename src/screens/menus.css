@@ -1,0 +1,71 @@
+/* Every menu screen (title, style, map, intro, rooms, warm-up, calibration): a pebble-ground panel filling the window.
+   Colours, fonts and radii come from src/theme.css (--pb-*). Plain type for anything read in half a second. */
+.menu { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 14px; height: calc(100% - 28px); padding: 2rem 2rem 2.2rem; overflow: hidden; color: var(--pb-text); font-family: var(--pb-font-body);
+  border: 2px solid var(--pb-lead); border-radius: var(--pb-radius-panel); box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.7); background: var(--pb-ground-deep) var(--pebble-ground) repeat;
+  --pb-band: 26px; --pb-band-top: 44px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.menu > .pb-panel__wave { position: absolute; left: 0; right: 0; top: 0; margin: 8px 14px 0; }
+.menu > * { position: relative; }
+.menu > .pb-panel__wave { position: absolute; }
+.menu > .overlay { position: fixed; }
+.menu h1:not(.pb-heading) { margin: 0 0 0.4rem; font: 700 clamp(2rem, 4vw, 2.75rem)/1.15 var(--pb-font-body); color: var(--pb-ochre-light); }
+.menu p { margin: 0.35rem 0; font: 500 20px/1.35 var(--pb-font-body); }
+.menu .pb-heading { margin: 0 auto 0.6rem; max-width: 100%; }
+.notice { min-height: 1.5em; font-style: normal; color: var(--pb-text-dim); }
+.menu p.notice { font-size: 18px; }
+.verse { max-width: 34rem; font-style: italic; }
+.menu p.lead { color: var(--pb-ochre-light); font-weight: 700; }
+.menu .pb-btn { margin: 6px 12px; }
+.menu__row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin: 0.3rem 0; }
+.menu__col { display: flex; flex-direction: column; align-items: center; }
+.menu__col .pb-btn { min-width: 16rem; }
+.menu .pb-logo { margin: 0.2rem 0 0.6rem; max-width: 100%; }
+.menu .pb-logo canvas { max-width: 100%; height: auto !important; }
+
+/* Style select: five plain cards; hover and focus turn one terracotta. */
+.styles { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; max-width: 62rem; margin: 0.4rem 0; padding: 0 0.5rem; }
+.menu .style-card { box-sizing: border-box; flex: 0 1 19rem; min-width: 0; margin: 0; padding: 14px 16px 16px; border: 2px solid var(--pb-lead); border-radius: var(--pb-radius-panel); color: var(--pb-text); text-transform: none; letter-spacing: normal; background: var(--pb-plaque-2); box-shadow: none; cursor: pointer; transition: transform 80ms, background-color 120ms, border-color 120ms; }
+.menu .style-card:hover:not(:disabled), .menu .style-card:focus-visible { background: var(--pb-plaque-hover); border-color: var(--pb-ochre); color: var(--pb-text); }
+.menu .style-card:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 4px; }
+.menu .style-card:active:not(:disabled) { transform: translateY(1px); background: var(--pb-plaque-hover); color: var(--pb-text); }
+.style-card__name { display: block; font: 700 22px var(--pb-font-body); color: var(--pb-ochre-light); }
+.menu .style-card small { display: block; margin-top: 6px; font: 500 18px/1.3 var(--pb-font-body); letter-spacing: 0; text-transform: none; opacity: 1; color: var(--pb-text); }
+.style-card__glyph { display: block; margin: 0 auto 6px; }
+
+/* Quest map: dotted sea rows, a dotted route, one island per stop. */
+.chart { position: relative; width: min(92vw, 1000px, calc(48vh * 1000 / 420)); aspect-ratio: 1000 / 420; margin: 0.3rem 0 0.6rem; }
+.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wave { fill: none; stroke: var(--pb-sea); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 0.1 9; opacity: 0.85; }
+.route { fill: none; stroke: var(--pb-terra); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 0.1 11; }
+.harbour { fill: var(--pb-olive); stroke: var(--pb-lead); stroke-width: 2; }
+.port { position: absolute; transform: translate(-50%, 1rem); font: 700 18px var(--pb-font-body); z-index: 2; color: var(--pb-text); }
+.menu .stop { position: absolute; transform: translate(-50%, -50%); padding: 0; margin: 0; min-width: 0; border: 0; background: none; color: var(--pb-text); z-index: 2; letter-spacing: normal; text-transform: none; box-shadow: none; }
+.menu .stop:hover:not(:disabled), .menu .stop:active:not(:disabled) { background: none; box-shadow: none; color: var(--pb-text); }
+.stop .dot { position: relative; display: grid; place-items: center; width: 76px; height: 50px; font: 700 20px var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline), 0 0 3px var(--pb-outline); transition: transform 0.12s; }
+.stop .dot canvas { position: absolute; left: 0; top: 0; }
+.stop .dot > b { position: relative; font: inherit; }
+.stop.open .dot { animation: stop-pulse 1.8s ease-in-out infinite; }
+.stop:hover:not(:disabled) .dot { transform: scale(1.14); }
+.stop:active:not(:disabled) .dot { transform: scale(1.04); }
+.stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 700 18px/1.25 var(--pb-font-body); color: var(--pb-text); }
+.stop.above .lbl { bottom: 50px; }
+.stop.below .lbl { top: 50px; }
+.stop .lbl small { display: block; font: 500 18px var(--pb-font-body); color: var(--pb-text-dim); }
+.stop.locked { cursor: not-allowed; }
+.stop.locked .dot { opacity: 0.8; }
+.stop:focus-visible { outline: none; box-shadow: none; }
+.stop:focus-visible .dot { outline: 3px solid var(--pb-focus); outline-offset: 3px; border-radius: 50%; }
+@keyframes stop-pulse { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 7px var(--pb-ochre)); } }
+
+/* Calibration and other small panels centred over the page. */
+.menu--small { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(44rem, 92vw); height: auto; max-height: 94vh; margin: 0; padding: 2.6rem 2rem 2.2rem; }
+.menu--small { --pb-band: 14px; --pb-band-top: 40px; }
+.menu--small .countdown { font: 700 5rem/1 var(--pb-font-body); color: var(--pb-ochre-light); margin: 0.4rem 0; }
+
+/* Intro. */
+.intro-place { color: var(--pb-text-dim); }
+.menu .verse + .notice { color: var(--pb-ochre-light); }
+
+@media (prefers-reduced-motion: reduce) { .stop.open .dot, .menu .style-card { animation: none; transition: none; } }
+
+.room label { display: block; margin: 0.4rem 0 0.6rem; font: 600 20px var(--pb-font-body); }

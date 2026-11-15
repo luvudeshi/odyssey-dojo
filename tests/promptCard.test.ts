@@ -26,8 +26,8 @@ describe("PromptCard at every mastery level", () => {
         const html = renderToStaticMarkup(createElement(PromptCard, { move, target: "t", successes, left: 0.5 }));
         expect(html).toContain(move.prompt);
         expect(html).toContain(`<kbd>${keyLabel(move.key)}</kbd>`);
-        expect(html).toContain('class="timer"');
-        expect(html.includes("HOLD")).toBe(move.kind === "defend");
+        expect(html).toContain('role="meter"');
+        expect(html.includes("HOLD")).toBe(false); // a defend made once counts, so no card asks for a hold
         expect(html.includes("stick")).toBe(successes < 2);
       });
     }

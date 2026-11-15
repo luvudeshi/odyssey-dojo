@@ -4,6 +4,7 @@ import { RevealScreen } from "../ai/ui/RevealScreen";
 import type { GodReveal } from "../ai/revealGod";
 import type { PoseTracker } from "../pose/tracker";
 import { GOD_SCAN_LIMIT_MS, skipsScan } from "./hookups";
+import { Button } from "../ui/pebble";
 import "./godScan.css";
 
 /** `onDone` gets the god, or null when the player skipped or the time ran out. It is called once. */
@@ -34,7 +35,7 @@ export function GodScan(props: { tracker: PoseTracker; onDone: (god: GodReveal |
   return (
     <>
       <RevealScreen tracker={props.tracker} onDone={(god) => { finish.current(god); }} onRevealed={() => { setRevealed(true); }} />
-      {!revealed && <button className="scan-skip" onClick={() => { finish.current(null); }}>Skip (Esc)</button>}
+      {!revealed && <Button className="scan-skip" onClick={() => { finish.current(null); }}>Skip (Esc)</Button>}
     </>
   );
 }

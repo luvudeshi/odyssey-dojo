@@ -16,7 +16,7 @@ export class OneEuro {
   private slope = 0;
   private at = NaN;
 
-  constructor(private readonly minCutoff = MIN_CUTOFF_HZ, private readonly beta = BETA) {}
+  constructor(private readonly minCutoff = MIN_CUTOFF_HZ, private readonly beta = BETA, private readonly dCutoff = DERIVATIVE_CUTOFF_HZ) {}
 
   reset(): void {
     this.value = NaN;
@@ -34,7 +34,7 @@ export class OneEuro {
       return sample;
     }
     if (dt <= 0) return this.value;
-    this.slope += (((sample - this.value) / dt) - this.slope) * alpha(DERIVATIVE_CUTOFF_HZ, dt);
+    this.slope += (((sample - this.value) / dt) - this.slope) * alpha(this.dCutoff, dt);
     this.value += (sample - this.value) * alpha(this.minCutoff + this.beta * Math.abs(this.slope), dt);
     this.at = t;
     return this.value;
