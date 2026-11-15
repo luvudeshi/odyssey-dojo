@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { ATHENA_LINES } from "../../src/audio/athenaLines";
 import { ALL_STORY_LINES, storyClipUrl } from "../../src/audio/narrationLines";
+import { TITLE_LINES } from "../../src/audio/storyLines";
 
 /** One word of a transcript, with when it starts and ends in the clip. */
 export interface HeardWord {
@@ -143,6 +144,8 @@ export function voiceScript(): ReadonlyMap<string, string> {
   return new Map([
     ...ATHENA_LINES.map((line) => [`athena/${line.id}.mp3`, line.text] as const),
     ...ALL_STORY_LINES.map((line) => [storyClipUrl(line.id).slice("/audio/".length), line.text] as const),
+    // Homer's lines for the menu's Story button, kept beside his first four. The first is one of the story lines above.
+    ...TITLE_LINES.map((line) => [`athena/${line.id}.mp3`, line.text] as const),
   ]);
 }
 

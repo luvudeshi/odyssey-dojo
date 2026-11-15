@@ -1,6 +1,7 @@
 // What the training dojo offers to practise (src/coach/catalog.ts): the styles, the grouped list of moves a player
 // ticks, the choice kept for next time, and a session that trains exactly the ticked moves in the order shown.
 import { describe, expect, test } from "vitest";
+import { COACHING } from "../src/coach/coaching";
 import {
   DOJO_CHOICE_KEY, DOJO_DEFENDS, DOJO_MEASURES, REPS_CHOICES, WHOLE_BODY_NOTE, dojoGuideFor, dojoJudgeRep, dojoMenu, dojoTipFor, dojoMoveOf, dojoStyles, loadChoice, menuIds, needsWholeBody, pickedInOrder,
   saveChoice, startingSetup, usualMoves,
@@ -94,7 +95,7 @@ describe("the list a player ticks", () => {
   });
 
   test("a style whose own strikes are kicks keeps them in its own group, marked, and has no second kicks group", () => {
-    const menu = dojoMenu(styleOf("pankration"), { extras: NONE });
+    const menu = dojoMenu(styleOf("taekwondo"), { extras: NONE });
     expect(group(menu, "style")).toEqual(["front_kick", "knee", "hammer_fist", "uppercut"]);
     expect(menu.map((each) => each.id)).toEqual(["style", "defends", "more"]);
     expect(need(menu[0]).moves.map((move) => move.wholeBody)).toEqual([true, true, false, false]);
@@ -165,11 +166,11 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
   });
 
   test("the four dojo styles are offered after the game's five", () => {
-    expect(dojoStyles().map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "taekwondo", "self_defense", "muay_thai", "karate_basics"]);
+    expect(dojoStyles().map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "taekwondo_kicks", "self_defense", "muay_thai", "karate_basics"]);
   });
 
-  test("Taekwondo is all kicks: its own group holds them, with the whole-body note", () => {
-    const menu = dojoMenu(styleOf("taekwondo"));
+  test("Taekwondo kicks is all kicks: its own group holds them, with the whole-body note", () => {
+    const menu = dojoMenu(styleOf("taekwondo_kicks"));
     expect(group(menu, "style")).toEqual(["front_kick", "roundhouse_kick", "side_kick", "low_kick", "knee"]);
     expect(need(menu[0]).note).toBe(WHOLE_BODY_NOTE);
     expect(need(menu[0]).moves.every((move) => move.wholeBody)).toBe(true);
@@ -214,8 +215,11 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
 
   test("an extra move's tips are its own: a missed try with nobody moving, and the fallback line", () => {
     const kick = need(dojoMoveOf("roundhouse_kick"));
-    expect(dojoTipFor(kick)).toBe(need(EXTRA_TIPS.roundhouse_kick).tip);
-    expect(dojoTipFor(need(dojoMoveOf("jab")))).toBe(PRACTICE_TIPS.strike.tip);
+    // Every move the dojo trains has its own line on how to make it (src/coach/coaching.ts).
+    expect(dojoTipFor(kick)).toBe(COACHING.roundhouse_kick?.whole.tip);
+    expect(dojoTipFor(need(dojoMoveOf("jab")))).toBe(COACHING.jab?.whole.tip);
+    expect(need(EXTRA_TIPS.roundhouse_kick).tip.length).toBeGreaterThan(0);
+    expect(PRACTICE_TIPS.strike.tip.length).toBeGreaterThan(0);
     const missed = gradeAttempt(kick, []);
     expect(missed.grade.tier).toBe("needs_work");
     expect(missed.tip).toBeTruthy();
@@ -308,6 +312,12 @@ describe("the choice kept in the browser", () => {
     saveChoice({ style: "boxer", moves: ["jab", "front_kick"], reps: 5 }, storage);
     expect(Object.keys(storage.kept)).toEqual([DOJO_CHOICE_KEY]);
     expect(loadChoice(storage)).toEqual({ style: "boxer", moves: ["jab", "front_kick"], reps: 5 });
+  });
+
+  test("a kept Hoplite or Pankration is read as Jiu-jitsu or Taekwondo, so the choice is not lost", () => {
+    for (const [old, now] of [["hoplite", "jiu_jitsu"], ["pankration", "taekwondo"], ["boxer", "boxer"]] as const) {
+      expect(loadChoice(memory({ [DOJO_CHOICE_KEY]: JSON.stringify({ style: old, moves: ["jab"], reps: 4 }) })), old).toEqual({ style: now, moves: ["jab"], reps: 4 });
+    }
   });
 
   test("nothing kept, no storage, rubbish or a browser that throws: null, and saving does not throw", () => {

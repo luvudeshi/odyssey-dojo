@@ -17,7 +17,7 @@ export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: s
       <div className="flow-styles">
         <BronzeDefs />
         {props.styles.map((style) => (
-          <ShieldCard key={style.id} className="flow-style" device={STYLE_DEVICES[style.id] ?? STYLE_DEVICES.hoplite} name={style.name} line={style.blurb} onClick={() => { props.onPick(style); }} />
+          <ShieldCard key={style.id} className="flow-style" device={STYLE_DEVICES[style.id] ?? STYLE_DEVICES.boxer} name={style.name} line={style.blurb} onClick={() => { props.onPick(style); }} />
         ))}
       </div>
       {props.onCharacter && <Button onClick={props.onCharacter}>Change character</Button>}

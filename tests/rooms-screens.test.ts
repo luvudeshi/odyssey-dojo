@@ -4,7 +4,7 @@ import { START, flowReducer, openAt } from "../src/screens/flow";
 import type { Flow, FlowAction } from "../src/screens/flow";
 import { STYLES } from "../src/styles/registry";
 import type { EnemySpec } from "../src/core/types";
-import { fetchLanBase } from "../src/screens/roomNet";
+import { browserDeps, fetchLanBase } from "../src/screens/roomNet";
 import { guestMode, joinUrl, reachableBase, roomFromSearch, roomMessage, ROOM_MESSAGES } from "../src/screens/roomUrl";
 
 const run = (actions: readonly FlowAction[], from: Flow = START): Flow => actions.reduce(flowReducer, from);
@@ -86,9 +86,30 @@ test("the address lookup gives up after its time limit when the server never ans
   vi.unstubAllGlobals();
 });
 
-test("a failed room call reads as a developer hint only on localhost", () => {
-  for (const host of ["localhost", "127.0.0.1", "[::1]"]) expect(roomMessage("unreachable", host)).toBe(ROOM_MESSAGES.unreachable);
-  for (const host of ["dojo.test", "odyssey.vercel.app"]) expect(roomMessage("unreachable", host)).toMatch(/^Rooms are not open on this site yet/);
-  expect(roomMessage("room_full", "odyssey.vercel.app")).toBe(ROOM_MESSAGES.room_full);
-  expect(roomMessage("nonsense", "localhost")).toBe("");
+test("the page's net deps send a beacon, and report the page gone only when it is thrown away", () => {
+  const sent: string[] = [];
+  const listeners = new Map<string, (event: { persisted: boolean }) => void>();
+  vi.stubGlobal("navigator", { sendBeacon: (url: string, body: string) => sent.push(`${url} ${body}`) > 0 });
+  vi.stubGlobal("window", {
+    addEventListener: (type: string, on: (event: { persisted: boolean }) => void) => { listeners.set(type, on); },
+    removeEventListener: (type: string) => { listeners.delete(type); },
+  });
+  expect(browserDeps.beacon?.("/api/rooms/ABCD/leave", "{}")).toBe(true);
+  expect(sent).toEqual(["/api/rooms/ABCD/leave {}"]);
+  let gone = 0;
+  const stop = browserDeps.onPageGone?.(() => { gone += 1; });
+  listeners.get("pagehide")?.({ persisted: true });
+  expect(gone).toBe(0);
+  listeners.get("pagehide")?.({ persisted: false });
+  expect(gone).toBe(1);
+  stop?.();
+  expect(listeners.has("pagehide")).toBe(false);
+  vi.unstubAllGlobals();
+});
+
+test("a failed room call reads as a player line on every host", () => {
+  expect(roomMessage("unreachable")).toBe(ROOM_MESSAGES.unreachable);
+  expect(ROOM_MESSAGES.unreachable).not.toMatch(/running|npm/);
+  expect(roomMessage("room_full")).toBe(ROOM_MESSAGES.room_full);
+  expect(roomMessage("nonsense")).toBe("");
 });

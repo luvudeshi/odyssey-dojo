@@ -2,14 +2,14 @@ import { expect, test } from "vitest";
 import { fallsLine, holdFastLine } from "../src/enemies/wording";
 import { ENEMIES } from "../src/enemies/registry";
 
-test("the win headline agrees with every enemy", () => {
+test("the win headline agrees with every enemy, and the three escapes are got past, not felled", () => {
   const lines = Object.fromEntries(ENEMIES.map((e) => [e.id, fallsLine(e.id, e.name)]));
   expect(lines).toEqual({
     polyphemus: "Polyphemus falls",
     circe: "Circe falls",
-    sirens: "The Sirens fall",
-    scylla: "Scylla falls",
-    charybdis: "Charybdis falls",
+    sirens: "Past the Sirens",
+    scylla: "Through the strait",
+    charybdis: "Clear of Charybdis",
     suitors: "The Suitors fall",
   });
 });
