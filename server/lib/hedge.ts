@@ -14,6 +14,8 @@ export interface HedgeOptions {
   readonly onSecond?: (why: "slow" | "failed") => void;
   /** Told of each attempt that failed by itself. An attempt that was cancelled is not a failure. */
   readonly onFailure?: (error: unknown, attempt: number) => void;
+  /** Asked when the first attempt fails with nothing else running: false means a second attempt would fail the same way, so none is made. Left out: always try again. */
+  readonly retry?: (error: unknown) => boolean;
 }
 
 export interface Hedged<T> {
@@ -23,8 +25,8 @@ export interface Hedged<T> {
 }
 
 /**
- * Resolves with the first attempt that resolves. Rejects with the last failure once both attempts have failed,
- * or with TimeoutError at `totalMs`. An attempt should throw on an answer it cannot use, so that the other one is waited for.
+ * Resolves with the first attempt that resolves. Rejects with the last failure once both attempts have failed
+ * (or the first has failed and `retry` says not to try again), or with TimeoutError at `totalMs`. An attempt should throw on an answer it cannot use, so that the other one is waited for.
  * Each attempt gets its own signal, aborted as soon as it is no longer needed.
  */
 export async function hedged<T>(
@@ -49,7 +51,9 @@ export async function hedged<T>(
             if (controller.signal.aborted) return;
             options.onFailure?.(error, number);
             failed += 1;
-            if (failed === MAX_ATTEMPTS) reject(error instanceof Error ? error : new Error(String(error)));
+            // An attempt still running is waited for. With none, give up after two, or after one that is not worth repeating.
+            const over = failed === running.length && (failed === MAX_ATTEMPTS || options.retry?.(error) === false);
+            if (over) reject(error instanceof Error ? error : new Error(String(error)));
             else start("failed");
           },
         );

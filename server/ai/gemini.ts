@@ -2,6 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { log } from "../../src/core/log";
 import { createRedactor } from "../lib/redact";
+import { hopeless } from "./refusal";
 import type { AiClients, ImageRequest, JsonRequest } from "./types";
 
 // Fastest stable model that takes an image and returns schema-bound JSON; the second is tried once if the first fails.
@@ -10,17 +11,6 @@ const JSON_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"] as const;
 const IMAGE_MODELS = ["gemini-3.1-flash-lite-image", "gemini-nano-banana-2.1"] as const;
 const JSON_ATTEMPT_MS = 5000;
 const IMAGE_ATTEMPT_MS = 11000;
-
-function status(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null || !("status" in error)) return undefined;
-  return typeof error.status === "number" ? error.status : undefined;
-}
-
-/** A bad request, a bad key or no permission fails the same way on every model, so there is no point retrying. */
-function hopeless(error: unknown): boolean {
-  const code = status(error);
-  return code === 400 || code === 401 || code === 403;
-}
 
 export function createGemini(apiKey: string): Pick<AiClients, "json" | "image"> {
   // Image input and image output are only served by the v1beta API.

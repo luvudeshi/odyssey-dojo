@@ -176,3 +176,34 @@ test("the snapshot never appears in a log line, whichever way the two attempts g
   expect(logged).not.toContain(SNAPSHOT.slice(-24));
   expect(logged).not.toContain(SNAPSHOT.slice(40, 64));
 });
+
+test("a first attempt refused for a bad request, a bad key or no permission is not tried again: one call, unavailable at once", async () => {
+  const refused = (status: number) => (): Promise<never> => Promise.reject(Object.assign(new Error(`upstream said ${String(status)}`), { status }));
+  for (const status of [400, 401, 403]) {
+    const log = captureLog();
+    const fake = model([refused(status), after(5, athena)]);
+    // Long limits: a second attempt or a wait for one would show in the count or in the time taken.
+    drill = await serve({ json: fake.json }, { timeouts: { ...QUICK, revealMs: 3000, revealHedgeMs: 300 } });
+    const { result: response, ms } = await timed(() => up().call("/api/reveal", body));
+    expect(response.status, String(status)).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(ms).toBeLessThan(1500);
+    // Past the point where a slow first attempt would have been given a second one.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(fake.requests, String(status)).toHaveLength(1);
+    expect(log.lines.join("\n")).not.toContain("reveal_second_attempt");
+    drill.close();
+    drill = null;
+    vi.restoreAllMocks();
+  }
+  // A busy service (429, 500, 503) may answer the next time, so those are still tried again.
+  for (const status of [429, 500, 503]) {
+    const fake = model([refused(status), after(5, athena)]);
+    drill = await serve({ json: fake.json }, { timeouts: QUICK });
+    const response = await drill.call("/api/reveal", body);
+    expect(response.status, String(status)).toBe(200);
+    expect(fake.requests, String(status)).toHaveLength(2);
+    drill.close();
+    drill = null;
+  }
+});

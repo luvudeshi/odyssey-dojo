@@ -1,7 +1,9 @@
 // POST /api/reveal: a webcam snapshot in, the player's god out. GET /api/portrait/:id: the stylised portrait once it is painted.
 // The snapshot and the portrait are held in memory only: never written to disk, never logged.
 // The vision call is hedged (../lib/hedge): a slow or failed first attempt gets one second attempt, so a single late
-// answer from the model does not send the player to the lot. Only this call is hedged. It is one cheap request.
+// answer from the model does not send the player to the lot. Only this call is hedged. An attempt is one small request,
+// or two when the client's first model fails and it asks its second, so a scan makes at most four requests upstream.
+// A first attempt refused for a bad request, a bad key or no permission is not tried again: it would be refused again.
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { GOD_IDS, RevealRequestSchema, RevealSchema } from "../../src/ai/contracts";
@@ -9,6 +11,7 @@ import type { GodId, RevealResponse, RevealWire } from "../../src/ai/contracts";
 import { asSentence, REASON_MAX } from "../../src/ai/revealText";
 import { rivalFor } from "../../src/ai/rivals";
 import { log } from "../../src/core/log";
+import { hopeless } from "../ai/refusal";
 import type { InlineImage } from "../ai/types";
 import type { Register } from "../app";
 import { hedged } from "../lib/hedge";
@@ -86,6 +89,7 @@ export const register: Register = (router, { ai, config }) => {
           hedgeAfterMs: config.timeouts.revealHedgeMs,
           onSecond: (reason) => { log("info", "reveal_second_attempt", reason); },
           onFailure: (error, attempt) => { log("warn", "reveal_attempt_failed", { attempt, why: why(error) }); },
+          retry: (error) => !hopeless(error),
         },
         async (signal) => {
           const usable = repairReveal(await see({ prompt: REVEAL_PROMPT, image, schema: SCHEMA, signal }));

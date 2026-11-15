@@ -150,3 +150,29 @@ test("an attempt that throws before it returns a promise counts as a failure, an
   await settle();
   expect(cancelled).toEqual([]);
 });
+
+test("a first failure that is not worth repeating ends at once with one attempt, and the wait starts no second one later", async () => {
+  const seconds: string[] = [];
+  const { calls, run } = attempts([{ after: 10, error: "refused" }, { after: 10, value: "second" }]);
+  const started = Date.now();
+  await expect(hedged({ totalMs: 2000, hedgeAfterMs: 80, retry: () => false, onSecond: (why) => { seconds.push(why); } }, run)).rejects.toThrow("refused");
+  expect(Date.now() - started).toBeLessThan(1000);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  expect(calls).toHaveLength(1);
+  expect(seconds).toEqual([]);
+});
+
+test("the retry rule is asked about the failure itself, and a failure it allows is tried again", async () => {
+  const asked: string[] = [];
+  const { calls, run } = attempts([{ after: 5, error: "busy" }, { after: 5, value: "second" }]);
+  const retry = (error: unknown): boolean => { asked.push(error instanceof Error ? error.message : "?"); return true; };
+  expect(await hedged({ totalMs: 1000, retry }, run)).toEqual({ value: "second", attempt: 2 });
+  expect(asked).toEqual(["busy"]);
+  expect(calls).toHaveLength(2);
+});
+
+test("a first attempt refused while the second is already running still waits for the second", async () => {
+  const good = attempts([{ after: 120, error: "refused" }, { after: 150, value: "second" }]);
+  expect(await hedged({ totalMs: 2000, hedgeAfterMs: 40, retry: () => false }, good.run)).toEqual({ value: "second", attempt: 2 });
+  expect(good.calls).toHaveLength(2);
+});
