@@ -129,3 +129,33 @@ test("ten seconds of standing still with small sway fires nothing and flashes no
   expect(fired).toBe(0);
   expect(missesDuring([[STANDING, 500], ...steps], "jab")).toBe(0);
 });
+
+test("a strike that lands then the same move as a finisher: standing still never flashes MISS", () => {
+  const watch = createMissWatch();
+  const ask = (input: CombatInput, whiffed: boolean, at: number) => watch("spear_thrust", false, input, whiffed, at);
+  const ramp: CombatInput = { held: new Set(), struck: [], tried: new Set(["spear_thrust"]) };
+  const landed: CombatInput = { held: new Set(), struck: [{ move: "spear_thrust", quality: 0.7, player: 0 }], tried: new Set(["spear_thrust"]) };
+  expect(ask(ramp, false, T)).toBe(false);
+  expect(ask(landed, false, T + 33)).toBe(false);
+  expect(ask(ramp, false, T + 66)).toBe(false);
+  expect(ask(idle, false, T + 99)).toBe(false);
+  expect(ask(idle, true, T + 6000)).toBe(false);
+});
+
+test("a near miss before the move lands, with no tried flag on the landing frame, leaves nothing behind", () => {
+  const watch = createMissWatch();
+  const ramp: CombatInput = { held: new Set(), struck: [], tried: new Set(["spear_thrust"]) };
+  expect(watch("spear_thrust", false, ramp, false, T)).toBe(false);
+  expect(watch("spear_thrust", false, threw("spear_thrust"), false, T + 33)).toBe(false);
+  expect(watch("spear_thrust", false, idle, false, T + 66)).toBe(false);
+  expect(watch("spear_thrust", false, idle, true, T + 6000)).toBe(false);
+});
+
+test("a fresh near miss after a landed move still counts as a try", () => {
+  const watch = createMissWatch();
+  const ramp: CombatInput = { held: new Set(), struck: [], tried: new Set(["spear_thrust"]) };
+  watch("spear_thrust", false, threw("spear_thrust"), false, T);
+  watch("spear_thrust", false, idle, false, T + 33);
+  expect(watch("spear_thrust", false, ramp, false, T + 66)).toBe(false);
+  expect(watch("spear_thrust", false, idle, false, T + 99)).toBe(true);
+});

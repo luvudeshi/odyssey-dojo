@@ -15,6 +15,7 @@ export function createMissWatch(): MissWatch {
   let before = new Set<string>();
   let triedBefore = false;
   let nearMiss = false;
+  let landed = false;
   let lastAt = -Infinity;
   return (ask, defend, input, whiffed, nowMs) => {
     const heldBefore = before;
@@ -24,6 +25,7 @@ export function createMissWatch(): MissWatch {
       prompt = key;
       triedBefore = false;
       nearMiss = false;
+      landed = false;
     }
     if (ask === null) return false;
     // Keyboard wrong key and webcam wrong move both arrive as a strike with another id; a frame with a power move is the god gesture.
@@ -32,12 +34,16 @@ export function createMissWatch(): MissWatch {
     const wrongStrike = !defend && !power && !right && input.struck.length > 0;
     // A defend counts as a try when it newly appears; one held down, or held before the prompt, does not flash again.
     const wrongDefend = defend && !input.held.has(ask) && [...input.held].some((id) => !heldBefore.has(id));
-    const triedNow = !defend && input.tried?.has(ask) === true;
+    const tryingNow = !defend && input.tried?.has(ask) === true;
+    // Once the move lands, its leftover near-miss ramp must not count against a finisher asking for the same move.
+    if (!tryingNow) landed = false;
+    if (right) landed = true;
+    const triedNow = tryingNow && !landed;
     // A near miss that fades without becoming the strike is a failed try.
     const fizzled = triedBefore && !triedNow && !right;
     const whiff = (nearMiss || triedNow) && whiffed;
     triedBefore = triedNow;
-    nearMiss = triedNow || (nearMiss && !fizzled);
+    nearMiss = !right && (triedNow || (nearMiss && !fizzled));
     if (!(wrongStrike || wrongDefend || fizzled || whiff) || nowMs - lastAt < MISS_GAP_MS) return false;
     lastAt = nowMs;
     return true;
