@@ -183,13 +183,15 @@ function countDraws(ms) {
 }
 
 /**
- * Main menu -> "Play on the keyboard instead" -> first style -> this stop on the map -> fight. A stop on the map
+ * Main menu -> Story mode, with the "Play with" setting on Keyboard -> first style -> this stop on the map -> fight. A stop on the map
  * starts its fight at once. Returns the style picked, or null when the map keeps this stop locked (a stop with no
  * 3D model stays locked, see `playable` in flow.ts).
  */
 async function enterFight(page, base, stop) {
+  // Keyboard play is the "Play with" setting (Account, Settings), so Story mode starts on the keys and asks for no camera.
+  await page.addInitScript(() => { localStorage.setItem("odyssey-dojo.settings", JSON.stringify({ controls: "keyboard" })); });
   await page.goto(`${base}/?stop=${stop.id}&debug`);
-  await page.getByRole("button", { name: "Play on the keyboard instead", exact: true }).click();
+  await page.getByRole("button", { name: /^Story mode/ }).click();
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
   const styleButton = page.locator("main.menu button").first();
   // textContent, not innerText: the CSS shows buttons and headings in upper case, and innerText returns what is shown.

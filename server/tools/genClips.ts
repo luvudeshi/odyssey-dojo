@@ -40,8 +40,8 @@ interface Job {
 // Best first. The first model the key is allowed to use wins.
 const SPEECH_MODELS = ["eleven_v4", "eleven_multilingual_v2"] as const;
 /**
- * What each combat event should sound like, and for how many seconds. The last five are not events: the chime for an
- * unlocked achievement and one sound for each kind of defend (src/audio/cues.ts names them).
+ * What each combat event should sound like, and for how many seconds. The last six are not events: the chime for an
+ * unlocked achievement, one sound for each kind of defend and the war horn of a phase change (src/audio/cues.ts names them).
  */
 const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]>> = {
   telegraph: ["A giant winding up a heavy wooden club in a stone cave, low ominous whoosh rising in tension", 1],
@@ -66,6 +66,12 @@ const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]
   // The duck is the second take: the first ("one deep low swish of air, short", asked for as 0.5 s) was a 0.1 s thump.
   defendDuck: ["A heavy wooden club swung hard through the air just overhead, one deep low whoosh passing by", 0.7],
   defendJump: ["A light quick leap off the ground, a soft springy upward whoosh with a faint flutter of cloth, short", 0.5],
+  // The war horn of a phase change is the third take, picked by measurement, not by ear (docs/audio-levels.md has the
+  // numbers). The first ("one huge deep war drum hit, then a short dark swell of low brass horns and a wordless male
+  // choir") was a drum hit with 94% of its energy under 300 Hz, like the phaseChanged clip above. The second and the
+  // fourth, which asked for the drum, the horns and a choir together, gave a hit that was over in 0.3 s and 0.5 s. This
+  // one has no drum in it: a horn chord held for 0.8 s. The drum under it in the game is the phaseChanged clip.
+  phaseSting: ["A deep ancient war horn blast with a big drum hit at its start: low brass horns hold one loud ominous note for a second, swelling, then stop. Epic, dark, no melody", 1.6],
 };
 
 interface Track {
