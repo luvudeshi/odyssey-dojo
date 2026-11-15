@@ -83,6 +83,8 @@ Run on branch `195-tonights-assets`, cut from `main` at `36cefe8`, Saturday 10:2
 
 - Before, with the `CREDITS.md` of `main`: `172 files, 26.7 MB (26666075 bytes). 165 assets: 165 credited, 0 gaps. 7 not assets.`
 - After, with this branch's `CREDITS.md`: the same line. The PRs had added a row for every file, so no file was a gap. What was wrong was inside the rows.
+- Checked again at 10:28 PM with `main` at `c05ad58` merged in and `public/mediapipe/` filled: `177 files, 62.4 MB (62448561 bytes). 170 assets: 170 credited, 0 gaps. 7 not assets.`
+- Not on `main`, so not checked: the model files on the branches `look-circe`, `look-suitors` and `53-hero-hoplite` (no open PR). The four open PRs (#274, #276, #280, #281) add no file under `public/`.
 
 What changed in `CREDITS.md`:
 
@@ -96,30 +98,30 @@ The rows of the 24 files, from `node scripts/credits-report.mjs --markdown`:
 
 | File | Size | Licence | Credited at |
 |---|---|---|---|
-| `public/favicon.svg` | 34 KB | Drawn by the team | CREDITS.md:77 |
-| `public/models/charybdis/Anglerfish.glb` | 182 KB | CC0 | CREDITS.md:63 |
-| `public/models/charybdis/CommonTree_5.glb` | 102 KB | CC0 | CREDITS.md:67 |
-| `public/models/charybdis/CommonTree_Dead_3.glb` | 53 KB | CC0 | CREDITS.md:67 |
-| `public/models/charybdis/Rock_4.glb` | 9 KB | CC0 | CREDITS.md:67 |
-| `public/models/charybdis/Rock_6.glb` | 8 KB | CC0 | CREDITS.md:67 |
-| `public/models/charybdis/Rock_Moss_4.glb` | 10 KB | CC0 | CREDITS.md:67 |
-| `public/models/charybdis/Sail_ship.glb` | 214 KB | CC0 | CREDITS.md:66 |
-| `public/models/charybdis/Tentacle.glb` | 304 KB | CC0 | CREDITS.md:64 |
-| `public/models/charybdis/Viking_boat.glb` | 95 KB | CC0 | CREDITS.md:65 |
-| `public/models/charybdis/rocks/rock_moss_set_01.bin` | 1.5 MB | CC0 | CREDITS.md:68 |
-| `public/models/charybdis/rocks/rock_moss_set_01.gltf` | 10 KB | CC0 | CREDITS.md:68 |
-| `public/models/charybdis/rocks/textures/rock_moss_set_01_diff_1k.jpg` | 168 KB | CC0 | CREDITS.md:68 |
-| `public/models/charybdis/rocks/textures/rock_moss_set_01_nor_gl_1k.jpg` | 210 KB | CC0 | CREDITS.md:68 |
-| `public/models/charybdis/rocks/textures/rock_moss_set_01_rough_1k.jpg` | 83 KB | CC0 | CREDITS.md:68 |
-| `public/models/circe/doric.glb` | 87 KB | CC BY 3.0, by Victor Viña | CREDITS.md:85 |
-| `public/models/suitors/kkd_chair.glb` | 36 KB | CC0 | CREDITS.md:52 |
-| `public/models/suitors/kkd_plate_food_A.glb` | 41 KB | CC0 | CREDITS.md:52 |
-| `public/models/suitors/kkd_stool.glb` | 29 KB | CC0 | CREDITS.md:52 |
-| `public/models/suitors/kkd_table_long_tablecloth_decorated_A.glb` | 124 KB | CC0 | CREDITS.md:52 |
-| `public/models/suitors/ph/wooden_axe/textures/wooden_axe_arm_1k.jpg` | 699 KB | CC0 | CREDITS.md:53 |
-| `public/models/suitors/ph/wooden_axe/textures/wooden_axe_diff_1k.jpg` | 695 KB | CC0 | CREDITS.md:53 |
-| `public/models/suitors/ph/wooden_axe/wooden_axe.bin` | 91 KB | CC0 | CREDITS.md:53 |
-| `public/models/suitors/ph/wooden_axe/wooden_axe_1k.gltf` | 2 KB | CC0 | CREDITS.md:53 |
+| `public/favicon.svg` | 34 KB | Drawn by the team | CREDITS.md:76 |
+| `public/models/charybdis/Anglerfish.glb` | 182 KB | CC0 | CREDITS.md:62 |
+| `public/models/charybdis/CommonTree_5.glb` | 102 KB | CC0 | CREDITS.md:66 |
+| `public/models/charybdis/CommonTree_Dead_3.glb` | 53 KB | CC0 | CREDITS.md:66 |
+| `public/models/charybdis/Rock_4.glb` | 9 KB | CC0 | CREDITS.md:66 |
+| `public/models/charybdis/Rock_6.glb` | 8 KB | CC0 | CREDITS.md:66 |
+| `public/models/charybdis/Rock_Moss_4.glb` | 10 KB | CC0 | CREDITS.md:66 |
+| `public/models/charybdis/Sail_ship.glb` | 214 KB | CC0 | CREDITS.md:65 |
+| `public/models/charybdis/Tentacle.glb` | 304 KB | CC0 | CREDITS.md:63 |
+| `public/models/charybdis/Viking_boat.glb` | 95 KB | CC0 | CREDITS.md:64 |
+| `public/models/charybdis/rocks/rock_moss_set_01.bin` | 1.5 MB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/rocks/rock_moss_set_01.gltf` | 10 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/rocks/textures/rock_moss_set_01_diff_1k.jpg` | 168 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/rocks/textures/rock_moss_set_01_nor_gl_1k.jpg` | 210 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/rocks/textures/rock_moss_set_01_rough_1k.jpg` | 83 KB | CC0 | CREDITS.md:67 |
+| `public/models/circe/doric.glb` | 87 KB | CC BY 3.0, by Victor Viña | CREDITS.md:84 |
+| `public/models/suitors/kkd_chair.glb` | 36 KB | CC0 | CREDITS.md:51 |
+| `public/models/suitors/kkd_plate_food_A.glb` | 41 KB | CC0 | CREDITS.md:51 |
+| `public/models/suitors/kkd_stool.glb` | 29 KB | CC0 | CREDITS.md:51 |
+| `public/models/suitors/kkd_table_long_tablecloth_decorated_A.glb` | 124 KB | CC0 | CREDITS.md:51 |
+| `public/models/suitors/ph/wooden_axe/textures/wooden_axe_arm_1k.jpg` | 699 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/ph/wooden_axe/textures/wooden_axe_diff_1k.jpg` | 695 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/ph/wooden_axe/wooden_axe.bin` | 91 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/ph/wooden_axe/wooden_axe_1k.gltf` | 2 KB | CC0 | CREDITS.md:52 |
 
 The third report's table below still stands for the other files, though its line numbers are those of that day's `CREDITS.md`.
 

@@ -48,7 +48,6 @@ His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
 | Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.com/packs/universalbasecharacters.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0) | CC0 |
-
 | KayKit Dungeon Remastered 1.0, by Kay Lousberg: long feast table with a tablecloth, stool, chair and food platter, unchanged | `public/models/suitors/kkd_*.glb`, the feast tables in the great hall | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (its `LICENSE.txt` says CC0) | CC0 |
 | Wooden Axe (1K), by Ulan Cabanilla, from Poly Haven. The diffuse and ARM maps and the mesh are unchanged; the `.gltf` was edited to leave out the normal map | `public/models/suitors/ph/wooden_axe/`, the twelve axes for the bow contest | https://polyhaven.com/a/wooden_axe | CC0 |
 
