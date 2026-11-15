@@ -64,5 +64,38 @@ test("merging is safe to repeat and never lowers anything", () => {
   const once = mergeSaves(local, account, { accountName: "Luv" });
   expect(mergeSaves(once, account, { accountName: "Luv" })).toEqual(once);
   expect(mergeSaves(once, once, { accountName: "Luv" })).toEqual(once);
-  expect(once.profile.wins).toBeLessThanOrEqual(once.profile.fights);
+  expect(Number(once.profile.wins)).toBeLessThanOrEqual(Number(once.profile.fights));
+});
+
+test("every kind of field is joined by its kind, so a field the game adds later needs no change here", () => {
+  const local = save({
+    cleared: ["circe"], styles: ["boxer"], blocks: 30, dodges: 2, bestCombo: 4, unhit: 0, powers: 1, dojo: 3, dojoPerfect: 0, rooms: 1,
+    someday: { medals: 2, names: ["first"] }, motto: "local words", onlyHere: 5,
+  });
+  const account = save({
+    name: "Luv", cleared: ["polyphemus"], styles: ["hoplite", "boxer"], blocks: 12, dodges: 9, bestCombo: 11, unhit: 2, powers: 0, dojo: 1, dojoPerfect: 1, rooms: 0,
+    someday: { medals: 5, names: ["second"], extra: true }, motto: "account words", onlyThere: [1, 2],
+  });
+  const merged = mergeSaves(local, account, { accountName: "Luv" });
+  expect(merged.profile).toEqual({
+    name: "Luv", cleared: ["polyphemus", "circe"], moves: {}, bestScore: 0, fights: 0, wins: 0,
+    // Lists: both. Counts: the larger.
+    styles: ["hoplite", "boxer"], blocks: 30, dodges: 9, bestCombo: 11, unhit: 2, powers: 1, dojo: 3, dojoPerfect: 1, rooms: 1,
+    // An object is joined field by field; a text is the account's; a field only one side has is kept.
+    someday: { medals: 5, names: ["second", "first"], extra: true }, motto: "account words", onlyHere: 5, onlyThere: [1, 2],
+  });
+  expect(mergeSaves(local, account, { accountName: "Luv", prefer: "local" }).profile.motto).toBe("local words");
+  // Nothing in either profile is lower or missing afterwards.
+  for (const side of [local, account]) {
+    for (const [field, value] of Object.entries(side.profile)) {
+      if (typeof value === "number") expect(Number(merged.profile[field]), field).toBeGreaterThanOrEqual(value);
+      if (Array.isArray(value)) expect(merged.profile[field], field).toEqual(expect.arrayContaining(value));
+    }
+  }
+});
+
+test("an account that was never saved to changes nothing but the name", () => {
+  const local = save({ name: "Nobody", styles: ["boxer"], blocks: 3 });
+  expect(mergeSaves(local, null, { accountName: "Luv" }).profile).toEqual({ ...local.profile, name: "Luv" });
+  expect(mergeSaves(local, save({}, { profile: {} }), { accountName: "Luv" }).profile).toEqual({ ...local.profile, name: "Luv" });
 });
