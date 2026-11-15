@@ -8,6 +8,7 @@ import { getSettings, subscribeSettings } from "../settings/store";
 import type { LoopPoints } from "./music";
 import { clipLevel, seamLoop } from "./music";
 import { sharedAudioContext } from "./sfx";
+import { tabHidden } from "./tab";
 import { watchVoice } from "./voice";
 import { stopAmbience, stopClipFor, stopClipKey, stopClips } from "./stopSounds";
 
@@ -203,7 +204,8 @@ function sync(active: Rig): void {
     if (wanted === null || playing) return;
     if (active.context.state !== "running") {
       // Held back until a click or key press. The context reports the change, and this runs again then.
-      active.context.resume().catch(() => undefined);
+      // A hidden tab is held back on purpose (sfx.ts), and it reports the change too when the tab is shown again.
+      if (!tabHidden()) active.context.resume().catch(() => undefined);
       return;
     }
     const ambience = stopAmbience(wanted);

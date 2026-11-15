@@ -4,6 +4,7 @@
 // Each clip's loudness is measured when it loads, so a replacement that is louder or quieter needs no retuning here.
 import { log } from "../core/log";
 import { sharedAudioContext } from "./sfx";
+import { tabHidden } from "./tab";
 import { watchVoice } from "./voice";
 
 export type MusicScene = "menu" | "fight" | "win" | "loss";
@@ -215,7 +216,8 @@ function sync(active: Rig): void {
     if (wanted === null || playing || paused) return;
     if (active.context.state !== "running") {
       // Held back until a click or key press. The context reports the change, and this runs again then.
-      active.context.resume().catch(() => undefined);
+      // A hidden tab is held back on purpose (sfx.ts), and it reports the change too when the tab is shown again.
+      if (!tabHidden()) active.context.resume().catch(() => undefined);
       return;
     }
     const clip = clips.get(wanted);
