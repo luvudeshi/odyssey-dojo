@@ -48,7 +48,7 @@ export function DefendFlash({ phase }: { phase: CombatPhase }) {
   return (
     <div className="hb-defend" key={shown.id} data-move={shown.move} role="status">
       <div className="hb-defend__rim" />
-      <div className="hb-defend__word"><RiftPlate tone="ice" />{defendWord(shown.move)}</div>
+      <div className="hb-defend__word"><RiftPlate tone="lava" />{defendWord(shown.move)}</div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 /* RiftPlate.tsx: black glass behind a banner or chip. Not scoped to .sky-hud, as the power banner sits outside it. Nothing
    here animates and nothing has a filter: the piece around the plate moves it on transform and opacity only. */
-.rift-plate { --rp-edge: #c8b8f0; --rp-tint: transparent; --rp-crack: #ffc070; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.rift-plate { --rp-edge: #ff9a2a; --rp-tint: rgba(255, 90, 20, 0.1); --rp-crack: #ffc070; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .rift-plate--ice { --rp-edge: #9fd8ff; --rp-tint: rgba(120, 190, 255, 0.16); --rp-crack: #bfe6ff; }
 .rift-plate--lava { --rp-edge: #ffb04a; --rp-tint: rgba(255, 90, 20, 0.1); --rp-crack: #ff9a3a; }
 .rift-plate__glass { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }

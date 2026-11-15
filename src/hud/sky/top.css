@@ -8,20 +8,20 @@
 }
 
 /* The two-player tag: a small glass chip under the score. */
-.sky-hud .hb-duo { position: absolute; right: 30px; top: 112px; left: auto; margin: 0; padding: 8px 18px 10px; font-size: 16px; letter-spacing: 0.14em; color: #ece4ff; -webkit-text-stroke: 0; }
+.sky-hud .hb-duo { position: absolute; right: 30px; top: 112px; left: auto; margin: 0; padding: 8px 18px 10px; font-size: 16px; letter-spacing: 0.14em; color: #fff0d8; -webkit-text-stroke: 0; }
 
 /* The new phase: a glass slab with blades, like the boss bar it sits under. */
-.sky-hud .sk-phase { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); padding: 10px 34px 13px; font-size: 28px; line-height: 1.1; letter-spacing: 0.14em; color: #ece4ff; animation: sk-in 0.4s ease-out; }
+.sky-hud .sk-phase { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); padding: 10px 34px 13px; font-size: 28px; line-height: 1.1; letter-spacing: 0.14em; color: #fff0d8; animation: sk-in 0.4s ease-out; }
 .sky-hud .sk-phase small { margin-right: 0.5em; font-size: 24px; color: #ffb444; }
 @keyframes sk-in { from { opacity: 0; transform: translateX(-50%) scale(0.92); } }
 
 .sky-hud .sk-intro { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); padding: 18px 56px 22px; text-align: center; }
 .sky-hud .sk-intro h2 { margin: 0; font: 700 60px/1.05 var(--rift-font); letter-spacing: 0.14em; margin-right: -0.14em; color: #ffd27a; -webkit-text-stroke: 1.5px #000; }
-.sky-hud .sk-intro small { display: block; margin-top: 8px; font: 700 20px/1.2 var(--rift-font); letter-spacing: 0.18em; color: #d6c8ff; }
+.sky-hud .sk-intro small { display: block; margin-top: 8px; font: 700 20px/1.2 var(--rift-font); letter-spacing: 0.18em; color: #ffe6c0; }
 
 /* The rating word: big, and each grade its own colour and size, so it reads in a glance. GOOD is cold violet on glass,
    GREAT amber on lava-edged glass, PERFECT white-hot and largest. It snaps in fast and holds still until it goes. */
-.sky-hud .hb-rating { position: absolute; left: max(20%, 270px); top: 28%; width: auto; transform: translateX(-50%); padding: 12px 40px 16px; font-size: 60px; line-height: 1; letter-spacing: 0.1em; color: #c4b4ff; -webkit-text-stroke: 1.5px #000; text-shadow: 0 3px 0 #000; animation: sk-pop 0.7s ease-out; }
+.sky-hud .hb-rating { position: absolute; left: max(20%, 270px); top: 28%; width: auto; transform: translateX(-50%); padding: 12px 40px 16px; font-size: 60px; line-height: 1; letter-spacing: 0.1em; color: #ffe6c0; -webkit-text-stroke: 1.5px #000; text-shadow: 0 3px 0 #000; animation: sk-pop 0.7s ease-out; }
 .sky-hud .hb-rating[data-grade="GREAT"] { font-size: 66px; letter-spacing: 0.08em; color: #ffb02e; }
 .sky-hud .hb-rating[data-grade="PERFECT"] { font-size: 70px; letter-spacing: 0.05em; color: #fff4c4; }
 .sky-hud .hb-rating[data-grade="PERFECT"] .rift-plate__seam { height: 7px; }
