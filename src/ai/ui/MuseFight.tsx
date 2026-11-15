@@ -29,8 +29,13 @@ export function MuseFight(props: {
   god: { readonly god: GodId; readonly rivalGod: GodId; readonly epithet: string } | null;
   /** Back to the quest map. Nothing is handed back: the quest learns nothing about this fight. */
   onLeave: () => void;
+  /**
+   * Set where the Muse has a page of her own (?ai=1) and not a place on the quest map. The way out is then named for the
+   * main menu, and quitting a fight from the pause menu goes back to the question, which is that page's first screen.
+   */
+  standalone?: boolean;
 }) {
-  const { style, tracker, god, onLeave } = props;
+  const { style, tracker, god, onLeave, standalone = false } = props;
   const [made, setMade] = useState<Made | null>(null);
 
   if (!made) {
@@ -42,6 +47,7 @@ export function MuseFight(props: {
         {...(god ? { epithet: god.epithet } : {})}
         onDone={(fight) => { setMade({ enemy: fight.enemy, level: fight.level, seed: Date.now() }); }}
         onBack={onLeave}
+        {...(standalone ? { backLabel: "Main menu" } : {})}
       />
     );
   }
@@ -59,7 +65,7 @@ export function MuseFight(props: {
       seed={made.seed}
       god={god?.god ?? null}
       onRestart={again}
-      onQuit={leave}
+      onQuit={standalone ? ask : leave}
       // Laid out by the result panel's own classes (src/screens/endPanel.css): the title here takes the place of the fight
       // screen's headline, which words a made monster as the quest stop that lends it a body ("... fall" for one Siren).
       renderEnd={(won) => (
@@ -71,7 +77,7 @@ export function MuseFight(props: {
           <div className="end-buttons">
             <Button primary autoFocus onClick={again}>Fight again</Button>
             <Button onClick={ask}>Ask the Muse again</Button>
-            <Button onClick={leave}>Back to the map</Button>
+            <Button onClick={leave}>{standalone ? "Main menu" : "Back to the map"}</Button>
           </div>
         </>
       )}
