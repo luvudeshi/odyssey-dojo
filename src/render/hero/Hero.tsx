@@ -16,6 +16,8 @@ import { candidate as spartan } from "./defs/spartan";
 import { chooseHeroPose, decideHeroPose } from "./heroClips";
 import { newInput, readInput } from "./heroInput";
 import type { MutableInput } from "./heroInput";
+import { createReach } from "./reach";
+import type { HeroReach } from "./reach";
 import { trackShare } from "./track/blend";
 import { createBodyTracker } from "./track/BodyTracker";
 import type { BodyTracker } from "./track/BodyTracker";
@@ -60,6 +62,8 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
   // One tracker per cloned model (React may build the clone twice); the one that runs is found by its root.
   const trackers = useRef(new WeakMap<Object3D, BodyTracker>());
   const tracker = useRef<BodyTracker | null>(null);
+  const reaches = useRef(new WeakMap<Object3D, HeroReach>());
+  const home = useRef<[number, number, number]>([0, 0, 0]);
   const input = useRef<MutableInput>(newInput());
   const prepare = useMemo(() => {
     const tint = tinter(candidate.tint);
@@ -68,14 +72,17 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
       candidate.prepare?.(root);
       const t = createBodyTracker(root);
       if (t) trackers.current.set(root, t);
+      reaches.current.set(root, createReach(root));
     };
   }, [candidate]);
   useEffect(() => { if (DEBUG) Object.assign(window, { __heroGroup: group.current, __battle: battle, __now: nowSeconds, __bodyTrack: () => tracker.current?.debug }); }, []);
-  // PlayerFigure steps the hero about the arena and writes battle.heroX/Z; the model follows it.
+  // PlayerFigure steps the hero about the arena and writes battle.heroX/Z; the model follows it, plus a strike's reach.
   useFrame((_, delta) => {
     const g = group.current;
     if (!g) return;
-    g.position.set(battle.heroX + (tracker.current?.stepX ?? 0), 0, HOME_Z + battle.heroZ);
+    const h = home.current;
+    h[0] = battle.heroX + (tracker.current?.stepX ?? 0); h[1] = 0; h[2] = HOME_Z + battle.heroZ;
+    g.position.set(h[0] + battle.reachX, battle.reachY, h[2] + battle.reachZ);
     // A tracked duck lowers the pelvis itself; squashing the whole model on top would double it.
     g.scale.y = MathUtils.damp(g.scale.y, battle.held.has("duck") && !tracker.current?.active ? (candidate.rig.duck?.squash ?? 1) : 1, 14, Math.min(delta, 0.05));
   });
@@ -90,10 +97,12 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
         afterMixer={(root, delta) => {
           const t = trackers.current.get(root) ?? null;
           tracker.current = t;
-          if (!t) return;
-          trackableRef.current = true;
           const now = nowSeconds();
-          t.update(poseRef.current, now, delta, trackShare(readInput(input.current, now), candidate.rig.hurt.seconds));
+          if (t) {
+            trackableRef.current = true;
+            t.update(poseRef.current, now, delta, trackShare(readInput(input.current, now), candidate.rig.hurt.seconds));
+          }
+          if (group.current) reaches.current.get(root)?.update(group.current, home.current, now);
         }}
         decide={(available, out) => {
           const i = readInput(input.current, nowSeconds());
