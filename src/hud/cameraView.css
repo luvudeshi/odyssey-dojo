@@ -77,3 +77,6 @@
 .fight .camera-view--keys .camera-frame, .fight .camera-view--keys .camera-tag, .fight .camera-view--keys .camera-dot { display: none; }
 .fight .camera-view--keys figcaption { position: relative; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 12px; }
 .fight .camera-view--keys .camera-state { padding: 0; background: none; }
+.camera-use { pointer-events: auto; min-width: 0; margin: 0; padding: 2px 12px; border: 2px solid var(--pb-ochre); border-radius: 0; background: #0d0b12; color: var(--pb-ochre-light); font: 700 18px/1.3 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+.camera-use:hover { background: #1a1622; }
+.camera-use:focus-visible { outline: 3px solid var(--pb-ochre-light); outline-offset: 2px; }
