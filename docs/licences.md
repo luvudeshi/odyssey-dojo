@@ -77,6 +77,79 @@ What it does not do: it does not open the files, check that a URL is real, or ch
 
 The matching rules are tested in `tests/creditsReport.test.ts`.
 
+## Fourth report
+
+Run on branch `195-tonights-assets`, cut from `main` at `36cefe8`, Saturday 10:24 PM, for issue #195. It covers the 24 files that came in after the third report: the columns of Circe's hall (PR #200), the feast furniture and the axes of the Suitors' hall (PR #202), the Charybdis models (PR #208) and the new favicon (PR #218). `public/mediapipe/` was not filled on this checkout, so its five files are not counted. This is a snapshot: run `make credits` for the current one.
+
+- Before, with the `CREDITS.md` of `main`: `172 files, 26.7 MB (26666075 bytes). 165 assets: 165 credited, 0 gaps. 7 not assets.`
+- After, with this branch's `CREDITS.md`: the same line. The PRs had added a row for every file, so no file was a gap. What was wrong was inside the rows.
+
+What changed in `CREDITS.md`:
+
+- **Circe's columns:** the author is spelled as his page spells it, Victor Viña, and the row carries the whole credit (title, author, licence, source). This is the one file in the game that is CC BY and not CC0, so the first lines of `CREDITS.md` no longer say all downloaded art is CC0.
+- **Charybdis:** the one row that linked nine Quaternius files to `https://quaternius.com` is now five rows, each with the page that was read.
+- **The Suitors:** the feast and the axes had a second "The Suitors" section; they are in the first one now. The axe row names its author. The sentence that said the hall's props are all built in code is corrected.
+- **The favicon:** its row said "eye icon, four plain SVG shapes". PR #218 replaced it with the pebble mosaic emblem, 34 KB, written by `scripts/gen-pebble-favicon.ts`.
+- **No file:** the pebble logo and emblem on the screens, the guard shield, the power effects and Polyphemus's boulder are drawn in code (`src/ui/pebble/`, `src/render/effects/`). The only files `src/` loads are under `public/`, and it loads no font: the fonts are system fonts.
+
+The rows of the 24 files, from `node scripts/credits-report.mjs --markdown`:
+
+| File | Size | Licence | Credited at |
+|---|---|---|---|
+| `public/favicon.svg` | 34 KB | Drawn by the team | CREDITS.md:77 |
+| `public/models/charybdis/Anglerfish.glb` | 182 KB | CC0 | CREDITS.md:63 |
+| `public/models/charybdis/CommonTree_5.glb` | 102 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/CommonTree_Dead_3.glb` | 53 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/Rock_4.glb` | 9 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/Rock_6.glb` | 8 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/Rock_Moss_4.glb` | 10 KB | CC0 | CREDITS.md:67 |
+| `public/models/charybdis/Sail_ship.glb` | 214 KB | CC0 | CREDITS.md:66 |
+| `public/models/charybdis/Tentacle.glb` | 304 KB | CC0 | CREDITS.md:64 |
+| `public/models/charybdis/Viking_boat.glb` | 95 KB | CC0 | CREDITS.md:65 |
+| `public/models/charybdis/rocks/rock_moss_set_01.bin` | 1.5 MB | CC0 | CREDITS.md:68 |
+| `public/models/charybdis/rocks/rock_moss_set_01.gltf` | 10 KB | CC0 | CREDITS.md:68 |
+| `public/models/charybdis/rocks/textures/rock_moss_set_01_diff_1k.jpg` | 168 KB | CC0 | CREDITS.md:68 |
+| `public/models/charybdis/rocks/textures/rock_moss_set_01_nor_gl_1k.jpg` | 210 KB | CC0 | CREDITS.md:68 |
+| `public/models/charybdis/rocks/textures/rock_moss_set_01_rough_1k.jpg` | 83 KB | CC0 | CREDITS.md:68 |
+| `public/models/circe/doric.glb` | 87 KB | CC BY 3.0, by Victor Viña | CREDITS.md:85 |
+| `public/models/suitors/kkd_chair.glb` | 36 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/kkd_plate_food_A.glb` | 41 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/kkd_stool.glb` | 29 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/kkd_table_long_tablecloth_decorated_A.glb` | 124 KB | CC0 | CREDITS.md:52 |
+| `public/models/suitors/ph/wooden_axe/textures/wooden_axe_arm_1k.jpg` | 699 KB | CC0 | CREDITS.md:53 |
+| `public/models/suitors/ph/wooden_axe/textures/wooden_axe_diff_1k.jpg` | 695 KB | CC0 | CREDITS.md:53 |
+| `public/models/suitors/ph/wooden_axe/wooden_axe.bin` | 91 KB | CC0 | CREDITS.md:53 |
+| `public/models/suitors/ph/wooden_axe/wooden_axe_1k.gltf` | 2 KB | CC0 | CREDITS.md:53 |
+
+The third report's table below still stands for the other files, though its line numbers are those of that day's `CREDITS.md`.
+
+## Sources opened for the fourth report
+
+All read on Saturday 2026-11-14 between 10:19 PM and 10:24 PM. "Fetched" means the same as in the third report: a tool returned the page's text or a summary of it. No model file was downloaded to compare, except where a row says hashes were compared, and those hashes came from the site's own file list.
+
+| Files | Source opened | What it says |
+|---|---|---|
+| `public/models/circe/doric.glb` | Fetched https://poly.pizza/m/5VD5-v8NBZ4 | Title "Doric Greek Column", author "Victor Viña", licence "Creative Commons Attribution", linked to `https://creativecommons.org/licenses/by/3.0/`. So: CC BY 3.0. The page text that came back had no ready-made credit line |
+| `public/models/suitors/kkd_*.glb` (4 files) | Read `LICENSE.txt` and the file list of https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 through the GitHub API, and fetched its front page | `LICENSE.txt`: "KayKit : Dungeon Remastered (1.0)", "Created/distributed by Kay Lousberg", "License: (Creative Commons Zero, CC0)", and credit is "not mandatory". The README says "Licensed under CC0 1.0 Universal". Our four files have the same git blob hashes as `Assets/gltf/chair.gltf.glb`, `plate_food_A.gltf.glb`, `stool.gltf.glb` and `table_long_tablecloth_decorated_A.gltf.glb` in that repository, so they are those files, unchanged |
+| `public/models/suitors/ph/wooden_axe/` (4 files) | Fetched https://polyhaven.com/a/wooden_axe. Read `https://api.polyhaven.com/info/wooden_axe` and `https://api.polyhaven.com/files/wooden_axe` | "Wooden Axe", author Ulan Cabanilla, "License: CC0". The MD5 of our `.bin` and of both texture files equals the one the file list gives for the 1K glTF download. Our `.gltf` differs (1,793 bytes, theirs 2,744): the model log says the normal map was taken out |
+| `public/models/charybdis/rocks/` (5 files) | Fetched https://polyhaven.com/a/rock_moss_set_01. Read `https://api.polyhaven.com/info/rock_moss_set_01` and `https://api.polyhaven.com/files/rock_moss_set_01` | "Rock Moss Set 01", author Kless Gyzen, "License: CC0". The MD5 of all five of our files equals the one the file list gives for the 1K glTF download |
+| `public/models/charybdis/Anglerfish.glb` | Fetched https://poly.pizza/m/MRjSlwCjHM (found through the site's search) | "Anglerfish", author Quaternius, "Public Domain (CC0)", tagged Animated |
+| `public/models/charybdis/Tentacle.glb` | Fetched https://poly.pizza/m/BR1vpIvvvv (the page `docs/assets.md` lists) | "Tentacle", author Quaternius, "Public Domain (CC0)", tagged Animated |
+| `public/models/charybdis/Viking_boat.glb` | Fetched https://poly.pizza/m/J7SCPiNoSy (found through the site's search) | "Viking Boat", author Quaternius, "Public Domain (CC0)" |
+| `public/models/charybdis/Sail_ship.glb` | Fetched https://poly.pizza/m/cIzO4MBPqI (found through the site's search) | "Sail Ship", author Quaternius, "Public Domain (CC0)" |
+| `Rock_4.glb`, `Rock_6.glb`, `Rock_Moss_4.glb`, `CommonTree_5.glb`, `CommonTree_Dead_3.glb` in `public/models/charybdis/` | Fetched https://quaternius.com/packs/ultimatenature.html, the pack the model log names. Also fetched https://poly.pizza/m/Oar39tFugM, one of Quaternius's rock pages there | The pack page: "Ultimate Nature Pack", Quaternius, 150 models, "License" then "CC0" linked to `https://creativecommons.org/publicdomain/zero/1.0/`. It does not list the models by name. The Poly Pizza page: "Rock Moss", Quaternius, "Public Domain (CC0)" |
+| `public/favicon.svg` | Read the file, `scripts/gen-pebble-favicon.ts` and PR #218, then ran the script on this branch | The script wrote a file that is byte for byte the one in git (`git status` stayed clean). So it is our own drawing, made by our own code |
+| three.js Water and Sky (code, no file) | Read `LICENSE` in the installed `three` package | "The MIT License", "Copyright © 2010-2026 three.js authors" |
+
+## Not confirmed in the fourth report
+
+- **Whether the nine Quaternius files of Charybdis are the files on the pages read.** `docs/models/charybdis.md` gives only `https://quaternius.com` and "GitHub mirror" as where they were downloaded, with no address. The four Poly Pizza pages have the same names and author as our files, and our files carry the same converter stamp (`FBX2glTF v0.9.7`) as the giant, which did come from Poly Pizza. No file was downloaded to compare. Whoever downloaded them should write the address in the model log.
+- **That the three rocks and two trees are in the Ultimate Nature Pack.** The model log says so. The pack page does not list its models, and no page for these five was found by name.
+- **Which "GitHub mirror" was used, and its licence.** A mirror is someone else's copy. Not found, so not read.
+- **`License.txt` inside the Quaternius packs,** and the site's general licence page: still open from the third report, see "Not confirmed" below.
+- **Who Victor Viña's column was first published by.** The Poly Pizza page does not say where the model came from before it (most models there come from Google Poly). Only the Poly Pizza page was read.
+- **Whether the credit for the column is shown anywhere but `CREDITS.md`.** The game has no credits screen, and the built site does not carry `CREDITS.md`. CC BY 3.0 asks for the credit in a way "reasonable to the medium". A line on the Devpost page or on a screen would settle it; that is the lead's call.
+
 ## Third report
 
 Run on branch `154-licence-gaps` at `f791c52`, which has `main` at `9578330` merged in, Saturday 6:35 PM, with `public/mediapipe/` filled. This is a snapshot: run `make credits` for the current one.
