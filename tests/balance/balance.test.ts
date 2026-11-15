@@ -84,10 +84,10 @@ test("the good player wins everywhere", () => {
 
 // Issue #127: the first fight is often the only one a new player gets, so it is tuned to be won.
 // If one of these fails after a retune, docs/balance.md says which way `hp` and `damage` in polyphemus.ts move each number.
-test("Polyphemus: the beginner wins at least 85% of fights, and those wins take 90 seconds or less", () => {
+test("Polyphemus: the beginner wins at least 85% of fights, and those wins take 95 seconds or less", () => {
   const beginner = row("polyphemus", "beginner");
   expect(beginner.wins, "beginner, fights won").toBeGreaterThanOrEqual(FIGHTS * 0.85);
-  expect(beginner.winSeconds, `beginner, fights won: ${beginner.winSeconds.toFixed(1)} s`).toBeLessThanOrEqual(90);
+  expect(beginner.winSeconds, `beginner, fights won: ${beginner.winSeconds.toFixed(1)} s`).toBeLessThanOrEqual(95); // was 90 before the 3 s pause after a phase change (+4.6 s over two phase changes)
 });
 
 test("Polyphemus: the average player always wins", () => {
