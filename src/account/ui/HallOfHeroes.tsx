@@ -5,7 +5,7 @@
 // With no accounts on the server there is no hall: this draws nothing and asks nothing. It learns that from the
 // account's state (../sync), which the sign-in part beside it (AccountSignIn) asks for when the page opens, so the
 // two are put on the page together. It brings its own styles (./hall.css).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { GODS } from "../../ai/gods/gods";
 import { ENEMIES } from "../../enemies/registry";
@@ -28,10 +28,12 @@ type View = "tonight" | "allTime";
 /**
  * The hall while this component is on the screen; null until the first answer, and for good when that answer is
  * "no hall". Nothing is asked until the server is known to have accounts (`there`). Then it is read once, to learn
- * whether there is a hall to show, and again and again only while the board is open.
+ * whether there is a hall to show, and again and again only while the board is open. Closing the board asks nothing.
  */
 function useHall(there: boolean, open: boolean): Hall | null {
   const [hall, setHall] = useState<Hall | null>(null);
+  // True once a reading has come back. The effect below runs again when the board closes, and must not read then.
+  const held = useRef(false);
   useEffect(() => {
     if (!there) return undefined;
     let live = true;
@@ -45,10 +47,13 @@ function useHall(there: boolean, open: boolean): Hall | null {
       }
       const got = await loadHall();
       if (!live) return;
-      if (got !== null) setHall(got);
+      if (got !== null) {
+        held.current = true;
+        setHall(got);
+      }
       if (open) again(got !== null ? HALL_REFRESH_MS : HALL_RETRY_MS);
     };
-    void read();
+    if (open || !held.current) void read();
     return () => {
       live = false;
       clearTimeout(timer);
