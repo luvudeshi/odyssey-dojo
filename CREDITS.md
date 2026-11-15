@@ -33,7 +33,7 @@ The cave mouth at dusk (`src/render/arena/cave/`) is built in code: no other fil
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Universal Animation Library 1 and 2 mannequin and clips, by Quaternius, trimmed, with authored stand-in poses | `public/models/hero/spartan.glb`, the player's hero | https://quaternius.itch.io/universal-animation-library and https://quaternius.itch.io/universal-animation-library-2 (both pages say CC0). Viewer: https://quaternius.com/animviewer.html | CC0 |
+| Universal Animation Library 1 and 2 mannequin and clips, by Quaternius, trimmed, with authored stand-in poses | `public/models/hero/spartan.glb`, the player's hero | https://quaternius.com/packs/universalanimationlibrary.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-animation-library and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0). Viewer: https://quaternius.com/animviewer.html | CC0 |
 
 His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`src/render/hero/gear/`): no other files ship with him.
 
@@ -47,7 +47,7 @@ His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (both pages say CC0) | CC0 |
+| Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.com/packs/universalbasecharacters.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0) | CC0 |
 
 Their gear, the hall and its props are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens, Scylla and Charybdis are built in code too and ship no model file. Their logs are in `docs/models/`.
 
@@ -56,7 +56,7 @@ Their gear, the hall and its props are built in code (`src/render/monsters/suito
 | Asset | File | Source | Licence |
 |---|---|---|---|
 | Ship, owl, palmette and laurel ornaments of the pottery look | `public/ui/ship.svg`, `public/ui/owl.svg`, `public/ui/palmette.svg`, `public/ui/laurel.svg` | SVG shapes written in code for PR #134 | Drawn by the team |
-| Eye icon in the browser tab | `public/favicon.svg` | SVG shapes written in code for PR #105 | Drawn by the team |
+| Eye icon in the browser tab | `public/favicon.svg` | Four plain SVG shapes, added by the lead in PR #105 | Drawn by the team |
 
 ## Voices and sound effects
 
@@ -139,10 +139,12 @@ As with the music, these terms cover our own use in this game. The clips are gen
 
 These files are not art. They are code and one machine-learning model, published by Google under the Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0). They are copied in unchanged so the game runs with no network.
 
+Each file is named here. A new file in one of these two folders needs its own row: the check does not take a folder as a credit for software.
+
 | Software | Files | Source | Licence |
 |---|---|---|---|
-| Draco mesh decoder by Google (the glTF build, as shipped in `three` 0.187.0 under `examples/jsm/libs/draco/gltf/`). It unpacks compressed models | `public/draco/` | https://github.com/google/draco | Apache-2.0 |
-| MediaPipe Tasks Vision 1.2.3 runtime by Google (the `wasm` folder of the npm package `@mediapipe/tasks-vision`). It runs the pose tracker in the browser | `public/mediapipe/wasm/` | https://github.com/google-ai-edge/mediapipe | Apache-2.0 |
+| Draco mesh decoder by Google (the glTF build, as shipped in `three` 0.187.0 under `examples/jsm/libs/draco/gltf/`). It unpacks compressed models | `public/draco/draco_decoder.js`, `public/draco/draco_decoder.wasm`, `public/draco/draco_wasm_wrapper.js` | https://github.com/google/draco | Apache-2.0 |
+| MediaPipe Tasks Vision 1.2.3 runtime by Google (the `wasm` folder of the npm package `@mediapipe/tasks-vision`). It runs the pose tracker in the browser | `public/mediapipe/wasm/vision_wasm_internal.js`, `public/mediapipe/wasm/vision_wasm_internal.wasm`, `public/mediapipe/wasm/vision_wasm_module_internal.js`, `public/mediapipe/wasm/vision_wasm_module_internal.wasm` | https://github.com/google-ai-edge/mediapipe | Apache-2.0 |
 | Pose Landmarker (lite) model by Google (BlazePose GHUM 3D; model card authors Valentin Bazarevsky, Ivan Grishchenko and Eduard Gabriel Bazavan). It finds the player's body in the camera picture | `public/mediapipe/pose_landmarker_lite.task` | https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task and its model card, https://storage.googleapis.com/mediapipe-assets/Model%20Card%20BlazePose%20GHUM%203D.pdf | Apache-2.0 |
 
 What was checked on 2026-11-14:
