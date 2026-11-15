@@ -21,11 +21,28 @@
       #log { margin: 0; padding: 0; list-style: none; font-size: 14px; }
       #log .good { color: #9fd08a; }
       #log .bad { color: #ef9a7a; }
+      #guide { margin: 12px 0; padding: 12px 16px; border: 2px solid #6b5a36; border-radius: 8px; max-width: 900px; }
+      #guide[hidden], #guided-again[hidden] { display: none; }
+      #guide-progress { margin: 0; color: #c9b98f; font-size: 22px; }
+      #guide-title { margin: 0; font-size: 96px; line-height: 1.05; font-weight: 800; }
+      #guide-hint { margin: 4px 0 0; max-width: none; color: #f2e6c9; font-size: 36px; line-height: 1.2; }
+      #guide-verdict { min-height: 44px; margin: 8px 0 0; font-size: 32px; font-weight: 700; }
+      #guide-verdict.good, #summary td.good { color: #9fd08a; }
+      #guide-verdict.bad, #summary td.bad { color: #ef9a7a; }
+      #summary { border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+      #summary th, #summary td { border: 1px solid #6b5a36; padding: 4px 8px; text-align: left; max-width: 360px; }
     </style>
   </head>
   <body>
     <h1>Pose recorder</h1>
     <p>Pick a move, stand still through the countdown, then make the move once. Three seconds are saved as a file. Put the file in <code>tests/fixtures/poses/</code>.</p>
+    <p>Alone at the laptop? Press <b>Start guided session</b> and step back. Nothing more to click: it walks through every move and downloads one session file at the end. A reload loses the session.</p>
+    <div id="guide" aria-live="polite">
+      <p id="guide-progress"></p>
+      <h2 id="guide-title"></h2>
+      <p id="guide-hint"></p>
+      <p id="guide-verdict"></p>
+    </div>
     <div class="stage">
       <video id="video" muted playsinline></video>
       <canvas id="skeleton" width="640" height="480"></canvas>
@@ -35,7 +52,11 @@
       <label>Move <select id="move"></select></label>
       <label>Person <input id="person" value="someone" size="12" /></label>
       <button id="record" disabled>Record</button>
+      <button id="guided" disabled>Start guided session</button>
+      <button id="guided-stop" disabled>Stop and save</button>
+      <button id="guided-again" hidden>Download again</button>
     </div>
+    <table id="summary"></table>
     <div id="status">Starting the camera…</div>
     <ul id="log"></ul>
     <script type="module" src="./recorder.ts"></script>
