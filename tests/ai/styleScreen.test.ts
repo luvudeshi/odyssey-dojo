@@ -1,8 +1,8 @@
 // The "How do you fight?" screen itself: what it asks the server, what the card shows and what Fight hands back.
 // There is no DOM here. React's hooks are replaced by small stand-ins, the component is called as a function and its element tree is read.
 // So this checks what the screen does, not how it looks, and not React's own scheduling.
-// The panel, the heading and the buttons are the pebble kit's components (src/ui/pebble). They are not rendered here either:
-// a kit button is found by its component's name and its label, and the heading by its `text`.
+// The title is the storm kit's SetTitle and the buttons are the pebble kit's. They are not rendered here either:
+// a kit button is found by its component's name and its label, and the title by its children.
 import { isValidElement } from "react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -163,8 +163,10 @@ async function mount(extra: { epithet?: string; onBack?: () => void; backLabel?:
     const all = elements(tree);
     const withClass = (name: string): El[] => all.filter((element) => String(element.props.className).split(" ").includes(name));
     return {
-      /** The stone heading's words: the kit draws them from its `text`, so they are not among the children. */
-      heading: all.find((element) => typeof element.type === "function" && element.type.name === "PebbleHeading")?.props.text,
+      /** The kit title's words: the title of the ask step and of the finished card. The waiting step has none. */
+      heading: ((found) => (found === undefined ? undefined : words(found.props.children)))(all.find((element) => typeof element.type === "function" && element.type.name === "SetTitle")),
+      /** The line above the title. */
+      kicker: all.find((element) => typeof element.type === "function" && element.type.name === "SetTitle")?.props.kicker,
       withClass,
       lines: (name: string): string[] => withClass(name).map(words),
       button: (label: string): El | undefined => all.find((element) => isButton(element) && words(element) === label),
@@ -254,9 +256,9 @@ test("the card shows the fight the server made, and Fight hands back that fight 
   screen.calls[0]?.answer(fromServer(LEVEL));
 
   const card = await screen.card();
-  expect(card.lines("style-title")).toEqual([LEVEL.title]);
+  expect([card.heading]).toEqual([LEVEL.title]);
   expect(card.lines("style-heard")).toEqual([`We heard: ${LEVEL.interpretation}`]);
-  expect(card.lines("style-kicker")).toEqual(["The Muse made this fight for you"]);
+  expect([card.kicker]).toEqual(["The Muse made this fight for you"]);
   expect(card.lines("style-monster")).toEqual([LEVEL.monster.name]);
   expect(card.lines("style-taunt")).toEqual([LEVEL.taunts[0]]);
   expect(card.lines("style-setting")).toEqual([LEVEL.arena.setting]);
@@ -291,9 +293,9 @@ test("with the server out of reach the card shows a bundled fight and says so", 
 
   const card = await screen.card();
   const bundled = fallbackLevel(REQUEST);
-  expect(card.lines("style-title")).toEqual([bundled.title]);
+  expect([card.heading]).toEqual([bundled.title]);
   expect(card.lines("style-note")).toEqual(["The Muse was out of reach, so this one comes from the old songs."]);
-  expect(card.lines("style-kicker")).toEqual(["A fight from the old songs"]);
+  expect([card.kicker]).toEqual(["A fight from the old songs"]);
   fire(card.button("Fight"), "onClick");
   expect(screen.done).toEqual([{ enemy: fightFromLevel(bundled, ENEMIES, MOVES), level: bundled, source: "fallback" }]);
 });
