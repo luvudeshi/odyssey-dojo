@@ -1,5 +1,5 @@
-/* The camera panel: bottom left, a rounded rectangle on a dusk-blue pebble ground with a pearl rim. The live picture is dimmed
-   behind the skeleton, which is laid as stones on the canvas. The tag, status dot and caption sit on the picture's lower edge. */
+/* The camera panel: bottom left, a rounded rectangle on a dusk-blue pebble ground with a pearl rim. The live picture is shown nearly as the
+   camera sees it, so the player can see themselves; the skeleton is laid on it as dark-edged stones on the canvas. The tag, status dot and caption sit on the picture's lower edge. */
 .camera-view {
   position: absolute; left: 20px; bottom: 20px; margin: 0; width: clamp(10rem, 16.7vw, 15rem); padding: 0;
   background: var(--pb-dusk) var(--pebble-dusk) repeat; border: 2px solid var(--pb-lead); border-radius: 12px;
@@ -13,10 +13,10 @@
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
 .camera-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: linear-gradient(#34444b, #161d21); }
-.camera-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; border: 0; filter: brightness(0.62) saturate(0.7) contrast(0.95); }
-.camera-frame::after { /* dusk wash over the picture, under the stones */
+.camera-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; border: 0; filter: brightness(0.96) saturate(0.92); }
+.camera-frame::after { /* a light dusk wash, heavier at the foot where the tag and caption sit */
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background: linear-gradient(rgba(34, 48, 57, 0.45), rgba(22, 29, 33, 0.7));
+  background: linear-gradient(rgba(34, 48, 57, 0.06), rgba(22, 29, 33, 0.28));
 }
 .camera-view.mirror .camera-frame video { transform: scaleX(-1); }
 .camera-frame canvas { z-index: 2; position: absolute; inset: 0; width: 100%; height: 100%; }

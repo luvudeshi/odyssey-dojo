@@ -8,7 +8,7 @@ import type { Baseline, PoseFrame, PoseHistory } from "../core/types";
 import {
   JOINT, bothNewest, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth,
 } from "../pose/signals";
-import { FULL_REACH, MAX_GAP, atChest, reach } from "./defs/aegisPush";
+import { CHEST_MS, FULL_REACH, MAX_GAP, PUSH_ELBOW, atChest, reach } from "./defs/aegisPush";
 import { DEFEND_ON } from "../input/poseInput";
 import { STEADY_MS, guard } from "./defs/block";
 import { sideStep } from "./defs/dodgeLeft";
@@ -16,9 +16,11 @@ import { move as duck } from "./defs/duck";
 import { CHAMBER_MS, KICK_LIFT, KICK_STRAIGHT, chambered } from "./defs/frontKick";
 import { move as jump } from "./defs/jump";
 import { HOLD_MS, KNEE_BEND, KNEE_LIFT, RISE_MS, grounded, raised } from "./defs/knee";
-import { drawn, handToShoulder } from "./defs/moonArrow";
-import { WINDUP_MS, handsDrop, loaded } from "./defs/stakeThrust";
-import { WIDE } from "./defs/sunBurst";
+import { DRAW_MS, RELEASE, drawn, handToShoulder } from "./defs/moonArrow";
+import { DRIVEN_DROP, DRIVEN_ELBOW, GRIP, WINDUP_MS, handsDrop, loaded } from "./defs/stakeThrust";
+import { FLUNG_ELBOW, TOGETHER_MS, WIDE } from "./defs/sunBurst";
+import { RAISED_MS } from "./defs/thunderbolt";
+import { SIDE, TRAVEL, hipsY } from "./defs/tridentSweep";
 import {
   BENT, OPENING_DEGREES, OPENING_MS, SHOULDER_HEIGHT, SNAP_MS, STRAIGHT, armOut, bodyWidth, otherSide, torsoLength,
   wristGap, wristOut, wristRise,
@@ -212,8 +214,8 @@ const drawnFor = (bow: Side): Read => (history) => {
 };
 const arrow = (bow: Side): Measure[] => [
   ...out(bow),
-  atLeast(`${otherSide(bow)} hand from its shoulder, shoulder widths`, 0.75, now((frame) => handToShoulder(frame, otherSide(bow)))),
-  atLeast(`ms the draw was held (${bow} arm out, other hand at its shoulder)`, 150, drawnFor(bow)),
+  atLeast(`${otherSide(bow)} hand from its shoulder, shoulder widths`, RELEASE, now((frame) => handToShoulder(frame, otherSide(bow)))),
+  atLeast(`ms the draw was held (${bow} arm out, other hand at its shoulder)`, DRAW_MS, drawnFor(bow)),
 ];
 const chain = (side: Side): Measure[] => [
   ...thrust(side),
@@ -227,7 +229,7 @@ const dodge = (way: -1 | 1): Measure[] =>
 const offset = (frame: PoseFrame, wrist: number): number => joint(frame.image, wrist).x - shoulderCenter(frame).x;
 /** How far inside the band from head to hips the wrists are, in shoulder widths. Negative is outside it. */
 const inBand: FrameRead = (frame) => {
-  const hips = (joint(frame.image, JOINT.leftHip).y + joint(frame.image, JOINT.rightHip).y) / 2;
+  const hips = hipsY(frame);
   const left = joint(frame.image, JOINT.leftWrist).y;
   const right = joint(frame.image, JOINT.rightWrist).y;
   return Math.min(Math.min(left, right) - joint(frame.image, JOINT.nose).y, hips - Math.max(left, right)) / shoulderWidth(frame);
@@ -285,7 +287,7 @@ export const MEASURES: Readonly<Record<string, readonly (readonly Measure[])[]>>
   )),
   thunderbolt: eitherSide((side) => chop(
     over(`${side} wrist below its shoulder, shoulder widths`, 0, now(below(side, shoulderOf(side))), 1),
-    `${side} hand was over the nose`, 500, overNose(side),
+    `${side} hand was over the nose`, RAISED_MS, overNose(side),
   )),
   knife_hand: one(
     over("right wrist out to its side, shoulder widths", FLUNG, now((frame) => wristOut(frame, "right"))),
@@ -296,37 +298,37 @@ export const MEASURES: Readonly<Record<string, readonly (readonly Measure[])[]>>
   ),
   aegis_push: one(
     under("hand furthest off shoulder height, torso lengths", SHOULDER_HEIGHT, now(both(offLevel, Math.max))),
-    atLeast("less straight elbow, degrees", 140, now(both(elbow, Math.min))),
+    atLeast("less straight elbow, degrees", PUSH_ELBOW, now(both(elbow, Math.min))),
     under("gap between the wrists, shoulder widths", MAX_GAP, now(wristGap)),
-    atMost("ms since both hands were at the chest, elbows bent", 450, since(atChest)),
+    atMost("ms since both hands were at the chest, elbows bent", CHEST_MS, since(atChest)),
     atLeast("nearer wrist's reach forward, 3D shoulder widths", ON * FULL_REACH,
       now(both((side) => (frame, baseline) => reach(frame, side, baseline), Math.min))),
   ),
   sun_burst: one(
-    over("less straight elbow, degrees", ARM_STRAIGHT, now(both(elbow, Math.min))),
+    over("less straight elbow, degrees", FLUNG_ELBOW, now(both(elbow, Math.min))),
     under("hand furthest off shoulder height, torso lengths", SHOULDER_HEIGHT, now(both(offLevel, Math.max))),
     over("nearer wrist out to its side of its shoulder, 3D shoulder widths", WIDE, now(both((side) => (frame, baseline) => {
       const across = joint(frame.world, wristOf(side)).x - joint(frame.world, shoulderOf(side)).x;
       return (side === "left" ? -across : across) / bodyWidth(frame, baseline);
     }, Math.min))),
-    atMost("ms since the hands were together (under 0.8 shoulder widths)", 500, since((frame) => wristGap(frame) < 0.8)),
+    atMost("ms since the hands were together (under 0.8 shoulder widths)", TOGETHER_MS, since((frame) => wristGap(frame) < 0.8)),
   ),
   moon_arrow: eitherSide(arrow),
   stake_thrust: one(
-    under("gap between the wrists, shoulder widths", 0.75, now(wristGap)),
-    over("hands below the shoulders, shoulder widths", 0.9, now(handsDrop)),
-    over("less straight elbow, degrees", 135, now(both(elbow, Math.min))),
+    under("gap between the wrists, shoulder widths", GRIP, now(wristGap)),
+    over("hands below the shoulders, shoulder widths", DRIVEN_DROP, now(handsDrop)),
+    over("less straight elbow, degrees", DRIVEN_ELBOW, now(both(elbow, Math.min))),
     atMost("ms since the hands were loaded at the chest", WINDUP_MS, since(loaded)),
   ),
   trident_sweep: one(
     atLeast("wrists inside head-to-hip height now, shoulder widths", 0, now(inBand), 1),
     atLeast("wrists inside head-to-hip height 350 ms ago, shoulder widths", 0, ago(350, (_, earlier) => inBand(earlier, null)), 1),
-    atLeast("hands' distance from the chest line, start and end on opposite sides, shoulder widths", 0.3, sweep((left, right) => {
+    atLeast("hands' distance from the chest line, start and end on opposite sides, shoulder widths", SIDE, sweep((left, right) => {
       const from = (left[0] + right[0]) / 2;
       const to = (left[1] + right[1]) / 2;
       return from * to < 0 ? Math.min(Math.abs(from), Math.abs(to)) : 0;
     })),
-    atLeast("slower wrist's travel in 350 ms, both the same way, shoulder widths", 1, sweep((left, right) => {
+    atLeast("slower wrist's travel in 350 ms, both the same way, shoulder widths", TRAVEL, sweep((left, right) => {
       const [a, b] = [left[1] - left[0], right[1] - right[0]];
       return a * b > 0 ? Math.min(Math.abs(a), Math.abs(b)) : 0;
     })),
