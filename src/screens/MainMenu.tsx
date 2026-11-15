@@ -3,7 +3,8 @@
 // Story mode and the dojo start the webcam, or the keyboard when the "Play with" setting says so (Account, Settings).
 // Behind them: the storm in Scylla's strait (MenuScene).
 import { speakLine } from "../audio/voice";
-import { Button, Logo, Panel } from "../ui/pebble";
+import { Button, Panel } from "../ui/pebble";
+import { SetTitle } from "../ui/set/Set";
 import { BronzeDefs, DEVICES, ShieldCard } from "./menuShields";
 import { MenuScene } from "./MenuScene";
 
@@ -26,7 +27,7 @@ export function MainMenu(props: {
     <Panel as="main" className="menu menu--title">
       <MenuScene />
       <h1 className="sr-only">Odyssey Dojo</h1>
-      <Logo height={Math.min(250, Math.max(130, Math.round(window.innerHeight * 0.22)))} />
+      <SetTitle as="p">Odyssey Dojo</SetTitle>
       <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Learn real self-defense, one monster at a time.</p>
       <nav className="menu-cards" aria-label="Main menu">
         <BronzeDefs />
