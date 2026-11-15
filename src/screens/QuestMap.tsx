@@ -7,29 +7,34 @@ import { Button, Panel } from "../ui/pebble";
 import { BronzeDefs, GALLEY } from "./menuShields";
 import { HARBOUR_AT, PlaceArt, STOP_SLOTS, TROY, TROY_AT } from "./questPlaces";
 import { Sea, SeaDefs } from "./questSea";
+import { QuestLook } from "./QuestLook";
+import { LOOK_ROUTE, type Look } from "./questLookData";
+import { LOOK } from "../ui/lookSwitch";
 import "./menuScene.css";
 import "./questMap.css";
 
 const W = 1600, H = 900, ART = 224;
 
-type Point = readonly [number, number];
-type Box = readonly [number, number, number, number];
+export type Point = readonly [number, number];
+export type Box = readonly [number, number, number, number];
 
 /** The course on the 1600 x 900 scene: Troy, the waterline in front of each stop, then Ithaca's harbour. */
-export function routePoints(stops: number): readonly Point[] {
+export function routePoints(stops: number, look?: Look | null): readonly Point[] {
+  const table = look ? LOOK_ROUTE[look] : null;
+  if (table) return [table.troy, ...Array.from({ length: stops }, (_, i): Point => table.slots[i] ?? [200 + ((i * 220) % 1200), 520]), table.harbour];
   const slot = (i: number): Point => STOP_SLOTS[i] ?? [200 + ((i * 220) % 1200), 520];
   return [[TROY_AT[0] + 40, TROY_AT[1] + 14], ...Array.from({ length: stops }, (_, i): Point => [slot(i)[0], slot(i)[1] + 8]), HARBOUR_AT];
 }
 
 /** Catmull-Rom through the points, as one cubic per leg: start, two controls, end. */
-function legs(p: readonly Point[]): (readonly [Point, Point, Point, Point])[] {
+export function legs(p: readonly Point[]): (readonly [Point, Point, Point, Point])[] {
   return p.slice(0, -1).map((a, i) => {
     const b = p[i + 1] ?? a, z = p[i - 1] ?? a, n = p[i + 2] ?? b;
     return [a, [a[0] + (b[0] - z[0]) / 6, a[1] + (b[1] - z[1]) / 6], [b[0] - (n[0] - a[0]) / 6, b[1] - (n[1] - a[1]) / 6], b] as const;
   });
 }
 
-const at = (leg: readonly [Point, Point, Point, Point], t: number): Point => {
+export const at = (leg: readonly [Point, Point, Point, Point], t: number): Point => {
   const u = 1 - t, k = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t] as const;
   return [leg.reduce((s, p, i) => s + p[0] * (k[i] ?? 0), 0), leg.reduce((s, p, i) => s + p[1] * (k[i] ?? 0), 0)];
 };
@@ -60,6 +65,7 @@ export function QuestMap(props: {
   onStyle: () => void;
   onMenu: () => void;
 }) {
+  if (LOOK) return <QuestLook look={LOOK} {...props} />;
   const { enemies, cleared } = props;
   // Every stop won: the journey is done and Ithaca is lit.
   const home = enemies.length > 0 && enemies.every((enemy) => cleared.includes(enemy.id));
