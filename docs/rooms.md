@@ -97,6 +97,8 @@ A host with no camera still cannot start a shared fight. With `--no-host-camera`
 
 `--no-host-camera` now follows the path a host with no camera should get: no god scan, no calibration, the room kept, the keyboard. On `cbb3b81` it still fails as described above: the host's page is back on the Multiplayer screen with no room open 0.3 seconds after **Start**, with no word about why, and the guest waits for ever. With the failed camera handled in `src/App.tsx` (keep the room, play on the keyboard) the `fight` and `host-leaves` runs pass with `--no-host-camera`.
 
+**After the storm restyle (15 Nov, `9db57a4`):** the script went stale in two more places, and one of them is a fault in the game. At calibration the first button is now **Back**, which leaves for the map; the script takes the button that is not Back. And the god scan's **Skip (Esc)** button is off the page: its box is at -26, 744 on a 1280 x 720 page, because the storm kit's button rule (`:root:root :is(.set-btn, .pb-btn, .dojo-button)` in `src/ui/set/set.css`, `position: relative`) is stronger than `.pb-btn.scan-skip { position: fixed }` in `src/screens/godScan.css` and `calibration.css`. The Esc and S keys still skip, and the scan ends by itself after 30 seconds. The script tries the button for 3 seconds, then presses Esc, and the step's line says which it used and why. With these, all three runs pass with `--dev`, on the stream and with `--poll`; `--no-host-camera` still fails as above.
+
 What it does not show: two machines, a real phone, a real network or a tunnel, a camera on either side, or sound.
 
 ## Not covered
