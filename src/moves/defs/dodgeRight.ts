@@ -1,5 +1,6 @@
 import type { MoveDef } from "../../core/types";
 import { sideStep } from "./dodgeLeft";
+import { bodyWent } from "../looseSignals";
 
 export const move: MoveDef = {
   id: "dodge_right",
@@ -12,5 +13,8 @@ export const move: MoveDef = {
   teaches: "Moving sideways, not straight back, takes you out of an attack's path so you can get away",
   detect(history) {
     return sideStep(history, 1);
+  },
+  detectAsked(history) {
+    return Math.max(sideStep(history, 1), bodyWent(history, "right"));
   },
 };

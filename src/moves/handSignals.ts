@@ -413,7 +413,7 @@ export const MOVED_MS = 500;
 const OTHER_SHARE = 0.75;
 
 /** How far this arm has moved on `frame` since `first`, as a share of the least that counts: 1 or more is a clear movement. */
-function armMovedBy(frame: PoseFrame, first: PoseFrame, side: Side): number {
+export function armMovedBy(frame: PoseFrame, first: PoseFrame, side: Side): number {
   const ids = armJoints(side);
   const bendLift = seen(frame, ids.elbow) && seen(first, ids.elbow)
     ? Math.max(Math.abs(elbowAngle(frame, side) - elbowAngle(first, side)) / MOVED_ELBOW, Math.abs(upperArmLift(frame, side) - upperArmLift(first, side)) / MOVED_LIFT)
