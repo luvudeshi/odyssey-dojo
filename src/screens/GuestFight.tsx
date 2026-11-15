@@ -128,9 +128,8 @@ export function GuestFight(props: { joined: Joined; onOver: () => void; onLeave:
     return () => { window.clearInterval(timer); };
   }, [link]);
 
-  // The host left, so the room is gone: a reload must not try that seat again.
+  // peer:false also comes on a host reload or blip, so the seat is kept until the guest leaves; a dead seat is dropped when its rejoin is refused.
   const hostGone = sawHost && !link.hostHere();
-  useEffect(() => { if (hostGone) forgetSeat(tabStore()); }, [hostGone]);
 
   const leave = (): void => {
     forgetSeat(tabStore());
