@@ -1,96 +1,155 @@
-/* The training dojo. A dark screen of its own: colours and type come from the theme's variables (src/theme.css)
-   where they exist, with fallbacks, so it reads the same wherever it is mounted. Laid out for 1280 x 720. */
+/* The training dojo: the forge hall. Black volcanic glass with ice on the defending wall and lava on the striking wall
+   (ForgeScene.tsx), in the fight HUD's Obsidian Rift colours (src/hud/sky/rift.css and card.css, copied here, not
+   imported). The styles are shards of glass, the figure stands in a cut-glass frame rimmed in lava for a strike and ice
+   for a defence, and the grade burns over a glass slab. Only transform and opacity animate; the one CSS filter is on
+   static titles. Laid out for 1280 x 720 and up. */
 .dojo {
-  --dj-bg: var(--pb-ground, #15100e);
-  --dj-deep: var(--pb-ground-deep, #0d0a09);
-  --dj-ink: var(--pb-text, #f6eedc);
-  --dj-dim: var(--pb-text-dim, #d3c7ad);
-  --dj-accent: var(--pb-ochre, #d9a34a);
-  --dj-edge: var(--pb-terra, #b8553a);
-  --dj-line: var(--pb-lead, #9c9b93);
-  --dj-focus: var(--pb-focus, #f6eedc);
-  --dj-excellent: #8fd67a;
-  --dj-good: var(--pb-ochre-light, #e2b25d);
-  --dj-needs: #f0957c;
+  --dj-ink: #f6f0ff;
+  --dj-dim: #ddd2c4;
+  --dj-violet: #d6c8ff;
+  --dj-ice: #9fd8ff;
+  --dj-ice-text: #a8dcff;
+  --dj-ember: #ff6a14;
+  --dj-hot: #ffd890;
+  --dj-amber: #ffb04a;
+  --dj-line: #4a4258;
+  --dj-plate: #07060a;
+  --dj-excellent: #7fe08a;
+  --dj-good: #ffc040;
+  --dj-needs: #ff7a5a;
+  --dj-font: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif;
+  --dj-glass: linear-gradient(160deg, #2a2436 0%, #14111a 28%, #06050a 66%, #1a1622 100%);
+  --dj-lava: linear-gradient(#fff4c0, #ffd040 30%, #ff8410 62%, #c8300a);
+  --dj-octagon: polygon(26px 0, calc(100% - 26px) 0, 100% 26px, 100% calc(100% - 26px), calc(100% - 26px) 100%, 26px 100%, 0 calc(100% - 26px), 0 26px);
+  --dj-chip: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
   --dojo-time: 0;
-  position: relative; box-sizing: border-box; display: flex; flex-direction: column; gap: 1rem;
+  position: relative; isolation: isolate; box-sizing: border-box; display: flex; flex-direction: column; gap: 1rem;
   width: 100%; min-height: 100vh; padding: 1.25rem 2rem 1.5rem; overflow: hidden;
-  color: var(--dj-ink); background: var(--dj-bg); text-align: left; line-height: 1.2;
+  color: var(--dj-ink); background: #050407; text-align: left; line-height: 1.2;
   font-family: var(--pb-font-body, Optima, "Gill Sans", Palatino, "Trebuchet MS", sans-serif);
+  cursor: url("../../screens/cursor/arrowhead.svg") 1 1, auto;
 }
-.dojo p, .dojo h1, .dojo h2, .dojo ul, .dojo ol { margin: 0; padding: 0; }
+.dojo :is(button, kbd) { cursor: url("../../screens/cursor/arrowhead-hot.svg") 1 1, pointer; }
+:where(.dojo) :where(p, h1, h2, ul, ol) { margin: 0; padding: 0; }
+.dojo > .dojo-scene { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
+.dojo > :not(.dojo-scene, .dojo-camera) { position: relative; z-index: 1; }
+
+/* Titles burn like the boss's name in the fight: lava letters, drawn once. */
+.dojo-title, .dojo-end-title {
+  font-family: var(--dj-font); font-weight: 700; text-transform: uppercase; color: transparent;
+  background: var(--dj-lava); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 8px #ff5a0a99) drop-shadow(0 2px 2px #000);
+}
 
 .dojo-top { display: flex; align-items: center; gap: 2rem; min-height: 3rem; }
-.dojo-title { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dj-accent); }
-.dojo-title span { color: var(--dj-dim); letter-spacing: 0.04em; }
-.dojo-progress { font-size: 1.4rem; color: var(--dj-dim); }
+.dojo-title { font-size: 1.5rem; letter-spacing: 0.3em; }
+.dojo-progress { font-family: var(--dj-font); font-size: 1.15rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--dj-ice-text); }
 .dojo-quit { margin-left: auto; }
 .dojo-points + .dojo-quit { margin-left: 0; }
-.dojo-points { margin-left: auto !important; font-size: 1.5rem; color: var(--dj-dim); }
-.dojo-points span { letter-spacing: 0.12em; text-transform: uppercase; }
-.dojo-points b { display: inline-block; min-width: 3ch; font-size: 2.5rem; line-height: 1; text-align: right; color: var(--dj-ink); font-variant-numeric: tabular-nums; }
+.dojo-points { margin-left: auto !important; padding: 0.2rem 1.6rem; color: var(--dj-violet); background: var(--dj-glass); clip-path: var(--dj-chip); }
+.dojo-points span { font-family: var(--dj-font); font-size: 1rem; letter-spacing: 0.3em; text-transform: uppercase; }
+.dojo-points b {
+  display: inline-block; min-width: 3ch; font-family: var(--dj-font); font-size: 2.3rem; line-height: 1.1; text-align: right; font-variant-numeric: tabular-nums;
+  color: #ffc040; text-shadow: 0 0 8px #ff5a0a, 0 0 16px #ff5a0a99, 0 2px 2px #000;
+}
 
 .dojo-button {
-  padding: 0.55rem 1.4rem; font-family: inherit; font-size: 1.25rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.06em; cursor: pointer;
-  color: var(--dj-ink); background: var(--dj-deep); border: 2px solid var(--dj-line); border-radius: var(--pb-radius, 7px);
+  padding: 0.55rem 1.4rem; font-family: inherit; font-size: 1.25rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.06em;
+  color: var(--dj-ink); background: var(--dj-glass); border: 2px solid var(--dj-line); border-radius: 4px; box-shadow: inset 0 1px 0 #ffffff22;
 }
-.dojo-button:hover { border-color: var(--dj-accent); }
-.dojo-button.primary { color: var(--pb-text-on-ochre, #1b1410); background: var(--dj-accent); border-color: var(--dj-accent); }
-.dojo-button:focus-visible { outline: 3px solid var(--dj-focus); outline-offset: 4px; }
+.dojo-button:hover { border-color: var(--dj-ember); }
+.dojo-button.primary { color: #1b0c04; background: linear-gradient(#ffe8a8, #ff9a2a 60%, #c8400c); border-color: var(--dj-hot); }
+.dojo-button:focus-visible { outline: 3px solid #f0faff; outline-offset: 5px; }
 
+/* The practice view: the figure in a cut-glass frame on the left, the move, its time and the grade on the right. */
 .dojo-stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 2.5rem; min-height: 0; }
-.dojo-outline { flex: none; }
-/* The outline keeps its figure and its checklist; the name and the how line are said once, large, beside it. */
-.dojo-outline .mg-kind, .dojo-outline .mg-name, .dojo-outline .mg-how { display: none; }
-.dojo-outline .move-guide { --mg-figure: 440px; }
+.dojo-outline { --rim: var(--dj-ember); --rim-light: var(--dj-hot); position: relative; flex: none; }
+/* The rim's light on the glass around the frame. */
+.dojo-outline::after { content: ""; position: absolute; inset: -34px; z-index: -1; background: radial-gradient(closest-side, color-mix(in srgb, var(--rim) 40%, transparent) 72%, transparent); }
+.dojo-outline:has(.defend) { --rim: var(--dj-ice); --rim-light: #f0faff; }
+.dojo-outline:has([data-matched="true"]) { --rim: var(--dj-excellent); --rim-light: #e0ffe8; }
+.dojo-outline::before { content: ""; position: absolute; inset: 0; clip-path: var(--dj-octagon); background: linear-gradient(160deg, var(--rim-light), var(--rim) 30%, #1a0a10 60%, var(--rim)); }
+/* The frame keeps its figure and its checklist; the name and the how line are said once, large, beside it. */
+.dojo-outline .mg-name, .dojo-outline .mg-how { display: none; }
+.dojo-outline .move-guide {
+  --mg-figure: 400px; --mg-ink: #f6f0ff; --mg-accent: #ffa040; --mg-good: var(--dj-excellent); --mg-bg: #06050a;
+  position: relative; margin: 4px; padding: 1.2rem 2rem 1.2rem 1rem; clip-path: var(--dj-octagon); border: 0; border-radius: 0; box-shadow: none;
+  background: radial-gradient(ellipse at 30% 92%, #ff6a1430, transparent 45%), var(--dj-glass);
+}
+.dojo-outline .move-guide.defend { --mg-accent: var(--dj-ice); background: radial-gradient(ellipse at 30% 92%, #4aa0ff30, transparent 45%), var(--dj-glass); }
 .dojo-outline .mg-words { width: 17rem; min-width: 0; }
-.dojo[data-phase="go"] .dojo-outline .move-guide { border-color: var(--dj-accent); }
+/* The kind on a glass chip, as on the fight's prompt card. */
+.dojo-outline .mg-kind {
+  width: fit-content; margin-bottom: 1rem; padding: 0.3rem 1.4rem; font-family: var(--dj-font); font-size: 1.15rem; letter-spacing: 0.32em;
+  color: var(--mg-accent); background: var(--dj-plate); clip-path: var(--dj-chip); box-shadow: inset 0 0 0 2px var(--mg-accent);
+}
+.dojo-outline .mg-match { font-family: var(--dj-font); font-size: 1.3rem; letter-spacing: 0.12em; }
+.dojo-outline .mg-match-bar { border-color: var(--dj-line); background: var(--dj-plate); }
+.dojo-outline .mg-depth { color: var(--mg-accent); }
+/* Without motion every pose of the move stands in a row; keep the row inside the frame. */
+.dojo-outline .mg-steps { max-width: 34rem; flex-wrap: wrap; justify-content: center; }
+.dojo-outline .mg-steps .mg-svg { height: calc(var(--mg-figure) * 0.42); }
 
-.dojo-side { flex: 1 1 22rem; min-width: 18rem; max-width: 30rem; display: flex; flex-direction: column; gap: 0.8rem; }
-.dojo-cue { font-size: 1.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-dim); }
-.dojo[data-phase="go"] .dojo-cue { color: var(--dj-accent); }
-.dojo-name { font-size: 4.25rem; font-weight: 700; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; overflow-wrap: break-word; }
-.dojo-how { font-size: 1.9rem; line-height: 1.2; min-height: 2.4em; }
-.dojo-time { height: 1rem; background: var(--dj-deep); border: 2px solid var(--dj-line); border-radius: 0.5rem; overflow: hidden; }
-.dojo-time-fill { height: 100%; background: var(--dj-dim); transform-origin: left center; transform: scaleX(var(--dojo-time)); }
-.dojo[data-phase="go"] .dojo-time-fill { background: var(--dj-accent); }
+/* The words beside the frame sit on a pool of shadow, so the lava cracks behind never cut through them. */
+.dojo-side {
+  flex: 1 1 22rem; min-width: 18rem; max-width: 30rem; display: flex; flex-direction: column; gap: 0.8rem;
+  padding: 1.5rem; background: radial-gradient(closest-side, #050407e0 55%, transparent);
+}
+.dojo-cue {
+  width: fit-content; min-height: 1.2em; padding: 0.25rem 1.4rem; font-family: var(--dj-font); font-size: 1.2rem; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--dj-violet); background: var(--dj-plate); clip-path: var(--dj-chip); box-shadow: inset 0 0 0 2px var(--dj-line);
+}
+.dojo[data-phase="go"] .dojo-cue { color: #1b0c04; background: linear-gradient(#ffe8a8, #ff8a2a); box-shadow: none; }
+.dojo[data-phase="result"] .dojo-cue { visibility: hidden; }
+.dojo-name { font-family: var(--dj-font); font-size: 4rem; font-weight: 700; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; overflow-wrap: break-word; color: #fff8ee; text-shadow: 0 3px 0 #000, 0 0 28px #9fd8ff40; }
+.dojo-how { font-size: 1.75rem; line-height: 1.2; min-height: 2.4em; color: #efe6d8; text-shadow: 0 2px 4px #000; }
+.dojo-time {
+  height: 1.2rem; overflow: hidden; background: var(--dj-plate); box-shadow: inset 0 0 0 2px var(--dj-line);
+  clip-path: polygon(0 50%, 14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%);
+}
+.dojo-time-fill { height: 100%; background: linear-gradient(#e6f6ff, #5f8fb8); transform-origin: left center; transform: scaleX(var(--dojo-time)); }
+.dojo[data-phase="go"] .dojo-time-fill { background: linear-gradient(#ffe0a0, #ff7a22 50%, #c8340a); }
 .dojo-key { font-size: 1.25rem; color: var(--dj-dim); }
-.dojo-key kbd { padding: 0.05em 0.5em; font: inherit; font-weight: 700; color: var(--dj-ink); border: 2px solid var(--dj-line); border-radius: 5px; }
+.dojo-key kbd { padding: 0.05em 0.5em; font: inherit; font-weight: 700; color: #fff6ea; background: #14111a; border: 2px solid var(--dj-ice); border-radius: 3px; box-shadow: 0 0 10px -2px var(--dj-ice); }
 
-/* The grade: the largest words on the screen, with the points and one tip under them. */
+/* The grade: the largest words on the screen, with the points and one tip on a glass slab under them. */
 .dojo-result { display: flex; flex-direction: column; gap: 0.35rem; min-height: 11rem; animation: dojo-pop 0.22s ease-out; }
-.dojo-grade { font-size: 4.5rem; font-weight: 700; line-height: 1; letter-spacing: 0.01em; }
-.dojo-gain { font-size: 3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-.dojo-tip { font-size: 1.6rem; line-height: 1.25; color: var(--dj-ink); }
+.dojo-grade { font-family: var(--dj-font); font-size: 4rem; font-weight: 700; line-height: 1; letter-spacing: 0.01em; text-shadow: 0 3px 0 #000, 0 0 24px currentColor; }
+.dojo-gain { font-family: var(--dj-font); font-size: 3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 #000; }
+.dojo-tip {
+  margin-top: 0.6rem; padding: 0.8rem 1.1rem; font-size: 1.5rem; line-height: 1.25; color: var(--dj-ink);
+  background: linear-gradient(100deg, #231d2e, #07060aee); box-shadow: inset 4px 0 0 var(--dj-ice), inset 0 0 0 1px var(--dj-line);
+}
 .dojo[data-tier="excellent"] .dojo-grade, .dojo[data-tier="excellent"] .dojo-gain { color: var(--dj-excellent); }
 .dojo[data-tier="good"] .dojo-grade, .dojo[data-tier="good"] .dojo-gain { color: var(--dj-good); }
 .dojo[data-tier="needs_work"] .dojo-grade, .dojo[data-tier="needs_work"] .dojo-gain { color: var(--dj-needs); }
-.dojo[data-tier="needs_work"] .dojo-grade { font-size: 4rem; }
+.dojo[data-tier="needs_work"] .dojo-grade { font-size: 3rem; }
 @keyframes dojo-pop { from { transform: scale(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
 
-/* One stone per repetition: empty, then the colour of its grade with its points under it. */
+/* One glass gem per repetition: dark, then the colour of its grade with its points under it. */
 .dojo-dots { display: flex; gap: 1.1rem; list-style: none; margin-top: 0.4rem !important; }
 .dojo-dots li { display: grid; justify-items: center; gap: 0.3rem; min-width: 3.4rem; font-size: 1.25rem; font-weight: 700; color: var(--dj-dim); font-variant-numeric: tabular-nums; }
-.dojo-dot { width: 2rem; height: 2rem; box-sizing: border-box; border: 3px solid var(--dj-line); border-radius: 50%; background: var(--dj-deep); }
-.dojo-dots li[data-now] .dojo-dot { border-color: var(--dj-ink); box-shadow: 0 0 0 3px var(--dj-accent); }
+.dojo-dot { width: 2.2rem; height: 2.5rem; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: linear-gradient(160deg, #4a4258, #14111a); }
+.dojo-dots li[data-now] .dojo-dot { background: linear-gradient(160deg, #f0faff, var(--dj-ice)); }
 .dojo-dots li[data-tier="excellent"] { color: var(--dj-excellent); }
 .dojo-dots li[data-tier="good"] { color: var(--dj-good); }
 .dojo-dots li[data-tier="needs_work"] { color: var(--dj-needs); }
-.dojo-dots li[data-tier="excellent"] .dojo-dot { background: var(--dj-excellent); border-color: var(--dj-excellent); }
-.dojo-dots li[data-tier="good"] .dojo-dot { background: var(--dj-good); border-color: var(--dj-good); }
-.dojo-dots li[data-tier="needs_work"] .dojo-dot { border-color: var(--dj-needs); border-style: dashed; }
+.dojo-dots li[data-tier="excellent"] .dojo-dot { background: linear-gradient(160deg, #e0ffe8, #3aa860); }
+.dojo-dots li[data-tier="good"] .dojo-dot { background: linear-gradient(160deg, #fff0c8, #e09a20); }
+.dojo-dots li[data-tier="needs_work"] .dojo-dot { background: linear-gradient(160deg, #ffc0a0, #c8340a); }
 
-/* The end: the total, the highlights, and what to work on. */
+/* The end: the total, the highlights and what to work on, on two glass slabs. */
 .dojo-end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; text-align: center; }
-.dojo-end-title { font-size: 2.25rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-accent); }
-.dojo-total { font-size: 2rem; color: var(--dj-ink); }
-.dojo-total b { font-size: 4.5rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.dojo-total span { color: var(--dj-dim); }
-.dojo-closing { font-size: 1.6rem; color: var(--dj-dim); }
+.dojo-end-title { font-size: 2.6rem; letter-spacing: 0.22em; }
+.dojo-total { font-size: 2rem; color: var(--dj-ink); text-shadow: 0 2px 6px #000; }
+.dojo-total b { font-family: var(--dj-font); font-size: 4.5rem; line-height: 1; font-variant-numeric: tabular-nums; color: #ffc040; text-shadow: 0 0 10px #ff5a0a, 0 0 22px #ff5a0a99, 0 2px 2px #000; }
+.dojo-total span { color: var(--dj-violet); }
+.dojo-closing { font-size: 1.6rem; color: var(--dj-dim); text-shadow: 0 2px 6px #000; }
 .dojo-columns { display: flex; align-items: stretch; justify-content: center; gap: 1.5rem; width: 100%; max-width: 72rem; margin-top: 0.4rem; }
-.dojo-card { flex: 1 1 0; padding: 1.1rem 1.5rem 1.3rem; text-align: left; background: var(--dj-deep); border: 3px solid var(--dj-edge); border-radius: var(--pb-radius-panel, 14px); }
-.dojo-card:first-child { flex: 0 1 24rem; }
-.dojo-card h2 { margin-bottom: 0.6rem; font-size: 1.5rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-accent); }
+.dojo-card { flex: 1 1 0; padding: 1.3rem 1.8rem 1.5rem; text-align: left; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='7,1 93,1 99,9 99,91 93,99 7,99 1,91 1,9' fill='none' stroke='%234a4258' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat, var(--dj-glass); clip-path: polygon(7% 0, 93% 0, 100% 9%, 100% 91%, 93% 100%, 7% 100%, 0 91%, 0 9%); }
+.dojo-card:first-child { flex: 0 1 24rem; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='7,1 93,1 99,9 99,91 93,99 7,99 1,91 1,9' fill='none' stroke='%239fd8ff' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat, var(--dj-glass); }
+.dojo-card:last-child { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='7,1 93,1 99,9 99,91 93,99 7,99 1,91 1,9' fill='none' stroke='%23ff6a14' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat, var(--dj-glass); }
+.dojo-card h2 { margin-bottom: 0.6rem; font-family: var(--dj-font); font-size: 1.4rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dj-ice-text); }
+.dojo-card:last-child h2 { color: var(--dj-amber); }
 .dojo-card ul { display: grid; gap: 0.55rem; list-style: none; }
 .dojo-card li, .dojo-card p { font-size: 1.4rem; line-height: 1.3; }
 .dojo-card li span { color: var(--dj-dim); }
@@ -98,22 +157,53 @@
 .dojo-card li[data-tier="good"] b { color: var(--dj-good); }
 .dojo-card li[data-tier="needs_work"] b { color: var(--dj-needs); }
 /* What pressing Done changes in the fights. */
-.dojo-tuned { max-width: 72rem; font-size: 1.4rem; line-height: 1.25; text-wrap: balance; color: var(--dj-ink); }
+.dojo-tuned { max-width: 72rem; font-size: 1.4rem; line-height: 1.25; text-wrap: balance; color: var(--dj-ink); text-shadow: 0 2px 6px #000; }
 .dojo-buttons { display: flex; gap: 1.25rem; margin-top: 0.4rem; }
 .dojo-buttons .dojo-button { padding: 0.75rem 2rem; font-size: 1.5rem; }
 
-/* Opened before a style was chosen: one button per style. */
+/* Opened before a style was chosen: one shard of glass per style, each with a vein of lava. */
 .dojo-pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; text-align: center; }
-.dojo-pick .dojo-closing { max-width: 46rem; }
-.dojo-styles { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; max-width: 72rem; margin: 0.6rem 0; }
-.dojo-style { display: grid; gap: 0.35rem; width: 13.5rem; padding: 1rem 0.9rem; text-align: center; border-width: 3px; }
-.dojo-style b { font-size: 1.75rem; color: var(--dj-accent); }
-.dojo-style span { font-size: 1.15rem; font-weight: 500; letter-spacing: 0; line-height: 1.3; color: var(--dj-ink); }
+.dojo-pick .dojo-end-title { font-size: 3rem; }
+.dojo-pick .dojo-closing { max-width: 46rem; color: #e6dcef; }
+.dojo-styles { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6rem; max-width: 76rem; margin: 1.6rem 0 1rem; }
+.dojo-style {
+  --shard: polygon(14% 0, 86% 4%, 100% 24%, 95% 84%, 76% 100%, 20% 96%, 0 78%, 5% 15%);
+  --vein: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke-linejoin='round'%3E%3Cpath d='M95 0 L88 18 L96 34 L86 56 L93 72 L84 100 M86 56 L77 72 L79 90' stroke='%23ff6a10' stroke-opacity='0.45' stroke-width='7' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M95 0 L88 18 L96 34 L86 56 L93 72 L84 100 M86 56 L77 72 L79 90' stroke='%23ffd890' stroke-width='1.6' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
+  position: relative; isolation: isolate; display: grid; align-content: center; gap: 0.35rem; width: 13rem; min-height: 16rem; padding: 2rem 1.9rem 2rem 1.3rem;
+  text-align: center; background: none; border: 0; border-radius: 0; box-shadow: none; transition: transform 0.15s ease-out;
+}
+.dojo-style::before, .dojo-style::after { content: ""; position: absolute; z-index: -1; clip-path: var(--shard); }
+.dojo-style::before { inset: 0; background: linear-gradient(165deg, var(--dj-ice), #3a3348 32%, #3a3348 62%, var(--dj-ember)); }
+.dojo-style::after { inset: 3px; background: var(--vein) 0 0 / 100% 100% no-repeat, radial-gradient(ellipse at 70% 100%, #ff6a1440, transparent 60%), var(--dj-glass); }
+.dojo-style b { font-family: var(--dj-font); font-size: 1.35rem; letter-spacing: 0.1em; text-transform: uppercase; color: #fff8ee; text-shadow: 0 0 14px #ff6a14, 0 2px 0 #000; }
+.dojo-style span { font-size: 1.12rem; font-weight: 500; line-height: 1.3; letter-spacing: 0; color: #e6dcef; text-shadow: 0 1px 2px #000; }
+.dojo-style:hover { box-shadow: none; transform: translateY(-6px); }
+.dojo-style:hover::before { background: linear-gradient(165deg, var(--dj-hot), var(--dj-ember) 40%, #6a1a04 70%, var(--dj-hot)); }
+.dojo-style:focus-visible { outline: 3px solid #f0faff; outline-offset: 8px; }
+.dojo-style:focus-visible::before { background: linear-gradient(165deg, #f0faff, var(--dj-ice) 45%, #f0faff); }
+.dojo-pick > .dojo-key { padding: 0.35rem 1.6rem; color: #e6f6ff; background: linear-gradient(#231d2e, #07060a); clip-path: var(--dj-chip); }
 
-/* The player's own picture, small, in the corner. Flipped so it moves like a mirror. */
-.dojo-camera { position: absolute; right: 2rem; bottom: 1.5rem; }
-.dojo-camera video { display: block; width: 11rem; transform: scaleX(-1); border: 2px solid var(--dj-line); border-radius: 6px; }
+/* The player's own picture, small, in the corner, in a glass frame with an ice rim. Flipped so it moves like a mirror. */
+.dojo-camera { position: absolute; z-index: 2; right: 2rem; bottom: 1.5rem; }
+.dojo-camera video { display: block; width: 11rem; transform: scaleX(-1); border: 2px solid var(--dj-ice); border-radius: 4px; box-shadow: 0 0 0 4px #06050a, 0 0 18px #4aa0ff66; }
 
+/* A big screen: a bigger frame and bigger words, so the hall does not leave the middle small. */
+@media (min-width: 1700px) and (min-height: 1000px) {
+  .dojo-outline .move-guide { --mg-figure: 540px; --mg-check: 1.7rem; --mg-how: 2rem; }
+  .dojo-outline .mg-words { width: 22rem; }
+  .dojo-side { max-width: 38rem; }
+  .dojo-name { font-size: 5.2rem; }
+  .dojo-how { font-size: 2.1rem; }
+  .dojo-grade { font-size: 5rem; }
+  .dojo[data-tier="needs_work"] .dojo-grade { font-size: 3.8rem; }
+  .dojo-tip { font-size: 1.8rem; }
+  .dojo-pick .dojo-end-title { font-size: 3.8rem; }
+  .dojo-pick .dojo-closing { max-width: 56rem; font-size: 1.9rem; }
+  .dojo-styles { max-width: 96rem; gap: 2rem; }
+  .dojo-style { width: 15.5rem; min-height: 19rem; }
+  .dojo-style b { font-size: 1.6rem; }
+  .dojo-style span { font-size: 1.3rem; }
+}
 @media (max-width: 62rem) {
   .dojo-stage { flex-direction: column; }
   .dojo-columns { flex-direction: column; }
@@ -121,4 +211,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .dojo-result { animation: none; }
+  .dojo-style { transition: none; }
 }
