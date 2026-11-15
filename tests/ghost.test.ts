@@ -97,3 +97,12 @@ test("a frame with no shoulders scores 0", () => {
   const blank: PoseFrame = { t: 0, image: [], world: [] };
   expect(ghostCloseness(blank, move("jab").diagram, null)).toBe(0);
 });
+
+test("the move ghost switch: on by default, ?ghost=0 and ?ghost=1 override it", async () => {
+  const { moveGhostEnabled, MOVE_GHOST_DEFAULT } = await import("../src/render/ghost/ghostSwitch");
+  expect(moveGhostEnabled("")).toBe(MOVE_GHOST_DEFAULT);
+  expect(moveGhostEnabled("?debug")).toBe(MOVE_GHOST_DEFAULT);
+  expect(moveGhostEnabled("?ghost=0")).toBe(false);
+  expect(moveGhostEnabled("?stop=sirens&ghost=1")).toBe(true);
+  expect(moveGhostEnabled("?ghost=junk", false)).toBe(false);
+});
