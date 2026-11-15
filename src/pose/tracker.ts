@@ -5,7 +5,7 @@ import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
 import { log } from "../core/log";
 import type { Landmark, PoseFrame } from "../core/types";
 import { duoCamera } from "../duo/duoCamera";
-import { HALF_SHARE, createPairFinder, fromHalf, halfStart } from "../duo/halves";
+import { HALF_SHARE, createPairFinder, createSlowWatch, fromHalf, halfStart } from "../duo/halves";
 import type { Side } from "../duo/halves";
 import type { Body } from "../duo/split";
 import { createFreshFrame, createRateMeter, tooSlow, watchCameraFrames } from "./freshFrame";
@@ -228,6 +228,7 @@ export async function startTracker(): Promise<PoseTracker> {
   let consecutiveErrors = 0;
   let revivesInARow = 0;
   let slowSince = 0;
+  const halvesSlow = createSlowWatch();
   let lastCaptured = -Infinity;
   const posesMeter = createRateMeter(3000);
   const cameraMeter = createRateMeter(3000);
@@ -308,6 +309,8 @@ export async function startTracker(): Promise<PoseTracker> {
         return null;
       }
       keep(stats.detectMs, performance.now() - now);
+      // The half models are extra: when they make every frame slow, drop them for this camera session.
+      if (duo && halvesState === "ready" && halvesSlow(performance.now() - now, now)) { note("halves-too-slow"); closeHalves("failed"); }
       posesMeter.hit(now);
       // Only a debug note: with one model left there is nothing faster to step down to (the CPU is slower).
       if (tooSlow(cameraMeter.perSecond(now), posesMeter.perSecond(now))) {
