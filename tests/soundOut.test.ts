@@ -53,12 +53,18 @@ class FakeStream {
   }
 }
 
-type Kind = "speakers" | "gain" | "source" | "streamOut" | "streamIn";
+type Kind = "speakers" | "gain" | "source" | "streamOut" | "streamIn" | "limit";
 
 /** Any node of the audio graph. It tells its context about every connection. */
 class FakeNode {
   readonly gain = fakeParam();
   readonly playbackRate = fakeParam();
+  /** A compressor's settings. */
+  readonly threshold = fakeParam();
+  readonly knee = fakeParam();
+  readonly ratio = fakeParam();
+  readonly attack = fakeParam();
+  readonly release = fakeParam();
   buffer: { readonly url: string } | null = null;
   loop = false;
   loopStart = 0;
@@ -103,7 +109,7 @@ class FakeContext {
   constructor() {
     FakeContext.made.push(this);
   }
-  private node(kind: Kind): FakeNode {
+  protected node(kind: Kind): FakeNode {
     this.serial += 1;
     return new FakeNode(kind, this, this.serial);
   }
@@ -143,6 +149,16 @@ class FakeContext {
   }
   suspend(): Promise<void> {
     return Promise.resolve();
+  }
+}
+
+/** A browser with a compressor, as every browser with Web Audio has: the stream gets its ceiling. */
+class CeilingContext extends FakeContext {
+  readonly limits: FakeNode[] = [];
+  createDynamicsCompressor(): FakeNode {
+    const node = this.node("limit");
+    this.limits.push(node);
+    return node;
   }
 }
 
@@ -347,10 +363,14 @@ function lastPlayed(): FakeAudio {
   return audio;
 }
 
-/** The stream node's part of the graph: the node itself, each copy of a spoken clip and the gain that copy goes through. */
+/** The stream node's part of the graph: the node itself, its ceiling, each copy of a spoken clip and the gain that copy goes through. */
 function streamSide(context: FakeContext): Set<FakeNode> {
   const side = new Set<FakeNode>([...context.streamOutputs, ...context.streamSources]);
-  for (const [from, to] of context.connected) if (from.kind === "streamIn") side.add(to);
+  // The ceiling and its trim are the stream's too.
+  for (const [from, to] of context.connected) {
+    if (from.kind === "limit") side.add(from).add(to);
+    if (from.kind === "streamIn") side.add(to);
+  }
   return side;
 }
 
@@ -729,6 +749,128 @@ describe("stopping the stream", () => {
     expect(context.edges.filter(([, to]) => to === context.streamOutputs[0])).toEqual([]);
     game.frame([{ type: "opening", weakSpot: game.weakSpot, move: "cross" }]);
     expect(reaches(context, latest(context, "/audio/sfx/opening.mp3"), streamNode(context, 1))).toBe(true);
+  });
+});
+
+describe("the ceiling on the stream", () => {
+  const ceilingOf = (context: FakeContext): { limit: FakeNode; trim: FakeNode } => {
+    const [limit] = (context as CeilingContext).limits;
+    const trim = context.connected.find(([from]) => from === limit)?.[1];
+    if (!limit || !trim) throw new Error("no ceiling was made");
+    return { limit, trim };
+  };
+
+  test("a game that never asks for the stream makes no compressor", async () => {
+    const game = await openGame(CeilingContext);
+    await game.enter();
+    await game.fight();
+    expect((game.context() as CeilingContext).limits).toHaveLength(0);
+    expect(game.context().streamOutputs).toHaveLength(0);
+  });
+
+  test("it is one compressor set as a ceiling, and its trim takes the compressor's own gain off again", async () => {
+    const game = await openGame(CeilingContext);
+    await game.enter();
+    game.out.gameSoundStream();
+    game.out.gameSoundStream();
+    const context = game.context();
+    expect((context as CeilingContext).limits).toHaveLength(1);
+    const { limit, trim } = ceilingOf(context);
+    expect(limit.threshold.value).toBe(game.tap.CEILING_DB);
+    expect(limit.ratio.value).toBe(game.tap.CEILING_RATIO);
+    expect(limit.knee.value).toBe(0);
+    expect(game.tap.CEILING_DB).toBeLessThan(0);
+    // The compressor's own gain is what it takes off a full-scale sound, to the power 0.6 (Web Audio): 1.9 dB * 0.6 here.
+    const madeUp = (game.tap.CEILING_DB / game.tap.CEILING_RATIO - game.tap.CEILING_DB) * 0.6;
+    expect(20 * Math.log10(trim.gain.value)).toBeCloseTo(-madeUp, 6);
+    expect(20 * Math.log10(trim.gain.value)).toBeCloseTo(-1.14, 2);
+    // Ceiling, trim, stream node, and nothing else: it never leads to the speakers.
+    expect(context.edges.filter(([from]) => from === limit || from === trim).map(([, to]) => to)).toEqual([trim, streamNode(context)]);
+    expect(reaches(context, limit, context.destination)).toBe(false);
+  });
+
+  test("every sound path and every spoken clip goes through it, and none joins the stream node itself", async () => {
+    const game = await openGame(CeilingContext);
+    await game.enter();
+    game.voice.speakLine("fight_start");
+    game.out.gameSoundStream();
+    const context = game.context();
+    const output = streamNode(context);
+    const { limit, trim } = ceilingOf(context);
+    game.stops.stopStopAmbience();
+    game.stops.startStopAmbience("circe");
+    await game.fight();
+    for (const [, file] of PATHS) {
+      const source = latest(context, file);
+      expect(reaches(context, source, limit)).toBe(true);
+      expect(reaches(context, source, output)).toBe(true);
+      expect(reaches(context, source, context.destination)).toBe(true);
+    }
+    expect(context.streamSources.length).toBeGreaterThan(3);
+    // Each copy of a spoken clip went through its own level into the ceiling, and nowhere else.
+    for (const copy of context.streamSources) {
+      const level = context.connected.find(([from]) => from === copy)?.[1];
+      expect(context.connected.filter(([from]) => from === level).map(([, to]) => to)).toEqual([limit]);
+    }
+    // The only way into the stream node is the trim.
+    expect(context.connected.filter(([, to]) => to === output).map(([from]) => from)).toEqual([trim]);
+  });
+
+  test("with it the game's own graph is still the one it has with no stream at all", async () => {
+    const plain = await openGame(CeilingContext);
+    await plain.enter();
+    await plain.fight();
+    const without = gameGraph(plain.context());
+
+    FakeContext.made = [];
+    const called = await openGame(CeilingContext);
+    expect(called.out.gameSoundStream()).not.toBeNull();
+    await called.enter();
+    await called.fight();
+    const context = called.context();
+    expect((context as CeilingContext).limits).toHaveLength(1);
+    expect(gameGraph(context)).toEqual(without);
+    const side = streamSide(context);
+    expect(context.edges.filter(([from, to]) => !side.has(from) && !side.has(to))).toEqual(context.connected.filter(([from, to]) => !side.has(from) && !side.has(to)));
+  });
+
+  test("stopping takes every path off it and lets it go; a new stream gets a new one", async () => {
+    const game = await openGame(CeilingContext);
+    await game.enter();
+    game.out.gameSoundStream();
+    game.voice.speakLine("fight_start");
+    const context = game.context();
+    const { limit } = ceilingOf(context);
+    expect(context.edges.filter(([, to]) => to === limit).length).toBeGreaterThan(3);
+    game.out.stopGameSoundStream();
+    expect(context.edges.filter(([, to]) => to === limit)).toEqual([]);
+    expect(context.edges.filter(([from]) => from === limit)).toEqual([]);
+    expect(context.edges.some(([from]) => from.kind === "streamIn")).toBe(false);
+    await game.fight();
+    expect(context.edges.filter(([, to]) => to === limit)).toEqual([]);
+    for (const [, file] of PATHS) expect(reaches(context, latest(context, file), context.destination)).toBe(true);
+
+    game.out.gameSoundStream();
+    expect((context as CeilingContext).limits).toHaveLength(2);
+    game.frame([{ type: "opening", weakSpot: game.weakSpot, move: "cross" }]);
+    expect(reaches(context, latest(context, "/audio/sfx/opening.mp3"), streamNode(context, 1))).toBe(true);
+    expect(reaches(context, latest(context, "/audio/sfx/opening.mp3"), streamNode(context))).toBe(false);
+  });
+
+  test("a compressor that cannot be made: the sound joins the stream node itself", async () => {
+    class NoCeilingContext extends CeilingContext {
+      override createDynamicsCompressor(): FakeNode {
+        throw new Error("no compressor");
+      }
+    }
+    const game = await openGame(NoCeilingContext);
+    await game.enter();
+    expect(game.out.gameSoundStream()).not.toBeNull();
+    const context = game.context();
+    game.frame([{ type: "opening", weakSpot: game.weakSpot, move: "cross" }]);
+    const master = context.connected.find(([, to]) => to === streamNode(context))?.[0];
+    expect(master?.kind).toBe("gain");
+    expect(reaches(context, latest(context, "/audio/sfx/opening.mp3"), streamNode(context))).toBe(true);
   });
 });
 

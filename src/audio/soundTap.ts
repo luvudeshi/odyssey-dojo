@@ -5,7 +5,10 @@
 // never touched. So the player hears the game exactly as before, and the tap carries the same sound at the same levels.
 // A spoken clip plays through an audio element, outside the audio graph: the tap listens to a copy of what the element
 // plays (captureStream) and applies the element's own volume to it. The microphone and a call's incoming sound are not
-// in the game's graph and are never added here. Nothing here throws.
+// in the game's graph and are never added here.
+// One thing differs from the speakers: a voice line and an effect together can add up to more than full scale (measured:
+// 1.5 dB over, for a few samples), and a call's encoder would clip that. So the tap has a ceiling: sound under
+// CEILING_DB passes at the level it came in, and a louder peak is held just above it. Nothing here throws.
 import { log } from "../core/log";
 
 /** The part of an audio element the tap uses. `captureStream` is Chrome's and Edge's; lib.dom does not list it. */
@@ -19,6 +22,8 @@ interface VoiceElement {
 
 interface Tap {
   readonly context: AudioContext;
+  /** Where every sound path and spoken clip is connected: the ceiling, or the stream node itself without one. */
+  readonly input: AudioNode;
   readonly output: MediaStreamAudioDestinationNode;
   /** How to stop listening to each spoken clip that is being listened to. */
   readonly heard: Map<object, () => void>;
@@ -31,14 +36,48 @@ const voices = new Set<object>();
 let tap: Tap | null = null;
 let voicesMissed = false;
 
+/** Peaks louder than this, in dB of full scale, are held down on the stream. Sound under it is not changed. */
+export const CEILING_DB = -2;
+/** How hard: a peak this many times over the ceiling leaves one step over it. */
+export const CEILING_RATIO = 20;
+/**
+ * A compressor adds a fixed gain of its own (Web Audio: what it takes off a full-scale sound, to the power 0.6).
+ * This takes that off again, so sound under the ceiling leaves at the level it came in.
+ */
+export const CEILING_TRIM = 10 ** (((CEILING_DB - CEILING_DB / CEILING_RATIO) * 0.6) / 20);
+
 /** A volume as a number from 0 to 1. Anything that is not a number counts as full. */
 function unit(value: number): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
 }
 
+/**
+ * The node the sound joins on its way to `output`: a compressor set as a ceiling, then its trim. Measured in Chrome,
+ * a tone under the ceiling leaves at exactly its own level and one 6 dB over full scale leaves at -1.3 dB.
+ * Where the browser has no compressor the sound joins `output` itself.
+ */
+function ceiling(context: AudioContext, output: AudioNode): AudioNode {
+  try {
+    if (typeof context.createDynamicsCompressor !== "function") return output;
+    const limit = context.createDynamicsCompressor();
+    limit.threshold.value = CEILING_DB;
+    limit.knee.value = 0;
+    limit.ratio.value = CEILING_RATIO;
+    limit.attack.value = 0.003;
+    limit.release.value = 0.25;
+    const trim = context.createGain();
+    trim.gain.value = CEILING_TRIM;
+    limit.connect(trim).connect(output);
+    return limit;
+  } catch (error) {
+    log("warn", "sound_out.noCeiling", error);
+    return output;
+  }
+}
+
 function join(active: Tap, node: AudioNode): void {
   try {
-    node.connect(active.output);
+    node.connect(active.input);
   } catch (error) {
     log("warn", "sound_out.joinFailed", error);
   }
@@ -87,7 +126,7 @@ function hear(active: Tap, audio: object): void {
         source = active.context.createMediaStreamSource(copy);
         level = active.context.createGain();
         follow();
-        source.connect(level).connect(active.output);
+        source.connect(level).connect(active.input);
       } catch (error) {
         log("warn", "sound_out.voiceFailed", error);
       }
@@ -148,7 +187,8 @@ export function openTap(context: AudioContext): MediaStream | null {
   closeTap();
   try {
     if (typeof context.createMediaStreamDestination !== "function") return null;
-    const active: Tap = { context, output: context.createMediaStreamDestination(), heard: new Map() };
+    const output = context.createMediaStreamDestination();
+    const active: Tap = { context, input: ceiling(context, output), output, heard: new Map() };
     tap = active;
     for (const node of ends) join(active, node);
     for (const audio of voices) hear(active, audio);
@@ -167,13 +207,19 @@ export function closeTap(): void {
   tap = null;
   for (const node of ends) {
     try {
-      node.disconnect(closing.output);
+      node.disconnect(closing.input);
     } catch {
       // An end that never joined (it was made on another context, or its connection failed) has nothing to take off.
     }
   }
   for (const leave of closing.heard.values()) leave();
   closing.heard.clear();
+  try {
+    // The ceiling is let go of with the stream it led to.
+    if (closing.input !== closing.output) closing.input.disconnect();
+  } catch (error) {
+    log("warn", "sound_out.closeFailed", error);
+  }
   try {
     for (const track of closing.output.stream.getTracks()) track.stop();
   } catch (error) {

@@ -9,6 +9,9 @@
 //
 // Until gameSoundStream() is called nothing is made and nothing is connected: the game sounds as it always did. While
 // the stream is live each sound path is also connected to it, beside its own way to the speakers (soundTap.ts).
+// A peak that would be over full scale (a voice line and an effect together) is held under it on the stream, since a
+// call's encoder would clip it; everything quieter is at the player's level. The call's own additions (a microphone,
+// a chime) are mixed in after this and are not held down by it.
 // The stream is silent while the game is: it still delivers data. It stalls while the tab is hidden, as the game's
 // sound does (sfx.ts stops the audio clock there). The spoken clips are only in it in Chrome and Edge.
 import { log } from "../core/log";
