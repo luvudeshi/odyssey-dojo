@@ -56,7 +56,7 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
 
   return (
     <Panel as="main" ornament className="menu room">
-      <PebbleHeading as="h1" text={"Join a room".toUpperCase()} px={48} tone="ochre" />
+      <PebbleHeading as="h1" text="Join a room" px={60} tone="ochre" />
       <label htmlFor="room-code">Four letters from your friend</label>
       <input
         id="room-code"

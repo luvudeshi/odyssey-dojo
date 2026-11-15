@@ -35,6 +35,8 @@ export interface NetDeps {
 
 /** The relay writes a line the moment a stream opens, so a stream that has said nothing after this long is not getting through. */
 export const STREAM_PROOF_MS = 3_000;
+/** The longest a POST to the relay may take. After it the request is given up and counts as unreachable. */
+export const POST_TIMEOUT_MS = 8_000;
 /** The wait after a poll fails before the next one. */
 const POLL_RETRY_MS = 1_000;
 
@@ -52,6 +54,8 @@ async function post(deps: NetDeps, url: string, body?: unknown): Promise<{ statu
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body ?? {}),
+      // A relay that takes the request and never answers would leave the room screen waiting for ever.
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
     });
     return { status: response.status, data: await response.json().catch(() => null) };
   } catch {

@@ -10,7 +10,12 @@ import { Sky } from "../charybdis/Sky";
 import { Water } from "../charybdis/Water";
 import { circlingDebris, driftwood } from "../charybdis/layout";
 import { cliffGeometry, driftGeometry, raftGeometry, rockGeometry, treeGeometry } from "../charybdis/shapes";
+import { Scenery, SeaAndSky } from "../charybdis/looks";
 import type { ArenaDef } from "../registry";
+
+// The anglerfish look ("a") is the owner's pick and the default. ?look=b is the tentacle look, ?look=base the one built in code.
+const LOOK = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("look");
+const ALT = LOOK === "base" ? null : LOOK === "b" ? "b" : "a";
 
 const DEBRIS = 5;
 
@@ -52,15 +57,21 @@ function Solids() {
       <mesh geometry={solids.raft} position={[0, 0, -0.1]} castShadow={high} receiveShadow={high}>
         <meshStandardMaterial vertexColors flatShading roughness={0.9} />
       </mesh>
-      <mesh geometry={solids.rock} receiveShadow={high}>
-        <meshStandardMaterial vertexColors flatShading roughness={1} />
-      </mesh>
-      <mesh geometry={solids.tree}>
-        <meshStandardMaterial vertexColors flatShading roughness={0.95} />
-      </mesh>
-      <mesh geometry={solids.cliff}>
-        <meshStandardMaterial vertexColors flatShading roughness={1} fog />
-      </mesh>
+      {ALT ? (
+        <Scenery look={ALT} />
+      ) : (
+        <>
+          <mesh geometry={solids.rock} receiveShadow={high}>
+            <meshStandardMaterial vertexColors flatShading roughness={1} />
+          </mesh>
+          <mesh geometry={solids.tree}>
+            <meshStandardMaterial vertexColors flatShading roughness={0.95} />
+          </mesh>
+          <mesh geometry={solids.cliff}>
+            <meshStandardMaterial vertexColors flatShading roughness={1} fog />
+          </mesh>
+        </>
+      )}
       {driftMeshes.map((geometry, index) => (
         <group key={index} position={drifts[index]?.position ?? [0, 0, 0]} rotation={[0, drifts[index]?.yaw ?? 0, 0]}>
           <group ref={(group) => { bobbing.current[index] = group; }}>
@@ -107,12 +118,17 @@ function Strait() {
       />
       {/* Cool fill from behind the camera. */}
       <directionalLight position={[3, 4, 14]} intensity={0.55} color="#7fa0ff" />
-      <Sky />
-      <Water />
+      {LOOK === "a" ? <SeaAndSky /> : LOOK === "b" ? null : <Sky />}
+      {LOOK !== "a" && <Water />}
       <Solids />
       {high && <Rain />}
     </>
   );
 }
 
-export const arena: ArenaDef = { enemyId: "charybdis", Component: Strait };
+// Look b backs the strait with the Poly Haven dusk sky already used by the cave mouth; with no flag nothing changes.
+export const arena: ArenaDef = {
+  enemyId: "charybdis",
+  Component: Strait,
+  ...(LOOK === "b" ? { sky: { hdri: "/hdri/qwantani_dusk_2_puresky_1k.hdr", yaw: 2.4 } } : {}),
+};
