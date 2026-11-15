@@ -10,7 +10,6 @@ import { SkyFigure } from "./SkyFigure";
 import "./tokens.css";
 import "./card.css";
 
-type Level = ReturnType<typeof promptLevel>;
 export type SkyCardKind = "defend" | "strike" | "finish";
 
 /** Before the first measure (and in server rendering) the plate is drawn at this size. */
