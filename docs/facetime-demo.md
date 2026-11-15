@@ -9,7 +9,9 @@ For the "Best Use of FaceTime (Chert)" judging. The track asks for an AI agent t
 - The laptop is the one whose Chert sign-in approved it. `curl http://localhost:8787/api/facetime/status` gives `{"ready":true,"missing":[]}`.
 - The friend's iPhone has texted the line's number in the last 24 hours (a trial line only calls verified phones). Do it again that morning.
 - A trial has 50 minutes in all and 5 minutes a call. Keep at least three calls' worth for judging.
-- The game is open in Chrome on the Multiplayer screen, sound on, the tab in front. Keyboard play is fine for the host.
+- The game is open in Chrome on the Multiplayer screen, sound on, the tab in front.
+- Start the fight opens the host's webcam step first, as the Host card does. Keyboard play is fine for the host: press "Use keyboard instead" there. That is one extra press (and Skip, if the god scan comes up). Practise it so it takes a second.
+- Before pressing Start the fight, read the card's line. "The game can see your friend." means go. "The camera is on, but no body is in view" means the friend must step back first.
 - A stand or a cup to prop the phone up, and two metres of floor for the friend.
 - On Devpost, the track "Best Use of FaceTime (Chert)" is selected.
 
@@ -23,11 +25,13 @@ For the "Best Use of FaceTime (Chert)" judging. The track asks for an AI agent t
 | 0:45 | Prop the phone up, friend steps back. Press "Start the fight", pick Polyphemus. | "The phone is now both the camera and the screen." |
 | 1:00 | A strike card comes up on the phone. The friend punches. The Cyclops takes the hit and the laptop shows YOU + FRIEND. | "The pose model is reading a FaceTime picture. That punch was thrown at a phone." |
 | 1:45 | Host defends on the laptop while the friend keeps striking. | "Two people, two places, one fight." |
-| 2:30 | Press Hang up, or let the win screen come. | "Fresh use of FaceTime video: the call is the controller and the display." |
+| 2:30 | Press Hang up (the plate at the bottom right), or let the win screen come. | "Fresh use of FaceTime video: the call is the controller and the display." |
 
 ## If something goes wrong
 
 - **The phone does not ring:** the card says why. "Not verified" means text the line again. "Line busy" means an earlier call is still open: wait 30 seconds.
 - **Picture but the punches do not land:** the friend is too close. The whole upper body must be in view. Good light on the friend, not behind them.
 - **The phone's picture freezes:** the game tab went to the back. Bring it to the front.
+- **The friend hangs up or the call drops mid-fight:** the plate at the bottom right says so for six seconds and the fight carries on solo. Say it out loud and finish the fight, or call again from Multiplayer.
+- **The words at the edges of the phone are cut:** hold the phone sideways and reload the game with `?ftframe=landscape`.
 - **Nothing works:** open `/tools/facetime/index.html`. It shows the same flow in one tab with a made-up friend, and say plainly that it is the loopback page, not a call.

@@ -2,7 +2,7 @@
 
 A third way to play together. The host types a friend's phone number. The friend's iPhone rings with a FaceTime call. No app. The friend sees the fight on the phone and strikes with their own body in front of the phone's camera.
 
-**Read this first: none of this has been on a real call.** It was built with no Chert account, no LiveKit room and no iPhone. What was run is listed under Tested. What was only written from Chert's setup page is listed under Not tested.
+**Read this first: none of this has been on a real call.** No phone has rung. A teammate ran the stand-in path against a real LiveKit room; the fixes that came out of that run (hang up closing the room, the wider margins, the plate's last line) were written with no keys and have not been back on a real room. What was run is listed under Tested. What was only written from Chert's setup page or LiveKit's docs is listed under Not tested.
 
 ## How it works
 
@@ -13,9 +13,12 @@ Chert bridges each FaceTime call into a LiveKit room. The game's browser tab joi
 3. The server asks Chert to place the call (`POST /api/v1/calls`, `customer_managed`, audio and video on).
 4. When the room's metadata says `chert_bridge_ready`, the tab plays a chime at once and Athena's greeting. Chert wants a greeting within 10 seconds of that moment, not of joining. If the friend's video arrives and no such metadata is seen for 3 seconds, the tab greets anyway.
 5. The friend's camera track is read by the same pose model the webcam uses. Their strikes go into the fight as the second fighter. Only the host defends, as in a room.
-6. At 4:45 Athena says goodbye. At 5:00 the tab leaves the room, which ends the call. The trial limit is 5 minutes a call.
+6. At 4:45 Athena says goodbye. At 5:00 the call is ended. The trial limit is 5 minutes a call.
+7. Ending a call, by anyone and for any reason, does two things: the tab leaves the room, and the server deletes the room at LiveKit (see Hang up). The second drops Chert's bridge, which leaving alone does not.
 
 What the phone gets is a 720 by 1280 picture at 20 frames a second: the monster's name, the time left, both health bars, the fight itself, then a large card with the move to do, a stick figure of it, and a timer bar. Add `?ftframe=landscape` to the game's address for a wide picture (phone held sideways).
+
+A phone's screen is longer than 16:9. If FaceTime fills the screen with the picture, the long sides are cut: about 65 px off the left and right of the upright picture on a 393 by 852 screen. So nothing that must be read is within 72 px of those two edges (36 px on the other two). The wide picture has the same 72 px at its top and bottom.
 
 Where the code is:
 
@@ -29,7 +32,7 @@ Where the code is:
 | The picture for the phone | `src/facetime/compositor.ts`, `frameLayout.ts`, `frameHud.ts`, `frameDraw.ts` |
 | The sound for the phone | `src/facetime/callAudio.ts` |
 | The card | `src/facetime/ui/FaceTimeCard.tsx` |
-| Server: tokens, Chert, routes | `server/lib/facetimeToken.ts`, `facetimeChert.ts`, `facetimeEnv.ts`, `server/routes/facetime.ts` |
+| Server: tokens, Chert, closing a room, routes | `server/lib/facetimeToken.ts`, `facetimeChert.ts`, `facetimeRooms.ts`, `facetimeEnv.ts`, `server/routes/facetime.ts` |
 | Loopback page (no account needed) | `tools/facetime/index.html` |
 | Stand-in friend (LiveKit only): the link, the friend's page, the card on its own page | `src/facetime/standIn.ts`, `tools/facetime/standin.html`, `tools/facetime/real.html` |
 
@@ -61,6 +64,17 @@ You need a Chert account with a line, the LiveKit project Chert's setup gives yo
 
    This starts the page (Vite) and the game server together. The `/api/facetime` routes answer only to this machine.
 
+   | Route | What it does |
+   | --- | --- |
+   | `GET /api/facetime/status` | Is FaceTime set up, which names are missing, and can a stand-in be used |
+   | `POST /api/facetime/seat` | A new room and a token for the game's seat in it |
+   | `POST /api/facetime/call` `{ to, room }` | Rings the phone and bridges the call into the room |
+   | `POST /api/facetime/standin` `{ room }` | No phone: a token for the bridge's seat, for the stand-in page |
+   | `GET /api/facetime/call/:id` | How the call is doing |
+   | `POST /api/facetime/hangup` `{ room }` | Deletes the room at LiveKit, which drops everyone in it |
+
+   A `POST` must have `Content-Type: application/json` or it gets 415. A page of another site open in the same browser can post plain text here without asking, but not JSON.
+
 4. Check the setup without spending a minute. With the server running:
 
    ```
@@ -69,13 +83,13 @@ You need a Chert account with a line, the LiveKit project Chert's setup gives yo
 
    `{"ready":true,"missing":[]}` means all six are found. Otherwise `missing` lists the names that are not set. It never shows a value.
 
-5. Mount the card (see Mount below) if it is not on the Multiplayer screen yet.
+5. The card is on the Multiplayer screen (see Mount below).
 
 ## Test with LiveKit only (no Chert line)
 
 For when there is a LiveKit project and no Chert line yet. A browser window plays the friend's phone. It joins the call's real room in the seat the FaceTime bridge would take, so everything on the game's side runs against a real room: the token, the join, the published picture and sound, the friend's camera read into strikes, the clocks, both ways of hanging up.
 
-**This has not been run against a real room either.** It was built with no LiveKit keys. See Tested and Not tested.
+A teammate ran these steps against a real room and every sign below came up. That was before hang up deleted the room and before the plate moved; those have not been back on a real room. See Tested and Not tested.
 
 Steps on a Mac, in Terminal, from the repo's top folder:
 
@@ -122,12 +136,12 @@ What to look for, in order:
 
 - The stand-in window shows the game's picture in the phone frame, with "GET READY". The list beside it reads: Game in the room `odyssey-dojo`; Game's picture "yes, named odyssey-dojo-fight, 720 x 1280"; Game's sound "yes, named odyssey-dojo-sound"; My camera sent "yes".
 - About 3 seconds after the camera is sent, the stand-in window plays three rising notes and then Athena. The game's card says the friend is on the call and shows the time left.
-- The card says "The game can see your friend." That is the pose model reading the stand-in's camera out of the room.
+- The card says "The game can see your friend." That is the pose model finding a body in the stand-in's camera. If it says "The camera is on, but no body is in view", step back until your upper body is in the picture. Do not start the fight on that line: the punches will not land.
 - Press "Start the fight" on the card. The phone frame shows the fight, the health bars and the move cards.
 - On a strike card, step back from the Mac's camera until your upper body is in the small picture and punch. The game shows "YOU + FRIEND" and the monster takes the hit.
-- Press Hang up in the stand-in window. The card says "Your friend hung up."
-- Do it again and press Hang up on the game's side (the card, or the plate at the top left during a fight). The stand-in window says the game left and the call is over.
-- In the LiveKit dashboard, the room `odyssey-dojo-` plus 12 letters and digits has two participants, `odyssey-dojo` and `facetime-bridge`, and closes when both have left.
+- Press Hang up in the stand-in window. The card says "Your friend hung up." In a fight the card is not on screen, so the plate at the bottom right says it for six seconds.
+- Do it again and press Hang up on the game's side (the card, or the plate at the bottom right during a fight). The stand-in window says the game left and the call is over.
+- In the LiveKit dashboard, the room `odyssey-dojo-` plus 12 letters and digits has two participants, `odyssey-dojo` and `facetime-bridge`. After a hang up from either side the room is gone at once, not only when both have left: the server's log has a `facetime_room_closed` line. Look at the room's participants, not the list of rooms: the list can lag a few seconds.
 
 If it fails:
 
@@ -157,7 +171,7 @@ What this does NOT prove:
    - The friend answers. Within 10 seconds they hear three rising notes and then Athena.
    - The phone shows the game's picture with "GET READY".
    - The card says the friend is on the line. Press "Start the fight", pick a style and a boss.
-   - A small plate at the top left of the game shows the time left and a Hang up button.
+   - A small plate at the bottom right of the game shows the time left and a Hang up button. If the call ends or drops during the fight, the plate says why for six seconds.
    - On a strike card the friend punches at the phone. The game shows "YOU + FRIEND" and the monster takes the hit.
 4. Keep the game's tab in front for the whole call. A hidden tab stops drawing, and the phone's picture freezes.
 5. The friend should prop the phone up and step back until the whole upper body is in view.
@@ -172,7 +186,22 @@ These are the places that were guessed. Each is one small change.
 - **The friend hears nothing for 10 seconds and Chert drops the call.** Log the room metadata in `src/facetime/livekitRoom.ts` and compare it with `bridgeReady()` in `src/facetime/bridge.ts`. It accepts the bare word `chert_bridge_ready`, a JSON flag of that name, and a JSON `state`/`status`/`event`/`phase`/`bridge` with that value. If Chert signals it another way (a participant attribute, say), add it there.
 - **Audio but no video on the phone.** The picture is published with source Camera from the same participant that publishes the sound. Check in the LiveKit dashboard that the room has both tracks from `odyssey-dojo`.
 - **The card never leaves "calling".** `remoteState()` in `server/lib/facetimeChert.ts` maps Chert's call status words to ringing, live and over. Compare with what `GET /api/v1/calls/{id}` really returns.
-- **The call does not end when the game hangs up.** No hang-up request is known. The game ends a call by leaving the room. If Chert has an end-call request, add it to `server/routes/facetime.ts`.
+- **The call does not end when the game hangs up.** The game leaves the room and the server deletes the room (see Hang up), so the bridge is dropped. Whether Chert then ends the FaceTime call on the phone is not known. If it does not, and Chert has an end-call request, add it to the hang up route in `server/routes/facetime.ts`.
+- **The server's log says `facetime_room_not_closed`.** LiveKit refused the delete or was not reached. The status is in the line. 401 or 403 means the key and secret are not from the project `LIVEKIT_URL` points at.
+
+## Hang up
+
+Leaving the room is not enough. Chert's bridge is a participant too. While it stays, the room stays, the call can stay up on the friend's phone, the line stays busy for the next call, and the trial's minutes keep running. On a real room the bridge's seat was still listed 3 seconds after the game left.
+
+So every end of a call (Hang up on the card or the plate, the friend leaving, the five minutes, a refused or unanswered call, a lost room, the page closing) also sends `POST /api/facetime/hangup { room }`. The server then asks LiveKit to delete the room:
+
+- `POST https://<the host of LIVEKIT_URL>/twirp/livekit.RoomService/DeleteRoom` with the JSON body `{"room": "<name>"}`.
+- `Authorization: Bearer <token>`, a token signed on the server with the grant `video: { roomCreate: true }`. It names no room and no person, lives 60 seconds, and goes only to LiveKit.
+- A 404 is tried once more after 0.7 seconds: a delete sent in the first second after a join answered 404 once on a real room. A second 404 means the room is already gone, which is fine.
+
+The route only closes a room this server put a call or a stand-in into, and remembers each for 30 minutes. Any other name gets 400 and LiveKit is not asked. The page gets back one word (`deleted` or `gone`), never the token or LiveKit's reply. When the page is closing, the request is sent with `keepalive` so the browser finishes it.
+
+If the delete fails, the call still ends on the game's side as before, and the room closes by itself once the bridge leaves.
 
 ## The loopback page
 
@@ -180,30 +209,25 @@ These are the places that were guessed. Each is one small change.
 
 ## Mount
 
-To try the card before it is mounted, open `/tools/facetime/real.html` on the dev server: the same card with the real session, on a page of its own.
+The card is on the Multiplayer screen, mounted by the lead. `/tools/facetime/real.html` on the dev server has the same card with the real session on a page of its own.
 
 The card is self-contained. It shows a title ("Call a friend on FaceTime"), one line of text, a phone number box and one button (Call). During a call the same card shows the status, "Start the fight" and "Hang up". If the server has no keys it shows one line: "FaceTime is not set up on this server." If only the three LiveKit names are set, it adds a "Test without a phone" button under that line (see Test with LiveKit only).
 
-It takes one prop: `onStart`, the same function the Host card's "Start" uses. Tested locally on the two-card screen, not committed:
+It takes one prop, `onStart`. The mount line is:
 
-```diff
- import { Icon } from "../account/ui/icons";
-+import { FaceTimeCard } from "../facetime/ui/FaceTimeCard";
- import type { HostLink } from "../net/host";
-@@
-           <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
-         </section>
-+        <FaceTimeCard onStart={props.onStart} />
-       </div>
+```tsx
+<FaceTimeCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
 ```
+
+Why both calls: the flow only takes a friend's link while it is on `host`, so it must pass through `host` (`onOpen`) before `onStart`, or the fight starts solo and the friend is never in it. Both land in one render, so no room is opened. Passing `props.onStart` alone looks right and is wrong: the phone shows "STAND BACK" for the whole fight.
 
 ## Sound
 
-The game has no single output today, so `src/facetime/callAudio.ts` listens from outside: it wraps `AudioNode.connect` and `HTMLMediaElement.play` and copies what goes to the speakers into the call. When `src/audio` has one stream for all game sound, pass it in and neither wrapper is used for the call. The change is one line in `src/facetime/browserSession.ts`:
+The game's sound goes to the phone as one stream: `gameSoundStream()` in `src/audio/soundOut.ts`. `src/facetime/browserSession.ts` passes it to `startCallAudio` and closes it with `stopGameSoundStream()` when the call ends. The stream holds its peaks under full scale, which the older way did not (8 clipped windows in 30 seconds on a real room). The chime, Athena's greeting and goodbye, and the host's microphone are added after it.
 
-```ts
-startSound: () => startCallAudio({ gameSound: gameSoundStream }),
-```
+The older way is still in `src/facetime/callAudio.ts` and is used only when no stream is passed (the loopback page): it wraps `AudioNode.connect` and `HTMLMediaElement.play` and copies what goes to the speakers into the call.
+
+The goodbye at 4:45 has no bundled line. If `/api/speech` gives nothing, the friend hears only the three notes. None of the clips in `public/audio/athena` is a goodbye, so none is used.
 
 The host's microphone is sent to the phone only. The friend's voice plays on the computer.
 
@@ -216,15 +240,23 @@ The host's microphone is sent to the phone only. The friend's voice plays on the
 
 ## Tested
 
-- Unit tests: `npx vitest run tests/facetimeCall.test.ts tests/facetimeFrame.test.ts tests/facetimeSession.test.ts tests/facetimeStandIn.test.ts server/tests/facetimeServer.test.ts server/tests/facetimeStandIn.test.ts`. They cover the call steps and timers, the phone number check, the bridge-ready parser, the picture layout and HUD words, the session with a fake room, token signing, the Chert request shape (against a fake fetch), and the routes over real HTTP on this machine.
-- The loopback page in headless Chrome: the call reaches "playing", the published track is 720 by 1280 and readable, sound goes out, and the made-up friend's strikes land in the real fight.
+- Unit tests: `npx vitest run tests/facetime server/tests/facetime` (eight files). They cover the call steps and timers, the phone number check, the bridge-ready parser, the picture layout and HUD words, the session with a fake room, token signing, the Chert request shape (against a fake fetch), and the routes over real HTTP on this machine.
+- Hang up, with a fake fetch in place of LiveKit: the address, the body, the `roomCreate` grant, one retry on 404 and no more, a room this server did not use is refused without asking LiveKit, a failure is a plain 502, and no token, key or LiveKit reply is in any answer or log line. The session asks for the room to be closed on every kind of ending, once.
+- Every FaceTime route, hang up included, answers 403 to a request that was passed on, through the real app. A `POST` that is not JSON gets 415 and takes no seat.
+- The card's three lines about the friend's camera (waiting, no body in view, can see your friend), with a made-up pose reader.
+- The margins: everything readable is inside the part of the picture a 393 by 852 screen shows when it fills, for both shapes.
+- The loopback page in headless Chrome: the call reaches "playing", the published track is 720 by 1280 and readable, sound goes out, and the made-up friend's strikes land in the real fight. With `?leave=4` the friend hangs up in the fight and the plate says "Your friend hung up." and then goes.
+- By a teammate, on a real LiveKit room with a browser as the friend, before these fixes: the join, both published tracks, 720 by 1280 at about 20 frames a second with no loss, the friend's camera read by the pose model, the 3 second fallback, both ways of hanging up, and the five-minute cap.
 - The card on the Multiplayer screen, with and without setup.
 - The stand-in path, with made-up LiveKit settings and no real room. Unit tests: the stand-in route gives a token for `facetime-bridge` in the seat's room, good for 10 minutes, uses the room up, sends nothing to Chert and is not an open path; the session opens the room, asks for the stand-in's seat, places no call and never polls; the link carries the seat after the `#` and reads it back. In headless Chrome: the stand-in page with no link, with a good link, with an old link, and with a room address that does not exist (it says the room could not be joined and what to check; the token is not shown); the card on `real.html` with only the LiveKit names set shows the button, and a room that cannot be joined fails the call with a plain line.
 
 ## Not tested
 
 - **No real FaceTime call.** Nothing has rung a phone.
-- **No real LiveKit room.** `livekitRoom.ts` type-checks against `livekit-client` 2.24.1 and has never connected. The stand-in page (`tools/facetime/standin.tsx`) uses the same package and has never connected either. The steps under Test with LiveKit only are how to do it.
+- **Hang up against a real room.** The route was written from LiveKit's docs and a teammate's one manual DeleteRoom (200, and the participant was dropped 128 ms later). The route itself, its retry, and the `keepalive` request on a closing page have only met a fake fetch.
+- **Whether Chert ends the FaceTime call when its bridge is dropped from the room.**
+- **The game's sound through `gameSoundStream()` on a call.** The switch type-checks. It was not heard on a real room or in the loopback page, which uses the older way.
+- **How FaceTime shows the picture.** The 72 px margins answer a simulation of a filled screen, not a phone. If the picture arrives small inside a wide one, use `?ftframe=landscape`.
 - **No Chert account.** The request body, the error words, the call status words and the meaning of `remote_participant_identity` are from the setup page, not from a reply.
 - **The bridge-ready signal** and the bridge's track names were never observed.
 - Pose reading on a real phone picture (portrait, compressed, a person far away). The loopback's friend is a drawing with a stand-in detector.
