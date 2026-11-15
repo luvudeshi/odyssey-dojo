@@ -32,5 +32,5 @@ export function PhaseBanner() {
       window.clearTimeout(timer);
     };
   }, []);
-  return shown && <div className="phase-banner" key={shown.id}>{shown.name}</div>;
+  return shown && <div className="hb-phase" key={shown.id}>{shown.name}</div>;
 }

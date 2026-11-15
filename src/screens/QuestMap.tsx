@@ -1,5 +1,7 @@
 // Sea chart of Odysseus's route home. The stops come from the enemy registry; ones with no 3D model yet are locked.
 import type { EnemySpec } from "../core/types";
+import { Button, Panel, PebbleHeading } from "../ui/pebble";
+import { Isle } from "./Isle";
 
 const W = 1000;
 const H = 420;
@@ -42,8 +44,8 @@ export function QuestMap(props: {
   const pos = (i: number): Point => points[i] ?? [0, 0];
   const at = (p: Point) => ({ left: `${String(p[0] / 10)}%`, top: `${String((p[1] / H) * 100)}%` });
   return (
-    <main className="menu">
-      <h1>The Road Home</h1>
+    <Panel as="main" ornament className="menu menu--map">
+      <PebbleHeading as="h1" text={"The Road Home".toUpperCase()} px={48} tone="ochre" />
       <p>Choose your next stop on the sea.</p>
       <div className="chart">
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
@@ -61,12 +63,12 @@ export function QuestMap(props: {
           return (
             <button
               key={enemy.id}
-              className={`stop ${state} ${i % 2 === 0 ? "above" : "below"}`}
+              className={`stop ${state} ${pos(i + 1)[1] < H * 0.48 ? "above" : "below"}`}
               style={at(pos(i + 1))}
               disabled={!open}
               onClick={() => { props.onEnter(i); }}
             >
-              <span className="dot">{state === "cleared" ? "✓" : i + 1}</span>
+              <span className="dot"><Isle state={state} /><b>{state === "cleared" ? "✓" : i + 1}</b></span>
               <span className="lbl">
                 {enemy.place ?? enemy.name}
                 <small>
@@ -78,7 +80,7 @@ export function QuestMap(props: {
           );
         })}
       </div>
-      <button className="quiet" onClick={props.onStyle}>Change style</button>
-    </main>
+      <Button onClick={props.onStyle}>Change style</Button>
+    </Panel>
   );
 }

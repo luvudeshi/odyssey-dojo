@@ -1,15 +1,22 @@
 // Before a webcam fight: stand still, arms down, for 3 seconds. The Baseline is the stance held at the end.
-import { useEffect, useState } from "react";
-import type { Baseline } from "../core/types";
-import { calibrationStalled } from "../pose/escape";
+import { useEffect, useRef, useState } from "react";
+import type { Baseline, PoseFrame } from "../core/types";
+import { CameraView } from "../hud/CameraView";
+import { calibrationNeedsHelp } from "../pose/escape";
+import { sentence } from "../pose/cameraError";
 import { COUNTDOWN_MS, countdownStep, presenceAt } from "../pose/presence";
 import { EMPTY_HISTORY, baselineOf, pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
+import { Button, Panel } from "../ui/pebble";
+import "./calibration.css";
 
 export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Baseline) => void; onSkip: () => void }) {
   const { tracker, onDone, onSkip } = props;
   const [elapsed, setElapsed] = useState(0);
   const [hint, setHint] = useState("");
+  const [stuck, setStuck] = useState(false);
+  const [seen, setSeen] = useState(false);
+  const poseRef = useRef<PoseFrame | null>(null);
 
   useEffect(() => {
     let history = EMPTY_HISTORY;
@@ -19,32 +26,37 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
     let handle = 0;
     const tick = (now: number): void => {
       const frame = tracker.read();
-      if (frame) history = pushFrame(history, frame);
+      if (frame) {
+        poseRef.current = frame;
+        history = pushFrame(history, frame);
+      }
       const presence = presenceAt(history, now);
       ms = countdownStep(ms, presence.ok, Math.min(now - last, 100));
       last = now;
       setElapsed(ms);
-      setHint(presence.ok ? "" : presence.reason);
+      setHint(presence.ok ? "" : sentence(presence.reason));
+      setSeen(presence.ok);
+      setStuck(calibrationNeedsHelp(now - start, presence.ok));
       if (ms >= COUNTDOWN_MS && history.frames.length > 0) {
         onDone(baselineOf(history.frames));
-        return;
-      }
-      if (calibrationStalled(now - start)) {
-        onSkip();
         return;
       }
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(handle); };
-  }, [tracker, onDone, onSkip]);
+  }, [tracker, onDone]);
 
   return (
-    <div className="overlay">
-      <h1>Stand still, arms down</h1>
-      <p className="prompt-word">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
-      <p className="notice">{hint ? hint.charAt(0).toUpperCase() + hint.slice(1) : "Hold it..."}</p>
-      <button className="quiet" onClick={onSkip}>Use keyboard instead</button>
-    </div>
+    <Panel as="div" ornament className="menu menu--small calibration">
+      <h1>{stuck ? "Step back: I need to see your head and shoulders" : "Stand still, arms down"}</h1>
+      <div className="calibration-cam">
+        <CameraView tracker={tracker} poseRef={poseRef} paused={false} />
+        <div className="calibration-guide" data-ok={seen} aria-hidden="true"><span>Head and shoulders inside the frame</span></div>
+      </div>
+      <p className="countdown">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
+      <p className="notice">{hint || "Hold it..."}</p>
+      <Button primary={stuck} onClick={onSkip}>Use keyboard instead</Button>
+    </Panel>
   );
 }

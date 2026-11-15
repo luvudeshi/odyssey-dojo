@@ -31,5 +31,5 @@ export function RatingFlash() {
       window.clearTimeout(timer);
     };
   }, []);
-  return shown && <div className="banner" key={shown.id}><small>{shown.word}</small></div>;
+  return shown && <div className="hb-rating" key={shown.id}>{shown.word}</div>;
 }

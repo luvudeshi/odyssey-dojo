@@ -5,14 +5,15 @@ import { getSettings } from "../settings/store";
 
 export type Speaker = "athena" | "homer" | "monster";
 
-const TIMEOUT_MS = 9000;
+/** How long a line is waited for. The server gives up on the voice service at speechMs (server/env.ts), which is shorter. */
+export const SPEECH_WAIT_MS = 9000;
 const ready = new Map<string, Promise<string | null>>();
 let current: HTMLAudioElement | null = null;
 
 const key = (speaker: Speaker, text: string): string => `${speaker}\n${text}`;
 
 /** Fetches a line ahead of time so it can start the instant it is needed. Returns an object URL, or null. A failure is not remembered, so a later call tries again. */
-export function prepareLine(speaker: Speaker, text: string, fetcher: typeof fetch = fetch): Promise<string | null> {
+export function prepareLine(speaker: Speaker, text: string, fetcher: typeof fetch = fetch, timeoutMs: number = SPEECH_WAIT_MS): Promise<string | null> {
   const id = key(speaker, text);
   const known = ready.get(id);
   if (known) return known;
@@ -20,7 +21,7 @@ export function prepareLine(speaker: Speaker, text: string, fetcher: typeof fetc
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, voice: speaker }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   })
     .then(async (response) => (response.ok ? URL.createObjectURL(await response.blob()) : null))
     .catch((error: unknown) => {

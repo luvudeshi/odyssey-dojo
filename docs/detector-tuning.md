@@ -16,6 +16,32 @@ Record `idle` takes too: standing, shifting your weight, scratching your nose, w
 
 Useful takes for each move: one clean, one slow, one small, one from each person, and one from further back.
 
+## Record alone: the guided session
+
+Nobody has to click Record for each take. Open
+
+`http://localhost:5173/tools/recorder/index.html?person=<your name>`
+
+and press **Start guided session**, then step back. After a 10 second lead-in it goes through every move for take 1, then all again for take 2. For each take it shows the move name and hint very large and says them aloud, counts 4, 3, 2, 1 while you stand still with your arms down (the last second is the baseline), shows GO with the red skeleton for 3 seconds, and shows whether the detectors read the take. The default list is a Boxer fight against Polyphemus, 10 moves with idle, two takes: about 4 minutes.
+
+If it could not see you (under 20 frames, or under 10 in the baseline second) it says so and repeats the take, twice at most, then skips it. At the end, or on **Stop and save**, the browser downloads one file, `session-<person>-<yyyymmdd-hhmmss>.json`, and the page shows a table of move by take. **Download again** repeats the download. A reload loses the session.
+
+URL parameters:
+
+| Parameter | Meaning |
+|---|---|
+| `person=<name>` | Fills the Person box |
+| `moves=<ids>` | Comma list of move ids and `idle`. Unknown ids are dropped, and the page says so. Default: `idle,block,duck,dodge_left,dodge_right,jab,cross,hook,uppercut,stake_thrust` |
+| `takes=<1..5>` | Rounds through the list. Default 2 |
+
+Then split the file into traces. It never overwrites: a take gets the next free number for its move and person.
+
+```
+npx tsx tools/recorder/split.ts <session file> [out dir]
+```
+
+The out dir defaults to `tests/fixtures/poses`. It prints one line per file with what the detectors made of it.
+
 ## What the test checks
 
 `tests/moves/replay.test.ts` plays every file in `tests/fixtures/poses/` through all the detectors, frame by frame, with the same hold and release levels as the game (on at 0.70, off below 0.40).
@@ -41,6 +67,33 @@ The failure names the file and says what went wrong, with the highest confidence
 If the fix needs a change in `src/pose/` or `src/input/`, write `NEEDS:` on the issue for the lead.
 
 Do not loosen a threshold until the trace passes and stop there. Look at why it missed: a real webcam punch comes toward the camera, so it shortens in the picture instead of travelling across it.
+
+## Read the margins
+
+The test says pass or fail. The margins report says how close, and which condition decided it:
+
+```
+npx tsx tools/recorder/report.ts tests/fixtures/poses          # a folder
+npx tsx tools/recorder/report.ts tests/fixtures/poses/jab-ana-1.json
+```
+
+```
+jab-madeup-1.json: jab FIRED on frame 46 of 92 (1485 ms)
+   margin  measured  threshold  condition
+      +5%       152  >  145     left elbow straight, degrees
+     +48%      0.62  <= 1.20    left fist out to its side, shoulder widths
+     +67%        66  <= 200     ms since left elbow was bent under 115
+```
+
+- The move is the part of the file name before the first `-`. Each row is one condition of that move's detector, read at the frame the move fired on, with the tightest condition first.
+- **Margin** is how far past the threshold the measurement was, as a percentage of the threshold (of one shoulder width when the threshold is 0). `+5%` passed with little room: a slightly different body will miss there. `-17%` missed by that much.
+- `never` in **measured** means the thing was not seen in the last second, for example the elbow was never bent. Its margin reads `clear` when that is what the detector wants and `missed` when it is not.
+- A trace that **did not fire** shows the frame that came closest, and a `first failed:` line with the first condition, in the order the detector checks them, that did not hold there. That is the threshold to look at. If several rows are negative the take was probably not the move.
+- A row named `... not out: <part>` or `... not punching: <part>` is a "not all of these" check; it shows whichever part cleared it best.
+- A move either side may make (kicks, thunderbolt, chain punch, moon arrow) shows the side that came closest.
+- Block, the dodges and jump show the detector's own confidence against 0.70, so a far miss reads 0.00 whatever the distance.
+
+The conditions are listed in `src/moves/measures.ts`, one entry per move, using the detectors' own helpers and thresholds. Change a detector and its entry together: `tests/moves/report.test.ts` moves a made-up body about at random and fails when the two disagree, or when a move has no entry.
 
 ## Known overlap
 

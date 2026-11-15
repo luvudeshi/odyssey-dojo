@@ -1,2 +1,2 @@
 /* The Skip button on the god scan: always in the same corner, above the scan's own content. */
-.scan-skip { position: fixed; top: 1rem; right: 1rem; z-index: 20; font-size: 1.1rem; padding: 0.5rem 1.1rem; }
+.pb-btn.scan-skip { position: fixed; top: 1rem; right: 1rem; z-index: 20; }

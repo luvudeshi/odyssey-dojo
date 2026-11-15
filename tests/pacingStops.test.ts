@@ -115,13 +115,17 @@ test("the route gets harder at every stop: the same player ends each fight with 
   route.forEach((stop, index) => {
     const before = route[index - 1];
     if (!before) return;
-    // At least two points of health harder than the stop before, so the order cannot flip on a small retune.
-    expect(stop.hpLeft, `${stop.id} (${stop.hpLeft.toFixed(0)}) after ${before.id} (${before.hpLeft.toFixed(0)})`).toBeLessThanOrEqual(before.hpLeft - 2);
+    // At least one point of health harder than the stop before, so the order cannot flip on a small retune.
+    // It was two points until part 3 of issue #127: a beginner now wins at least 15% of fights at every stop,
+    // which leaves this player about 9 points between Polyphemus and the Suitors, too few for five steps of two.
+    expect(stop.hpLeft, `${stop.id} (${stop.hpLeft.toFixed(1)}) after ${before.id} (${before.hpLeft.toFixed(1)})`).toBeLessThanOrEqual(before.hpLeft - 1);
     expect(stop.wins, `${stop.id} wins after ${before.id}`).toBeLessThanOrEqual(before.wins);
   });
-  // The first stop is forgiving and the last is a real fight, but still one an average player usually wins.
+  // The first stop is forgiving and the last is the hardest. Until part 3 of issue #127 this asked that the
+  // player loses at least one fight at the Suitors; with a beginner winning 1 in 4 there, this player never does.
+  // By the lead's ruling on that issue it now asks that the Suitors cost at least 5 more health than Polyphemus.
   expect(route[0]?.wins).toBe(FIGHTS);
-  expect(route.at(-1)?.wins ?? 0).toBeLessThan(FIGHTS);
+  expect(route.at(-1)?.hpLeft ?? 100).toBeLessThanOrEqual((route[0]?.hpLeft ?? 0) - 5);
 });
 
 test("every later stop has three phases, and a finishing move only where Odysseus ends the fight himself", () => {

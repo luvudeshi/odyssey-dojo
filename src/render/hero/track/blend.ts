@@ -7,9 +7,12 @@ export interface ShareInput {
   readonly lost: boolean;
 }
 
+/** A hurt flinch never takes more than this share of the pose from the body: the arms keep following through it. */
+export const HURT_FLOOR = 0.4;
+
 /** 1 = all body, 0 = all clip. */
 export function trackShare(input: ShareInput, hurtSeconds: number): number {
   if (input.won || input.lost) return 0;
-  if (input.sinceHurt >= 0 && input.sinceHurt < hurtSeconds) return 1 - Math.sin((Math.PI * input.sinceHurt) / hurtSeconds);
+  if (input.sinceHurt >= 0 && input.sinceHurt < hurtSeconds) return 1 - (1 - HURT_FLOOR) * Math.sin((Math.PI * input.sinceHurt) / hurtSeconds);
   return 1;
 }
