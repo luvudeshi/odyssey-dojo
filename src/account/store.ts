@@ -39,6 +39,8 @@ export interface FightResult {
   readonly mastery: Readonly<Record<string, number>>;
   readonly styleId: string;
   readonly tally: Readonly<FightTally>;
+  /** The god the scan found for this player, when there was one. Only the hall of heroes (./heroes) reads it. */
+  readonly godId?: string | null;
 }
 
 export const PROFILE_KEY = "odyssey-dojo.profile";
@@ -121,6 +123,8 @@ export interface ProfileStore {
    */
   readonly replace: (profile: unknown) => void;
   readonly subscribe: (listener: () => void) => () => void;
+  /** Calls the listener with each fight given to `record`, after the profile has it. A fight that came with a save from the account is not one. */
+  readonly onFight: (listener: (fight: FightResult) => void) => () => void;
 }
 
 export function createProfileStore(storage: SettingsStorage | null): ProfileStore {
@@ -131,6 +135,7 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
     log("warn", "profile.read", error);
   }
   const listeners = new Set<() => void>();
+  const fightListeners = new Set<(fight: FightResult) => void>();
   const save = (next: Profile): void => {
     current = next;
     try {
@@ -143,7 +148,10 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
   return {
     get: () => current,
     rename: (name) => { save({ ...current, name: cleanName(name) }); },
-    record: (fight) => { save(withFight(current, fight)); },
+    record: (fight) => {
+      save(withFight(current, fight));
+      fightListeners.forEach((listener) => { listener(fight); });
+    },
     recordDojo: (perfect) => { save({ ...current, dojo: current.dojo + 1, dojoPerfect: current.dojoPerfect + (perfect ? 1 : 0) }); },
     recordRoom: () => { save({ ...current, rooms: current.rooms + 1 }); },
     replace: (profile) => {
@@ -153,6 +161,10 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
     subscribe(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
+    },
+    onFight(listener) {
+      fightListeners.add(listener);
+      return () => { fightListeners.delete(listener); };
     },
   };
 }
@@ -166,6 +178,7 @@ export const recordDojo = shared.recordDojo;
 export const recordRoom = shared.recordRoom;
 export const replaceProfile = shared.replace;
 export const subscribeProfile = shared.subscribe;
+export const onFight = shared.onFight;
 
 export function useProfile(): Profile {
   return useSyncExternalStore(shared.subscribe, shared.get, shared.get);

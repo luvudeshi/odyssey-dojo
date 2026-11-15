@@ -88,7 +88,7 @@ export function createGate(atOnce: number = HASHES_AT_ONCE, waiting: number = HA
   };
 }
 
-interface Counter {
+export interface Counter {
   /** Seconds until `key` may go again, or 0 when it still has budget. Counts nothing. */
   readonly wait: (key: string) => number;
   readonly count: (key: string) => void;
@@ -97,7 +97,7 @@ interface Counter {
 }
 
 /** At most `max` counts per key in a window that opens at the key's first count. */
-function createCounter(max: number, windowMs: number, now: () => number): Counter {
+export function createCounter(max: number, windowMs: number, now: () => number): Counter {
   const used = new Map<string, { readonly from: number; count: number }>();
   const open = (key: string): { readonly from: number; count: number } | null => {
     const found = used.get(key);
