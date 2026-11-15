@@ -8,10 +8,11 @@ import "./screens/menus.css";
 import "./screens/cursor.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
+import { GODS } from "./ai/gods/gods";
 import { CharacterPicker } from "./characters/CharacterPicker";
 import { characterById, loadCharacter } from "./characters/characters";
 import type { CharacterId } from "./characters/characters";
-import { confirmCharacter } from "./characters/godCharacter";
+import { HERO_POWER, confirmCharacter } from "./characters/godCharacter";
 import { assessmentFrom } from "./coach";
 import { Dojo } from "./coach/ui/Dojo";
 import { log } from "./core/log";
@@ -244,6 +245,8 @@ export function App() {
         enemy={enemy}
         style={flow.style}
         tracker={tracker}
+        god={HERO_POWER[character]}
+        hero={characterById(character).name}
         link={flow.hosting ? hostLink : null}
         seed={flow.seed}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
@@ -254,7 +257,7 @@ export function App() {
             defense={lessonsFrom(events)}
             enemyId={enemy.id}
             mastery={mastery}
-            card={(close) => <SharePanel god={null} hero={characterById(character).name} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
+            card={(close) => <SharePanel god={null} hero={characterById(character).name} power={GODS[HERO_POWER[character]].power.name} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
             onShown={() => {
               if (recorded.current !== flow.seed) {
                 recorded.current = flow.seed;

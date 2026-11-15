@@ -60,7 +60,7 @@ function saveCard(url: string, name: string): void {
 }
 
 export function SharePanel(props: SharePanelProps) {
-  const { god, hero, won, enemyName, fightTitle, score, style, video = null, onClose } = props;
+  const { god, hero, power, won, enemyName, fightTitle, score, style, video = null, onClose } = props;
   const [state, send] = useReducer(shareStep, IDLE);
   const [loaded, setLoaded] = useState<Portrait | null>(null);
   const [qr, setQr] = useState<HTMLImageElement | null>(null);
@@ -72,8 +72,8 @@ export function SharePanel(props: SharePanelProps) {
   // A code the canvas cannot draw (an SVG with no size, in some browsers) is left off the card, and so is "Scan".
   const qrOnCard = qr !== null && qr.naturalWidth > 0;
   const words = useMemo(
-    () => cardWords({ god, hero, won, enemyName, fightTitle, score, style }, qrOnCard),
-    [god, hero, won, enemyName, fightTitle, score, style, qrOnCard],
+    () => cardWords({ god, hero, power, won, enemyName, fightTitle, score, style }, qrOnCard),
+    [god, hero, power, won, enemyName, fightTitle, score, style, qrOnCard],
   );
   // A portrait counts only for the god it was loaded for.
   const settled = loaded !== null && loaded.god === god;
