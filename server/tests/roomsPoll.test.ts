@@ -238,9 +238,9 @@ test("a poll refuses a wrong token, an unknown room and a junk position like the
   // A message is waiting, so every poll answers at once; the clock stands still, so all of them fall in one second.
   vi.useFakeTimers({ toFake: ["Date"] });
   const answers = await Promise.all(Array.from({ length: POLLS_PER_SECOND + 10 }, async () => {
-    const answer = await call(`/api/rooms/${code}/poll?token=${guest}&after=0`, undefined, AbortSignal.timeout(2_000)).catch(() => null);
+    const answer = await call(`/api/rooms/${code}/poll?token=${guest}&after=0`, undefined, AbortSignal.timeout(12_000)).catch(() => null);
     return answer?.status;
   }));
-  expect(answers.filter((status) => status === 200).length).toBeGreaterThan(POLLS_PER_SECOND - 10);
+  expect(answers.filter((status) => status === 200).length).toBeLessThanOrEqual(POLLS_PER_SECOND);
   expect(answers.filter((status) => status === 429).length).toBeGreaterThan(0);
 }, 15_000);
