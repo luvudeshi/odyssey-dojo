@@ -48,8 +48,8 @@ export function browser(storage: Memory = memory()): Browser {
 }
 
 interface Row {
-  readonly name: string;
-  readonly password: string;
+  name: string;
+  password: string;
   save: unknown;
   updatedAt: string | null;
 }
@@ -111,6 +111,24 @@ export function fakeServer(): FakeServer {
       }
       const row = server.accounts.get(server.sessions.get(token) ?? "");
       if (!row) return answer(401, { error: "signed_out" });
+      if (route === "POST /api/account/rename") {
+        const wanted = field("name");
+        const taken = [...server.accounts.entries()].some(([key, other]) => other !== row && key === wanted.toLowerCase());
+        if (taken) return answer(409, { error: "name_taken" });
+        const old = server.sessions.get(token) ?? "";
+        server.accounts.delete(old);
+        server.accounts.set(wanted.toLowerCase(), row);
+        server.sessions.forEach((owner, held) => { if (owner === old) server.sessions.set(held, wanted.toLowerCase()); });
+        row.name = wanted;
+        return answer(200, { name: wanted });
+      }
+      if (route === "POST /api/account/password") {
+        if (row.password !== field("current")) return answer(403, { error: "wrong_password" });
+        row.password = field("next");
+        const owner = server.sessions.get(token);
+        server.sessions.forEach((who, held) => { if (who === owner && held !== token) server.sessions.delete(held); });
+        return answer(204);
+      }
       if (route === "GET /api/account/save") return answer(200, { save: row.save, updatedAt: row.updatedAt });
       if (route === "PUT /api/account/save") {
         if (server.hold) await new Promise<void>((go) => { waiting.push(go); });
