@@ -5,6 +5,9 @@ import type { PoseLandmarkerResult } from "@mediapipe/tasks-vision";
 import { log } from "../core/log";
 import type { Landmark, PoseFrame } from "../core/types";
 import { duoCamera } from "../duo/duoCamera";
+import { HALF_SHARE, createPairFinder, fromHalf, halfStart } from "../duo/halves";
+import type { Side } from "../duo/halves";
+import type { Body } from "../duo/split";
 import { createFreshFrame, createRateMeter, tooSlow, watchCameraFrames } from "./freshFrame";
 
 export interface PoseTracker {
@@ -18,6 +21,10 @@ export interface PoseTracker {
 export interface TrackerStats {
   reads: number; noFrame: number; noPerson: number; poses: number; errors: number; pauses: number; restarts: number; marks: number;
   detectMs: number[]; poseTimes: number[]; events: string[]; delegate: string; model: string;
+  /** How many bodies were found in the newest picture, and how many pictures showed none, one, and two or more. */
+  bodies: number; bodyFrames: [number, number, number];
+  /** Two players on one camera: which reader gave the newest picture's bodies, and how many pictures each half reader has read. */
+  reader: "one" | "whole" | "halves"; halfReads: number;
 }
 
 // Best first: the GPU, then the CPU if the GPU will not start or keeps failing. Only the lite model is vendored.
@@ -51,7 +58,7 @@ export async function startTracker(): Promise<PoseTracker> {
   park.style.cssText = "position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:0;pointer-events:none";
   document.body.append(park);
   park.append(video);
-  const stats: TrackerStats = { reads: 0, noFrame: 0, noPerson: 0, poses: 0, errors: 0, pauses: 0, restarts: 0, marks: 0, detectMs: [], poseTimes: [], events: [], delegate: "GPU", model: "lite" };
+  const stats: TrackerStats = { reads: 0, noFrame: 0, noPerson: 0, poses: 0, errors: 0, pauses: 0, restarts: 0, marks: 0, detectMs: [], poseTimes: [], events: [], delegate: "GPU", model: "lite", bodies: 0, bodyFrames: [0, 0, 0], reader: "one", halfReads: 0 };
   const note = (what: string): void => { if (stats.events.length < 60) stats.events.push(`${what}@${String(Math.round(performance.now()))}`); };
   if (new URLSearchParams(location.search).has("debug")) (window as unknown as { __trackerStats: TrackerStats }).__trackerStats = stats;
   let stopped = false;
@@ -65,10 +72,10 @@ export async function startTracker(): Promise<PoseTracker> {
   await video.play();
 
   const fileset = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
-  const build = (plan: Plan): Promise<PoseLandmarker> => PoseLandmarker.createFromOptions(fileset, {
+  const build = (plan: Plan, numPoses: number): Promise<PoseLandmarker> => PoseLandmarker.createFromOptions(fileset, {
     baseOptions: { modelAssetPath: `/mediapipe/pose_landmarker_${plan.model}.task`, delegate: plan.delegate },
     runningMode: "VIDEO",
-    numPoses: duoCamera.wanted(),
+    numPoses,
   });
   // Two players on one camera (src/duo): how many bodies the model in use was last told to look for.
   let looking = duoCamera.wanted();
@@ -82,7 +89,7 @@ export async function startTracker(): Promise<PoseTracker> {
   let level = wanted === "cpu" ? 1 : 0;
   let landmarker: PoseLandmarker | null = null;
   while (!landmarker && level < PLANS.length) {
-    try { landmarker = await build(PLANS[level] ?? PLANS[0]); } catch (error) { log("warn", "pose_model_failed", error); level++; }
+    try { landmarker = await build(PLANS[level] ?? PLANS[0], looking); } catch (error) { log("warn", "pose_model_failed", error); level++; }
   }
   if (!landmarker) throw new Error("No pose model could start");
   warm(landmarker);
@@ -99,13 +106,17 @@ export async function startTracker(): Promise<PoseTracker> {
   const swapTo = (next: number): void => {
     if (building || next >= PLANS.length || stopped) return;
     building = true;
-    build(PLANS[next] ?? PLANS[0]).then(
+    // The count the new model is built with. The two-player choice may change while it is being built: `looking`
+    // then says what the model in use really has, and the next read sets it right.
+    const count = duoCamera.wanted();
+    build(PLANS[next] ?? PLANS[0], count).then(
       (made) => {
         building = false;
         if (stopped) { made.close(); return; }
         warm(made);
         landmarker?.close();
         landmarker = made;
+        looking = count;
         level = next;
         stats.restarts++;
         announce();
@@ -117,6 +128,97 @@ export async function startTracker(): Promise<PoseTracker> {
       },
     );
   };
+
+  // Two players on one camera (src/duo/halves.ts): two more models, each asked for one body in its half of the
+  // picture. They find two people who stand too close or too small for the model above. Nothing here is made or
+  // run until the two-player choice is on, and they are closed again when it goes off.
+  const finder = createPairFinder();
+  let halves: [PoseLandmarker, PoseLandmarker] | null = null;
+  let halvesState: "none" | "building" | "ready" | "failed" = "none";
+  const crops: HTMLCanvasElement[] = [];
+  const pens: (CanvasRenderingContext2D | null)[] = [];
+  /** The time of the picture being read: the readers below are made once and read it from here. */
+  let readT = 0;
+  const closeHalves = (state: "none" | "failed"): void => {
+    for (const one of halves ?? []) { try { one.close(); } catch { /* already gone */ } }
+    halves = null;
+    halvesState = state;
+    finder.reset();
+  };
+  /** Draws one half of the camera's picture and asks that half's model for its one body. */
+  const detectHalf = (side: Side, t: number): Body | null => {
+    const model = halves?.[side];
+    const canvas = crops[side];
+    const pen = pens[side];
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    if (!model || !canvas || !pen || !width || !height) return null;
+    const wide = Math.round(width * HALF_SHARE);
+    if (canvas.width !== wide || canvas.height !== height) { canvas.width = wide; canvas.height = height; }
+    const from = Math.round(width * halfStart(side, wide / width));
+    pen.drawImage(video, from, 0, wide, height, 0, 0, wide, height);
+    const result = model.detectForVideo(canvas, t);
+    stats.halfReads++;
+    const image = result.landmarks[0];
+    const world = result.worldLandmarks[0];
+    if (!image || !world) return null;
+    return { image: fromHalf(image, from / width, wide / width), world: mirrored(world, (x) => -x) };
+  };
+  const readWhole = (): Body[] => {
+    const result = landmarker?.detectForVideo(video, readT);
+    if (!result) return [];
+    return result.landmarks.map((image, i) => ({ image: mirrored(image, (x) => 1 - x), world: mirrored(result.worldLandmarks[i] ?? [], (x) => -x) }));
+  };
+  // A half reader that throws is not worth a lost picture: both are closed and the whole picture is read from then on.
+  const readHalf = (side: Side): Body | null => {
+    try {
+      return detectHalf(side, readT);
+    } catch (error) {
+      log("warn", "pose_half_failed", error);
+      note("halves-failed");
+      closeHalves("failed");
+      return null;
+    }
+  };
+  const startHalves = async (): Promise<void> => {
+    halvesState = "building";
+    const made: PoseLandmarker[] = [];
+    try {
+      const plan = PLANS[level] ?? PLANS[0];
+      made.push(await build(plan, 1));
+      made.push(await build(plan, 1));
+      const [left, right] = made;
+      if (!left || !right) throw new Error("no half reader");
+      if (stopped || !duoCamera.on()) {
+        for (const one of made) one.close();
+        halvesState = "none";
+        return;
+      }
+      for (const side of [0, 1] as const) {
+        const canvas = crops[side] ?? document.createElement("canvas");
+        crops[side] = canvas;
+        pens[side] ??= canvas.getContext("2d");
+      }
+      halves = [left, right];
+      // As for the model above: the first read compiles GPU programs, so do it now.
+      for (const side of [0, 1] as const) {
+        lastT = Math.max(performance.now(), lastT + 1);
+        try { detectHalf(side, lastT); } catch { /* the first real read reports it */ }
+      }
+      halvesState = "ready";
+      note("halves");
+    } catch (error) {
+      for (const one of made) { try { one.close(); } catch { /* already gone */ } }
+      halves = null;
+      halvesState = "failed";
+      note("halves-failed");
+      log("warn", "pose_halves_failed", error);
+    }
+  };
+
+  // The choice was on before the camera started (the Multiplayer card): make the half readers now, while the screen
+  // still says the camera is starting, and not in the first pictures of the fight.
+  if (duoCamera.on()) await startHalves();
 
   let camera = createFreshFrame();
   let stopWatching = watchCameraFrames(video, (captured) => { stats.marks++; camera.mark(performance.now(), captured); });
@@ -185,9 +287,16 @@ export async function startTracker(): Promise<PoseTracker> {
         looking = duoCamera.wanted();
         void landmarker.setOptions({ numPoses: looking }).catch((error: unknown) => { log("warn", "pose_options_failed", error); });
       }
-      let result: PoseLandmarkerResult;
+      const duo = duoCamera.on();
+      if (duo && halvesState === "none") void startHalves();
+      else if (!duo && halvesState === "ready") closeHalves("none");
+      let result: PoseLandmarkerResult | null = null;
+      let found: Body[] | null = null;
       try {
-        result = landmarker.detectForVideo(video, t);
+        if (duo) {
+          readT = t;
+          found = finder.next(readWhole, halvesState === "ready" ? readHalf : null);
+        } else result = landmarker.detectForVideo(video, t);
         consecutiveErrors = 0;
       } catch (error) {
         // One bad frame (or a landmarker that broke) must not end tracking: rebuild it, and step down a level if it keeps failing.
@@ -205,17 +314,21 @@ export async function startTracker(): Promise<PoseTracker> {
         slowSince ||= now;
         if (now - slowSince > 3000) { note("too-slow"); slowSince = 0; }
       } else slowSince = 0;
-      if (duoCamera.on()) {
+      const bodies = found ? found.length : (result?.landmarks.length ?? 0);
+      stats.bodies = bodies;
+      stats.bodyFrames[bodies >= 2 ? 2 : bodies === 1 ? 1 : 0]++;
+      if (found) {
         // Every body goes to the seats; player one's frame comes back and is handed out as the one pose always was.
-        const bodies = result.landmarks.map((image, i) => ({ image: mirrored(image, (x) => 1 - x), world: mirrored(result.worldLandmarks[i] ?? [], (x) => -x) }));
-        const first = duoCamera.take(bodies, t);
+        stats.reader = finder.reader();
+        const first = duoCamera.take(found, t);
         if (!first) { stats.noPerson++; return null; }
         stats.poses++;
         keep(stats.poseTimes, t);
         return first;
       }
-      const image = result.landmarks[0];
-      const world = result.worldLandmarks[0];
+      stats.reader = "one";
+      const image = result?.landmarks[0];
+      const world = result?.worldLandmarks[0];
       if (!image || !world) { stats.noPerson++; return null; }
       stats.poses++;
       keep(stats.poseTimes, t);
@@ -226,6 +339,8 @@ export async function startTracker(): Promise<PoseTracker> {
       stopWatching?.();
       for (const track of stream.getTracks()) track.stop();
       landmarker?.close();
+      for (const one of halves ?? []) { try { one.close(); } catch { /* already gone */ } }
+      halves = null;
       park.remove();
     },
   };
