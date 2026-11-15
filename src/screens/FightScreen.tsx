@@ -10,6 +10,7 @@ import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
+import { CameraView } from "../hud/CameraView";
 import { Hud } from "../hud/Hud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
@@ -22,7 +23,6 @@ import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { battle, noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
-import { useSettings } from "../settings/store";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
@@ -44,14 +44,12 @@ export function FightScreen(props: {
 }) {
   const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null } = props;
   const [powerCount, setPowerCount] = useState(0);
-  const { mirror } = useSettings();
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
   const overRef = useRef(false);
   const [lost, setLost] = useState(false);
   const [state, setState] = useState(() => startFight(enemy, seed));
   const poseRef = useRef<PoseFrame | null>(null);
-  const preview = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     battle.styleId = style.id;
@@ -132,19 +130,12 @@ export function FightScreen(props: {
     return () => { resumeMusic(); shiftBattleTimes(battle, performance.now() - since); };
   }, [running]);
 
-  useEffect(() => {
-    const holder = preview.current;
-    if (!tracker || !holder) return;
-    holder.append(tracker.video);
-    return () => { tracker.video.remove(); };
-  }, [tracker]);
-
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <Hud enemy={enemy} state={state} />
       {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
-      <div className={mirror ? "preview mirror" : "preview"} ref={preview} />
+      <CameraView tracker={tracker} poseRef={poseRef} />
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu
