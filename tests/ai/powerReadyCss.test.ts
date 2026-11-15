@@ -29,13 +29,10 @@ function parse(css: string): Rule[] {
 /** Keyframe stops ("from", "50%") style no element of their own. */
 const RULES = parse(SHEET).filter((rule) => !/^(from|to|\d+%)$/.test(rule.selector));
 
-/** The one selector that looks outside the banner: the fight while the HUD's defend word is on the same strip. */
-const DEFEND_WORD_UP = ".fight:has(.hb-defend__word) ";
-
 test("every rule sits under .power-ready with two classes, so the theme cannot override it and nothing leaks out", () => {
   expect(RULES.length).toBeGreaterThanOrEqual(10);
   for (const rule of RULES) {
-    const selector = rule.selector.startsWith(DEFEND_WORD_UP) ? rule.selector.slice(DEFEND_WORD_UP.length) : rule.selector;
+    const selector = rule.selector;
     expect(selector).toMatch(/^\.power-ready[ .]/);
     expect(selector.match(/\.[\w-]+/g)?.length ?? 0, selector).toBeGreaterThanOrEqual(2);
     // No bare element or id selectors: only the banner's own classes, and "*" for its descendants.
@@ -43,14 +40,12 @@ test("every rule sits under .power-ready with two classes, so the theme cannot o
   }
 });
 
-test("it steps aside while the HUD's defend word (DODGED!) is on the same strip, and the names it reads are the HUD's own", () => {
-  const aside = RULES.find((rule) => rule.selector === `${DEFEND_WORD_UP}.power-ready.power-ready--live`)?.declarations;
-  expect(aside?.get("opacity")).toBe("0");
-  expect([...(aside?.keys() ?? [])]).toEqual(["opacity"]);
-  // Renaming the word or the fight's root must fail here, not silently bring the overlap back.
-  expect(readFileSync("src/hud/DefendFlash.tsx", "utf8")).toContain('className="hb-defend__word"');
-  expect(readFileSync("src/screens/FightScreen.tsx", "utf8")).toContain('<div className="fight">');
-  expect(RULES.filter((rule) => !rule.selector.startsWith(".power-ready")).map((rule) => rule.selector)).toEqual([`${DEFEND_WORD_UP}.power-ready.power-ready--live`]);
+test("it never hides for something outside the banner: a defend fills the meter, and the banner must stay up while the DODGED chip shows", () => {
+  expect(RULES.filter((rule) => !rule.selector.startsWith(".power-ready")).map((rule) => rule.selector)).toEqual([]);
+  expect(SHEET).not.toContain(":has(");
+  expect(SHEET).not.toContain("hb-defend");
+  // Nothing but the entrance keyframe ever takes the banner to opacity 0.
+  for (const rule of RULES) expect(rule.declarations.get("opacity") ?? "1", rule.selector).not.toBe("0");
 });
 
 test("keyframes carry the banner's name, so they cannot replace another stylesheet's", () => {
@@ -82,6 +77,19 @@ test("it is centred on the lower edge of the fight, and is wide, not tall: the n
   expect(root?.has("top")).toBe(false);
   const plate = RULES.find((rule) => rule.selector === ".power-ready .power-ready__plate")?.declarations;
   expect(plate?.get("grid-template-areas")).toBe('"title how" "move how"');
+});
+
+test("the champion plate sits just right of the power ring, level with it, still, and leaves a narrow screen", () => {
+  const ring = /\.power-circle \{[^}]*--pc-size: (clamp\([^;]+\));[^}]*bottom: (clamp\([^;]+\));/.exec(readFileSync("src/hud/powerCircle.css", "utf8"));
+  const [, size = "?", bottom = "?"] = ring ?? [];
+  const plate = RULES.find((rule) => rule.selector === ".power-ready.power-ready--champion" && rule.declarations.has("position"))?.declarations;
+  expect(plate?.get("position")).toBe("absolute");
+  // The ring's own size and bottom offset, read from the HUD's sheet: a resized ring must fail here, not slide under the plate.
+  expect(plate?.get("left")).toBe(`calc(50% + ${size} / 2 + clamp(8px, 0.9vw, 14px))`);
+  expect(plate?.get("bottom")).toBe(bottom);
+  expect(plate?.get("height")).toBe(size);
+  expect(plate?.has("animation")).toBe(false);
+  expect(SHEET).toMatch(/@media \(max-width: 760px\) \{\s*\.power-ready\.power-ready--champion \{ display: none; \}/);
 });
 
 test("colours are the god's accent or a theme variable, each with a fallback for a theme that drops the name", () => {
@@ -118,8 +126,9 @@ test("every class the banner uses has a rule, and every rule is for a class the 
   const styled = new Set(RULES.flatMap((rule) => rule.selector.match(/power-ready(?:__|--)[a-z]+/g) ?? []));
   // The per-god class (power-ready--zeus) is a hook for later; it is built from the god's id and has no rule yet.
   expect([...used].sort()).toEqual([
-    "power-ready--keys", "power-ready--live", "power-ready__edge", "power-ready__frame", "power-ready__how",
-    "power-ready__key", "power-ready__move", "power-ready__or", "power-ready__plate", "power-ready__title",
-  ]);
+    "power-ready--champion", "power-ready--keys", "power-ready--live", "power-ready__edge", "power-ready__frame", "power-ready__god",
+    "power-ready__how", "power-ready__key", "power-ready__move", "power-ready__of", "power-ready__patron", "power-ready__plate",
+    "power-ready__or", "power-ready__title",
+  ].sort());
   expect([...styled].sort()).toEqual([...used].sort());
 });
