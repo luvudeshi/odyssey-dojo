@@ -53,12 +53,13 @@ test("a trace that fires is reported with its frame and every margin, smallest f
 });
 
 test("a trace that misses is reported with its closest frame and the first condition that failed", () => {
-  // The move comes from the file name: the made-up jab under a cross's name, and standing still under a block's.
-  const cross = reportText("cross-madeup-1.json", fixture("jab-madeup-1.json"), MOVES).split("\n");
-  expect(cross[0]).toMatch(/^cross-madeup-1\.json: cross DID NOT FIRE \(peak confidence 0\.00, needs 0\.70\); closest on frame \d+ of 92 \(\d+ ms\)$/);
-  expect(cross[1]).toMatch(/^ {2}first failed: .+: \S+, needs (>=|<=|> |< ) \S+ \((-\d+%|missed)\)$/);
-  expect(cross[3]).toMatch(/^\s+(-\d+%|missed)\s/);
-  expect(measureTrace(fixture("jab-madeup-1.json"), MOVES, "cross")).toMatchObject({ fired: false, peak: 0 });
+  // The move comes from the file name: the made-up jab under a hook's name, and standing still under a block's.
+  // (Not under a cross's name: jab and cross read on either hand, so the jab fires the cross too.)
+  const hook = reportText("hook-madeup-1.json", fixture("jab-madeup-1.json"), MOVES).split("\n");
+  expect(hook[0]).toMatch(/^hook-madeup-1\.json: hook DID NOT FIRE \(peak confidence 0\.00, needs 0\.70\); closest on frame \d+ of 92 \(\d+ ms\)$/);
+  expect(hook[1]).toMatch(/^ {2}first failed: .+: \S+, needs (>=|<=|> |< ) \S+ \((-\d+%|missed)\)$/);
+  expect(hook[3]).toMatch(/^\s+(-\d+%|missed)\s/);
+  expect(measureTrace(fixture("jab-madeup-1.json"), MOVES, "hook")).toMatchObject({ fired: false, peak: 0 });
 
   const block = reportText("block-madeup-2.json", fixture("idle-madeup-1.json"), MOVES).split("\n");
   expect(block[0]).toMatch(/block DID NOT FIRE \(peak confidence 0\.00/);
