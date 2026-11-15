@@ -71,7 +71,7 @@ export const register: Register = (router, deps) => {
   const accounts = deps.accounts ?? createAccounts(() => openDb(url, { caFile: deps.config.databaseCaFile ?? null }));
   const limits = createAccountLimits();
   const strangers = createGate(STRANGERS_AT_ONCE, STRANGERS_WAITING);
-  shareAccounts(deps, { accounts, strangers });
+  shareAccounts(deps, { accounts, strangers, limits });
 
   /**
    * Who a request is counted against. Only a request the guard also calls local is this machine: clientKey knows

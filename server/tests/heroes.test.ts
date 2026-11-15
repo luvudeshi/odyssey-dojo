@@ -382,6 +382,22 @@ test("through the tunnel the hall still answers when an address has sent too man
   expect((await call("GET", "/api/heroes")).status).toBe(200);
 });
 
+test("an address has one budget of unknown sessions for the account routes and the hall together, not one each", async () => {
+  const stand = standIns();
+  const call = await serve({ accounts: stand.accounts, heroes: stand.heroes });
+  const half = WRONG_TOKENS_PER_ADDRESS / 2;
+  for (let index = 0; index < half; index += 1) {
+    expect((await call("GET", "/api/account/save", { token: makeToken(), headers: TUNNEL })).status).toBe(401);
+    expect((await call("GET", "/api/heroes", { token: makeToken(), headers: TUNNEL })).status).toBe(200);
+  }
+  expect(stand.lookups).toHaveLength(WRONG_TOKENS_PER_ADDRESS);
+  // The budget is used up on both sides: neither route asks the database about one more.
+  expect((await call("GET", "/api/account/save", { token: makeToken(), headers: TUNNEL })).status).toBe(429);
+  expect((await call("GET", "/api/heroes", { token: makeToken(), headers: TUNNEL })).status).toBe(200);
+  expect((await call("POST", "/api/account/fights", { token: makeToken(), headers: TUNNEL, json: { fight: FIGHT } })).status).toBe(429);
+  expect(stand.lookups).toHaveLength(WRONG_TOKENS_PER_ADDRESS);
+});
+
 // From here on the hall's own code (../lib/heroes) runs over a made-up statement function. It is not a database.
 interface Door {
   readonly statement: Statement;
