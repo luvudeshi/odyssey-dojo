@@ -23,7 +23,10 @@ export interface GodDef {
   };
   /** Homeric titles of the god. They describe the god, never the player: show one as "<God>, <epithet>". */
   readonly epithets: readonly [string, ...string[]];
-  /** Gods Homer shows this one quarrelling or competing with, best attested first. */
+  /**
+   * Gods Homer shows this one quarrelling or competing with, best attested first. Never Athena, whoever the god is:
+   * she coaches the player through every fight, so she cannot also be the one who sends the monsters.
+   */
   readonly rivals: readonly [GodId, ...GodId[]];
 }
 
@@ -52,9 +55,8 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
     ],
     // Poseidon: Iliad 15.158-217, he rages at Zeus's order to leave the battle ("we are three brothers, equal in
     // honour"), and Odyssey 13.125-158, he protests to Zeus about the Phaeacians.
-    // Athena: Iliad 8.350-437, she arms to defy his ban on helping the Achaeans; Iliad 1.399-400, she once joined
-    // Hera and Poseidon in trying to bind him.
-    rivals: ["poseidon", "athena"],
+    // (Athena defies him too, Iliad 8.350-437, but she is the player's coach and is left out of every list.)
+    rivals: ["poseidon"],
   },
   poseidon: {
     id: "poseidon",
@@ -76,11 +78,11 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
       "who rules the grey salt sea",
       "glorious shaker of the land",
     ],
-    // Athena: the central quarrel of the Odyssey, over Odysseus. Odyssey 6.328-331 and 13.341-343: she will not
-    // show herself openly to him for fear of her father's brother.
+    // Zeus: Iliad 15.158-217, as above. In the Odyssey Zeus is also the other god who wrecks Odysseus at sea, with
+    // the thunderbolt that splits his ship after the cattle of the Sun (12.403-419).
     // Apollo: Iliad 21.435-469, Poseidon challenges him to fight in the battle of the gods.
-    // Zeus: Iliad 15.158-217, as above.
-    rivals: ["athena", "apollo", "zeus"],
+    // (His great quarrel is with Athena, over Odysseus: Odyssey 6.328-331 and 13.341-343. She is left out as above.)
+    rivals: ["zeus", "apollo"],
   },
   athena: {
     id: "athena",
@@ -178,8 +180,8 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
       "of the golden sword",
     ],
     // Poseidon: Iliad 21.435-469, Poseidon calls him out in the battle of the gods and he declines.
-    // Athena: Iliad 23.382-400 and 7.17-42, as above.
     // Artemis: Iliad 21.470-477, as above.
-    rivals: ["poseidon", "athena", "artemis"],
+    // (Athena crosses him in the chariot race, Iliad 23.382-400. She is left out as above.)
+    rivals: ["poseidon", "artemis"],
   },
 };

@@ -33,7 +33,6 @@ export const CLIP = {
   block: "Sword_Block",
   knock: "Hit_Knockback",
   drink: "Consume",
-  stand: "Idle_No_Loop",
   folded: "Idle_FoldArms_Loop",
 } as const;
 
@@ -131,10 +130,10 @@ export const ANTINOUS_CLIPS: readonly MonsterClipConfig[] = SPEEDS.map((timeScal
   timeScale,
 }));
 
-/** A flanking suitor: arms folded or drinking until his spear attack, then the overhand throw, scrubbed by the windup. */
+/** A flanking suitor: arms folded, on guard or drinking (never the neutral idle, which leaves the arms hanging out like a T-pose) until his spear attack, then the overhand throw, scrubbed by the windup. */
 export function extraClips(extra: Extra): MonsterClipConfig {
   return {
-    idle: extra.id === "right" ? CLIP.drink : extra.id === "rearB" ? CLIP.folded : CLIP.stand,
+    idle: extra.id === "right" ? CLIP.drink : extra.id === "left" ? CLIP.guard : CLIP.folded,
     windup: { default: CLIP.throw },
     hit: CLIP.knock,
     death: CLIP.knock,

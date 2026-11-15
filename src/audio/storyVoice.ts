@@ -1,19 +1,22 @@
-// Speaks Homer's narration and the monsters' taunts through Athena's voice, so two lines are never heard together.
-// Every function returns a promise that never rejects. It resolves true once a line the voice took is over (played out,
-// cut off or failed), and false when the voice never took it: no clip, no audio, an unknown stop, or the voice stayed busy.
+// Speaks Homer's narration through Athena's voice, so the two are never heard together, and the monsters' taunts on a
+// channel of their own, so a taunt is heard over Athena's calls and never holds her up.
+// Every function returns a promise that never rejects. It resolves true once a line that started is over (played out,
+// cut off or failed), and false when it never started: no clip, no audio, an unknown stop, or its channel stayed busy.
 // Homer speaks on the screens around a fight, so his new line cuts off an older story line. A taunt is spoken inside a
-// fight, so it lets Athena's line for that frame go first.
+// fight: it waits for Athena's phase line to end, then plays over her calls. A second taunt asked for while one waits or
+// plays is not played (it resolves false, or joins the first when the dice picked that same one).
 import { log } from "../core/log";
+import { isPhaseLine } from "./athenaLines";
 import { isStoryLine, narrationId, pickTaunt } from "./narrationLines";
 import type { NarrationMoment } from "./narrationLines";
-import { speakLine, stopLine, voicePlaying } from "./voice";
+import { speakLine, stopLine, tauntVoice, voicePlaying } from "./voice";
 
 /** How often a waiting line asks again, and how often a playing line is checked. */
 const POLL_MS = 100;
 /** How long Homer waits for the voice: long enough for Athena's result line to end, or for the clip indexes to load. */
 export const NARRATION_WAIT_MS = 6000;
-/** How long a taunt waits: longer than Athena's longest phase line (2.4 s), short enough that the taunt still fits the moment. */
-export const TAUNT_WAIT_MS = 3500;
+/** How long a taunt waits for Athena's phase line to end before it is dropped. The longest phase line runs 2.85 seconds. */
+export const TAUNT_WAIT_MS = 4000;
 /** Longer than the voice lets any clip run, so a promise can never be left pending. */
 const MAX_HEARD_MS = 20000;
 
@@ -26,8 +29,11 @@ export interface StoryVoiceDeps {
   readonly playing: () => string | null;
   /** Cuts this line off if it is the one being spoken. */
   readonly stop: (id: string) => void;
+  /** The monsters' channel. It has the same three functions and is never busy with Athena's or Homer's lines. */
+  readonly taunts: Pick<StoryVoiceDeps, "speak" | "playing" | "stop">;
   readonly random: () => number;
-  readonly sleep: (ms: number) => Promise<void>;
+  /** Resolves after `ms`, or at once when `stopped` aborts, so a line that was stopped leaves no timer running. */
+  readonly sleep: (ms: number, stopped?: AbortSignal) => Promise<void>;
 }
 
 export interface StoryVoice {
@@ -35,9 +41,9 @@ export interface StoryVoice {
   speakNarration(enemyId: string, moment: NarrationMoment, waitMs?: number): Promise<boolean>;
   /** Homer's line for the result screen: the stop's "after" line on a win (or his general one), his loss line otherwise. */
   speakResult(enemyId: string, won: boolean, waitMs?: number): Promise<boolean>;
-  /** One of the monster's taunts, picked at random. First tried a moment later, then waits up to `waitMs` in all. */
+  /** One of the monster's taunts, picked at random, once Athena's phase line is over. `waitMs` is how long it then waits for a taunt that is playing. */
   speakMonsterTaunt(enemyId: string, waitMs?: number): Promise<boolean>;
-  /** Drops a line that is still waiting and cuts off a story line that is playing. Athena's lines are left alone. */
+  /** Drops a line that is still waiting and cuts off a story line or taunt that is playing. Athena's lines are left alone. */
   stopStory(): void;
 }
 
@@ -46,29 +52,36 @@ export function createStoryVoice(deps: StoryVoiceDeps): StoryVoice {
   let turn = 0;
 
   // The line now waiting or playing. Asking for it again joins it, so a screen that asks twice is heard once.
-  let active: { readonly id: string; readonly over: Promise<boolean> } | null = null;
+  let active: { readonly id: string; readonly speaker: Speaker; readonly over: Promise<boolean> } | null = null;
+
+  // One for every line not yet over, the one in `active` and any it took the place of. stopStory aborts them all, which
+  // wakes each line from its timer so that none is left running.
+  const live = new Set<AbortController>();
 
   /** Waits for the voice, speaks the line, and resolves when it is over. Everything is inside the try, so it cannot reject. */
-  async function run(id: string, mine: number, patience: number, speaker: Speaker): Promise<boolean> {
+  async function run(id: string, mine: number, patience: number, speaker: Speaker, stopped: AbortSignal): Promise<boolean> {
     try {
-      let waited = 0;
+      const channel = speaker === "homer" ? deps : deps.taunts;
       if (speaker === "homer") {
         // A new screen's line must not wait behind the last screen's: Homer does not cut Homer in the voice itself.
         const now = deps.playing();
         if (now !== null && now !== id && isStoryLine(now)) deps.stop(now);
       } else {
-        // A taunt is often asked for in the frame the phase changes, before Athena has spoken for that frame.
-        // Trying now would start the taunt and have her phase line cut it at once, so the first try is one poll later.
-        await deps.sleep(POLL_MS);
+        // The fight screen asks for the taunt before Athena hears the frame's events, so her phase line starts just after
+        // this. Look one tick later, then let her finish: the two are not heard together.
+        await deps.sleep(0, stopped);
+        for (let waited = 0; mine === turn && isPhaseLine(deps.playing()); waited += POLL_MS) {
+          if (waited >= TAUNT_WAIT_MS) return false;
+          await deps.sleep(POLL_MS, stopped);
+        }
         if (mine !== turn) return false;
-        waited = POLL_MS;
       }
-      for (; !deps.speak(id); waited += POLL_MS) {
+      for (let waited = 0; !channel.speak(id); waited += POLL_MS) {
         if (waited >= patience) return false;
-        await deps.sleep(POLL_MS);
+        await deps.sleep(POLL_MS, stopped);
         if (mine !== turn) return false;
       }
-      for (let heard = 0; deps.playing() === id && heard < MAX_HEARD_MS; heard += POLL_MS) await deps.sleep(POLL_MS);
+      for (let heard = 0; channel.playing() === id && heard < MAX_HEARD_MS; heard += POLL_MS) await deps.sleep(POLL_MS, stopped);
       return true;
     } catch (error) {
       log("warn", "story.voice", error);
@@ -84,12 +97,18 @@ export function createStoryVoice(deps: StoryVoiceDeps): StoryVoice {
       log("warn", "story.choose", error);
     }
     if (id !== null && active?.id === id) return active.over;
+    // Anything that is not a real number of milliseconds means "do not wait".
+    const patience = Number.isFinite(waitMs) ? waitMs : 0;
+    // One taunt at a time: a taunt that will not wait does not take the place of one that is waiting or playing.
+    if (speaker === "monster" && active?.speaker === "monster" && patience <= 0) return Promise.resolve(false);
     turn += 1;
     if (id === null) return Promise.resolve(false);
-    // Anything that is not a real number of milliseconds means "do not wait".
-    const line = { id, over: run(id, turn, Number.isFinite(waitMs) ? waitMs : 0, speaker) };
+    const stopped = new AbortController();
+    live.add(stopped);
+    const line = { id, speaker, over: run(id, turn, patience, speaker, stopped.signal) };
     active = line;
     void line.over.then(() => {
+      live.delete(stopped);
       if (active === line) active = null;
     });
     return line.over;
@@ -99,14 +118,18 @@ export function createStoryVoice(deps: StoryVoiceDeps): StoryVoice {
     speakNarration: (enemyId, moment, waitMs = NARRATION_WAIT_MS) => say(() => narrationId(enemyId, moment), waitMs, "homer"),
     speakResult: (enemyId, won, waitMs = NARRATION_WAIT_MS) =>
       say(() => (won ? (narrationId(enemyId, "after") ?? "homer_win") : "homer_loss"), waitMs, "homer"),
-    speakMonsterTaunt: (enemyId, waitMs = TAUNT_WAIT_MS) => say(() => pickTaunt(enemyId, deps.random), waitMs, "monster"),
+    speakMonsterTaunt: (enemyId, waitMs = 0) => say(() => pickTaunt(enemyId, deps.random), waitMs, "monster"),
     stopStory() {
       turn += 1;
+      for (const stopped of live) stopped.abort();
+      live.clear();
       // Forget the line too, so asking for it again after a stop starts it afresh.
       active = null;
       try {
-        const id = deps.playing();
-        if (id !== null && isStoryLine(id)) deps.stop(id);
+        for (const channel of [deps, deps.taunts]) {
+          const id = channel.playing();
+          if (id !== null && isStoryLine(id)) channel.stop(id);
+        }
       } catch (error) {
         log("warn", "story.stop", error);
       }
@@ -118,10 +141,23 @@ const shared = createStoryVoice({
   speak: speakLine,
   playing: voicePlaying,
   stop: stopLine,
+  taunts: tauntVoice,
   random: Math.random,
-  sleep: (ms) =>
+  sleep: (ms, stopped) =>
     new Promise((resolve) => {
-      setTimeout(resolve, ms);
+      if (stopped?.aborted) {
+        resolve();
+        return;
+      }
+      const wake = (): void => {
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        stopped?.removeEventListener("abort", wake);
+        resolve();
+      }, ms);
+      stopped?.addEventListener("abort", wake, { once: true });
     }),
 });
 
@@ -139,8 +175,9 @@ export function speakResult(enemyId: string, won: boolean, waitMs?: number): Pro
 }
 
 /**
- * Has the monster taunt the player, for every stop of the quest. It may be called before or after `playVoice` in a frame:
- * Athena's line for that frame goes first either way. Her next call cuts a taunt short.
+ * Has the monster taunt the player, for every stop of the quest. The taunt waits for Athena's phase line to end (up to
+ * TAUNT_WAIT_MS, then it is dropped), then plays on the monsters' own channel, a little quieter than Athena, over her calls.
+ * `stopStory` drops or silences it, and so does `playVoice` when the fight is won or lost.
  */
 export function speakMonsterTaunt(enemyId: string, waitMs?: number): Promise<boolean> {
   return shared.speakMonsterTaunt(enemyId, waitMs);
