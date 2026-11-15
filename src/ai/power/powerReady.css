@@ -3,35 +3,39 @@
    inline) and the theme's --ink and --white, each with a fallback. Only transform and opacity are animated.
    No text is under 18px at any screen size. */
 .power-ready.power-ready--live {
-  /* On the lower edge of the fight, in the one gap the Forge HUD leaves there: it starts 14px right of the player's
-     health crescent (src/hud/sky/forge.css: its right edge is 60px left of the middle) and ends 10px short of the prompt
-     card (src/hud/sky/card.css: 24px from the right edge, 300px wide). The card can reach the foot of a 720px screen, so
-     the plate never runs under it. The power ring lifts while the meter is full (src/hud/powerCircle.css, .is-lifted)
-     and sits on the plate's left end. --power-ready-bottom, -left and -right move the strip (the lab page uses them). */
-  position: absolute; left: var(--power-ready-left, calc(50% - 60px + 14px)); right: var(--power-ready-right, calc(324px + 10px)); bottom: var(--power-ready-bottom, clamp(8px, 1.4vh, 14px)); z-index: 6;
+  /* On the lower edge of the fight, in the one gap the HUD leaves there: it starts 14px right of the player's health
+     crescent (src/hud/sky/rift.css: its right edge is 60px left of the middle) and ends 14px short of the prompt card
+     (src/hud/sky/card.css: 24px from the right edge, 300px wide; its glass rim is drawn up to 6px outside that). The
+     card can reach near the foot of a 720px screen, so the plate never runs under it. The power disc lifts while the
+     meter is full (src/hud/powerCircle.css, .is-lifted) and stands over the plate's left end, so the plate is kept low
+     and short: the disc's spikes reach a quarter of its size below its box at the peak of its beat.
+     --power-ready-bottom, -left and -right move the strip (the lab page uses them). */
+  position: absolute; left: var(--power-ready-left, calc(50% - 60px + 14px)); right: var(--power-ready-right, calc(324px + 14px)); bottom: var(--power-ready-bottom, clamp(5px, 0.9vh, 10px)); z-index: 6;
   display: flex; justify-content: flex-start; margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: center; line-height: 1;
   color: var(--white, #f2e4c8); transition: opacity 0.15s ease-out;
 }
 .power-ready.power-ready--live * { box-sizing: border-box; pointer-events: none; }
 
-/* Whose power it is: two short lines just right of the lifted ring and level with it, where the champion plate stood
-   beside the resting ring. The sum is the ring's lifted bottom offset, less this strip's own. */
+/* Whose power it is: two short lines just right of the lifted disc and level with it, as the champion plate stood
+   beside the resting disc. A full disc is wider than its box: its glass spikes grow by 1.32 and it beats by 1.1, so
+   they reach up to 0.79 of its size from its middle (0.54 at rest, src/hud/sky/rift/geometry.ts). The title starts 6px
+   past that. The bottom is the disc's lifted bottom offset, less this strip's own. */
 .power-ready .power-ready__beside {
-  position: absolute; left: calc(60px - 14px + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px));
-  bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 52px - var(--power-ready-bottom, clamp(8px, 1.4vh, 14px)));
+  position: absolute; left: calc(60px - 14px + clamp(76px, 6.6vw, 108px) * 0.79 + 6px);
+  bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 60px - var(--power-ready-bottom, clamp(5px, 0.9vh, 10px)));
   display: flex; align-items: center; height: clamp(76px, 6.6vw, 108px);
 }
 .power-ready .power-ready__title {
   padding: 6px 13px 7px 11px; background: var(--ink, #17110d); border: 1px solid var(--power-ready-accent, #ffd9a0); border-left-width: 4px;
-  font-size: clamp(18px, 1.3vw, 21px); font-weight: 700; line-height: 1.15; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; white-space: nowrap;
+  font-size: clamp(18px, 1.3vw, 21px); font-weight: 700; line-height: 1.15; letter-spacing: 0.05em; text-transform: uppercase; text-align: left; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0); filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
   animation: power-ready-in 0.35s ease-out both;
 }
 /* The title's second line: its plate is then no wider than its words. */
 .power-ready .power-ready__tail { display: block; }
 
-/* The glow is one fixed shadow; the pulse scales the whole plate a little (5px a side at its widest, inside the gaps). */
+/* The glow is one fixed shadow; the pulse scales the whole plate a little (4px a side at its widest, inside the gaps). */
 .power-ready .power-ready__frame {
   position: relative; max-width: 100%;
   filter: drop-shadow(0 0 12px var(--power-ready-accent, #ffd9a0)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
@@ -43,10 +47,10 @@
   padding: 3px; background: var(--power-ready-accent, #ffd9a0);
   clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 22px 100%, 0 50%);
 }
-/* Two rows: the move's name, and under it how to throw it. Short enough to stay under the lifted ring. */
+/* Two rows: the move's name, and under it how to throw it. Short enough to stay under the lifted disc's spikes. */
 .power-ready .power-ready__plate {
   display: grid; grid-template-columns: auto; grid-template-areas: "move" "how"; justify-items: center; align-items: center; row-gap: 2px;
-  padding: 5px 30px 6px; background: var(--ink, #17110d);
+  padding: 3px 30px 4px; background: var(--ink, #17110d);
   clip-path: polygon(21px 0, calc(100% - 21px) 0, 100% 50%, calc(100% - 21px) 100%, 21px 100%, 0 50%);
 }
 .power-ready .power-ready__move {
@@ -88,11 +92,11 @@
 .power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2vw, 32px); line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 .power-ready.power-ready--keys .power-ready__key { padding: 0.05em 0.4em; }
 
-/* The champion plate, while the meter is filling: two short lines just right of the power ring (src/hud/powerCircle.css:
-   centred, clamp(76px, 6.6vw, 108px) wide, on the same bottom offset), as tall as the ring so it sits level with it.
+/* The champion plate, while the meter is filling: two short lines just right of the power disc (src/hud/powerCircle.css:
+   centred, clamp(76px, 6.6vw, 108px) wide, on the same bottom offset), as tall as the disc so it sits level with it.
    Still: no animation. It stops well short of the prompt card on the right edge. */
 .power-ready.power-ready--champion {
-  position: absolute; left: calc(50% + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px)); bottom: clamp(10px, 1.6vh, 18px); z-index: 6;
+  position: absolute; left: calc(50% + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px)); bottom: clamp(18px, 2.6vh, 28px); z-index: 6;
   display: flex; align-items: center; height: clamp(76px, 6.6vw, 108px); margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: left; line-height: 1;
   color: var(--white, #f2e4c8);
@@ -112,22 +116,22 @@
 }
 
 @keyframes power-ready-in { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
-@keyframes power-ready-pulse { 50% { transform: scale(1.03); } }
+@keyframes power-ready-pulse { 50% { transform: scale(1.02); } }
 @media (prefers-reduced-motion: reduce) {
   .power-ready .power-ready__frame { animation: none; }
   .power-ready .power-ready__title { animation: none; }
 }
-/* Big screens: the Forge HUD is drawn 1.35 times as large (src/hud/sky/top.css), the prompt card with it. The crescent
+/* Big screens: the HUD is drawn 1.35 times as large (src/hud/sky/top.css), the prompt card with it. The crescent
    grows away from this strip, to the left. */
 @media (min-width: 1700px) and (min-height: 950px) {
-  .power-ready.power-ready--live { right: var(--power-ready-right, calc(324px * 1.35 + 10px)); }
+  .power-ready.power-ready--live { right: var(--power-ready-right, calc(324px * 1.35 + 14px)); }
 }
 /* Under 1280px wide the gap between the crescent and the card is too narrow for the plate: it may run under the card. */
 @media (max-width: 1279px) {
   .power-ready.power-ready--live { right: var(--power-ready-right, 16px); }
 }
 /* Narrow screens (a phone held upright): the crescent moves up, so the banner is centred on the lower edge, the title
-   on one line on top of the plate, and there is no room beside the ring for the champion plate. */
+   on one line on top of the plate, and there is no room beside the disc for the champion plate. */
 @media (max-width: 760px) {
   .power-ready.power-ready--champion { display: none; }
   .power-ready.power-ready--live { left: var(--power-ready-left, 0px); right: var(--power-ready-right, 0px); flex-direction: column; align-items: center; }

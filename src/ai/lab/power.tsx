@@ -1,6 +1,6 @@
 // A test page for the "power is ready" banner on its own: http://localhost:5173/src/ai/lab/power.html
 // With no query it shows every god and no god, camera and keyboard, side by side.
-// ?god=poseidon (or any god id, or "none") shows that one banner where it sits in a fight, among the real Forge HUD:
+// ?god=poseidon (or any god id, or "none") shows that one banner where it sits in a fight, among the real HUD:
 // the monster's bar, the player's crescent, the score, the prompt card and the power ring, with a dashed box where the
 // camera panel is. Add &keys=1 for keyboard play and &voice=1 to hear Athena.
 //   &phase=strike | defend | recover   the card that is up; "recover" is the wait between cards (default strike)

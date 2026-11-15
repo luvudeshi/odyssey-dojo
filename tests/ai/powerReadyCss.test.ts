@@ -69,11 +69,11 @@ test("the banner and everything in it lets clicks through", () => {
 });
 
 test("it sits on the lower edge between the player's crescent and the prompt card, and runs under neither", () => {
-  // Both neighbours are read from the Forge HUD's own sheets: a crescent or a card that moves must fail here, not slide under the plate.
-  const forge = readFileSync("src/hud/sky/forge.css", "utf8");
+  // Both neighbours are read from the HUD's own sheets: a crescent or a card that moves must fail here, not slide under the plate.
+  const rift = readFileSync("src/hud/sky/rift.css", "utf8");
   const card = readFileSync("src/hud/sky/card.css", "utf8");
-  const middle = Number(/--fg-cres-x: (-?\d+)px;/.exec(forge)?.[1]);
-  const width = Number(/\.sky-hud \.fg-crescent \{[^}]*width: (\d+)px;/.exec(forge)?.[1]);
+  const middle = Number(/--fg-cres-x: (-?\d+)px;/.exec(rift)?.[1]);
+  const width = Number(/\.sky-hud \.fg-crescent \{[^}]*width: (\d+)px;/.exec(rift)?.[1]);
   // How far left of the middle of the screen the crescent ends.
   const crescentEnd = -(middle + width / 2);
   expect(crescentEnd).toBeGreaterThan(0);
@@ -81,7 +81,8 @@ test("it sits on the lower edge between the player's crescent and the prompt car
   const cardSpan = Number(cardRight) + Number(cardWidth);
   const root = RULES.find((rule) => rule.selector === ".power-ready.power-ready--live")?.declarations;
   expect(root?.get("left")).toBe(`var(--power-ready-left, calc(50% - ${String(crescentEnd)}px + 14px))`);
-  expect(root?.get("right")).toBe(`var(--power-ready-right, calc(${String(cardSpan)}px + 10px))`);
+  // 14px short of the card's box: its glass rim is drawn a few pixels outside it.
+  expect(root?.get("right")).toBe(`var(--power-ready-right, calc(${String(cardSpan)}px + 14px))`);
   expect(root?.get("justify-content")).toBe("flex-start");
   expect(root?.get("bottom")).toMatch(/^var\(--power-ready-bottom, clamp\(\d+px, [\d.]+vh, \d+px\)\)$/);
   expect(root?.has("top")).toBe(false);
@@ -92,7 +93,7 @@ test("it sits on the lower edge between the player's crescent and the prompt car
   expect(plate?.get("grid-template-areas")).toBe('"move" "how"');
   // On a big screen the HUD is drawn larger, the card with it: the strip ends sooner by the same factor.
   const [, big = "?", zoom = "?"] = /@media (\(min-width: \d+px\) and \(min-height: \d+px\)) \{\s*\.fight > \.sky-hud \{ zoom: ([\d.]+); \}/.exec(readFileSync("src/hud/sky/top.css", "utf8")) ?? [];
-  expect(SHEET).toContain(`@media ${big} {\n  .power-ready.power-ready--live { right: var(--power-ready-right, calc(${String(cardSpan)}px * ${zoom} + 10px)); }`);
+  expect(SHEET).toContain(`@media ${big} {\n  .power-ready.power-ready--live { right: var(--power-ready-right, calc(${String(cardSpan)}px * ${zoom} + 14px)); }`);
   // Upright on a phone the crescent is not at the foot of the screen: there the banner is centred, the title on top.
   expect(SHEET).toMatch(/@media \(max-width: 760px\) \{[^@]*\.power-ready\.power-ready--live \{ left: var\(--power-ready-left, 0px\); right: var\(--power-ready-right, 0px\); flex-direction: column; align-items: center; \}/);
   expect(SHEET).toMatch(/@media \(max-width: 760px\) \{[^@]*\.power-ready \.power-ready__beside \{ position: static;/);
@@ -106,9 +107,18 @@ test("whose power it is stands just right of the lifted ring, level with it, on 
   const root = RULES.find((rule) => rule.selector === ".power-ready.power-ready--live")?.declarations;
   const beside = RULES.find((rule) => rule.selector === ".power-ready .power-ready__beside")?.declarations;
   expect(beside?.get("position")).toBe("absolute");
-  // From the strip's left edge: back to the middle of the screen, half the ring, and the gap the champion plate keeps.
+  // From the strip's left edge: back to the middle of the screen, then past the full disc's glass spikes, then a gap.
   const [, crescentEnd = "?", gap = "?"] = /calc\(50% - (\d+px) \+ (\d+px)\)/.exec(root?.get("left") ?? "") ?? [];
-  expect(beside?.get("left")).toBe(`calc(${crescentEnd} - ${gap} + ${size} / 2 + clamp(8px, 0.9vw, 14px))`);
+  const [, share = "?"] = new RegExp(`^calc\\(${crescentEnd} - ${gap} \\+ ${size.replace(/[()]/g, "\\$&")} \\* ([\\d.]+) \\+ \\d+px\\)$`).exec(beside?.get("left") ?? "") ?? [];
+  // How far the spikes reach from the disc's middle, as a share of its size: their roots and longest blade in the disc's
+  // 100 wide drawing, grown while the meter is full, at the peak of the disc's beat. Longer spikes must fail here.
+  const [, root0 = "?", blade0 = "?", blade1 = "?"] = /spikes = [^\n]*at\((\d+), [^\n]*, (\d+) \+ \(i % 2\) \* (\d+),/.exec(readFileSync("src/hud/sky/rift/geometry.ts", "utf8")) ?? [];
+  const grown = Number(/\.power-circle\.is-full \.power-circle__spikes \{ transform: scale\(([\d.]+)\); \}/.exec(ring)?.[1]);
+  const beat = Number(/@keyframes power-circle-pulse \{ 50% \{ transform: translateX\(-50%\) scale\(([\d.]+)\); \} \}/.exec(ring)?.[1]);
+  const reach = ((Number(root0) + Number(blade0) + Number(blade1)) / 100) * grown * beat;
+  expect(reach).toBeGreaterThan(0.5);
+  expect(Number(share)).toBeGreaterThanOrEqual(reach);
+  expect(Number(share)).toBeLessThan(reach + 0.05);
   // From the strip's foot: the lifted ring's offset, less the strip's own.
   expect(beside?.get("bottom")).toBe(`calc(${lifted} - ${root?.get("bottom") ?? "?"})`);
   expect(beside?.get("height")).toBe(size);

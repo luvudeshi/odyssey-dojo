@@ -1,7 +1,7 @@
 // The "your god's power is ready" banner, while the power meter is full: a plate on the lower edge of the fight, between
-// the player's health crescent and the prompt card, with the move and how to throw it; and beside the lifted power ring,
+// the player's health crescent and the prompt card, with the move and how to throw it; and beside the lifted power disc,
 // whose power it is. Athena calls the move aloud when the meter fills.
-// While the meter is filling it is a small still plate beside the power ring, "Champion of Poseidon", so the god the
+// While the meter is filling it is a small still plate beside the power disc, "Champion of Poseidon", so the god the
 // scan found stays on screen through the fight. Mount it once inside the fight screen's root; it never takes a click.
 // Between cards the engine drops a power move, so there the banner dims and says "On the next card", and a press of the
 // power key is kept and sent again when the next card comes up.
