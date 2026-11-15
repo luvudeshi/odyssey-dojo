@@ -28,7 +28,7 @@ const FALLBACK_SIZE = { w: 260, h: 200 } as const;
 
 interface Part { readonly mesh: Mesh; readonly from: GuideJoint; readonly to: GuideJoint; readonly radius: number; readonly end: GuideEnd | null }
 
-interface Hold { slot: HTMLElement; guide: Guide; mirrored: boolean; began: number; onFail: () => void }
+interface Hold { slot: HTMLElement; guide: Guide; mirrored: boolean; began: number; onFail: () => void; watch: ResizeObserver | null }
 
 const UP = new Vector3(0, 1, 0);
 const [a, b, dir, mid] = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
@@ -109,9 +109,7 @@ class Stage {
     }
     const { renderer, canvas, camera, parts, spheres, ink, accent, floor } = built;
     slot.appendChild(canvas);
-    const [w, h] = [slot.clientWidth || FALLBACK_SIZE.w, slot.clientHeight || FALLBACK_SIZE.h];
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    this.fit(slot);
     camera.position.set(AIM.x + DISTANCE * Math.sin(AZIMUTH), AIM.y + 0.8, AIM.z + DISTANCE * Math.cos(AZIMUTH));
     camera.lookAt(AIM);
     camera.updateProjectionMatrix();
@@ -122,16 +120,30 @@ class Stage {
     const whole = guide.moving.includes("head");
     for (const part of [...parts, ...spheres]) part.mesh.material = part.end !== null && isLit(guide.moving, part.end) ? accent : ink;
     built.torso.material = built.head.material = whole ? accent : ink;
-    this.hold = { slot, guide, mirrored, began: performance.now(), onFail };
+    // The dojo's box changes size with the window; the card's does not, but watching it costs nothing.
+    const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => { if (this.hold?.slot === slot) this.fit(slot); });
+    watch?.observe(slot);
+    this.hold = { slot, guide, mirrored, began: performance.now(), onFail, watch };
     if (this.handle === 0) this.handle = requestAnimationFrame(this.frame);
   }
 
   /** Takes the canvas back out of `slot` (if it is still there) and stops drawing. */
   detach(slot: HTMLElement): void {
     if (this.hold?.slot !== slot) return;
+    this.hold.watch?.disconnect();
     this.hold = null;
     this.stopLoop();
     this.built?.canvas.remove();
+  }
+
+  /** Sizes the drawing to `slot`. */
+  private fit(slot: HTMLElement): void {
+    if (!this.built) return;
+    const { renderer, camera } = this.built;
+    const [w, h] = [slot.clientWidth || FALLBACK_SIZE.w, slot.clientHeight || FALLBACK_SIZE.h];
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
   }
 
   private stopLoop(): void {

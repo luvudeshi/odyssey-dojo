@@ -129,10 +129,10 @@ export function MoveGuide(props: MoveGuideProps) {
   const rowCount = size === "card" ? 3 : 4;
   const guide = useMemo(() => (given === undefined ? guideFor(move) : given), [move, given]);
   const still = useReducedMotion();
-  // The card shows a 3D figure on the one shared canvas; the flat SVG is the fallback (no WebGL, lost context, reduced motion, tests).
+  // Every size shows a 3D figure on the one shared canvas; the flat SVG is the fallback (no WebGL, lost context, reduced motion, tests).
   const [lost, setLost] = useState(false);
   const fail = useCallback(() => { setLost(true); }, []);
-  const solid = size === "card" && !still && !lost && stage.supported();
+  const solid = !still && !lost && stage.supported();
   const root = useRef<HTMLElement>(null);
   // The newest props, so a parent that re-renders every frame does not restart the loop.
   const latest = useRef({ history, baseline, msLeft, msTotal });
