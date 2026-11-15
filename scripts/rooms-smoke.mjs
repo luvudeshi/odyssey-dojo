@@ -238,33 +238,39 @@ function readNotice() {
 /** Runs in the page: where this page is, for the line of a step that failed. */
 function readWhere() {
   if (document.querySelector(".fight canvas")) return "the fight";
-  const heading = document.querySelector("main h1")?.textContent?.trim() ?? "";
+  // A heading laid in pebbles is a canvas with its words in aria-label.
+  const title = document.querySelector("main h1");
+  const heading = (title?.getAttribute("aria-label") ?? title?.textContent ?? "").trim();
   const notice = [...document.querySelectorAll('main [role="alert"], main [role="status"]')].map((node) => node.textContent?.trim() ?? "").find((line) => line !== "") ?? "";
   return `"${[heading, notice].filter(Boolean).join(": ") || document.body.innerText.trim().slice(0, 80)}"`;
 }
 
 /**
  * Runs in the page: what the HUD shows right now, on the host's page or the guest's. `over` is the result overlay
- * (the only overlay with buttons that is not the pause menu). The two health bars are read as percentages.
+ * (the only overlay with buttons that is not the pause menu). Every selector names the pebble HUD (hb-, pb-) and
+ * the star-chart HUD (sky-, sk-) side by side. The two health bars are read from their meter role, which both
+ * have: whole percentages, null until the bar is drawn.
  */
 function readHud() {
   const fight = document.querySelector(".fight");
   if (!fight?.querySelector("canvas")) return { fight: false };
-  const width = (side) => {
-    const fill = fight.querySelector(`.bar.${side} .bar-fill`);
-    return fill instanceof HTMLElement && fill.style.width !== "" ? Math.round(Number.parseFloat(fill.style.width) * 10) / 10 : null;
+  const bars = [...fight.querySelectorAll('[role="meter"][aria-label$=" health"]')];
+  const mine = (bar) => bar.getAttribute("aria-label") === "You health";
+  const percent = (bar) => {
+    const now = Number.parseFloat(bar?.getAttribute("aria-valuenow") ?? "");
+    return Number.isFinite(now) ? now : null;
   };
-  const hud = { fight: true, you: width("left"), monster: width("right"), score: fight.querySelector(".score")?.textContent?.trim() ?? null };
+  const hud = { fight: true, you: percent(bars.find(mine)), monster: percent(bars.find((bar) => !mine(bar))), score: fight.querySelector(".hb-score, .sk-score__num")?.textContent?.trim() ?? null };
   const overlay = fight.querySelector(".overlay");
   if (overlay?.querySelector("button")) return { ...hud, over: true, title: overlay.querySelector("h1")?.textContent?.trim() ?? "" };
-  const prompt = fight.querySelector(".prompt");
+  const prompt = fight.querySelector(".hb-card, .sky-card");
   const pad = fight.querySelector(".touchpad button");
   const box = pad instanceof HTMLButtonElement && !pad.disabled ? pad.getBoundingClientRect() : null;
   return {
     ...hud,
     over: false,
-    kind: prompt ? (prompt.classList.contains("defend") ? "defend" : "strike") : null,
-    word: prompt?.querySelector(".prompt-word")?.textContent?.trim() ?? "",
+    kind: prompt ? (prompt.matches(".pb-card--defend, .sky-card--defend") ? "defend" : "strike") : null,
+    word: prompt?.querySelector(".pb-move, .sky-card__word")?.textContent?.trim() ?? "",
     label: prompt?.querySelector("kbd")?.textContent?.trim() ?? "",
     touch: Boolean(fight.querySelector(".touchpad")),
     tap: box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : null,
@@ -443,14 +449,17 @@ async function guestTypesCode(page, base, code) {
   if (answer.refused !== null) throw new Error(`refused: "${answer.refused}"`);
 }
 
-/** The host's "Start" (live once the friend is in), the first style, the first open stop, the intro, the fight. */
+/**
+ * The host's "Start" (live once the friend is in), the first style, the first open stop, the intro, the fight.
+ * "Start" is the button right after the room's status line; "Back" is live all the time and must not be taken for it.
+ */
 async function hostStartsFight(page) {
   const friend = await until(page, () => {
-    const start = [...document.querySelectorAll("main button")].find((button) => !button.classList.contains("quiet") && button instanceof HTMLButtonElement && !button.disabled);
-    return { live: Boolean(start), notice: document.querySelector('main [role="status"]')?.textContent?.trim() ?? "" };
+    const start = document.querySelector('main [role="status"] + button') ?? [...document.querySelectorAll("main button")].find((button) => /^start/i.test(button.textContent?.trim() ?? ""));
+    return { live: start instanceof HTMLButtonElement && !start.disabled, notice: document.querySelector('main [role="status"]')?.textContent?.trim() ?? "" };
   }, (found) => found.live, SCREEN_MS);
   if (!friend) throw new Error(`the host never saw the guest, the page shows ${await page.evaluate(readWhere)}`);
-  await press(page, "start", { selector: "main:has(img[data-join-url]) button:not(.quiet):enabled", name: /^start/i });
+  await press(page, "start", { selector: 'main:has(img[data-join-url]) [role="status"] + button:enabled', name: /^start/i });
   await page.locator("img[data-join-url]").waitFor({ state: "detached", timeout: SCREEN_MS });
   // A style button is the one with a line of small print under its name.
   const style = page.locator("main button:has(small)").first();
@@ -461,10 +470,12 @@ async function hostStartsFight(page) {
   await stop.waitFor({ timeout: SCREEN_MS });
   await stop.click();
   await page.locator("button.stop").first().waitFor({ state: "detached", timeout: SCREEN_MS });
-  // textContent, not innerText: the menu's CSS shows headings in upper case.
-  const enemy = ((await page.locator("main h1").first().textContent()) ?? "").trim();
-  await press(page, "begin the fight", { selector: "main button:not(.quiet)", name: /^face /i });
-  await page.locator(".fight canvas").waitFor({ timeout: SCREEN_MS });
+  // The heading is laid in pebbles on a canvas, in upper case: its words are in aria-label (plain text is the fallback).
+  const enemy = (await page.locator("main h1").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
+  // The intro's first button begins the fight.
+  await press(page, "begin the fight", { selector: "main button", name: /^face /i });
+  // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
+  await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
   return `"${friend.notice}", style ${styleName}, against ${enemy}`;
 }
 
@@ -612,7 +623,7 @@ async function runOne(browser, base, kind, index, moveKeys, capMs, poll) {
       await run.step("guest goes back to the start", async () => {
         guestSignal.stop = true;
         await press(guest, "leave", { selector: 'main:has([role="status"]) button', name: /back|leave/i });
-        const title = await until(guest, () => ({ notice: Boolean(document.querySelector('main [role="status"]')), buttons: document.querySelectorAll("main button").length, heading: document.querySelector("main h1")?.textContent?.trim() ?? "" }), (found) => !found.notice && found.buttons >= 2, SCREEN_MS);
+        const title = await until(guest, () => ({ notice: Boolean(document.querySelector('main [role="status"]')), buttons: document.querySelectorAll("main button").length, heading: (document.querySelector("main h1")?.getAttribute("aria-label") ?? document.querySelector("main h1")?.textContent ?? "").trim() }), (found) => !found.notice && found.buttons >= 2, SCREEN_MS);
         if (!title) throw new Error(`the page shows ${await guest.evaluate(readWhere)}`);
         await sleep(AFTER_MS);
         return `page shows "${title.heading}" with ${String(title.buttons)} buttons`;
