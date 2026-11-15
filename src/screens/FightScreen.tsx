@@ -13,6 +13,7 @@ import { powerUsable } from "../ai/power/powerPrompt";
 import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
+import { createFeedbackWatch } from "../coach/extra/fightFlash";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, CombatEvent, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
@@ -21,7 +22,7 @@ import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
-import { noteMiss } from "../hud/MissFlash";
+import { noteFeedback, noteMiss } from "../hud/MissFlash";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
@@ -87,6 +88,7 @@ export function FightScreen(props: {
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     const watchMiss = createMissWatch();
+    const watchFeedback = createFeedbackWatch();
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
     fightEvents.current = [];
@@ -130,6 +132,10 @@ export function FightScreen(props: {
       last = now;
       current = result.state;
       if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
+      // A move that counted is graded in the same flash: shown only, never spoken, and the score is not touched.
+      // With a guest in the fight a move may be theirs, so the host's body is not read for it.
+      const feedback = watchFeedback(from.phase, current.phase, keys, result.events, link?.guestHere() ? null : history, now);
+      if (feedback) noteFeedback(feedback);
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       fightEvents.current.push(...result.events);
