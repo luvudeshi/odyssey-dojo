@@ -1,5 +1,7 @@
 # What each move teaches
 
+> **Safety note.** This game is practice for two things: reacting in time and keeping your distance. It is no replacement for a class with an instructor and a partner. In a real situation the first choice is always to leave: get to a safe place with people in it. Nothing here is a reason to stay and fight.
+
 Every move in `src/moves/defs/` carries a `teaches` line: one sentence, at most 90 characters, on what the move is for in a real situation. The lines are about protecting yourself and getting away, not about hurting anyone. `tests/teaches.test.ts` fails if a move has no line, a line that is too long, or a line that differs from its row in the table below.
 
 Each line is our own wording, checked against the source next to it. The sources were opened and read on 14 November 2026; their full titles and URLs are listed under the table.
