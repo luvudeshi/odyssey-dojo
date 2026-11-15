@@ -348,11 +348,11 @@ const oneHanded = (side: Side): Written[] => [
   ...punch(side),
 ];
 const rising = (side: Side, hand: string): Written[] => [
-  min(`${side} wrist above the shoulder line`, `${cap(side)} ${hand} up to shoulder`),
+  min(`${side} wrist above the shoulder line`, `${cap(side)} ${hand} up to chin`),
   max(`${side} wrist above the shoulder line`, "Not above your head", 0),
   max(`${side} wrist out to its side`, "Hand close to your body", 0),
   max(`${side} elbow bent`, `Keep ${side} elbow bent`, 2),
-  max(`${side} elbow opening in # ms`, "Lift it, don't punch out", 0),
+  max(`${side} elbow opening in # ms`, "Don't snap the arm straight", 0),
   max(`ms since ${side} wrist was at the waist`, "Start from your waist"),
   group(`${otherSide(side)} hand not coming up too`, `Keep ${otherSide(side)} hand down`, 0),
 ];
@@ -395,7 +395,7 @@ export const LABELS: Readonly<Record<string, readonly Written[]>> = {
   jab: oneHanded("left"),
   cross: oneHanded("right"),
   spear_thrust: [
-    group("arms not both flung out to their sides", "Punch forward, not sideways", 0),
+    group("arms not both flung out to their sides", "Thrust forward, not wide", 0),
     ...punch("left", "No left chop from overhead"), ...punch("right", "No right chop from overhead"),
   ],
   double_palm: [...thrust("left"), ...thrust("right"), max("gap between the wrists", "Hands close together")],
@@ -447,7 +447,7 @@ export const LABELS: Readonly<Record<string, readonly Written[]>> = {
   swift_dash: [min("shoulders moved sideways in # ms", "Step sideways, fast")],
   front_kick: eitherSide(kick),
   knee: eitherSide(kneeUp),
-  block: [min("guard confidence", "Both fists by your face")],
+  block: [min("guard confidence", "Both fists up by your face")],
   duck: [min("crouch confidence", "Drop your shoulders lower")],
   dodge_left: [min("side step confidence", "Move your body left")],
   dodge_right: [min("side step confidence", "Move your body right")],

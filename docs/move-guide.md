@@ -63,7 +63,19 @@ import { MoveGuide } from "../coach/ui/MoveGuide";
 
 The conditions come from `src/moves/measures.ts`. `LABELS` in `guide.ts` gives each one a player's label and a rank. Conditions the player rarely causes ("keep the other arm back") are shown only while they fail, in place of a row that is already met.
 
-A new move needs an entry in `GUIDES` and in `LABELS`; `tests/coachGuide.test.ts` fails without them.
+### Labels follow the conditions
+
+The detectors get retuned, and the table gains, loses and reorders conditions. So a label is tied to its condition, not to its place in the list:
+
+- Each entry in `LABELS` names its condition by `conditionKey`: the condition's `name` in `measures.ts` up to the first comma or bracket, with every number written `#` ("ms since left elbow was bent under 115" is `ms since left elbow was bent under #`). It also says which way the condition compares (`min`, `max`, or `group` for an "any of"). Both have to agree. A changed threshold or unit keeps its label; a condition turned round does not.
+- A condition with no entry gets `plainLabel`: its own name without units and numbers, cut to 28 characters ("Left elbow opening"). It is clumsier, but it is about the right condition, and it is shown only while it fails. A move whose conditions are all new shows them as they come.
+- An entry whose condition has gone is not used. Nothing throws either way, and the match meter always counts every condition in the table.
+
+`labelOf(moveId, condition)` gives the label, its rank and whether it was written. A written label says what the condition means in that move at about today's threshold: if a threshold moves far (shoulder height to overhead, say), reword the label.
+
+A written label is at most 28 characters, which is what fits one line of the 260 px card at 18 px beside the tick.
+
+A new move needs an entry in `GUIDES`, or `tests/coachGuide.test.ts` fails. It should get entries in `LABELS` too; until it does, its checklist is made of plain labels.
 
 ## What copying the figure does
 

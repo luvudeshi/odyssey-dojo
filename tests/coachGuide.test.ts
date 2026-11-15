@@ -83,10 +83,16 @@ test("a label goes with its condition, wherever the table puts it, and a conditi
   // The same condition under other numbers and units is still that condition; turned round, it is another one.
   expect(conditionKey("ms since left elbow was bent under 115")).toBe(conditionKey("ms since left elbow was bent under 90"));
   expect(conditionKey("left elbow straight, degrees")).toBe(conditionKey("left elbow straight (at the camera), radians"));
-  const straight = (MEASURES.jab?.[0] ?? []).find((measure) => labelOf("jab", measure).label === "Left arm straight");
-  if (!straight || "anyOf" in straight) throw new Error("the jab checks that the left arm is straight");
-  expect(labelOf("jab", { ...straight, threshold: 1, name: "left elbow straight, radians" }).label).toBe("Left arm straight");
-  expect(labelOf("jab", { ...straight, need: "max" })).toEqual({ label: "Left elbow straight", rank: 0, written: false });
+  // Any condition with a written label will do: the label holds under a new threshold and unit, and not turned round.
+  const [id, single] = ALL.flatMap((move) => (MEASURES[move.id] ?? []).flat().map((measure) => [move.id, measure] as const))
+    .find(([moveId, measure]) => !("anyOf" in measure) && labelOf(moveId, measure).written) ?? [];
+  if (!id || !single || "anyOf" in single) throw new Error("no condition of any move has a written label: LABELS in src/coach/guide.ts is out of date");
+  const written = labelOf(id, single);
+  const head = single.name.split(",")[0] ?? single.name;
+  expect(labelOf(id, { ...single, threshold: single.threshold + 7, name: `${head}, furlongs` })).toEqual(written);
+  const turned = { ...single, need: single.need === "min" ? "max" as const : "min" as const };
+  expect(labelOf(id, turned).label === written.label && labelOf(id, turned).rank === written.rank, single.name).toBe(false);
+  expect(labelOf("no_such_move", single)).toEqual({ label: plainLabel(single), rank: 0, written: false });
   expect(plainLabel({ ...madeUp("ms since right hand was across the body at chest height", 0), need: "max" })).toBe("First: right hand across");
   expect(labelOf("jab", madeUp("hips turned to the camera in 200 ms, 3D degrees", 0))).toEqual({ label: "Hips turned to the camera", rank: 0, written: false });
   expect(labelOf("no_such_move", madeUp("ms since left foot was on the floor (0.1 off it)", 0)).label).toBe("Not: left foot on the floor");
