@@ -1,7 +1,7 @@
 // The seven settings. Each change applies at once and is saved by the store.
 import { setSettings, useSettings } from "../settings/store";
-import { Select, Slider, Toggle } from "./controls";
 import { Dialog } from "./Dialog";
+import { Button, Select, Slider, Toggle } from "./pebble";
 
 const QUALITY = [{ value: "high", label: "High" }, { value: "low", label: "Low (faster)" }] as const;
 
@@ -17,7 +17,7 @@ export function SettingsPanel(props: { onClose: () => void }) {
         <Toggle label="Mirror webcam picture" checked={settings.mirror} onChange={(mirror) => { setSettings({ mirror }); }} />
         <Toggle label="Show key hints" checked={settings.keyHints} onChange={(keyHints) => { setSettings({ keyHints }); }} />
       </div>
-      <button className="ui-button" onClick={props.onClose}>Back</button>
+      <Button onClick={props.onClose}>Back</Button>
     </Dialog>
   );
 }
