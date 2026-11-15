@@ -3,7 +3,7 @@ import type { MoveDef } from "../../core/types";
 import { JOINT, joint, latest } from "../../pose/signals";
 import { handWasOverhead } from "../handSignals";
 
-const CHOP_MS = 200;
+const CHOP_MS = 300;
 
 export const move: MoveDef = {
   id: "overhead_strike",

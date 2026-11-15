@@ -6,14 +6,14 @@ import type { Side } from "../handSignals";
 import { SIDES } from "../legSignals";
 
 /** The elbow keeps a bend between these, in degrees, through the swing. Straighter is a slap. */
-export const HOOK_BENT = 40;
-export const HOOK_STRAIGHT = 150;
+export const HOOK_BENT = 30;
+export const HOOK_STRAIGHT = 165;
 /** The fist stays between the top of the head and the chest: at most this far above or below the shoulder line, in shoulder widths. */
 export const HOOK_HEIGHT = 1.3;
 /** The elbow is up and out, the upper arm lifted at least this far from hanging. A tucked elbow is a guard. */
-export const HOOK_LIFT = 45;
+export const HOOK_LIFT = 40;
 /** Confidence 0 at SWEEP_FROM shoulder widths of swing toward the centre line in THROW_MS, 1 at SWEEP_FROM + SWEEP_SPAN. */
-export const SWEEP_FROM = 0.25;
+export const SWEEP_FROM = 0.2;
 export const SWEEP_SPAN = 0.35;
 /** The swing is flat: across at least this many times as far as up. A fist driven up and in to the chin is a punch. */
 export const HOOK_FLAT = 2;
@@ -50,7 +50,7 @@ export const move: MoveDef = {
   hint: "Swing a bent arm across your body, either hand",
   key: "l",
   diagram: { leftElbow: [26, 32], leftWrist: [42, 28], rightElbow: [62, 42], rightWrist: [57, 26] },
-  teaches: "Swings come from the side, out of view, so always bring your hand back to your face",
+  teaches: "Swings curl round from the side, out of view, so keep your hands up to guard your face",
   detect: hook,
   quality(history) {
     const side = SIDES.find((each) => hookOn(history, each) >= 0.7) ?? "left";

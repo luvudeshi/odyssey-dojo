@@ -1,0 +1,16 @@
+# What docker build leaves out of the repo when it uses the Dockerfile beside this file.
+.git
+.github
+.claude
+node_modules
+dist
+public/mediapipe
+server/data
+deploy
+docs
+tests
+tools
+**/.env
+**/.env.*
+**/*.log
+.DS_Store

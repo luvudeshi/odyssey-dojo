@@ -5,7 +5,7 @@ import { bothNewest, clamp01, headHeight, headOffset, latest, meanOf, recent, sh
 const STEADY_MS = 200;
 
 /** A shoulder drop since calibration, in calibrated shoulder widths, that reads as a full duck. Held from half of it. */
-const FULL_DROP = 0.6;
+const FULL_DROP = 0.55;
 /**
  * The nose this far above the shoulder line has started to go down, and this much lower is a full duck. Standing it
  * sits 0.55 to 0.95 above; seated, the owner's duck was a bend forward that took it to 0.3 below.
@@ -31,7 +31,7 @@ export const move: MoveDef = {
   name: "Duck",
   kind: "defend",
   prompt: "DUCK",
-  hint: "Bend your knees and drop your head",
+  hint: "Bend your knees to drop under the swing",
   key: "ArrowDown",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftY: 16 },
   teaches: "Bend your knees, not your waist, to drop under a swing and still see what is coming",

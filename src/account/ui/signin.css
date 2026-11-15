@@ -1,0 +1,19 @@
+/* The account line and button on the Account screen, and the sign-in dialog. All text here is 18 px or more.
+   The button is one more in the row it is put in (.acc-actions on the Account screen); the words sit above that row,
+   against its right end. Outside such a row the two simply follow each other. */
+.acc-signin { display: contents; }
+.acc-signin__where { margin: 0; font: 600 18px/1.2 var(--pb-font-body); color: #f1e6cf; text-shadow: 0 1px 2px #000000aa; overflow-wrap: anywhere; }
+.acc-signin.is-quiet .acc-signin__where { color: #d9c9ad; }
+.acc-signin__where b { color: #ffd27a; }
+.acc-actions > .acc-signin > .acc-signin__where { position: absolute; right: 0; bottom: calc(100% + 8px); width: max-content; max-width: 600px; text-align: right; }
+
+.acc-signin__form { display: flex; flex-direction: column; gap: 12px; width: min(84vw, 26rem); margin: 0 auto 14px; text-align: left; font: 600 20px/1.25 var(--pb-font-body); color: var(--pb-text); }
+.acc-signin__form label { display: flex; flex-direction: column; gap: 4px; }
+.ui-panel .acc-signin__form input[type] { box-sizing: border-box; width: 100%; padding: 8px 12px; font: 600 22px var(--pb-font-body); color: var(--pb-text); background: var(--pb-ground-deep); border: 2px solid var(--pb-lead); border-radius: var(--pb-radius); cursor: text; }
+.ui-panel .acc-signin__form input[type]:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 2px; }
+.ui-panel .acc-signin__form input[type]:read-only { opacity: 0.6; }
+.acc-signin__say { min-height: 2.5em; margin: 0; font: 500 20px/1.25 var(--pb-font-body); color: var(--pb-text-dim); }
+.acc-signin__say.is-error { font-weight: 700; color: var(--pb-ochre-light); }
+.acc-signin__buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.acc-signin__buttons .pb-btn { min-width: 0; padding: 10px 8px; font-size: 20px; }
+.ui-panel:has(.acc-signin__form) > .pb-btn { font-size: 20px; }

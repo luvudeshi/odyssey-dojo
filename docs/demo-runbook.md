@@ -18,7 +18,7 @@ One page to follow so the 3-minute demo does not go wrong. What to say is in [pi
    ```bash
    npm run preflight
    ```
-4. Read its seven lines. Only a FAIL stops the demo; a WARN means the game runs on a fallback.
+4. Read its eight lines. Only a FAIL stops the demo; a WARN means the game runs on a fallback.
 
 | Line | PASS means | If it is not PASS |
 |---|---|---|
@@ -28,9 +28,10 @@ One page to follow so the 3-minute demo does not go wrong. What to say is in [pi
 | `gemini` | The model answered; it shows which and how fast | WARN: no key, a refused key (HTTP 400, 401, 403) or no network. The god is then chosen on the laptop |
 | `elevenlabs` | The voice list came back | WARN: only lines made at run time go silent. Every recorded clip still plays |
 | `ai server` | The server on port 8787 is up with the keys | WARN "nothing answers": start it (step 2.1). WARN "started without the key": stop it and start it again |
+| `accounts` | `ON`: the Tiger Data database answered from this laptop with its certificate checked, and the running server has accounts on. Sign-in and the Hall of heroes work | Never a FAIL: the game plays without accounts. WARN `OFF (reason, code)`: the Account page will say "Accounts are not available here." `no_database_url`: `.env` has no `DATABASE_URL`. `bad_ca_file`: the file `DATABASE_CA_FILE` names is not there. `no_answer`: no network, or the database refused (the code says which). WARN `OFF on the server`: the server was started before `.env` was filled in; stop it and start it again. WARN `ON ... certificate NOT checked`: accounts work; add `DATABASE_CA_FILE`. All of it is in [accounts.md](accounts.md), set-up |
 | `preflight:` | `ready` | `ready, with fallbacks in use` is fine to demo. `NOT READY` is a FAIL above |
 
-With no Wi-Fi, `npm run preflight -- --offline` skips the two internet calls.
+With no Wi-Fi, `npm run preflight -- --offline` skips the two internet calls and the database: the `accounts` line then says SKIP and only whether `DATABASE_URL` is set.
 
 ## 2. Starting the game for judging
 
@@ -97,7 +98,6 @@ Most likely first. Each has one action.
 | God card and QR code | `SharePanel` is only on the test page `/src/ai/lab/`. The game's result screen does not show it at `f654f56` | Not in the game. Look at the result screen before you promise it |
 | `?debug` | Adds a "q: quality" line to the fight and puts internals on `window` | No |
 | `?ghost=1` | Turns on the gold move ghost (off by the lead's choice on Saturday) | No |
-| `?model=classic`, `?model=dev` | Older Polyphemus model, or a test robot | No |
 | `?look=a`, `b`, `base` | Drafts of the Charybdis stop. Which one is best: not checked | No |
 | `?burst=b`, `c` | Other drawings of the dodge burst | Harmless; leave off |
 | `?pose=cpu` | Runs body tracking on the CPU. The game already falls back to it by itself | Only if tracking will not start. Not checked |

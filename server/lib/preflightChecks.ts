@@ -33,6 +33,17 @@ const SFX_FALLBACK = "the game plays its built-in synthesised sounds instead";
 const GEMINI_FALLBACK = "the game falls back to bundled fights and the browser god scan";
 const SPEECH_FALLBACK = "the game plays the bundled clips, and lines written at run time stay silent";
 const HEALTH_MS = 2000;
+/** How long the server's account status may take. The route answers within four seconds. */
+const ACCOUNTS_MS = 5000;
+const ACCOUNTS_FALLBACK = 'the game plays as before, the Account page says "Accounts are not available here." and nothing is saved to Tiger Data';
+/** Why the database did not open, in plain words. The words in brackets on the line are the ones the server logs (docs/accounts.md). */
+const ACCOUNTS_OFF: Readonly<Record<string, string>> = {
+  no_database_url: "DATABASE_URL is missing in .env",
+  bad_url: "DATABASE_URL is not a postgres:// address",
+  not_encrypted: "DATABASE_URL does not end in ?sslmode=require",
+  bad_ca_file: "the file DATABASE_CA_FILE names cannot be read",
+  no_answer: "the database did not answer, or refused this server",
+};
 /** The longest line printed. A longer one is cut, after any key in it is hidden. */
 const MAX_LINE = 400;
 
@@ -158,6 +169,60 @@ export async function checkServer(port: number, keys: KeyFlags, fetcher: typeof 
   } catch {
     return down;
   }
+}
+
+/** What one try to open the database gave: it answered (and whether its certificate was checked), or why not, in the server's own words. */
+export type DatabaseAnswer =
+  | { readonly open: true; readonly checked: boolean; readonly ms: number }
+  | { readonly open: false; readonly reason: string; readonly code: string | null };
+
+/**
+ * Check 7: accounts and the hall of heroes on Tiger Data. ON when the database answers from this machine, OFF with
+ * the reason when it does not. Never a FAIL: the game plays without them. `open` tries the database once, and is null
+ * when DATABASE_URL is not set. A server that is running is asked too, because one started before .env was filled in
+ * has no accounts whatever the database says.
+ */
+export async function checkAccounts(open: (() => Promise<DatabaseAnswer>) | null, port: number, fetcher: typeof fetch = fetch): Promise<Result> {
+  const off = (reason: string, code: string | null): Result =>
+    result("WARN", "accounts", `OFF (${code === null ? reason : `${reason}, ${code}`}): ${ACCOUNTS_OFF[reason] ?? "the database did not open"}; ${ACCOUNTS_FALLBACK}`);
+  if (open === null) return off("no_database_url", null);
+  let answer: DatabaseAnswer;
+  try {
+    answer = await open();
+  } catch {
+    answer = { open: false, reason: "no_answer", code: null };
+  }
+  if (!answer.open) return off(answer.reason, answer.code);
+  const on = `ON, the database answered in ${String(answer.ms)} ms`;
+  const certificate = answer.checked
+    ? "its certificate checked"
+    : "its certificate NOT checked: set DATABASE_CA_FILE (docs/accounts.md, set-up step 3), or whoever answers at its address is given the password";
+  let response: Response | null = null;
+  try {
+    response = await fetcher(`http://127.0.0.1:${String(port)}/api/account/status`, { signal: AbortSignal.timeout(ACCOUNTS_MS) });
+  } catch {
+    // No server to ask. The "ai server" line has said so already.
+  }
+  if (response === null) return result(answer.checked ? "PASS" : "WARN", "accounts", `${on}, ${certificate}`);
+  let available = false;
+  try {
+    available = response.ok && ((await response.json()) as { available?: unknown } | null)?.available === true;
+  } catch {
+    // Not JSON: something on that port that has no accounts.
+  }
+  if (!available) {
+    const detail = `the database answers from here, but the server on port ${String(port)} says accounts are off (it was started before .env was filled in, or its log says why); restart it with npm run dev:all`;
+    return result("WARN", "accounts", `OFF on the server: ${detail}; until then ${ACCOUNTS_FALLBACK}`);
+  }
+  const server = `; the server on port ${String(port)} has them on`;
+  return result(answer.checked ? "PASS" : "WARN", "accounts", `${on}, ${certificate}${server}`);
+}
+
+/** Check 7 under --offline: the database is on the internet, so it is not asked. Says only what is known without it. */
+export function skipAccounts(configured: boolean): Result {
+  return result("SKIP", "accounts", configured
+    ? "--offline, so the database was not asked (DATABASE_URL is set)"
+    : "--offline, so the database was not asked; DATABASE_URL is missing in .env, so accounts are off");
 }
 
 /** Check 6: the pose model and its runtime are on this disk, so the camera works with no network. */

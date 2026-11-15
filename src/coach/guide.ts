@@ -115,10 +115,10 @@ const both = (offset: Pt): Forward => ({ leftWrist: offset, rightWrist: offset }
 const AT_CHEST: Partial<MoveDiagram> = { leftElbow: [30, 48], leftWrist: [45, 42], rightElbow: [70, 48], rightWrist: [55, 42] };
 
 const GUIDES: Readonly<Record<string, Spec>> = {
-  jab: { how: "Left fist straight out, fast", moving: L, forward: { leftWrist: OUT } },
-  cross: { how: "Right fist straight out, fast", moving: R, forward: { rightWrist: OUT } },
-  spear_thrust: { how: "Both fists straight out together", moving: BOTH, forward: both(OUT) },
-  double_palm: { how: "Push both palms straight forward", moving: BOTH, forward: both([-0.1, 0.04]) },
+  jab: { how: "Keep them back: left fist out", moving: L, forward: { leftWrist: OUT } },
+  cross: { how: "Power hand: right fist out", moving: R, forward: { rightWrist: OUT } },
+  spear_thrust: { how: "Hold them off: both hands out", moving: BOTH, forward: both(OUT) },
+  double_palm: { how: "Push both palms: make space", moving: BOTH, forward: both([-0.1, 0.04]) },
   chain_punch: {
     how: "Left punch, then right punch", moving: BOTH, forward: { leftWrist: OUT }, thenForward: { rightWrist: OUT },
     then: { leftElbow: GUARD.leftElbow, leftWrist: GUARD.leftWrist },
@@ -126,35 +126,35 @@ const GUIDES: Readonly<Record<string, Spec>> = {
   reverse_punch: { how: "Right fist out, left to hip", moving: BOTH, forward: { rightWrist: OUT } },
   // The forearm of a hook points at the camera the whole way; a slower swing than a punch keeps the elbow's bend steady.
   hook: {
-    how: "Swing bent left arm across", moving: L, forward: { leftWrist: null },
+    how: "Round the guard: swing bent arm", moving: L, forward: { leftWrist: null },
     before: { leftElbow: [24, 34], leftWrist: [20, 20] }, times: [0.2, 0.52, 0.8],
   },
-  uppercut: { how: "Right fist up from waist", moving: R, before: { rightElbow: [70, 50], rightWrist: [64, 62] } },
-  rising_palm: { how: "Left palm up from waist", moving: L, before: { leftElbow: [30, 50], leftWrist: [36, 62] } },
-  hammer_fist: { how: "Raise left fist, hammer down", moving: L, then: { leftElbow: [30, 42], leftWrist: [40, 52] } },
+  uppercut: { how: "Up close: right fist upward", moving: R, before: { rightElbow: [70, 50], rightWrist: [64, 62] } },
+  rising_palm: { how: "Break a grip: palm up", moving: L, before: { leftElbow: [30, 50], leftWrist: [36, 62] } },
+  hammer_fist: { how: "Break free: fist up, hammer down", moving: L, then: { leftElbow: [30, 42], leftWrist: [40, 52] } },
   overhead_strike: { how: "Raise right hand, chop down", moving: R, then: { rightElbow: [70, 42], rightWrist: [60, 52] } },
   thunderbolt: { how: "Raise a hand, throw down", moving: R, then: { rightElbow: [70, 44], rightWrist: [62, 58] } },
-  knife_hand: { how: "Right hand across, chop outward", moving: R, before: { rightElbow: [60, 44], rightWrist: [42, 31] } },
-  aegis_push: { how: "Push both palms from chest", moving: BOTH, forward: both([-0.08, -0.05]), before: AT_CHEST },
-  sun_burst: { how: "Hands together, then fling wide", moving: BOTH, before: AT_CHEST },
+  knife_hand: { how: "Sweep a reaching arm aside", moving: R, before: { rightElbow: [60, 44], rightWrist: [42, 31] } },
+  aegis_push: { how: "Make space: push both palms", moving: BOTH, forward: both([-0.08, -0.05]), before: AT_CHEST },
+  sun_burst: { how: "Break a grab: fling arms wide", moving: BOTH, before: AT_CHEST },
   // The draw has to be held for a moment before the string hand drops.
   moon_arrow: { how: "Draw the bow, let go", moving: R, then: { rightElbow: [72, 44], rightWrist: [78, 56] }, times: [0.24, 0.52, 0.68] },
   stake_thrust: { how: "Hands together, drive down forward", moving: BOTH, forward: both([-0.16, -0.4]), before: AT_CHEST },
   trident_sweep: {
-    how: "Sweep both arms across", moving: BOTH,
+    how: "Clear a grab: sweep across", moving: BOTH,
     before: { leftElbow: [52, 44], leftWrist: [70, 42], rightElbow: [76, 40], rightWrist: [90, 36] },
   },
-  swift_dash: { how: "One fast step sideways", moving: BODY },
+  swift_dash: { how: "Off the line: one fast step", moving: BODY },
   front_kick: {
-    how: "Knee up, snap foot out", moving: ["rightFoot"], forward: { rightFoot: [0.08, -0.06] },
+    how: "Kick out to keep distance", moving: ["rightFoot"], forward: { rightFoot: [0.08, -0.06] },
     before: { rightKnee: [58, 60], rightFoot: [56, 78] },
   },
   knee: { how: "Drive one knee up high", moving: ["rightKnee"], forward: { rightKnee: null } },
-  block: { how: "Both fists up to face", moving: BOTH },
-  duck: { how: "Bend knees, drop your head", moving: BODY },
-  dodge_left: { how: "Step or lean left", moving: BODY },
-  dodge_right: { how: "Step or lean right", moving: BODY },
-  jump: { how: "Hop straight up", moving: BODY },
+  block: { how: "Cover your head: fists up", moving: BOTH },
+  duck: { how: "Under the swing: bend knees", moving: BODY },
+  dodge_left: { how: "Step off the line: left", moving: BODY },
+  dodge_right: { how: "Step off the line: right", moving: BODY },
+  jump: { how: "Clear a low sweep: hop up", moving: BODY },
 };
 
 /** Null for a move with no entry in GUIDES. */
@@ -496,6 +496,13 @@ function entryFor(moveId: string, measure: Measure): Written | undefined {
 }
 
 const MAX_SHOWN = 4;
+/**
+ * For a move either side can make: the side its checklist names while no side is ahead (no pose yet, as with the
+ * keyboard). It is the side the move's instruction and figure show; a move not listed here shows the left.
+ */
+const SHOWN_FIRST: Readonly<Record<string, Side>> = {
+  cross: "right", chain_punch: "right", thunderbolt: "right", front_kick: "right", knee: "right",
+};
 interface Read extends LiveCheck { readonly rank: number }
 
 function readOption(moveId: string, measures: readonly Measure[], history: PoseHistory | null): Read[] {
@@ -519,7 +526,9 @@ export function liveChecks(
   const held = history && baseline !== undefined ? { ...history, baseline } : history;
   const total = (reads: readonly Read[]): number => reads.reduce((sum, read) => sum + (read.met ? 1 : 0) + read.progress, 0);
   const options = (table[move.id] ?? []).map((measures) => readOption(move.id, measures, held));
-  const reads = options.reduce<readonly Read[]>((best, option) => (best.length === 0 || total(option) > total(best) ? option : best), []);
+  // The table has one list per side, in the order of SIDES. A side has to be ahead to take the place of the one shown first.
+  const first = options[SIDES.indexOf(SHOWN_FIRST[move.id] ?? "left")] ?? options[0] ?? [];
+  const reads = options.reduce<readonly Read[]>((best, option) => (total(option) > total(best) ? option : best), first);
   if (reads.length === 0) return { checks: [], overall: 0, matched: false };
   const ranked = reads.filter((read) => read.rank > 0).sort((a, b) => a.rank - b.rank);
   // With no ranked label at all (every condition of the move is new to this file) the conditions are shown as they come.
