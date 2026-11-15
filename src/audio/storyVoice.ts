@@ -192,8 +192,9 @@ export function speakResult(enemyId: string, won: boolean, waitMs?: number): Pro
 }
 
 /**
- * Homer's closing line: the suitors fall and Odysseus is home. For the result screen of the last stop when it is won,
- * in place of `speakResult`. It waits for Athena's result line in the same way. Return `stopStory` from the effect.
+ * Homer's closing line: the suitors fall and Odysseus is home. For the end of the quest, on the result screen of the last
+ * stop once it is won. Asked for after `speakResult` it takes that line's place, whether it is waiting or playing.
+ * It waits for Athena's result line in the same way. Return `stopStory` from the effect.
  */
 export function speakHomecoming(waitMs?: number): Promise<boolean> {
   return shared.speakHomecoming(waitMs);

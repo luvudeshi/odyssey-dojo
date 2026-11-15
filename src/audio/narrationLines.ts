@@ -104,7 +104,7 @@ export const NARRATION_LINES: readonly QuestLine[] = [
   },
 ];
 
-/** Homer's closing line, spoken once the last stop is won in place of that stop's "after" line. It belongs to no stop's before or after. */
+/** Homer's closing line, spoken at the end of the quest, once the last stop is won. It belongs to no stop's before or after. */
 export const HOMECOMING_ID = "homer_homecoming";
 
 /** Each text is copied word for word from that enemy's `taunts` in src/enemies/defs. A test fails if one is not there. */
