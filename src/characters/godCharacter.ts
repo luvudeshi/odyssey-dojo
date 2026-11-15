@@ -16,6 +16,15 @@ export const GOD_CHARACTER: Readonly<Record<GodId, CharacterId>> = {
   artemis: "achilles", // The swift huntress who never yields, for the swift-footed fighter who never does either.
 };
 
+/** Whose power each hero fights with, one line per hero. The god is only the power's owner; the screen names the hero. */
+export const HERO_POWER: Readonly<Record<CharacterId, GodId>> = {
+  zeus: "zeus",
+  poseidon: "poseidon",
+  athena: "athena",
+  odysseus: "artemis", // He draws his great bow.
+  achilles: "hermes", // Swift-footed Achilles.
+};
+
 function isGodId(value: unknown): value is GodId {
   return typeof value === "string" && (GOD_IDS as readonly string[]).includes(value);
 }
