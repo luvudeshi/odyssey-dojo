@@ -70,6 +70,7 @@ export function cameraShot(out: Shot, b: Battle, now: number, calm: boolean): Sh
   const wide = decay(now, b.phaseAt, 1.8);
   out.px += 1.6 * wide; out.py -= 0.4 * wide; out.pz += 1.5 * wide; out.fov += 12 * wide;
   const hit = decay(now, b.enemyHitAt, 0.35);
-  out.kick = 0.06 * hit; out.fovKick = -3 * hit;
+  // A hard punch-in on the blow, so it lands with weight.
+  out.kick = 0.1 * hit; out.fovKick = -5 * hit;
   return out;
 }
