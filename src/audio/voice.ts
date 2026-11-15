@@ -3,7 +3,7 @@ import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
 import { clipUrl, isPhaseLine, phaseLineId } from "./athenaLines";
-import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
+import { isBeforeLine, pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 import { releaseAudio } from "./release";
 import { tabHidden, watchTab } from "./tab";
 
@@ -65,13 +65,17 @@ function clipFor(id: string): string {
   return id.startsWith(POWER_LINE) ? `call_${id.slice(POWER_LINE.length)}` : id;
 }
 
-/** Tiers of urgency, lowest first: praise and warnings, fight start and Homer, calls, power ready, phase changes, the result. */
+/**
+ * Tiers of urgency, lowest first: praise and warnings, fight start and Homer's other lines, calls, Homer's line before
+ * a stop, power ready, phase changes, the result.
+ */
 const SHORT = 0;
 const MOMENT = 1;
 const CALL = 2;
-const POWER = 3;
-const PHASE = 4;
-const RESULT = 5;
+const INTRO = 3;
+const POWER = 4;
+const PHASE = 5;
+const RESULT = 6;
 
 function urgency(id: string): number {
   if (id === "win" || id === "loss") return RESULT;
@@ -80,20 +84,26 @@ function urgency(id: string): number {
   // The same goes for a full power meter, a few times a fight. It still gives way to a phase line.
   if (id.startsWith(POWER_LINE)) return POWER;
   if (id.startsWith("call_")) return CALL;
-  // Homer's lines sit with the fight start; a taunt sent to this voice is as easily talked over as praise.
+  // Homer's line before a stop is the only place that stop's story is told, and the fight opens under it. So once it is
+  // being spoken the calls do not cut it, or it would be gone 1.5 seconds in. It comes once a fight and runs 7 to 9 seconds.
+  if (isBeforeLine(id)) return INTRO;
+  // Homer's other lines sit with the fight start; a taunt sent to this voice is as easily talked over as praise.
   return id === "fight_start" || id.startsWith("homer_") ? MOMENT : SHORT;
 }
 
 /** Whether a new line cuts off the one playing. Otherwise the new line is skipped. */
 function interrupts(next: string, playing: string): boolean {
-  const tier = urgency(next);
+  // Homer's before-line takes the voice as his other lines do: it cuts praise and warnings and waits for the rest.
+  // Its own tier only counts once it is the line being spoken.
+  const tier = isBeforeLine(next) ? MOMENT : urgency(next);
   // The engine emits nothing after the result, so a call or fight start heard over it belongs to the next fight.
   const held = urgency(playing);
   if (held === RESULT) return tier === CALL || next === "fight_start";
   // A new fight's first line is not kept out by the last fight's phase line or power line (a retry from the pause menu).
   if ((held === PHASE || held === POWER) && next === "fight_start") return true;
   // A newer call beats an older one, whose beat has passed, and a newer phase line beats an older one. A call does not
-  // beat a phase line, which is heard to its end: the call is dropped, not queued, and the prompt card shows the move.
+  // beat a phase line or Homer's before-line, which are heard to their end: the call is dropped, not queued, and the
+  // prompt card shows the move. The same goes for the fight start, praise and warnings asked for under his line.
   // A call that beats a warning does not cut it either: createVoice holds the call until the warning ends.
   return tier > held || (tier === held && (tier === CALL || tier === PHASE));
 }
@@ -207,9 +217,10 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
       }
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
       if (best !== null) speak(best);
-      // A phase line or a power line holding the voice keeps the finisher's call out, so the call is tried again until it is spoken.
+      // A phase line, a power line or Homer's before-line holding the voice keeps the finisher's call out, so the call is
+      // tried again until it is spoken.
       const holding = urgency(current?.id ?? "");
-      finishing = phase?.kind === "finisher" && holding !== PHASE && holding !== POWER;
+      finishing = phase?.kind === "finisher" && holding !== PHASE && holding !== POWER && holding !== INTRO;
     },
     playing: () => current?.id ?? null,
     stop(id) {
@@ -395,18 +406,50 @@ export function stopLine(id: string): void {
   shared.stop(id);
 }
 
-/**
- * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. A call waiting behind a
- * warning is dropped with it, so nothing comes back afterwards. With `keepEnding`, the result line and Homer's lines
- * play on. The fight calls this through useStopAudio when it is left.
- */
-export function stopFightVoice(keepEnding = false): void {
+/** Silences the monster's taunt, and the shared voice's line unless `spare` says to leave that one playing. */
+function silence(spare: (line: string) => boolean): void {
   const taunt = monsters.playing();
   if (taunt !== null) monsters.stop(taunt);
   const line = shared.playing();
-  if (line === null) return;
-  if (keepEnding && (urgency(line) === RESULT || line.startsWith("homer_"))) return;
-  shared.stop(line);
+  if (line !== null && !spare(line)) shared.stop(line);
+}
+
+/**
+ * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. A call waiting behind a
+ * warning is dropped with it, so nothing comes back afterwards. With `keepEnding`, the result line and Homer's lines
+ * play on. A hidden tab and a pause call this; a fight that is left calls leaveFightVoice.
+ */
+export function stopFightVoice(keepEnding = false): void {
+  silence((line) => keepEnding && (urgency(line) === RESULT || line.startsWith("homer_")));
+}
+
+/** Set while a fight screen has just gone and no other has taken its place yet. Homer's before-line is cut when it runs out. */
+let leaving: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * A fight screen is on. Called by useStopAudio when one mounts. If another fight screen went in the same moment (a retry
+ * from the pause menu, or React's dev build, which mounts every screen twice), Homer's before-line carries on into this one.
+ */
+export function enterFightVoice(): void {
+  if (leaving !== undefined) clearTimeout(leaving);
+  leaving = undefined;
+  fightOver = false;
+}
+
+/**
+ * The fight screen is gone. Called by useStopAudio when one unmounts. The taunt and Athena's line are cut at once and
+ * no taunt starts until the next fight. Homer's before-line is cut one tick later, and only if no fight screen has
+ * mounted by then: cut here, the dev build's second mount would silence it as the fight opens.
+ */
+export function leaveFightVoice(): void {
+  fightOver = true;
+  silence(isBeforeLine);
+  if (leaving !== undefined) clearTimeout(leaving);
+  leaving = setTimeout(() => {
+    leaving = undefined;
+    // Only his before-line: anything else speaking by now was started by the screen that came next.
+    silence((line) => !isBeforeLine(line));
+  }, 0);
 }
 
 /**
