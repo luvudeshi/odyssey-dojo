@@ -8,12 +8,6 @@ import { MOVES } from "../../moves/registry";
 /** The god whose power a player with no god of their own is lent: Athena, who coaches every fight. */
 export const LENDER: GodId = "athena";
 
-/**
- * Gods whose one-line blurb in gods.ts leaves out a part of the gesture the detector needs. For these the move's own
- * hint is shown. Apollo: the sun burst only fires if the hands were together at the chest first.
- */
-const NEEDS_FULL_HINT: ReadonlySet<GodId> = new Set<GodId>(["apollo"]);
-
 export interface PowerPrompt {
   /** Whose power it is: the player's god, or Athena when they have none. */
   readonly god: GodId;
@@ -44,14 +38,15 @@ export function powerPrompt(god: GodId | null, keyboard: boolean): PowerPrompt {
   const { moveId, name, blurb } = owner.power;
   const def = MOVES.get(moveId);
   const key = def ? keyCap(def.key) : null;
-  const gesture = def && NEEDS_FULL_HINT.has(owner.id) ? def.hint : blurb;
+  // The god's own line (gods.ts) is the shortest that names every part of the gesture the detector needs; the move's
+  // hint on the prompt card says the same at twice the length, which does not fit beside the hero.
   return {
     god: owner.id,
     accent: owner.accent,
     title: god === null ? "ATHENA LENDS YOU HER AEGIS" : `${owner.name.toUpperCase()}'S POWER IS READY`,
     moveId,
     move: name,
-    how: keyboard && key !== null ? `Press ${key}` : gesture,
+    how: keyboard && key !== null ? `Press ${key}` : blurb,
     key,
     callId: `call_${moveId}`,
   };

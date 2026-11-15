@@ -49,17 +49,20 @@ describe("powerPrompt", () => {
     expect(lent.god).toBe("athena");
   });
 
-  test.each(WHO)("%s on camera: a short gesture, taken from the god's blurb or the move's hint", (god) => {
+  test.each(WHO)("%s on camera: the god's own one-line gesture, short enough for two lines of the banner", (god) => {
     const prompt = powerPrompt(god, false);
-    const owner = GODS[god ?? LENDER];
-    expect([owner.power.blurb, MOVES.get(prompt.moveId)?.hint]).toContain(prompt.how);
-    // Short enough to read in a glance: two lines of the banner at most.
-    expect(prompt.how.length).toBeLessThanOrEqual(70);
+    expect(prompt.how).toBe(GODS[god ?? LENDER].power.blurb);
+    // With " or press 2" after it, two lines of the banner's right-hand column (about 27 characters each).
+    expect(prompt.how.length).toBeLessThanOrEqual(42);
     expect(prompt.how).not.toMatch(/press/i);
   });
 
-  test("Apollo's gesture says to bring the hands together first, which the sun burst needs to fire", () => {
+  test("the gesture names the part the detector waits for: hands together for the sun burst, the hand dropped for the arrow", () => {
+    // sunBurst.ts fires only if the hands were together in the last half second; moonArrow.ts only when the string hand leaves the shoulder.
     expect(powerPrompt("apollo", false).how).toMatch(/hands together/i);
+    expect(MOVES.get("sun_burst")?.hint).toMatch(/hands together/i);
+    expect(powerPrompt("artemis", false).how).toMatch(/drop/i);
+    expect(MOVES.get("moon_arrow")?.hint).toMatch(/drop/i);
   });
 
   test.each(WHO)("%s on the keyboard: the instruction is the key, read from the move's definition", (god) => {
