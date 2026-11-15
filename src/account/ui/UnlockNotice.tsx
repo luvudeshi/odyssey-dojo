@@ -1,6 +1,7 @@
 // The notice shown over the result screen when a fight unlocks achievements. Every new one gets a card; all of them go by themselves.
 import { useEffect, useRef } from "react";
 import type { Achievement } from "../achievements";
+import { playUnlock } from "../../audio/sfx";
 import { Badge } from "./Badge";
 
 export const NOTICE_MS = 6000;
@@ -12,6 +13,7 @@ export function UnlockNotice(props: { items: readonly Achievement[]; onDone: () 
   useEffect(() => { done.current = props.onDone; });
   useEffect(() => {
     if (items.length === 0) return;
+    playUnlock();
     const timer = setTimeout(() => { done.current(); }, NOTICE_MS);
     return () => { clearTimeout(timer); };
   }, [items]);
