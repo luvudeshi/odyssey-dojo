@@ -5,6 +5,7 @@
 // Every number is a first guess, not yet tuned on a real body.
 import type { EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
+import { ASK_GRACE_MS } from "../input/poseInput";
 import { DOJO_DEFENDS, dojoJudgeRep, dojoMoveOf, dojoPraiseFor, dojoTipFor, usualMoves } from "./catalog";
 import type { Assessment, Focus, SkillLevel, StepResult } from "./contract";
 import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
@@ -238,7 +239,10 @@ export function tickDojo(state: DojoState, nowMs: number, frame: PoseFrame | nul
   const frames = fresh ? [...state.frames, fresh].slice(-MAX_FRAMES) : state.frames;
   let hit = state.hit;
   if (fresh && !hit) {
-    const confidence = finite(move.detect(history));
+    // The move practised is the one asked for, so it may read loose (`detectAsked`) on the frames since "go" and the grace.
+    const attempt = history.frames.filter((old) => fresh.t - old.t <= elapsed - ASK_GRACE_MS);
+    const loose = move.detectAsked && attempt.length >= 3 ? move.detectAsked({ ...history, frames: attempt }) : 0;
+    const confidence = finite(Math.max(move.detect(history), loose));
     if (confidence >= state.config.countFrom) {
       // A strike is scored at the frame it counts, the way the fight scores it.
       const sure = confidence >= 0.7;

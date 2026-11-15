@@ -368,6 +368,11 @@ export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): 
   shared.handle(events, phase);
 }
 
+/** Whether a clip for this line is loaded and can play. False until the clip index has been fetched. */
+export function lineAvailable(id: string): boolean {
+  return sharedDeps.available(clipFor(id));
+}
+
 /** For lines no combat event triggers, such as "fight_start" or Homer's "homer_title". */
 export function speakLine(id: string): boolean {
   if (id === "fight_start") {
