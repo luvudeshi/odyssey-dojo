@@ -12,6 +12,8 @@ const LIMB_BONES: readonly string[] = ["hand_l", "hand_r", "foot_l", "foot_r", "
 const FEET: ReadonlySet<string> = new Set(["foot_l", "foot_r"]);
 /** The knee joints (where the shin bones start): only a knee strike lands with one. */
 const KNEES: ReadonlySet<string> = new Set(["calf_l", "calf_r"]);
+/** A kick lands with the leg the hero throws in the air (leapPose.ts), never a fist that happens to reach further. */
+const HANDS: ReadonlySet<string> = new Set(["hand_l", "hand_r"]);
 /** Name of the point of the held spear and stake (gear/carriedGear.tsx), so a blade's tip can strike. */
 export const STRIKE_TIP = "strikeTip";
 /** Used when the model has none of the limbs: a fist a little ahead of the chest. */
@@ -45,7 +47,8 @@ export function createReach(root: Object3D): HeroReach {
 
   const measure = (node: Object3D): void => {
     const move = battle.struckMove;
-    if (!shown(node) || (FEET.has(node.name) && !KICKS.has(move)) || (KNEES.has(node.name) && move !== "knee")) { locals.push(null); return; }
+    const kick = KICKS.has(move);
+    if (!shown(node) || (FEET.has(node.name) && !kick) || (KNEES.has(node.name) && move !== "knee") || (HANDS.has(node.name) && kick)) { locals.push(null); return; }
     node.getWorldPosition(world);
     const gear = node.name === STRIKE_TIP ? node.parent : null;
     if (gear) {

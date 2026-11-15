@@ -12,7 +12,7 @@ import { bendJoint } from "./track/math";
 
 /** Metres the hips sink in a full crouch, and radians the chest pitches in a full lean. */
 const DROP = 0.26;
-const LEAN = 0.45;
+const LEAN = 0.3;
 /** How fast a held defend's exaggeration comes in and goes (per second): snappy, about 60 ms. */
 const SNAP = 26;
 /** How far a held jump lifts him (metres). */
@@ -89,7 +89,50 @@ export class Stance {
   }
 }
 
+interface Saved { pre: Quaternion; post: Quaternion; preAt: Vector3; postAt: Vector3; live: boolean }
+
+/**
+ * Puts back what the last frame's pose changed. The mixer rewrites a bone only when its clip value moves (three's
+ * PropertyMixer skips a value equal to the last one it wrote), so on a held or slow clip a pose laid on top would pile up
+ * frame after frame. A bone the mixer has written since is left as the mixer set it.
+ */
+class Undo {
+  private readonly saved = new Map<Object3D, Saved>();
+
+  restore(): void {
+    for (const [bone, s] of this.saved) {
+      if (!s.live) continue;
+      if (bone.quaternion.equals(s.post)) bone.quaternion.copy(s.pre);
+      if (bone.position.equals(s.postAt)) bone.position.copy(s.preAt);
+      s.live = false;
+    }
+  }
+
+  /** Call before changing `bone` this frame. */
+  touch(bone: Object3D): void {
+    let s = this.saved.get(bone);
+    if (!s) {
+      s = { pre: new Quaternion(), post: new Quaternion(), preAt: new Vector3(), postAt: new Vector3(), live: false };
+      this.saved.set(bone, s);
+    }
+    if (s.live) return;
+    s.pre.copy(bone.quaternion);
+    s.preAt.copy(bone.position);
+    s.live = true;
+  }
+
+  /** Call once the frame's pose is final. */
+  commit(): void {
+    for (const [bone, s] of this.saved) {
+      if (!s.live) continue;
+      s.post.copy(bone.quaternion);
+      s.postAt.copy(bone.position);
+    }
+  }
+}
+
 class Poser implements LeapPose {
+  private readonly undo = new Undo();
   private readonly stance = new Stance();
   private readonly act = newAct();
   private readonly feet: [Vector3, Vector3] = [new Vector3(), new Vector3()];
@@ -117,7 +160,13 @@ class Poser implements LeapPose {
     const act = this.stance.act(leap, this.act);
     act.kick = kick;
     act.target = target;
+    this.undo.restore();
     if (act.crouch < 1e-3 && act.air < 1e-3 && act.lean < 1e-3 && Math.abs(act.roll) < 1e-3) return;
+    this.pose(act);
+    this.undo.commit();
+  }
+
+  private pose(act: Act): void {
     const { torso, footBones } = this.rig;
     // The feet as the clip left them: where a crouch keeps them planted.
     footBones[0].getWorldPosition(this.feet[0]); footBones[0].getWorldQuaternion(this.feetQ[0]);
@@ -128,6 +177,7 @@ class Poser implements LeapPose {
     if (parent && act.crouch > 0) {
       pelvis.getWorldPosition(this.v);
       this.v.y -= DROP * act.crouch;
+      this.undo.touch(pelvis);
       pelvis.position.copy(parent.worldToLocal(this.v));
       pelvis.updateWorldMatrix(true, true);
     }
@@ -191,6 +241,7 @@ class Poser implements LeapPose {
   private setWorld(bone: Object3D, world: Quaternion, w: number): void {
     const parent = bone.parent;
     if (!parent || w <= 1e-3) return;
+    this.undo.touch(bone);
     parent.getWorldQuaternion(this.parentQ).invert().multiply(world);
     if (w >= 0.999) bone.quaternion.copy(this.parentQ);
     else bone.quaternion.slerp(this.parentQ, w);

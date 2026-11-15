@@ -84,6 +84,21 @@ test("held defends snap in within about 100 ms and back out on release", () => {
   expect(act.crouch).toBeCloseTo(0.55, 2);
 });
 
+test("the pose never piles up on a held clip, and the clip's pose comes back when the leap ends", () => {
+  // The mixer does not rewrite a bone whose clip value has not moved, so here nothing rewrites them between frames.
+  const { root, pose } = mount();
+  const hand = at(root, "hand_l");
+  const foot = at(root, "foot_r");
+  pose.update(leap({ air: 1, lean: 1 }), NONE, null, null, 1 / 60);
+  const once = [at(root, "hand_l"), at(root, "foot_r")];
+  for (let i = 0; i < 5; i++) pose.update(leap({ air: 1, lean: 1 }), NONE, null, null, 1 / 60);
+  expect(at(root, "hand_l").distanceTo(once[0] ?? new Vector3())).toBeLessThan(1e-6);
+  expect(at(root, "foot_r").distanceTo(once[1] ?? new Vector3())).toBeLessThan(1e-6);
+  pose.update(newLeap(), NONE, null, null, 1 / 60);
+  expect(at(root, "hand_l").distanceTo(hand)).toBeLessThan(1e-6);
+  expect(at(root, "foot_r").distanceTo(foot)).toBeLessThan(1e-6);
+});
+
 test("a model that is not the spartan mannequin gets no leap pose", () => {
   expect(createLeapPose(new Group())).toBeNull();
 });
