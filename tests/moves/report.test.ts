@@ -35,9 +35,10 @@ test("a trace that fires is reported with its frame and every margin, smallest f
   const lines = text.split("\n");
   expect(lines[0]).toBe("jab-madeup-1.json: jab FIRED on frame 46 of 92 (1485 ms)");
   expect(lines[1]).toMatch(/^\s+margin\s+measured\s+threshold\s+condition$/);
-  expect(lines[2]).toMatch(/^\s+\+5%\s+152\s+> {2}145\s+left elbow straight, degrees$/);
-  expect(text).toMatch(/\+67%\s+66\s+<= 200\s+ms since left elbow was bent under 115/);
-  expect(text).toMatch(/clear\s+never\s+> {2}500\s+ms since left hand was over the nose/);
+  expect(lines[2]).toMatch(/^\s+\+0%\s+0\.00\s+<= 0\.00\s+right arm on its way out too \(1 yes, 0 no\)$/);
+  expect(text).toMatch(/\+31%\s+0\.92\s+>= 0\.70\s+left arm out on this frame and the one before, 0 to 1/);
+  expect(text).toMatch(/\+230%\s+115\s+>= 35\s+left elbow opened or upper arm rose in 250 ms, degrees/);
+  expect(text).toMatch(/clear\s+never\s+> {2}500\s+ms since left hand was over the punching band/);
   expect(text).not.toMatch(/first failed/);
 
   const report = measureTrace(fixture("jab-madeup-1.json"), MOVES);

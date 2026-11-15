@@ -2,6 +2,8 @@
 // The server makes each line once and caches it. With no server or no key this stays silent and never throws.
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
+import { releaseAudio } from "./release";
+import { tabHidden, watchTab } from "./tab";
 
 export type Speaker = "athena" | "homer" | "monster";
 
@@ -39,13 +41,19 @@ export function prepareLine(speaker: Speaker, text: string, fetcher: typeof fetc
 /** Speaks a line, replacing any narration already playing. Resolves true once it has played to the end; false if it could not play or was cut off by stopNarration or a newer line. */
 export async function speakLine(speaker: Speaker, text: string): Promise<boolean> {
   const url = await prepareLine(speaker, text);
-  if (url === null || typeof Audio === "undefined") return false;
+  // Nothing starts in a hidden tab: the line would be heard with no screen to go with it.
+  if (url === null || typeof Audio === "undefined" || tabHidden()) return false;
   stopNarration();
   const audio = Object.assign(new Audio(url), { volume: getSettings().voiceVolume });
   current = audio;
   return new Promise((resolve) => {
+    let over = false;
     const finish = (played: boolean): void => {
+      if (over) return;
+      over = true;
       if (current === audio) current = null;
+      // The line's sound stays in `ready` for the next time it is spoken; only this element's hold on it is let go.
+      releaseAudio(audio);
       resolve(played);
     };
     audio.addEventListener("ended", () => { finish(true); }, { once: true });
@@ -60,3 +68,7 @@ export function stopNarration(): void {
   current?.pause();
   current = null;
 }
+
+watchTab((hidden) => {
+  if (hidden) stopNarration();
+});

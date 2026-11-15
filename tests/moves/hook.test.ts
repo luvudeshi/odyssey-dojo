@@ -21,8 +21,14 @@ test("a less sharp hook that takes a quarter of a second still counts once", () 
   expect(thrown(easy, "hook")).toBe(1);
 });
 
-test("the same swing taking half a second, a slow sweep of the arm, is not a hook", () => {
-  const sweep = play(recording([[READY, 300], [LOADED, 200], [ACROSS, 500], [ACROSS, 66], [READY, 200], [READY, 600]]));
+// The lenient-strikes PR: a slow throw counts. Before it, the half-second swing was pinned as not a hook.
+test("the same swing taking half a second, a slow hook, still counts once", () => {
+  const slow = play(recording([[READY, 300], [LOADED, 200], [ACROSS, 500], [ACROSS, 66], [READY, 200], [READY, 600]]));
+  expect(thrown(slow, "hook")).toBe(1);
+});
+
+test("the same swing taking a whole second, a slow sweep of the arm, is not a hook", () => {
+  const sweep = play(recording([[READY, 300], [LOADED, 200], [ACROSS, 1000], [ACROSS, 66], [READY, 200], [READY, 600]]));
   expect(thrown(sweep, "hook")).toBe(0);
 });
 

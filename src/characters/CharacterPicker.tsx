@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import type { Group } from "three";
+import { Button } from "../ui/pebble";
 import { CharacterFigure } from "./CharacterFigure";
 import { CHARACTERS, characterById } from "./characters";
 import type { Character, CharacterId } from "./characters";
@@ -164,9 +165,9 @@ export function CharacterPicker({ value, onChange, onDone }: CharacterPickerProp
           />
         ))}
       </div>
-      <button type="button" className="character-done" onClick={() => { onDone(chosen.id); }}>
+      <Button primary className="character-done" onClick={() => { onDone(chosen.id); }}>
         Fight as {chosen.name}
-      </button>
+      </Button>
     </section>
   );
 }
