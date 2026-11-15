@@ -7,6 +7,7 @@ import { sentence } from "../pose/cameraError";
 import { COUNTDOWN_MS, countdownStep, presenceAt } from "../pose/presence";
 import { EMPTY_HISTORY, baselineOf, pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
+import { Button } from "../ui/pebble";
 import "./calibration.css";
 
 export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Baseline) => void; onSkip: () => void }) {
@@ -55,7 +56,7 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
       </div>
       <p className="prompt-word">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
       <p className="notice">{hint || "Hold it..."}</p>
-      <button className={stuck ? undefined : "quiet"} onClick={onSkip}>Use keyboard instead</button>
+      <Button primary={stuck} onClick={onSkip}>Use keyboard instead</Button>
     </div>
   );
 }

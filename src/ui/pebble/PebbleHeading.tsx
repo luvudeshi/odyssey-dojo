@@ -20,7 +20,7 @@ export interface PebbleHeadingProps {
  */
 export function PebbleHeading(props: PebbleHeadingProps) {
   const { text, px = 40, tone = "cream", spacing = px * 0.06, as: Tag = "h2" } = props;
-  const size = Math.max(2.6, px / 8), key = `h|${text}|${String(px)}|${String(spacing)}|${tone}`;
+  const size = Math.max(1.9, px / 13), key = `h|${text}|${String(px)}|${String(spacing)}|${tone}`;
   const mask = useMemo(() => textMask(text, px, spacing), [text, px, spacing]);
   const draw = useMemo(() => {
     if (!mask) return null;

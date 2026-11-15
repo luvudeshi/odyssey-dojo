@@ -34,6 +34,7 @@ export interface TextMask extends Mask { pad: number }
 
 /** Draws the string in white on a throwaway canvas and reads its alpha back. Needs a DOM. */
 export function textMask(text: string, px: number, spacing: number): TextMask | null {
+  if (typeof document === "undefined") return null;
   const c = document.createElement("canvas"), g = c.getContext("2d", { willReadFrequently: true });
   if (!g) return null;
   const font = `700 ${String(px)}px ${HEADING_FONT}`, pad = 6;
@@ -41,7 +42,7 @@ export function textMask(text: string, px: number, spacing: number): TextMask | 
   const w = Math.ceil(g.measureText(text).width) + pad * 2, h = Math.ceil(px * 1.5);
   c.width = w; c.height = h;
   g.font = font; g.letterSpacing = `${String(spacing)}px`;
-  g.fillStyle = "#fff"; g.strokeStyle = "#fff"; g.lineWidth = px * 0.1; g.lineJoin = "round";
+  g.fillStyle = "#fff"; g.strokeStyle = "#fff"; g.lineWidth = px * 0.04; g.lineJoin = "round";
   g.fillText(text, pad, px * 1.1); g.strokeText(text, pad, px * 1.1);
   const data = g.getImageData(0, 0, w, h).data, alpha = new Uint8Array(w * h);
   for (let i = 0; i < alpha.length; i++) alpha[i] = data[i * 4 + 3] ?? 0;

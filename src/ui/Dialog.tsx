@@ -1,18 +1,19 @@
 // A modal panel over the game: takes focus when it opens, keeps Tab inside, moves between buttons with Up and Down,
 // and gives focus back to whatever had it when it closes. Esc is handled by the owner (see onEscape).
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import "./theme.css";
 import "./ui.css";
+import { installGround, PebbleHeading } from "./pebble";
 
 const FOCUSABLE = "button, input, select, [tabindex]:not([tabindex='-1'])";
 
 export function Dialog(props: { title: string; children: ReactNode; onEscape?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const titleId = useId();
   const { onEscape } = props;
 
   useEffect(() => {
+    installGround();
     const before = document.activeElement;
     ref.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
     return () => { if (before instanceof HTMLElement) before.focus(); };
@@ -39,8 +40,8 @@ export function Dialog(props: { title: string; children: ReactNode; onEscape?: (
 
   return (
     <div className="ui-backdrop">
-      <div ref={ref} className="ui-panel" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onKeyDown={onKeyDown}>
-        <h2 id={titleId} className="ui-title">{props.title}</h2>
+      <div ref={ref} className="ui-panel" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} onKeyDown={onKeyDown}>
+        <PebbleHeading as="h2" className="ui-title" text={props.title.toUpperCase()} px={36} tone="ochre" />
         {props.children}
       </div>
     </div>
