@@ -16,9 +16,7 @@ import { WRONG_TOKENS_PER_ADDRESS } from "../lib/accountLimits";
 import { FAILURES_TO_GIVE_UP, Unavailable, createAccounts, makeToken, statementsOf } from "../lib/accounts";
 import type { Accounts, Statement } from "../lib/accounts";
 import type { Db } from "../lib/db";
-import {
-  FIGHTS_FIRST_OVERALL, FIGHTS_MORE_OVERALL, FIGHTS_PER_ACCOUNT, FIGHTS_PER_ACCOUNT_HOUR, HALL_CACHE_MS, HALL_READS_PER_ADDRESS, createHeroLimits,
-} from "../lib/heroLimits";
+import { FIGHTS_OVERALL, FIGHTS_PER_ACCOUNT, FIGHTS_PER_ACCOUNT_HOUR, HALL_CACHE_MS, HALL_READS_PER_ADDRESS, createHeroLimits } from "../lib/heroLimits";
 import { COMBO_MAX, FIGHT_BODY_BYTES, SCORE_MAX, SECONDS_MAX, SECONDS_MIN, parseFightBody } from "../lib/heroRules";
 import { ACTIVITY_BUCKETS, ACTIVITY_MINUTES, BOARD_SIZE, RETRY_MS, columnstoreSql, createHeroes, heroSchemaSql, heroTables } from "../lib/heroes";
 import type { Hall, Heroes } from "../lib/heroes";
@@ -117,85 +115,46 @@ test("a fight outside the ranges, or with an id that is not a short slug, is ref
 test("an account records four fights a minute and ninety an hour, whoever sends them, and one account cannot use up another's", () => {
   let now = 0;
   const limits = createHeroLimits(() => now);
-  const fight = (client: string, accountId: string): number => limits.fight(client, accountId).wait;
-  expect(passed(() => fight("a", "account-1"), FIGHTS_PER_ACCOUNT + 3)).toBe(FIGHTS_PER_ACCOUNT);
-  expect(fight("a", "account-1")).toBe(60);
+  expect(passed(() => limits.fight("a", "account-1"), FIGHTS_PER_ACCOUNT + 3)).toBe(FIGHTS_PER_ACCOUNT);
+  expect(limits.fight("a", "account-1")).toBe(60);
   // From another address, and from this machine: the account is what is counted.
-  expect(fight("b", "account-1")).toBeGreaterThan(0);
-  expect(fight(THIS_MACHINE, "account-1")).toBeGreaterThan(0);
-  expect(fight("a", "account-2")).toBe(0);
+  expect(limits.fight("b", "account-1")).toBeGreaterThan(0);
+  expect(limits.fight(THIS_MACHINE, "account-1")).toBeGreaterThan(0);
+  expect(limits.fight("a", "account-2")).toBe(0);
   now += MINUTE_MS;
-  expect(fight("a", "account-1")).toBe(0);
+  expect(limits.fight("a", "account-1")).toBe(0);
   // The hour: four a minute would be 240, and ninety are let through.
   let through = FIGHTS_PER_ACCOUNT + 1;
   for (let minute = 2; minute < 60; minute += 1) {
     now = minute * MINUTE_MS;
-    through += passed(() => fight("a", "account-1"), FIGHTS_PER_ACCOUNT);
+    through += passed(() => limits.fight("a", "account-1"), FIGHTS_PER_ACCOUNT);
   }
   expect(through).toBe(FIGHTS_PER_ACCOUNT_HOUR);
   now = 61 * MINUTE_MS;
-  expect(fight("a", "account-1")).toBe(0);
+  expect(limits.fight("a", "account-1")).toBe(0);
 });
 
 test("all strangers together write 120 fights a minute, only a fight that was written counts, and this machine is left out", () => {
   let now = 5_000;
   const limits = createHeroLimits(() => now);
-  const fight = (client: string, accountId: string): number => limits.fight(client, accountId).wait;
-  // A fight that was refused or failed gives its place back, any number of times, and giving back twice gives one place.
+  // A fight that was refused or failed gives its place back, any number of times.
   for (let index = 0; index < 500; index += 1) {
-    const place = limits.fight("a", `gone ${String(index)}`);
-    expect(place.wait).toBe(0);
-    place.notWritten();
-    place.notWritten();
+    expect(limits.fight("a", `gone ${String(index)}`)).toBe(0);
+    limits.fightNotWritten("a");
   }
-  // One fight each from more accounts than there are places: the first count fills, then the second, and that is all.
   let through = 0;
-  for (let index = 0; index < FIGHTS_FIRST_OVERALL + FIGHTS_MORE_OVERALL + 30; index += 1) if (fight(`address ${String(index % 7)}`, `account ${String(index)}`) === 0) through += 1;
-  expect(through).toBe(FIGHTS_FIRST_OVERALL + FIGHTS_MORE_OVERALL);
-  expect(FIGHTS_FIRST_OVERALL + FIGHTS_MORE_OVERALL).toBe(120);
-  expect(fight("z", "one more")).toBeGreaterThan(0);
-  // The laptop that runs the server still records its own fights, and giving back for it takes nothing from the strangers' counts.
-  const own = limits.fight(THIS_MACHINE, "the demo account");
-  expect(own.wait).toBe(0);
-  own.notWritten();
-  expect(fight("z", "one more")).toBeGreaterThan(0);
+  for (let index = 0; index < FIGHTS_OVERALL + 30; index += 1) if (limits.fight(`address ${String(index % 7)}`, `account ${String(index)}`) === 0) through += 1;
+  expect(through).toBe(FIGHTS_OVERALL);
+  expect(limits.fight("z", "one more")).toBeGreaterThan(0);
+  // The laptop that runs the server still records its own fights, and giving back for it takes nothing from the strangers' count.
+  expect(limits.fight(THIS_MACHINE, "the demo account")).toBe(0);
+  limits.fightNotWritten(THIS_MACHINE);
+  expect(limits.fight("z", "one more")).toBeGreaterThan(0);
   now += MINUTE_MS;
-  expect(fight("z", "one more")).toBe(0);
+  expect(limits.fight("z", "one more")).toBe(0);
 });
 
-test("one stranger with thirty accounts cannot use up the fights of everybody: an account's first fight of the minute has places of its own", () => {
-  let now = 9_000;
-  const limits = createHeroLimits(() => now);
-  const fight = (client: string, accountId: string): number => limits.fight(client, accountId).wait;
-  // Thirty accounts, four fights each in one minute. Before, these 120 were everybody's fights for the minute.
-  let taken = 0;
-  for (let round = 0; round < FIGHTS_PER_ACCOUNT; round += 1) {
-    for (let account = 0; account < 30; account += 1) if (fight("the stranger", `theirs ${String(account)}`) === 0) taken += 1;
-  }
-  // They got one place each of the first count and all of the second, and no more.
-  expect(taken).toBe(30 + FIGHTS_MORE_OVERALL);
-  // Sixty other players each still record the fight they just finished.
-  for (let player = 0; player < FIGHTS_FIRST_OVERALL - 30; player += 1) expect(fight(`player ${String(player)}`, `player ${String(player)}`), String(player)).toBe(0);
-  // A second fight inside the same minute waits for the next one, and that is all a player loses.
-  expect(fight("player 0", "player 0")).toBeGreaterThan(0);
-  now += MINUTE_MS;
-  expect(fight("player 0", "player 0")).toBe(0);
-
-  // A first fight that was not written leaves the account its first place, and the place goes back to the count it came from.
-  now += MINUTE_MS;
-  const fresh = createHeroLimits(() => now);
-  for (let account = 0; account < FIGHTS_FIRST_OVERALL - 1; account += 1) expect(fresh.fight("x", `filler ${String(account)}`).wait).toBe(0);
-  const failed = fresh.fight("p", "player");
-  expect(failed.wait).toBe(0);
-  failed.notWritten();
-  // Ten of the fillers send three more fights each: the second count is used up now.
-  for (let account = 0; account < FIGHTS_MORE_OVERALL / 3; account += 1) expect(passed(() => fresh.fight("x", `filler ${String(account)}`).wait, 3), String(account)).toBe(3);
-  // The player's next try is still a first fight, and the place it gave back is there.
-  expect(fresh.fight("x", "filler 80").wait).toBeGreaterThan(0);
-  expect(fresh.fight("p", "player").wait).toBe(0);
-});
-
-test("the hall is read 1,200 times a minute from one address, and this machine is never refused", () => {
+test("the hall is read 300 times a minute from one address, and this machine is never refused", () => {
   let now = 0;
   const limits = createHeroLimits(() => now);
   expect(passed(() => limits.read("a"), HALL_READS_PER_ADDRESS + 50)).toBe(HALL_READS_PER_ADDRESS);

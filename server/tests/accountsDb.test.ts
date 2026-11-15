@@ -386,7 +386,7 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     // nothing itself, and it lets strangers make two more accounts this hour than the tables already hold.
     const madeThisHour = await count(started - HOUR_MS);
     expect(madeThisHour).toBeGreaterThan(0);
-    const strict = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, caps: { perHour: madeThisHour + 2 } });
+    const strict = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, caps: { perHour: madeThisHour + 2 }, isPublic: () => true });
     const second = (await createApp({ config, ai: NO_AI, accounts: strict })).listen(0, "127.0.0.1");
     await once(second, "listening");
     const secondPort = (second.address() as AddressInfo).port;

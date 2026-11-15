@@ -18,7 +18,7 @@ import { Unavailable, bearerToken, createAccounts } from "../lib/accounts";
 import type { Reach } from "../lib/accounts";
 import { shareAccounts } from "../lib/accountsShared";
 import { dbRedactor, openDb } from "../lib/db";
-import { behindOwnProxy } from "../lib/localOnly";
+import { publicAccounts } from "../lib/localOnly";
 import { THIS_MACHINE } from "../lib/roomLimits";
 import { withTimeout } from "../lib/timeout";
 
@@ -88,12 +88,18 @@ export const register: Register = (router, deps) => {
   shareAccounts(deps, { accounts, strangers, limits });
 
   /** Who a request is counted against (callerOf). Asked on every request: the server reads its .env after this file is loaded. */
-  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, behindOwnProxy());
+  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, publicAccounts());
 
   /** Database work. A stranger's waits at the gate, so however many arrive at once the laptop still finds a free connection. */
   const reach = <T>(who: string, work: () => Promise<T>): Promise<T> => (who === THIS_MACHINE ? work() : strangers(work));
-  /** The same for sign-up and sign-in, which run their statements through it one by one and hash the password outside it. */
+  /**
+   * The same for sign-up and sign-in. With PUBLIC_ACCOUNTS=1 they run their statements through it one by one and hash
+   * the password outside it. Without, the whole sign-up or sign-in holds one place, hash and all, as it always did:
+   * which of many requests sent at once is told to slow down is then what it was before the setting existed.
+   */
   const through = (who: string): Reach => (work) => reach(who, work);
+  const signing = <T>(who: string, work: (reach?: Reach) => Promise<T>): Promise<T> =>
+    (publicAccounts() ? work(through(who)) : reach(who, () => work()));
 
   /** Whether the database answers, within STATUS_MS. A slow start goes on in the background and the next request finds it done. */
   const available = (): Promise<boolean> => withTimeout(STATUS_MS, () => accounts.available()).catch(() => false);
@@ -215,12 +221,16 @@ export const register: Register = (router, deps) => {
       }
       let made: Awaited<ReturnType<typeof accounts.signUp>> = "full";
       try {
-        made = await accounts.signUp(asked.name, asked.password, who === THIS_MACHINE, through(who));
+        made = await signing(who, (through) => accounts.signUp(asked.name, asked.password, who === THIS_MACHINE, through));
       } finally {
         if (typeof made === "string") limits.signUpNotMade(who);
       }
       if (made === "name_taken") response.status(409).json({ error: "name_taken" });
-      else if (made === "full" || made === "closed") {
+      else if (made === "full" && !publicAccounts()) {
+        // Without PUBLIC_ACCOUNTS=1 a full database is answered as it always was.
+        log("warn", "accounts_at_cap");
+        unavailable(response);
+      } else if (made === "full" || made === "closed") {
         log("warn", made === "full" ? "accounts_at_cap" : "accounts_signups_closed");
         signUpsClosed(response, made === "full" ? null : CLOSED_RETRY_S);
       } else response.status(201).json(made);
@@ -248,7 +258,7 @@ export const register: Register = (router, deps) => {
       let signed: Awaited<ReturnType<typeof accounts.signIn>> = null;
       let checked = false;
       try {
-        signed = await accounts.signIn(asked.name, asked.password, who === THIS_MACHINE, through(who));
+        signed = await signing(who, (through) => accounts.signIn(asked.name, asked.password, who === THIS_MACHINE, through));
         checked = true;
       } finally {
         // Only a wrong password stays counted against the name: not a right one, and not a try that was never checked.

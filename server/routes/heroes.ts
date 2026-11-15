@@ -19,7 +19,7 @@ import { createHeroLimits } from "../lib/heroLimits";
 import { FIGHT_BODY_BYTES, parseFightBody } from "../lib/heroRules";
 import { createHeroes } from "../lib/heroes";
 import type { HallRow, Heroes } from "../lib/heroes";
-import { behindOwnProxy } from "../lib/localOnly";
+import { publicAccounts } from "../lib/localOnly";
 import { THIS_MACHINE } from "../lib/roomLimits";
 import { smallBody } from "./account";
 
@@ -57,7 +57,7 @@ export const register: Register = (router, deps) => {
   };
 
   /** Who a request is counted against, as in routes/account.ts: a request that was passed on never gets the laptop's free pass. */
-  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, behindOwnProxy());
+  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, publicAccounts());
   /** How to give back what the fight of a request took of the strangers' shared counts, set once the fight was counted. */
   const places = new WeakMap<Request, () => void>();
 
@@ -120,7 +120,7 @@ export const register: Register = (router, deps) => {
       signedOut(response);
       return;
     }
-    const place = limits.fight(who, account.id);
+    const place = limits.fightPlace(who, account.id);
     if (place.wait > 0) {
       slowDown(response, place.wait);
       return;

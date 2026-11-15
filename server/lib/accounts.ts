@@ -8,6 +8,7 @@ import { log } from "../../src/core/log";
 import { SIGNUPS_PER_DAY, SIGNUPS_PER_HOUR, createGate, createKnownSessions } from "./accountLimits";
 import type { Gate } from "./accountLimits";
 import { nameKey, saveSchema } from "./accountRules";
+import { publicAccounts } from "./localOnly";
 import type { Save } from "./accountRules";
 import { failureCode } from "./db";
 import type { Db } from "./db";
@@ -172,7 +173,8 @@ export interface Accounts {
    * may use the places kept for it, and is not held by the accounts made this hour or today. `reach` runs the
    * statements (see Reach); the hash runs outside it. "full": the database holds as many accounts as it may.
    * "closed": as many were made in the last hour or day as strangers may make; the database is asked, so this holds
-   * after a restart and with a second server on the same database.
+   * after a restart and with a second server on the same database. Only with PUBLIC_ACCOUNTS=1 (AccountsOptions.isPublic):
+   * without it the hour and the day are not asked for and "closed" is never the answer.
    */
   readonly signUp: (name: string, password: string, urgent?: boolean, reach?: Reach) => Promise<Signed | "name_taken" | "full" | "closed">;
   /** Null for an unknown name and for a wrong password alike, after the same work. `reach` as for signUp. */
@@ -198,11 +200,13 @@ export interface AccountsOptions {
   readonly gate?: Gate;
   /** Replaces the caps on accounts, for tests. */
   readonly caps?: Partial<Caps>;
+  /** What publicAccounts() says (./localOnly), asked at each sign-up. Off, sign-up asks the database what it always asked and nothing else. */
+  readonly isPublic?: () => boolean;
 }
 
 // What the database gives back is checked like anything else that comes from outside.
 const count = z.coerce.number().int().min(0);
-const countRow = z.object({ n: count, hour: count, day: count });
+const countRow = z.object({ n: count, hour: count.default(0), day: count.default(0) });
 const idRow = z.object({ id: z.string().min(1).max(64) });
 const accountRow = z.object({
   id: z.string().min(1).max(64),
@@ -222,6 +226,7 @@ const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 export function createAccounts(open: () => Promise<Db | null>, options: AccountsOptions = {}): Accounts {
   const now = options.now ?? Date.now;
   const gate = options.gate ?? createGate();
+  const isPublic = options.isPublic ?? publicAccounts;
   const caps: Caps = {
     total: MAX_ACCOUNTS, keptForThisMachine: ACCOUNTS_KEPT_FOR_THIS_MACHINE, perHour: SIGNUPS_PER_HOUR, perDay: SIGNUPS_PER_DAY, ...options.caps,
   };
@@ -328,16 +333,17 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     signUp: async (name, password, urgent = false, reach = direct) => {
       const asked = now();
       // Asked of the database and not of this server's memory: what a restart forgot, or another server made, is counted too.
-      const [found] = rowsOf(countRow, await reach(() => run(
+      const open = isPublic();
+      const [found] = rowsOf(countRow, await reach(() => (open ? run(
         `select count(*)::int as n,
           count(*) filter (where created_at > $1::timestamptz)::int as hour,
           count(*) filter (where created_at > $2::timestamptz)::int as day
         from ${t.accounts}`,
         [iso(asked - HOUR_MS), iso(asked - DAY_MS)],
-      )));
+      ) : run(`select count(*)::int as n from ${t.accounts}`, []))));
       // The last places are kept for this machine (`urgent`), so strangers cannot fill the database to the brim.
       if (found === undefined || found.n >= caps.total - (urgent ? 0 : caps.keptForThisMachine)) return "full";
-      if (!urgent && (found.hour >= caps.perHour || found.day >= caps.perDay)) return "closed";
+      if (open && !urgent && (found.hour >= caps.perHour || found.day >= caps.perDay)) return "closed";
       const salt = randomBytes(SALT_BYTES);
       // No place at the strangers' gate is held while this waits its turn and runs.
       const hash = await gate(() => hashPassword(password, salt), urgent);

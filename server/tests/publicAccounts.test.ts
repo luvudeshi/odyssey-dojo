@@ -12,12 +12,12 @@ import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Deps } from "../app";
 import type { Config } from "../env";
-import { SIGNINS_PER_NAME, SIGNINS_PER_NAME_AND_ADDRESS } from "../lib/accountLimits";
+import { PUBLIC_SIGNINS_PER_NAME_AND_ADDRESS, SIGNINS_PER_NAME, callerOf } from "../lib/accountLimits";
 import { makeToken } from "../lib/accounts";
 import type { Accounts } from "../lib/accounts";
 import type { Hall, Heroes } from "../lib/heroes";
-import { behindOwnProxy, isAccountPath, isHeroesPath, isLoopback, mayAnswer, publicAccounts, wasRelayed } from "../lib/localOnly";
-import { MINUTE_MS } from "../lib/roomLimits";
+import { isAccountPath, isHeroesPath, isLoopback, mayAnswer, publicAccounts, wasRelayed } from "../lib/localOnly";
+import { MINUTE_MS, clientKey } from "../lib/roomLimits";
 
 const config: Config = {
   port: 0, geminiKey: null, elevenLabsKey: null, dataDir: "/nonexistent", publicBaseUrl: null, distDir: "/nonexistent",
@@ -173,8 +173,21 @@ test("the flag is on only when PUBLIC_ACCOUNTS is exactly 1", () => {
   expect(publicAccounts({})).toBe(false);
   // The other flag is another flag: neither turns the other on.
   expect(publicAccounts({ PUBLIC_ROOMS: "1" })).toBe(false);
-  // Either one says the server stands behind its own proxy, which is what decides how a caller is counted.
-  expect([behindOwnProxy({}), behindOwnProxy({ PUBLIC_ROOMS: "1" }), behindOwnProxy({ PUBLIC_ACCOUNTS: "1" }), behindOwnProxy({ PUBLIC_ACCOUNTS: "true", PUBLIC_ROOMS: "0" })]).toEqual([false, true, true, false]);
+});
+
+test("PUBLIC_ROOMS=1 alone does not change how an account or hall caller is counted: only PUBLIC_ACCOUNTS=1 counts by the proxy's own entry", () => {
+  // What Caddy on the server's own network passes on: the header the visitor wrote, and its own entry last.
+  const headers = { "cf-connecting-ip": "198.51.100.7", "x-forwarded-for": "198.51.100.7, 203.0.113.9" };
+  const counted = (env: Record<string, string>): string => callerOf("127.0.0.1", headers, publicAccounts(env));
+  // Rooms public, accounts not: the key is the one the routes have always used, the visitor's own header and all.
+  expect(counted({ PUBLIC_ROOMS: "1" })).toBe(counted({}));
+  expect(counted({ PUBLIC_ROOMS: "1" })).toBe(clientKey("127.0.0.1", headers));
+  expect(counted({ PUBLIC_ROOMS: "1" })).toContain("198.51.100.7");
+  // Accounts public: the entry the proxy wrote, whatever the visitor's header says.
+  expect(counted({ PUBLIC_ACCOUNTS: "1" })).toBe(clientKey("127.0.0.1", headers, true));
+  expect(counted({ PUBLIC_ACCOUNTS: "1" })).toContain("203.0.113.9");
+  expect(counted({ PUBLIC_ACCOUNTS: "1" })).not.toContain("198.51.100.7");
+  expect(counted({ PUBLIC_ACCOUNTS: "1", PUBLIC_ROOMS: "1" })).toBe(counted({ PUBLIC_ACCOUNTS: "1" }));
 });
 
 /** Paths, sockets and header sets for the grid below: every kind of caller against every kind of path. */
@@ -327,7 +340,7 @@ test("flag on: a caller is the address the proxy took the request from, so one c
     call("POST", "/api/account/signin", { headers: relayedFrom(hop), socket: PROXY, json: { name, password } });
 
   // A guesser who calls the server's own name arrives with an address of their own.
-  for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await signIn("203.0.113.66", "a wrong password")).status, String(index)).toBe(401);
+  for (let index = 0; index < PUBLIC_SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await signIn("203.0.113.66", "a wrong password")).status, String(index)).toBe(401);
   const held = await signIn("203.0.113.66", "a wrong password");
   expect([held.status, JSON.parse(held.text), held.retry]).toEqual([429, { error: "slow_down" }, "60"]);
   // Addresses written in front of the proxy's own entry, or in the headers a host adds, give no fresh budget.
@@ -341,7 +354,7 @@ test("flag on: a caller is the address the proxy took the request from, so one c
   // Without the flag every one of these callers would be one caller, the proxy's address: the first test of this file shows they are refused outright.
   // With it, callers who really share an address are one caller. Behind a host that passes /api on (Vercel), that is
   // every visitor of the page: five wrong passwords through the page hold the name for the others who come through it.
-  for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await signIn("203.0.113.7", "a wrong password", "Penelope")).status).toBe(401);
+  for (let index = 0; index < PUBLIC_SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await signIn("203.0.113.7", "a wrong password", "Penelope")).status).toBe(401);
   const owner = await signIn("203.0.113.7", RIGHT_PASSWORD, "Penelope");
   // What the owner sees on a browser that is not signed in yet: wait, for a minute at most.
   expect([owner.status, JSON.parse(owner.text), owner.retry]).toEqual([429, { error: "slow_down" }, "60"]);
@@ -353,29 +366,35 @@ test("flag on: a caller is the address the proxy took the request from, so one c
   expect((await signIn("203.0.113.7", RIGHT_PASSWORD, "Penelope")).status).toBe(200);
 });
 
-test("with the proxy inside the server's own network (a loopback socket): either setting makes the proxy's own entry the caller, and a made-up Cf-Connecting-Ip buys nothing", async () => {
+test("with the proxy inside the server's own network (a loopback socket): PUBLIC_ACCOUNTS=1 makes the proxy's own entry the caller, and a made-up Cf-Connecting-Ip buys nothing; PUBLIC_ROOMS=1 alone changes nothing", async () => {
   // Caddy with network_mode "service:game" reaches the game at 127.0.0.1, as a tunnel on a laptop does. The account
   // paths then answer with or without the flag. What the flag changes there is who is counted.
   const guess = (call: Call, index: number): Promise<Answer> => call("POST", "/api/account/signin", {
     headers: { ...relayedFrom("203.0.113.66"), "Cf-Connecting-Ip": `192.0.2.${String(index)}` }, json: { name: "Odysseus", password: "a wrong password" },
   });
-  for (const [accounts, rooms] of [["1", undefined], [undefined, "1"], ["1", "1"]] as const) {
+  for (const [accounts, rooms] of [["1", undefined], ["1", "1"]] as const) {
     const call = await serve(accounts, standIns());
     if (rooms !== undefined) process.env.PUBLIC_ROOMS = rooms;
-    for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await guess(call, index)).status, `${String(accounts)} ${String(rooms)} ${String(index)}`).toBe(401);
+    for (let index = 0; index < PUBLIC_SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await guess(call, index)).status, `${String(accounts)} ${String(rooms)} ${String(index)}`).toBe(401);
     expect((await guess(call, 99)).status, `${String(accounts)} ${String(rooms)}`).toBe(429);
     // The spending routes are closed from there as from anywhere, and this machine's own requests carry no proxy header.
     expect((await call("POST", "/api/level", { headers: relayedFrom("203.0.113.66"), json: {} })).status).toBe(403);
     expect((await call("GET", "/api/health")).status).toBe(200);
     for (const close of closers.splice(0)) close();
   }
-  // With neither setting the server takes that proxy for a tunnel and believes the header: every made-up value is a new caller.
-  // Only the count for the name over all callers still stops the guesses. This is why a public server sets the flag.
-  const call = await serve(undefined, standIns());
-  const answers: number[] = [];
-  for (let index = 0; index < SIGNINS_PER_NAME + 2; index += 1) answers.push((await guess(call, index)).status);
-  expect(answers.filter((status) => status === 401)).toHaveLength(SIGNINS_PER_NAME);
-  expect(answers.slice(SIGNINS_PER_NAME)).toEqual([429, 429]);
+  // Without PUBLIC_ACCOUNTS=1 the server takes that proxy for a tunnel and believes the header, as it always has:
+  // every made-up value is a new caller, and only the count for the name over all callers stops the guesses, at the
+  // number it had before the setting existed. PUBLIC_ROOMS=1 on its own changes none of it. This is why a public server sets PUBLIC_ACCOUNTS=1.
+  for (const rooms of [undefined, "1"] as const) {
+    const call = await serve(undefined, standIns());
+    if (rooms !== undefined) process.env.PUBLIC_ROOMS = rooms;
+    const answers: number[] = [];
+    for (let index = 0; index < SIGNINS_PER_NAME + 2; index += 1) answers.push((await guess(call, index)).status);
+    expect(answers.filter((status) => status === 401), String(rooms)).toHaveLength(SIGNINS_PER_NAME);
+    expect(answers.slice(SIGNINS_PER_NAME), String(rooms)).toEqual([429, 429]);
+    expect(SIGNINS_PER_NAME).toBe(100);
+    for (const close of closers.splice(0)) close();
+  }
 });
 
 // The doc's commands read the connection string from the environment, and one is run on the public server right after
