@@ -3,6 +3,7 @@
 // after that each body goes to the player it moved least from. This adds what a fight needs on top of it:
 // bodies that cannot be played are dropped, the second player counts only once they have stood steady, they stop
 // counting once they have been gone a while, and if the hero walks out the player who stayed becomes the hero.
+// Someone standing well behind the hero (a spectator) is never let in as the second player.
 //
 // "Left" is left in the mirrored picture the game shows (PoseFrame.image), which is also the left of the room as
 // the players see it: the person standing on the left is player one, the hero.
@@ -21,6 +22,17 @@ export const MIN_SHOULDERS = 0.06;
 const SAME_PERSON = 0.6;
 /** The second player joins after standing in the picture this long without a break. */
 export const JOIN_MS = 1000;
+/**
+ * The second player joins only with shoulders at least this share of the hero's. Someone smaller stands well behind
+ * the hero (at 0.6, more than one and a half times as far from the camera): a spectator, who would cost the player
+ * every defend, since a defend counts only when both make it. It is asked only at the join: a player who is in stays in.
+ */
+export const BEHIND = 0.6;
+/**
+ * The shoulder width the join compares is each seat's widest, let down by this much with every picture. Turning the
+ * body in a punch makes the shoulders narrow for a moment; the widest of the last second or so does not move with it.
+ */
+const WIDTH_HOLD = 0.98;
 /** A second player not seen for this long has left; until then a few lost frames change nothing. */
 export const LEAVE_MS = 700;
 /**
@@ -95,6 +107,8 @@ export function createSeating(): Seating {
   let homes: [Average | null, Average | null] = [null, null];
   /** Set when player two took the hero's place: their picture is moved from where they stand to where the hero stood. */
   let moved: { from: Home; to: Home } | null = null;
+  /** How wide each seat's shoulders are, as it stands in the picture: see WIDTH_HOLD. */
+  let wide: [number, number] = [0, 0];
   let firstSeenAt = -Infinity;
   let secondSeenAt = -Infinity;
   let steadyFrom = Infinity;
@@ -118,6 +132,7 @@ export function createSeating(): Seating {
         const to = moved?.to ?? homes[0];
         moved = to ? { from, to } : null;
         homes = [homes[0], null];
+        wide = [wide[1], 0];
         assignment = { bodies: [one, null], memory: [assignment.memory[1], null] };
         [zero, one] = assignment.bodies;
         firstSeenAt = t;
@@ -128,14 +143,20 @@ export function createSeating(): Seating {
       const firstBody = zero === null ? undefined : bodies[zero];
       const secondBody = one === null ? undefined : bodies[one];
       if (firstBody && !moved) homes[0] = add(homes[0], homeOf(firstBody.image));
+      if (firstBody) wide[0] = Math.max(homeOf(firstBody.image).w, wide[0] * WIDTH_HOLD);
       if (secondBody) {
         homes[1] = add(homes[1], homeOf(secondBody.image));
-        if (t - secondSeenAt > BREAK_MS) steadyFrom = t;
+        if (t - secondSeenAt > BREAK_MS) {
+          steadyFrom = t;
+          wide[1] = 0;
+        }
         secondSeenAt = t;
-        if (t - steadyFrom >= JOIN_MS) two = true;
+        wide[1] = Math.max(homeOf(secondBody.image).w, wide[1] * WIDTH_HOLD);
+        if (t - steadyFrom >= JOIN_MS && wide[1] >= BEHIND * wide[0]) two = true;
       } else if (t - secondSeenAt >= LEAVE_MS) {
         two = false;
         homes[1] = null;
+        wide[1] = 0;
       }
       const raw = frameOf(firstBody, t);
       return {
@@ -151,6 +172,7 @@ export function createSeating(): Seating {
       assignment = NO_PLAYERS;
       homes = [null, null];
       moved = null;
+      wide = [0, 0];
       firstSeenAt = -Infinity;
       secondSeenAt = -Infinity;
       steadyFrom = Infinity;
