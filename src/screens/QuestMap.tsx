@@ -1,35 +1,55 @@
-// Sea chart of Odysseus's route home. The stops come from the enemy registry; ones with no 3D model yet are locked.
+// The quest map: the road home as one painted storm sea filling the screen. Each stop is a button drawn as its place
+// (the Cyclops' cave, Circe's hall, the Sirens' rock, Scylla's cliff, Charybdis, the great hall on Ithaca); the course
+// runs from burning Troy past each of them to Ithaca's harbour, with the ship on the leg ahead. The stops come from the
+// enemy registry; ones with no 3D model yet are locked.
 import type { EnemySpec } from "../core/types";
-import { Button, Panel, PebbleHeading } from "../ui/pebble";
-import { Isle } from "./Isle";
+import { Button, Panel } from "../ui/pebble";
+import { BronzeDefs, GALLEY } from "./menuShields";
+import { HARBOUR_AT, PlaceArt, STOP_SLOTS, TROY, TROY_AT } from "./questPlaces";
+import { Sea, SeaDefs } from "./questSea";
+import "./menuScene.css";
+import "./questMap.css";
 
-const W = 1000;
-const H = 420;
+const W = 1600, H = 900, ART = 224;
 
 type Point = readonly [number, number];
+type Box = readonly [number, number, number, number];
 
-/** Points along a wandering line from Troy (first) to Ithaca (last), one between for each stop. */
+/** The course on the 1600 x 900 scene: Troy, the waterline in front of each stop, then Ithaca's harbour. */
 export function routePoints(stops: number): readonly Point[] {
-  const total = stops + 2;
-  return Array.from({ length: total }, (_, i): Point => [
-    70 + (i * (W - 140)) / (total - 1),
-    H / 2 + Math.sin(i * 1.7) * 105,
-  ]);
+  const slot = (i: number): Point => STOP_SLOTS[i] ?? [200 + ((i * 220) % 1200), 520];
+  return [[TROY_AT[0] + 40, TROY_AT[1] + 14], ...Array.from({ length: stops }, (_, i): Point => [slot(i)[0], slot(i)[1] + 8]), HARBOUR_AT];
 }
 
-/** One row of sea waves across the chart, shifted by `dx` so the rows do not line up. */
-function wave(y: number, dx: number): string {
-  return `M${String(dx - 30)} ${String(y)} q15 -9 30 0${" t30 0".repeat(36)}`;
-}
-
-function pathThrough(points: readonly Point[]): string {
-  const [first, ...rest] = points;
-  if (!first) return "";
-  const curves = rest.map(([x, y], i) => {
-    const [px, py] = points[i] ?? first;
-    return `Q ${String((px + x) / 2)} ${String((py + y) / 2 + (i % 2 === 0 ? -60 : 60))} ${String(x)} ${String(y)}`;
+/** Catmull-Rom through the points, as one cubic per leg: start, two controls, end. */
+function legs(p: readonly Point[]): (readonly [Point, Point, Point, Point])[] {
+  return p.slice(0, -1).map((a, i) => {
+    const b = p[i + 1] ?? a, z = p[i - 1] ?? a, n = p[i + 2] ?? b;
+    return [a, [a[0] + (b[0] - z[0]) / 6, a[1] + (b[1] - z[1]) / 6], [b[0] - (n[0] - a[0]) / 6, b[1] - (n[1] - a[1]) / 6], b] as const;
   });
-  return `M ${String(first[0])} ${String(first[1])} ${curves.join(" ")}`;
+}
+
+const at = (leg: readonly [Point, Point, Point, Point], t: number): Point => {
+  const u = 1 - t, k = [u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t] as const;
+  return [leg.reduce((s, p, i) => s + p[0] * (k[i] ?? 0), 0), leg.reduce((s, p, i) => s + p[1] * (k[i] ?? 0), 0)];
+};
+const overlap = (a: Box, b: Box): number =>
+  Math.max(0, Math.min(a[0] + a[2], b[0] + b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[1] + a[3], b[1] + b[3]) - Math.max(a[1], b[1]));
+
+/** Where the ship sits on a leg: on the course or just off it, as near the middle as it can be while covering as little
+ * of a place or a name as possible. The ship's box runs from its masthead to the waves under its keel. */
+export function shipSpot(leg: readonly [Point, Point, Point, Point], keepOut: readonly Box[]): Point {
+  const [a, , , b] = leg, len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len;
+  let best: Point = at(leg, 0.5), least = Infinity;
+  for (const off of [0, 50, -50, 100, -100]) {
+    for (const t of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) {
+      const [cx, cy] = at(leg, t), x = cx + nx * off, y = cy + ny * off;
+      const covered = keepOut.reduce((sum, box) => sum + overlap([x - 44, y - 58, 88, 80], box), 0);
+      if (covered < least) { least = covered; best = [x, y]; }
+      if (covered === 0) return best;
+    }
+  }
+  return best;
 }
 
 export function QuestMap(props: {
@@ -41,49 +61,70 @@ export function QuestMap(props: {
   onMenu: () => void;
 }) {
   const { enemies, cleared } = props;
-  const points = routePoints(enemies.length);
-  const pos = (i: number): Point => points[i] ?? [0, 0];
-  const at = (p: Point) => ({ left: `${String(p[0] / 10)}%`, top: `${String((p[1] / H) * 100)}%` });
   // Every stop won: the journey is done and Ithaca is lit.
   const home = enemies.length > 0 && enemies.every((enemy) => cleared.includes(enemy.id));
-  const lit = home ? { fill: "var(--pb-ochre-light)", stroke: "var(--pb-cream)", filter: "drop-shadow(0 0 10px var(--pb-ochre-light))" } : undefined;
+  const points = routePoints(enemies.length);
+  const course = legs(points);
+  const path = course.map(([a, c1, c2, b], i) => `${i === 0 ? `M${String(a[0])} ${String(a[1])}` : ""} C${String(c1[0])} ${String(c1[1])} ${String(c2[0])} ${String(c2[1])} ${String(b[0])} ${String(b[1])}`).join(" ");
+  const next = enemies.findIndex((enemy) => !cleared.includes(enemy.id));
+  // Each stop keeps its drawing and its name clear of the ship; so do Troy and Ithaca's names.
+  const keepOut: Box[] = points.slice(1, -1).flatMap(([x, y]): Box[] => [[x - ART / 2, y - 8 - (140 * ART) / 200, ART, (140 * ART) / 200], [x - 95, y - 4, 190, 66]]);
+  keepOut.push([TROY_AT[0] - 110, TROY_AT[1] - 130, 200, 180], [HARBOUR_AT[0] - 40, HARBOUR_AT[1] - 98, 80, 26]);
+  const leg = course[next < 0 ? course.length - 1 : next];
+  const [sx, sy] = home || !leg ? HARBOUR_AT : shipSpot(leg, keepOut);
+  const pct = (x: number, y: number) => ({ left: `${String((x / W) * 100)}%`, top: `${String((y / H) * 100)}%` });
   return (
-    <Panel as="main" ornament className="menu menu--map">
-      <PebbleHeading as="h1" text="The Road Home" px={60} tone="ochre" />
-      <p>{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
-      <div className="chart">
-        <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
-          {[62, 150, 238, 326, 392].map((y, i) => <path key={y} className="wave" d={wave(y, i % 2 === 0 ? 0 : 15)} />)}
-          <path className="route" d={pathThrough(points)} />
-          {[0, points.length - 1].map((i) => (
-            <circle key={i} className="harbour" cx={pos(i)[0]} cy={pos(i)[1]} r={home && i > 0 ? "17" : "12"} style={i > 0 ? lit : undefined} />
-          ))}
+    <Panel as="main" className={`menu menu--map quest-map ${home ? "is-home" : ""}`}>
+      <BronzeDefs />
+      <svg className="qm-layer qm-backlayer" viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
+        <SeaDefs />
+        <Sea />
+      </svg>
+      <div className="menu-scene qm-rain" aria-hidden="true">
+        <div className="menu-scene__rain menu-scene__rain--far" />
+        <div className="menu-scene__rain menu-scene__rain--near" />
+      </div>
+      <div className="qm-layer qm-stage">
+        <svg className="qm-front" viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
+          {TROY}
+          <path className="qm-course-edge" d={path} />
+          <path className="qm-course" d={path} />
+          {home && <circle className="qm-home-glow" cx={STOP_SLOTS[5]?.[0] ?? HARBOUR_AT[0]} cy={(STOP_SLOTS[5]?.[1] ?? HARBOUR_AT[1]) - 70} r="190" />}
+          <g transform={`translate(${String(sx - 43)} ${String(sy - 58)}) scale(0.9)`}>
+            <g className="qm-ship">{GALLEY}</g>
+          </g>
         </svg>
-        <span className="port" style={at(pos(0))}>Troy</span>
-        <span className="port" style={home ? { ...at(pos(points.length - 1)), color: "var(--pb-ochre-light)" } : at(pos(points.length - 1))}>Ithaca</span>
+        <span className="qm-port" style={pct(TROY_AT[0] - 30, TROY_AT[1] + 22)}>Troy</span>
+        <span className="qm-port qm-port--ithaca" style={pct(HARBOUR_AT[0], HARBOUR_AT[1] - 98)}>Ithaca</span>
         {enemies.map((enemy, i) => {
+          const [x, y] = points[i + 1] ?? [0, 0];
           const open = props.open(i);
           const state = cleared.includes(enemy.id) ? "cleared" : open ? "open" : "locked";
           return (
             <button
               key={enemy.id}
-              className={`stop ${state} ${pos(i + 1)[1] < H * 0.48 ? "above" : "below"}`}
-              style={at(pos(i + 1))}
+              className={`stop qm-stop qm-stop--${enemy.id} ${state} ${i === next ? "is-next" : ""}`}
+              style={{ ...pct(x - ART / 2, y - 8 - (140 * ART) / 200), width: `${String((ART / W) * 100)}%` }}
               title={enemy.place}
               disabled={!open}
               onClick={() => { props.onEnter(i); }}
             >
-              <span className="dot"><Isle state={state} /><b>{state === "cleared" ? "✓" : i + 1}</b></span>
-              <span className="lbl">
+              <span className="qm-glow" aria-hidden="true" />
+              <PlaceArt id={enemy.id} />
+              <span className="qm-label">
+                <b className="qm-badge">{state === "cleared" ? <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5 L5.8 10.5 L11.5 3.5" /></svg> : i + 1}</b>
                 {enemy.name}
-                {/* Short lines, so neighbouring labels fit side by side on one line each. */}
-                <small>{state === "locked" ? "Ahead" : enemy.book ? `Book ${String(enemy.book)}` : ""}</small>
+                <small>{state === "locked" ? "Ahead" : state === "cleared" ? "Won" : enemy.book ? `Book ${String(enemy.book)}` : ""}</small>
               </span>
             </button>
           );
         })}
       </div>
-      <div className="menu__row">
+      <header className="qm-head">
+        <h1 className="qm-title">The Road Home</h1>
+        <p>{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
+      </header>
+      <div className="qm-foot">
         <Button onClick={props.onStyle}>Change style</Button>
         <Button onClick={props.onMenu}>Main menu</Button>
       </div>
