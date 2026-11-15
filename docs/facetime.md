@@ -226,7 +226,7 @@ These are the places that were guessed. Each is one small change.
 
 ## Answer a call (what works on the trial)
 
-The other way round: the friend FaceTimes the game's Chert line and the game answers. It needs no Chert API key and no setting in Chert's console, so it is the path a trial line can take. **The game has answered a real FaceTime call**: Sunday 15 November, 03:21, from an iPhone to the line +1 628 233 5326. What the two real calls proved, and what they did not, is at the end of this section.
+The other way round: the friend FaceTimes the game's Chert line and the game answers. It needs no Chert API key and no setting in Chert's console, so it is the path a trial line can take. **The game has answered a real FaceTime call**: Sunday 15 November, 03:21, from an iPhone to the line (its number is not written here; the person who holds the line hands it out, and it is in `FACETIME_LINE_NUMBER` in their `.env.local`). What the two real calls proved, and what they did not, is at the end of this section.
 
 ### How Chert hands a call over
 

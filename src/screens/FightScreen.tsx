@@ -41,7 +41,6 @@ import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
 import { fallsLine } from "../enemies/wording";
 import { Cutscene } from "./cutscene/Cutscene";
-import { CUTSCENE_ON } from "./cutscene/clock";
 
 /** A win's result panel waits this long, so the last blow is seen: the hero's leap out and back, then a beat on the falling monster. */
 const LAST_BLOW_MS = Math.round(LEAP_SECONDS * 1000) + 450;
@@ -59,15 +58,19 @@ export function FightScreen(props: {
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
   onQuit?: () => void;
+  /** Play the pre-fight cutscene (a story fight entered from the map). Homer's intro line runs through `onIntro` when the fight starts. */
+  cutscene?: boolean;
+  onIntro?: () => void;
   /** Online room: the guest's strikes join the fight and the state goes back to them. Left out in single play. */
   link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>, events: readonly CombatEvent[]) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null, cutscene = false, onIntro } = props;
   const [powerCount, setPowerCount] = useState(0);
-  // The boss cutscene (a draft, ?look=b): the fight's clock is held until it ends or is skipped.
-  const [cutting, setCutting] = useState(CUTSCENE_ON);
-  const holdRef = useRef(CUTSCENE_ON);
+  // The boss cutscene (story fights only): the fight's clock is held until it ends or is skipped.
+  const [cutting, setCutting] = useState(cutscene);
+  const holdRef = useRef(cutscene);
+  const introRef = useRef(onIntro);
   useEffect(() => { holdRef.current = cutting; }, [cutting]);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
@@ -85,11 +88,17 @@ export function FightScreen(props: {
   const historyRef = useRef<PoseHistory | null>(null);
   const readHistory = useCallback(() => historyRef.current, []);
 
+  // The fight's music, its opening line and Homer's intro start when the cutscene ends (at once with none).
   useEffect(() => {
-    battle.styleId = style.id;
+    if (cutting) return;
     // The last stop on the map gets its own, heavier track.
     startMusic(enemy.id === ENEMIES.at(-1)?.id ? "boss" : "fight");
     speakLine("fight_start");
+    introRef.current?.();
+  }, [cutting, enemy.id]);
+
+  useEffect(() => {
+    battle.styleId = style.id;
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     const watchMiss = createMissWatch();
@@ -196,13 +205,14 @@ export function FightScreen(props: {
   }, [running]);
 
   return (
-    <div className="fight">
+    <div className="fight" {...(cutscene ? { "data-cut": "" } : {})}>
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <SkyHud enemy={enemy} state={state} history={readHistory} />
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
       <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
-      <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
+      {/* The keyboard plaque has nothing to say once the fight is over; the camera picture stays. */}
+      {!(over && !tracker) && <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />}
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu

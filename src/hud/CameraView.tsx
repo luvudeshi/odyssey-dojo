@@ -85,7 +85,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
   }, [video, poseRef]);
 
   return (
-    <figure className={mirror ? "camera-view mirror" : "camera-view"} aria-label="Your camera">
+    <figure className={`camera-view${mirror ? " mirror" : ""}${shown === "keyboard" ? " camera-view--keys" : ""}`} aria-label="Your camera">
       <div className="camera-frame" ref={holder}>
         <canvas ref={canvas} />
       </div>
@@ -95,8 +95,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
         <span ref={state} className="camera-state" data-on="false">{shown === "live" ? "I can't see you" : panelNote(shown)}</span>
         <span ref={move} className="camera-move" aria-live="polite" />
         {offersCamera(shown) && panel.onCamera && (
-          // Inline so the HUD restyle owns the look; the panel ignores the pointer, this button must not.
-          <button type="button" style={{ pointerEvents: "auto", minWidth: 0, margin: 0, padding: "0 0.4rem", fontSize: "inherit" }} onClick={panel.onCamera}>Use camera</button>
+          <button type="button" className="camera-use" onClick={panel.onCamera}>Use camera</button>
         )}
       </figcaption>
     </figure>

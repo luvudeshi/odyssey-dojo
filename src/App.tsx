@@ -55,6 +55,8 @@ export function App() {
   const [panel, setPanel] = useState<"account" | "training" | "multiplayer" | null>(null);
   const profile = useProfile();
   // Homer's line before a stop now plays as its fight opens; this stops it when the player leaves that fight.
+  // The seed of the fight just entered from the map: only that one gets the cutscene and Homer's intro (not a restart).
+  const mapSeed = useRef<number | null>(null);
   const stopIntro = useRef<() => void>(() => undefined);
   // The seed of the last fight written to the profile, so one result is counted once.
   const recorded = useRef(0);
@@ -70,6 +72,7 @@ export function App() {
   // The character shown in the picker (the scan's, or the stored one), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
   const [characterPicked, setCharacterPicked] = useState(false);
+  const [confirmed, setConfirmed] = useState<CharacterId | null>(null);
   // Writes to the profile through `change` and shows whatever that unlocked.
   const noting = (change: () => void): void => {
     const before = achievements(getProfile(), ENEMIES);
@@ -196,21 +199,25 @@ export function App() {
   }
 
   if (flow.screen === "style" && tracker && !scanned) {
-    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} />;
+    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} onBack={() => { dispatch({ type: "toTitle" }); }} />;
   }
 
   // After the scan, before the style: the five characters, with the god's one already chosen.
   if (flow.screen === "style" && !characterPicked) {
     return (
-      <main className="menu">
-        <CharacterPicker value={character} onChange={setCharacter} onDone={(id) => { setCharacter(confirmCharacter(id)); setCharacterPicked(true); }} />
-      </main>
+      <CharacterPicker
+        value={character}
+        onChange={setCharacter}
+        onDone={(id) => { setCharacter(confirmCharacter(id)); setConfirmed(id); setCharacterPicked(true); }}
+        // Opened from "Change character": back to the style choice with the old character. First visit: back to the menu.
+        onBack={() => { if (confirmed === null) { dispatch({ type: "toTitle" }); } else { setCharacter(confirmed); setCharacterPicked(true); } }}
+      />
     );
   }
 
   if (flow.screen === "style") {
     return (
-      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} />
+      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} onBack={() => { dispatch({ type: "toTitle" }); }} />
     );
   }
 
@@ -222,9 +229,9 @@ export function App() {
         cleared={flow.cleared}
         open={(index) => CAN_PLAY[index] ?? false}
         onEnter={(index) => {
-          const next = ENEMIES[index];
-          if (next) stopIntro.current = narrateIntro(next.id);
-          dispatch({ type: "enter", index, seed: Date.now() });
+          const seed = Date.now();
+          mapSeed.current = seed;
+          dispatch({ type: "enter", index, seed });
         }}
         onStyle={() => { dispatch({ type: "changeStyle" }); }}
         onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
@@ -240,6 +247,8 @@ export function App() {
         style={flow.style}
         tracker={tracker}
         link={flow.hosting ? hostLink : null}
+        cutscene={mapSeed.current === flow.seed && !flow.hosting}
+        {...(mapSeed.current === flow.seed ? { onIntro: () => { stopIntro.current = narrateIntro(enemy.id); } } : {})}
         seed={flow.seed}
         god={god?.god ?? null}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
