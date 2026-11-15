@@ -6,21 +6,79 @@ import type { Vec3 } from "./effects/events";
 import { MONSTER_Z } from "./cameraShots";
 import type { EnemySpec } from "../core/types";
 
-/** Seconds out to the contact point, held on it, and back home. The effects wait `out`, so they fire on arrival. */
-export const REACH = { out: 0.14, hold: 0.1, back: 0.34 } as const;
+/**
+ * The leap in seconds: a quick crouch, the launch and flight (the crouch comes out of `out`, so the monster still reacts
+ * `out` after the strike counts), the hop back home after the blow, and the landing the legs absorb.
+ */
+export const REACH = { crouch: 0.045, out: 0.14, back: 0.36, land: 0.26 } as const;
 
-/** How far along the reach is, 0 at home and 1 on the contact point, `since` seconds after the strike counted. */
-export function reachWeight(since: number): number {
-  if (!(since >= 0)) return 0;
-  if (since < REACH.out) {
-    const p = since / REACH.out;
-    return 1 - (1 - p) * (1 - p); // fast off the mark, easing into the blow
+/** Where the leap is at one moment. Every field runs 0..1 and is continuous in time, so nothing snaps or pops. */
+export interface Leap {
+  /** Share of the way to the contact point along the floor. */
+  across: number;
+  /** Share of the way up to the contact point's height. */
+  up: number;
+  /** Height of the jump's arc above the straight line, as a share of the arc height. */
+  arc: number;
+  /** How deep he crouches on planted feet: the take-off coil and the landing that the legs absorb. */
+  crouch: number;
+  /** How far the legs are drawn up into the jumping pose (or thrown out, for a kick). */
+  air: number;
+  /** How far the upper body leans into the blow. */
+  lean: number;
+}
+
+export function newLeap(): Leap {
+  return { across: 0, up: 0, arc: 0, crouch: 0, air: 0, lean: 0 };
+}
+
+const smooth = (p: number): number => (p <= 0 ? 0 : p >= 1 ? 1 : p * p * (3 - 2 * p));
+const easeOut = (p: number): number => 1 - (1 - p) * (1 - p);
+
+/** Seconds from the strike counting to the hero standing settled on his mark again. */
+export const LEAP_SECONDS = REACH.out + REACH.back + REACH.land;
+
+/** The leap `since` seconds after the strike counted, written into `out`. */
+export function leapAt(since: number, out: Leap = newLeap()): Leap {
+  Object.assign(out, newLeap());
+  if (!(since >= 0) || since >= LEAP_SECONDS) return out;
+  if (since < REACH.crouch) {
+    // Coil: drop fast onto bent knees and lean in.
+    out.crouch = easeOut(since / REACH.crouch);
+    out.lean = 0.8 * out.crouch;
+  } else if (since < REACH.out) {
+    // Push off and fly: the legs straighten as the body launches at full speed, then draw up; no easing into the
+    // blow, so it lands hard.
+    const p = (since - REACH.crouch) / (REACH.out - REACH.crouch);
+    out.across = p;
+    out.up = p;
+    out.arc = 4 * p * (1 - p);
+    out.crouch = p < 0.4 ? (1 - p / 0.4) ** 2 : 0;
+    out.air = smooth(p / 0.7);
+    out.lean = 0.8 + 0.2 * p;
+  } else if (since < REACH.out + REACH.back) {
+    // The blow stops him dead for a beat, then he kicks off and drops hard to his mark, legs reaching for the floor.
+    // Along the floor he eases in, so he lands without sliding; he falls with speed, so the legs have work to do.
+    const u = (since - REACH.out) / REACH.back;
+    out.across = 1 - smooth(u);
+    out.up = 1 - u ** 1.4;
+    out.arc = 0.3 * 4 * u * (1 - u);
+    out.air = 1 - smooth((u - 0.45) / 0.45);
+    out.lean = 1 - u;
+  } else {
+    // Touchdown: the knees take the fall, then he rises into his stance.
+    const v = (since - REACH.out - REACH.back) / REACH.land;
+    const PEAK = 0.85;
+    const AT = 0.2;
+    out.crouch = v < AT ? PEAK * easeOut(v / AT) : PEAK * (1 - smooth((v - AT) / (1 - AT)));
+    out.lean = 0.5 * out.crouch;
   }
-  const back = since - REACH.out - REACH.hold;
-  if (back < 0) return 1;
-  if (back >= REACH.back) return 0;
-  const p = back / REACH.back;
-  return 1 - p * p * (3 - 2 * p);
+  return out;
+}
+
+/** How high the arc of a leap of `distance` metres (along the floor) rises: a hop for a near spot, a bound for a far one. */
+export function arcHeight(distance: number): number {
+  return Math.min(0.6, Math.max(0.3, 0.2 + 0.06 * distance));
 }
 
 /** The weak spot (or the monster's chest) in world space; spots are given in the monster rig's own space. */

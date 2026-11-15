@@ -186,23 +186,27 @@ interface BurstProps {
   readonly seed: number;
   /** True when this burst cut a running one short: it plays without the bright flashes. */
   readonly calm: boolean;
+  /** Only the power's name: the 3D scene carries the effect itself. */
+  readonly nameOnly: boolean;
 }
 
-const Burst = memo(function Burst({ god, powerName, accent, seed, calm }: BurstProps) {
+const Burst = memo(function Burst({ god, powerName, accent, seed, calm, nameOnly }: BurstProps) {
   const Look = LOOKS[god];
   return (
     <div className={`power-effect power-${god}${calm ? " power-calm" : ""}`} style={{ color: accent }}>
-      <div className="power-fx" aria-hidden="true">
-        <div className="power-layer power-veil" />
-        <Look seed={seed} />
-      </div>
+      {!nameOnly && (
+        <div className="power-fx" aria-hidden="true">
+          <div className="power-layer power-veil" />
+          <Look seed={seed} />
+        </div>
+      )}
       <div className="power-name">{powerName}</div>
     </div>
   );
 });
 
-export function PowerEffect(props: { god: PowerGod | null; powerName: string; accent: string; trigger: number }) {
-  const { god, powerName, accent, trigger } = props;
+export function PowerEffect(props: { god: PowerGod | null; powerName: string; accent: string; trigger: number; nameOnly?: boolean }) {
+  const { god, powerName, accent, trigger, nameOnly = false } = props;
   const [seen, setSeen] = useState(trigger);
   const [playing, setPlaying] = useState(0);
   const [calm, setCalm] = useState(false);
@@ -222,7 +226,7 @@ export function PowerEffect(props: { god: PowerGod | null; powerName: string; ac
 
   if (playing === 0 || god === null || !Object.hasOwn(LOOKS, god)) return null;
   return createPortal(
-    <Burst key={playing} god={god} powerName={powerName} accent={accent} seed={playing} calm={calm} />,
+    <Burst key={playing} god={god} powerName={powerName} accent={accent} seed={playing} calm={calm} nameOnly={nameOnly} />,
     document.body,
   );
 }

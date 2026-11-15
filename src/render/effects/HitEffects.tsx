@@ -4,7 +4,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending } from "three";
-import type { PointLight, Points } from "three";
+import type { Mesh, PointLight, Points } from "three";
 import type { CombatState } from "../../core/types";
 import { battle, calmMotion, nowSeconds } from "../battle";
 import { REACH } from "../strikeReach";
@@ -123,5 +123,25 @@ export function HitEffects({ state, finishAt }: { state: CombatState; finishAt: 
       </points>
       <pointLight ref={light} color="#ffd27a" intensity={0} distance={9} decay={1.5} />
     </>
+  );
+}
+
+/**
+ * The gold ring on the weak spot. It stays up after a strike counts until the hero's blow lands there
+ * (battle.enemyHitAt), so it marks the spot he is leaping at rather than vanishing as he takes off.
+ */
+export function WeakSpotRing({ spot }: { spot: Vec3 | null }) {
+  const ring = useRef<Mesh>(null);
+  useEffect(() => {
+    if (spot) ring.current?.position.set(spot[0], spot[1], spot[2]);
+  }, [spot]);
+  useFrame(() => {
+    if (ring.current) ring.current.visible = spot !== null || nowSeconds() < battle.enemyHitAt;
+  });
+  return (
+    <mesh ref={ring} visible={false}>
+      <torusGeometry args={[0.45, 0.06, 8, 32]} />
+      <meshBasicMaterial color="#ffd54a" />
+    </mesh>
   );
 }
