@@ -4,84 +4,18 @@ html, body, #root { height: 100%; margin: 0; }
 #root { display: flow-root; } /* the .menu margin must not collapse through #root and scroll the page */
 body { background: var(--pb-ground-deep); color: var(--ink); font-family: var(--font-display); }
 
-/* Buttons: black with clay ink is the main choice, .quiet is an outlined second choice. */
-button { font: inherit; font-size: 1.15rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--clay-light); background: var(--ink); border: var(--bw-line) solid var(--ink); border-radius: 0; padding: 0.75rem 1.6rem; margin: 0.4rem; cursor: pointer; min-width: 16rem; transition: transform 0.08s, background 0.12s, color 0.12s, box-shadow 0.12s; }
-button small { display: block; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: none; opacity: 0.85; }
-button:hover:not(:disabled) { background: var(--clay-light); color: var(--ink); box-shadow: 0 0 0 3px var(--ink); }
-button:active:not(:disabled) { transform: translateY(2px); background: var(--purple); color: var(--white); box-shadow: 0 0 0 3px var(--ink); }
-button:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; box-shadow: 0 0 0 3px var(--ink); }
-button.quiet { background: transparent; color: var(--ink); }
-button.quiet:hover:not(:disabled) { background: var(--ink); color: var(--clay-light); }
-button.quiet:active:not(:disabled) { background: var(--purple); color: var(--white); }
-button:disabled { cursor: not-allowed; }
-
-
 .fight { position: relative; height: 100%; }
 .hud { position: absolute; inset: 0; pointer-events: none; }
-/* Health: a name plaque over an ink trough with a meander edge. Light enough to leave the fight visible. */
-.bar { position: absolute; top: 1rem; width: 38%; font-size: 1rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; }
-.bar.left { left: 1rem; } .bar.right { right: 1rem; text-align: right; }
-.bar > span { display: inline-block; padding: 0.1rem 0.7rem; background: var(--clay); color: var(--ink); border: 2px solid var(--ink); border-bottom: 0; box-shadow: 0 0 0 1px var(--clay-light); }
-.bar-track { position: relative; height: 1.1rem; background: #170d08d9; border: 3px solid var(--ink); box-shadow: 0 0 0 1px var(--clay-light), 0 3px 10px #0007; }
-.bar-track::after { content: ""; position: absolute; left: -3px; right: -3px; top: 100%; height: var(--meander-s-h); margin-top: 3px; background: var(--meander-s) repeat-x; opacity: 0.9; }
-.bar-track.power::after { display: none; }
-.bar-fill { height: 100%; background: var(--clay-light); transition: width 0.2s; }
-.bar.right .bar-fill { background: var(--purple); margin-left: auto; box-shadow: inset 0 0 0 1px var(--clay-light); }
-.score { position: absolute; top: 0.8rem; left: 50%; transform: translateX(-50%); min-width: 7rem; padding: 0.15rem 1.2rem; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.1em; color: var(--ink); background: var(--clay); border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--clay-light), 0 3px 10px #0007; text-align: center; }
-.score span { display: block; margin: 0.1rem -1.2rem -0.15rem; padding: 0 0.4rem; font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--white); background: var(--purple); }
-/* Text laid straight on the 3D picture gets a thick ink outline so it reads on the dark cave and the bright sunset alike. */
-.banner { position: absolute; top: 35%; width: 100%; text-align: center; font-size: 4rem; font-weight: 700; letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--clay-light); -webkit-text-stroke: 0.16em var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
-.banner small { display: block; font-size: 1.6rem; color: var(--white); }
-.phase-banner { position: absolute; top: 5.4rem; left: 50%; transform: translateX(-50%); padding: 0.2rem 2rem; font-size: 1.7rem; font-weight: 700; letter-spacing: var(--track-wide); text-transform: uppercase; color: var(--clay-light); background: var(--ink); border: 2px solid var(--clay); box-shadow: 0 0 0 2px var(--ink), 0 6px 14px #0008; white-space: nowrap; pointer-events: none; }
-.phase-banner::before, .phase-banner::after { content: ""; position: absolute; left: -2px; right: -2px; height: var(--meander-s-h); background: var(--meander-s) repeat-x; }
-.phase-banner::before { top: calc(-1 * var(--meander-s-h) - 4px); }
-.phase-banner::after { bottom: calc(-1 * var(--meander-s-h) - 4px); }
 
-/* Prompt card at the right edge. Strike: clay card, black ink. Defend: black card, clay ink. Each carries its word on a tab. */
-.prompt { --card-bg: var(--clay); --card-ink: var(--ink); --tab-bg: var(--ink); --tab-ink: var(--clay-light); position: absolute; right: 1.5rem; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 0.5rem; align-items: center; text-align: center; width: 15rem; padding: 1.5rem 1.2rem 1.5rem; color: var(--card-ink); background: var(--card-bg); border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--clay-light), 0 8px 22px #000a; }
-.prompt.defend { --card-bg: var(--ink); --card-ink: var(--clay-light); --tab-bg: var(--clay-light); --tab-ink: var(--ink); border-color: var(--clay); box-shadow: 0 0 0 2px var(--ink), 0 0 0 3px var(--clay-light), 0 8px 22px #000a; }
-.prompt::before { content: "Strike"; position: absolute; left: 50%; top: -1.05rem; transform: translateX(-50%); padding: 0.05rem 1rem; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--tab-ink); background: var(--tab-bg); border: 2px solid var(--ink); }
-.prompt.defend::before { content: "Defend"; border-color: var(--clay); }
-.prompt::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--meander-s-h); background: var(--meander-s) repeat-x; }
-.prompt.strike::after { background-image: var(--meander-s); }
-.prompt-teaches { font-size: 0.9rem; opacity: 1; font-family: var(--font-display); max-width: 16rem; margin-top: 0.25rem; }
-.prompt-word { font-size: 2.1rem; font-weight: 700; letter-spacing: 0.05em; overflow-wrap: anywhere; text-transform: uppercase; color: var(--card-ink); line-height: 1; }
-.prompt-target { font-size: 1rem; letter-spacing: 0.08em; text-transform: uppercase; }
-.prompt-hint { font-size: 0.95rem; font-family: var(--font-display); margin-top: 0.3rem; }
-kbd { font-family: var(--font-mono); font-weight: 700; color: var(--card-ink, inherit); border: 2px solid currentColor; border-radius: 0; padding: 0 0.4rem; background: transparent; }
-.prompt-hold { display: inline-block; padding: 0 0.5rem; margin-right: 0.3rem; color: var(--white); background: var(--purple); letter-spacing: 0.14em; border: 1px solid var(--white); }
-.prompt.mini { padding: 1.4rem 1.2rem 1.4rem; }
-.timer { height: 6px; background: var(--card-ink, var(--clay-light)); margin-top: 0.5rem; }
-.hud > .timer { position: absolute; bottom: 1.5%; left: 25%; max-width: 50%; background: var(--clay-light); border: 1px solid var(--ink); }
-.stick { width: 6.5rem; height: 6.5rem; fill: none; stroke: var(--card-ink); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+/* Over the fight: a pebble panel in the middle (the step-back notice); win and loss restyle it in endPanel.css. */
+.overlay { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(40rem, 92vw); max-height: 94vh; overflow: hidden; padding: 1.8rem 2rem; text-align: center; color: var(--pb-text); background: var(--pb-ground-deep) var(--pebble-ground) repeat; border: 2px solid var(--pb-lead); border-radius: var(--pb-radius-panel); box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.7), 0 0 0 100vmax rgba(8, 5, 4, 0.66); }
+.overlay h1 { margin: 0 0 0.4rem; font: 700 clamp(1.6rem, 3.6vw, 2.4rem) var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--pb-ochre-light); }
+.overlay p { margin: 0.3rem 0; font: 600 1.1rem var(--pb-font-body); }
+.overlay h1 + p:not([class]) { padding: 0.1rem 1.4rem; font: 700 1.4rem var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--pb-text); }
 
-/* Over the fight: a vase panel in the middle, the rest of the screen dimmed by its own shadow. */
-.overlay { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(44rem, 92vw); max-height: 94vh; overflow: hidden; padding: 3.6rem 2.2rem 3.8rem; text-align: center; color: var(--ink);
-  background:
-    var(--meander) repeat-x 0 0 / auto var(--meander-h),
-    var(--meander) repeat-x 0 100% / auto var(--meander-h),
-    repeating-linear-gradient(0deg, #0000 0 5px, #1708080a 5px 6px),
-    radial-gradient(ellipse at 50% 40%, #d56d36 0%, var(--clay) 60%, #a94c1f 100%);
-  border: var(--bw-frame) solid var(--ink); box-shadow: 0 0 0 3px var(--clay), 0 0 0 6px var(--ink), 0 0 0 100vmax #0a0402a6; }
-.overlay h1 { font-size: clamp(1.6rem, 3.6vw, 2.6rem); }
-.overlay p { margin: 0.3rem 0; font-size: 1.1rem; }
-.overlay h1 + p:not([class]) { padding: 0.1rem 1.4rem; font-size: 1.4rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--clay-light); background: var(--ink); }
-.overlay .prompt-word { font-size: 4.5rem; }
-.overlay button { margin: 0.3rem; }
-.vase-scene { display: flex; align-items: flex-end; justify-content: center; gap: 1rem; height: 5.5rem; margin: 0.6rem 0; }
-.vase-scene i { display: block; height: 100%; background: center / contain no-repeat; }
-.vase-scene .ship { width: 13rem; background-image: var(--ship); }
-.vase-scene .owl { width: 4.2rem; background-image: var(--owl); }
-.vase-scene .laurel { width: 3rem; background-image: var(--laurel); }
-.vase-scene .laurel.flip { transform: scaleX(-1); }
-.vase-scene .palmette { width: 5rem; height: 3.2rem; background-image: var(--palmette); }
 .hurt-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 14vmin 5vmin var(--purple); }
 .hurt-flash.on { animation: hurt-flash 0.5s ease-out; }
 @keyframes hurt-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
-.bar-track.power { position: absolute; top: 3.3rem; left: 1rem; width: 38%; height: 0.5rem; border-width: 2px; }
-.bar-track.power .bar-fill { background: var(--white); }
-.bar-track.power.full { box-shadow: 0 0 0 1px var(--white), 0 0 14px var(--white); }
 .learned { width: 100%; margin: 0.4rem 0; padding: 0.4rem 1rem; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
 .learned h2 { font-size: 0.95rem; margin: 0; letter-spacing: 0.2em; text-transform: uppercase; }
 .learned ul { list-style: none; padding: 0; margin: 0.3rem 0; }
-

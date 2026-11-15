@@ -29,7 +29,7 @@ function Notice(props: { line: string; onLeave: () => void; button: string }) {
     <main className="menu room">
       <h1>Fight together</h1>
       <p className="notice" role="status">{props.line}</p>
-      <button onClick={props.onLeave}>{props.button}</button>
+      <Button primary onClick={props.onLeave}>{props.button}</Button>
     </main>
   );
 }
@@ -89,7 +89,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       <Scene enemy={enemy} state={state} poseRef={poseRef} />
       <Hud enemy={enemy} state={state} />
       <div className="preview mirror" ref={holder} />
-      {!over && <button className="quiet room-leave" onClick={onLeave}>Leave the room</button>}
+      {!over && <Button className="room-leave" onClick={onLeave}>Leave the room</Button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
       {over && (
         <div className="overlay guest-over">
