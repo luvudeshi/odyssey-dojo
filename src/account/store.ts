@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 import { log } from "../core/log";
 import { browserStorage } from "../settings/store";
 import type { SettingsStorage } from "../settings/store";
+import { currentStyleIds } from "../styles/oldIds";
 import type { FightTally } from "./tally";
 
 export interface Profile {
@@ -81,7 +82,8 @@ export function parseProfile(raw: unknown): Profile {
     dodges: count(data.dodges),
     bestCombo: count(data.bestCombo),
     unhit: count(data.unhit),
-    styles: ids(data.styles),
+    // A style that has since been renamed is read as the style that took its place.
+    styles: currentStyleIds(ids(data.styles)),
     dojo: count(data.dojo),
     dojoPerfect: count(data.dojoPerfect),
     rooms: count(data.rooms),

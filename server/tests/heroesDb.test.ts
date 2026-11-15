@@ -240,14 +240,14 @@ describe.skipIf(url === "")("the hall of heroes on a real Tiger Data service", (
 
   test("a signed-in player's fight is written with their account, the server's time and the name on their screen", async () => {
     const player = await signUp();
-    const written = await fight(player, 1840, { stop: "scylla", style: "hoplite", god: "athena", hero: `${player.name} Bold` });
+    const written = await fight(player, 1840, { stop: "scylla", style: "jiu_jitsu", god: "athena", hero: `${player.name} Bold` });
     expect([written.status, written.body]).toEqual([201, { recorded: true }]);
     const rows = await sql<Record<string, unknown>>(
       `select account_id::text as account, hero, stop_id, won, score, style_id, god_id, seconds::float8 as seconds, best_combo,
         (extract(epoch from at) * 1000)::float8 as at from ${h.fights} where account_id = $1::uuid`,
       [player.id],
     );
-    expect(rows).toEqual([{ account: player.id, hero: `${player.name} Bold`, stop_id: "scylla", won: true, score: 1840, style_id: "hoplite", god_id: "athena", seconds: 61.5, best_combo: 4, at: clock }]);
+    expect(rows).toEqual([{ account: player.id, hero: `${player.name} Bold`, stop_id: "scylla", won: true, score: 1840, style_id: "jiu_jitsu", god_id: "athena", seconds: 61.5, best_combo: 4, at: clock }]);
     // No name sent: the hall shows the name of the account.
     clock += 1_000;
     expect((await fight(player, 900, { hero: null, won: false })).status).toBe(201);
@@ -330,7 +330,7 @@ describe.skipIf(url === "")("the hall of heroes on a real Tiger Data service", (
     const present = clock;
     // Three days ago this hero made the best score there has been, and a lesser one two days ago.
     clock = present - 72 * HOUR_MS;
-    expect((await fight(old, 12_000, { stop: "charybdis", style: "pankration", god: "poseidon" })).status).toBe(201);
+    expect((await fight(old, 12_000, { stop: "charybdis", style: "taekwondo", god: "poseidon" })).status).toBe(201);
     clock = present - 48 * HOUR_MS;
     expect((await fight(old, 300, { stop: "polyphemus", won: false })).status).toBe(201);
     // 23 hours ago is still tonight; 25 hours ago is not.
@@ -348,7 +348,7 @@ describe.skipIf(url === "")("the hall of heroes on a real Tiger Data service", (
       expect(read.tonight.map((row) => row.hero)).not.toContain(old.name);
       expect(read.tonight.find((row) => row.hero === edge.name)).toBeUndefined();
       expect(read.allTime.slice(0, 2).map((row) => [row.hero, row.score, row.stop, row.style, row.god])).toEqual([
-        [old.name, 12_000, "charybdis", "pankration", "poseidon"], [edge.name, 11_000, "polyphemus", "boxer", null],
+        [old.name, 12_000, "charybdis", "taekwondo", "poseidon"], [edge.name, 11_000, "polyphemus", "boxer", null],
       ]);
       expect(read.fightsEver).toBe(fought.length);
     };

@@ -10,8 +10,8 @@ fails if the copies below are out of date.
 - **Cannot count waist up: `front_kick` and `knee`.** Nothing else. Both read 0.00 because of one check,
   `legsVisible` in `src/moves/legSignals.ts`: both knees and both ankles at visibility 0.5 or more and inside
   the picture.
-- **They are still asked for.** Pankration's strikes are `front_kick`, `knee`, `hammer_fist`, `uppercut`
-  (`src/styles/defs/pankration.ts`), and every monster has a weak spot that takes `front_kick` or `knee`.
+- **They are still asked for.** Taekwondo's strikes are `front_kick`, `knee`, `hammer_fist`, `uppercut`
+  (`src/styles/defs/taekwondo.ts`), and every monster has a weak spot that takes `front_kick` or `knee`.
   `styleForLegs` in `src/moves/legSignals.ts` returns the style without its kicks when the legs are out of view.
   It is tested in `tests/kicks.test.ts`, and at the time of writing nothing under `src/` calls it. Calling it
   where the fight is given its style is what hides the leg moves from a waist-up player.
@@ -63,14 +63,12 @@ A cell is yes or no, and in brackets the highest confidence the move's own detec
 | cross | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | hook | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | uppercut | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| spear_thrust | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| overhead_strike | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| reverse_punch | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| knife_hand | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| hammer_fist | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | double_palm | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| chain_punch | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | rising_palm | yes (1.00) | yes (1.00) | yes (1.00) | - |
+| knife_hand | yes (1.00) | yes (1.00) | yes (1.00) | - |
+| reverse_punch | yes (1.00) | yes (1.00) | yes (1.00) | - |
+| hammer_fist | yes (1.00) | yes (1.00) | yes (1.00) | - |
+| chain_punch | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | front_kick | yes (1.00) | no (0.00) | no (0.00) | legs in view: `legsVisible` in `src/moves/legSignals.ts` wants both knees and both ankles at visibility 0.5 or more, inside the picture |
 | knee | yes (1.00) | no (0.00) | no (0.00) | legs in view: `legsVisible` in `src/moves/legSignals.ts` wants both knees and both ankles at visibility 0.5 or more, inside the picture |
 | block | yes (1.00) | yes (1.00) | yes (1.00) | - |
@@ -84,6 +82,8 @@ A cell is yes or no, and in brackets the highest confidence the move's own detec
 | moon_arrow | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | sun_burst | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | jump | yes (0.86) | yes (0.86) | yes (0.86) | - |
+| overhead_strike | yes (1.00) | yes (1.00) | yes (1.00) | - |
+| spear_thrust | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | stake_thrust | yes (1.00) | yes (1.00) | yes (1.00) | - |
 
 The 24 that count read exactly as they do with the whole body: the hand moves, the defends and the jump look
@@ -115,10 +115,10 @@ detector, and `tests/waistUp.test.ts` checks them.
 | style | `front_kick` becomes | `knee` becomes |
 |---|---|---|
 | boxer | cross | uppercut |
-| hoplite | spear_thrust | spear_thrust |
+| jiu_jitsu | double_palm | rising_palm |
 | karate | reverse_punch | hammer_fist |
 | kung_fu | double_palm | rising_palm |
-| pankration | uppercut | uppercut |
+| taekwondo | uppercut | uppercut |
 
 With the legs out of view, all five styles keep a hand strike, every weak spot of all six monsters gets an askable
 strike from the player's style (one that fits the spot whenever the style has one that does), every attack's

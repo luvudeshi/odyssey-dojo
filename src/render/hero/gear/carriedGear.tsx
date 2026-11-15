@@ -1,17 +1,16 @@
-// The spartan's shield, spear and stake. The round shield always rides on his back, over the cape, so both hands are
-// free to punch and block. In the Hoplite style the spear is slung across the back too. The spear (Hoplite moves) and
-// the stake (the stake finisher) appear in the right hand only while their move plays; heldGear says when.
+// The spartan's shield and stake. The round shield always rides on his back, over the cape, so both hands are free to
+// punch and block. The stake (the stake finisher) appears in the right hand only while its move plays; heldGear says when.
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { ReactNode } from "react";
 import { MathUtils } from "three";
 import type { Group } from "three";
-import { battle, nowSeconds } from "../../battle";
+import { nowSeconds } from "../../battle";
 import { BoneMount } from "../../models/boneMount";
-import { heldGear, spearSlung } from "../gearRule";
+import { heldGear } from "../gearRule";
 import { STRIKE_TIP } from "../reach";
 import { newInput, readInput } from "../heroInput";
-import { BRONZE, BRONZE_DARK, Bronze, LEATHER, WOOD } from "./spartanGear";
+import { BRONZE, BRONZE_DARK, LEATHER, WOOD } from "./spartanGear";
 import { TIMING } from "./timing";
 
 /** Round bronze shield slung on the upper back, face out, boss to the camera that looks at his back. */
@@ -39,77 +38,29 @@ export function BackShield() {
   );
 }
 
-/** A spear: grip at the origin, 0.55 m of butt behind it and 1.5 m of shaft and a leaf blade ahead (+y). */
-function SpearBody() {
-  return (
-    <>
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <cylinderGeometry args={[0.02, 0.02, 2.1, 6]} />
-        <meshStandardMaterial color={WOOD} roughness={1} flatShading />
-      </mesh>
-      <mesh position={[0, 1.66, 0]} castShadow>
-        <coneGeometry args={[0.045, 0.3, 4]} />
-        <Bronze />
-      </mesh>
-      <mesh position={[0, -0.55, 0]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[0.025, 0.12, 4]} />
-        <Bronze color={BRONZE_DARK} />
-      </mesh>
-    </>
-  );
-}
-
-/** The Hoplite's spear on his back: diagonal across the shield, point over his shoulder. Hidden while it is in his hand. */
-export function SlungSpear() {
-  const group = useRef<Group>(null);
-  useFrame(() => {
-    if (group.current) group.current.visible = spearSlung(battle.styleId, heldNow());
-  });
-  return (
-    <group ref={group} position={[0.12, -0.55, -0.33]} rotation={[0, 0, -0.42]} scale={0.8}>
-      <SpearBody />
-    </group>
-  );
-}
-
-const probe = newInput();
-
-function heldNow() {
-  return heldGear(TIMING, readInput(probe, nowSeconds()), battle.styleId);
-}
-
 const IDLE_PITCH = -0.18;
 const THRUST_PITCH = -Math.PI / 2 + 0.05;
-const CHOP_PITCH = -1.05;
 
-/** What the right hand holds: the spear or the stake, scaled in while its move plays and out when it ends. */
+/** What the right hand holds: the stake, scaled in while its move plays and out when it ends. */
 export function HandGear() {
   const aim = useRef<Group>(null);
-  const spear = useRef<Group>(null);
   const stake = useRef<Group>(null);
   const pitch = useRef(IDLE_PITCH);
   const input = useRef(newInput());
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const i = readInput(input.current, nowSeconds());
-    const held = heldGear(TIMING, i, battle.styleId);
-    const target = i.struckMove === "overhead_strike" ? CHOP_PITCH : THRUST_PITCH;
-    pitch.current = MathUtils.damp(pitch.current, held === "none" ? IDLE_PITCH : target, 40, dt);
+    const held = heldGear(TIMING, i);
+    pitch.current = MathUtils.damp(pitch.current, held === "none" ? IDLE_PITCH : THRUST_PITCH, 40, dt);
     if (aim.current) aim.current.rotation.set(pitch.current, 0, 0);
-    for (const [ref, kind] of [[spear, "spear"], [stake, "stake"]] as const) {
-      const g = ref.current;
-      if (!g) continue;
-      const s = MathUtils.damp(g.scale.x, held === kind ? 1 : 0, 30, dt);
-      g.scale.setScalar(s);
-      g.visible = s > 0.03;
-    }
+    const g = stake.current;
+    if (!g) return;
+    const s = MathUtils.damp(g.scale.x, held === "stake" ? 1 : 0, 30, dt);
+    g.scale.setScalar(s);
+    g.visible = s > 0.03;
   });
   return (
     <group ref={aim}>
-      <group ref={spear} scale={0} visible={false}>
-        <SpearBody />
-        <object3D name={STRIKE_TIP} position={[0, 1.81, 0]} />
-      </group>
       <group ref={stake} scale={0} visible={false}>
         <object3D name={STRIKE_TIP} position={[0, 1.3, 0]} />
         <mesh position={[0, 0.35, 0]} castShadow>

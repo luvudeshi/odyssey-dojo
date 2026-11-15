@@ -3,6 +3,8 @@
 //   npx tsx server/tools/genClips.ts athena          Athena's lines  -> public/audio/athena/<id>.mp3
 //   npx tsx server/tools/genClips.ts story           Homer's lines   -> public/audio/narration/<id>.mp3
 //                                                    monster taunts  -> public/audio/taunts/<id>.mp3
+//   npx tsx server/tools/genClips.ts title           Homer's lines for the menu's Story button
+//                                                    -> public/audio/athena/<id>.mp3, beside his first four
 //   npx tsx server/tools/genClips.ts sfx             sound effects   -> public/audio/sfx/<event>.mp3
 //                                                    (--only=<clip> makes just that one; with --force, only that one again)
 //   npx tsx server/tools/genClips.ts music           music, ambience -> public/audio/music/<scene>.mp3
@@ -16,6 +18,7 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { NARRATION_LINES, TAUNT_LINES } from "../../src/audio/narrationLines";
+import { TITLE_LINES } from "../../src/audio/storyLines";
 import { log } from "../../src/core/log";
 import { createElevenLabs, ElevenLabsError } from "../ai/elevenlabs";
 import type { AiClients } from "../ai/types";
@@ -275,6 +278,20 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "title") {
+    // The menu picks one of these each click (TITLE_LINES). They live in Athena's folder because the game's voice loads
+    // one folder, and Homer's first line (homer_title) was recorded there.
+    const folder = join(PUBLIC, "athena");
+    mkdirSync(folder, { recursive: true });
+    const voice = pickVoice("homer", available, forcedVoice("homer"));
+    if (voice === null) throw new Error("this key has no voices it can use through the API");
+    log("info", "title_voice", voice);
+    const jobs = TITLE_LINES.map((line) => ({ line, voiceId: voice.id, target: join(folder, `${line.id}.mp3`) }));
+    await speakClips(speech, jobs, force);
+    writeIndex(folder);
+    return;
+  }
+
   if (command === "sfx") {
     const folder = join(PUBLIC, "sfx");
     mkdirSync(folder, { recursive: true });
@@ -321,7 +338,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error("usage: genClips.ts voices | athena | story | sfx | music | stops | power [--force]");
+  throw new Error("usage: genClips.ts voices | athena | story | title | sfx | music | stops | power [--force]");
 }
 
 main().catch((error: unknown) => {
