@@ -5,11 +5,24 @@ import type { Save } from "./contracts";
 
 export type AccountFetch = (url: string, init: { method: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{
   readonly status: number;
+  /** The answer's headers, when the fetch has them. Only Retry-After is read (see BUSY_RETRIES). */
+  readonly headers?: { get(name: string): string | null };
   json(): Promise<unknown>;
 }>;
 
 /** The longest one request may take. After it the request is given up and counts as unreachable. */
 export const REQUEST_TIMEOUT_MS = 8_000;
+
+/**
+ * A sign-up or sign-in the server had no place for (a 429 whose Retry-After is BUSY_WAIT_MAX_S or less: many people
+ * signing in in the same second) is sent again by itself, BUSY_RETRIES times at most. Each time it waits as long as
+ * the server said and up to BUSY_SPREAD_MS more, so browsers refused together do not come back together.
+ * A longer wait is a budget that is used up: that one is shown at once, as before. Nothing was done for a request
+ * answered 429, so sending it again makes no second account and no second session.
+ */
+export const BUSY_RETRIES = 2;
+export const BUSY_WAIT_MAX_S = 2;
+export const BUSY_SPREAD_MS = 400;
 
 /**
  * Why a call did not work. All but the last are the server's own answers; "unreachable" is everything else:
@@ -41,6 +54,18 @@ export interface AccountClient {
 interface Answer {
   readonly status: number;
   readonly data: unknown;
+  /** The whole seconds of the answer's Retry-After, or null when it has none. */
+  readonly retryAfterS: number | null;
+}
+
+/** Seconds to wait before sending a refused sign-up or sign-in again, or null when it is not to be sent again. */
+function busyFor(answer: Answer | null): number | null {
+  if (answer?.status !== 429 || answer.retryAfterS === null) return null;
+  return answer.retryAfterS <= BUSY_WAIT_MAX_S ? answer.retryAfterS : null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => { setTimeout(resolve, ms); });
 }
 
 const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 409: "name_taken", 413: "too_big", 429: "slow_down", 503: "unavailable" };
@@ -55,7 +80,7 @@ function failure(answer: Answer | null, on401: AccountError): { ok: false; error
   return error === "invalid" && field ? { ok: false, error, field } : { ok: false, error };
 }
 
-export function createAccountClient(fetch: AccountFetch, base = ""): AccountClient {
+export function createAccountClient(fetch: AccountFetch, base = "", pause: (ms: number) => Promise<void> = sleep): AccountClient {
   const call = async (method: string, path: string, options: { token?: string; body?: string } = {}): Promise<Answer | null> => {
     try {
       const headers: Record<string, string> = {};
@@ -68,14 +93,22 @@ export function createAccountClient(fetch: AccountFetch, base = ""): AccountClie
         // A server that takes the request and never answers must not leave the form waiting for ever.
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      return { status: response.status, data: await response.json().catch(() => null) };
+      const after = Number(response.headers?.get("Retry-After") ?? Number.NaN);
+      return { status: response.status, data: await response.json().catch(() => null), retryAfterS: Number.isFinite(after) && after > 0 ? after : null };
     } catch {
       return null;
     }
   };
 
   const enter = async (path: "signup" | "signin", wanted: number, name: string, password: string): Promise<Result<Session>> => {
-    const answer = await call("POST", path, { body: JSON.stringify({ name, password }) });
+    const body = JSON.stringify({ name, password });
+    let answer = await call("POST", path, { body });
+    for (let again = 0; again < BUSY_RETRIES; again += 1) {
+      const wait = busyFor(answer);
+      if (wait === null) break;
+      await pause(wait * 1000 + Math.random() * BUSY_SPREAD_MS);
+      answer = await call("POST", path, { body });
+    }
     const session = answer?.status === wanted ? SessionResponseSchema.safeParse(answer.data) : null;
     return session?.success ? { ok: true, value: session.data } : failure(answer?.status === wanted ? null : answer, "wrong_name_or_password");
   };
