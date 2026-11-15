@@ -47,6 +47,8 @@ export const accountStatus = shared.check;
 export const signUp = shared.signUp;
 export const signIn = shared.signIn;
 export const signOut = shared.signOut;
+export const rename = shared.rename;
+export const changePassword = shared.changePassword;
 
 export function useAccount(): AccountState {
   return useSyncExternalStore(shared.subscribe, shared.get, shared.get);
