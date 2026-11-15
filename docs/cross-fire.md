@@ -89,8 +89,8 @@ The spear thrust rule uses `flungWide`, which the jab and the cross already use,
 a thrust by a player turned 30 degrees (one wrist out, the other in) still counts.
 
 The `risingHand` rules also remove the pair found in #178: a jab or cross aimed 20 to 40 degrees upward, 300 ms
-after the hands come up, used to read as a rising palm or an uppercut as well. The test keeps the fixture's
-body; by hand it was also checked on 0.30 and 0.28 m shoulders with 0.55 and 0.60 m arms.
+after the hands come up, used to read as a rising palm or an uppercut as well. The same test file checks it on
+the fixture's build, on 0.30 m shoulders with 0.60 m arms and on 0.28 m shoulders with 0.55 m arms.
 
 What this costs, and has not been tried on a real body: an uppercut thrown while the other hand is still on its
 way up from the waist does not count until that hand has been up for 400 ms. From a guard, or with the other
