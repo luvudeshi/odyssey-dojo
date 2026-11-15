@@ -15,6 +15,8 @@ import { CameraView } from "../hud/CameraView";
 import { Hud } from "../hud/Hud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
+import { forTwo } from "../net/host";
+import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
@@ -27,6 +29,7 @@ import { Scene } from "../render/Scene";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
+import { fallsLine } from "../enemies/wording";
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -41,9 +44,11 @@ export function FightScreen(props: {
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
   onQuit?: () => void;
+  /** Online room: the guest's strikes join the fight and the state goes back to them. Left out in single play. */
+  link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
@@ -58,7 +63,7 @@ export function FightScreen(props: {
     speakLine("fight_start");
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
-    let current = startFight(enemy, seed);
+    let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
@@ -87,11 +92,14 @@ export function FightScreen(props: {
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
       setLost(false);
-      const input = mergeInputs(keys, readPose(history));
+      const own = mergeInputs(keys, readPose(history));
+      // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
+      const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
+      link?.publish(current, result.events, now);
       result.events.forEach((event) => {
         playEvent(event); noteHit(event); notePhase(event);
         if (event.type === "won") startMusic("win");
@@ -109,7 +117,9 @@ export function FightScreen(props: {
       keyboard.dispose();
       stopStory();
     };
-  }, [enemy, style, tracker, seed, baseline]);
+  }, [enemy, style, tracker, seed, baseline, link]);
+
+  useEffect(() => { link?.start(enemy.id, style.id, seed); }, [link, enemy, style, seed]);
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   const running = view === "off";
@@ -137,7 +147,7 @@ export function FightScreen(props: {
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <Hud enemy={enemy} state={state} />
       {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
-      <CameraView tracker={tracker} poseRef={poseRef} />
+      <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu
@@ -151,7 +161,7 @@ export function FightScreen(props: {
       )}
       {over && (
         <div className="overlay">
-          <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
+          <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
           {renderEnd(state.phase.kind === "won", state.score, state.mastery)}
         </div>

@@ -380,8 +380,11 @@ export function pauseStopAmbience(isPaused: boolean): void {
   if (rig) applyVolumes(rig);
 }
 
-// Dips under Athena's, Homer's and the monsters' lines, which all go through the one voice.
-watchVoice((isSpeaking) => {
-  speaking = isSpeaking;
+// Dips under Athena's, Homer's and the monsters' lines; each voice has its own name, so one falling quiet while another speaks keeps the dip.
+const speakers = new Set<string>();
+watchVoice((isSpeaking, who = "voice") => {
+  if (isSpeaking) speakers.add(who);
+  else speakers.delete(who);
+  speaking = speakers.size > 0;
   if (rig) applyVolumes(rig);
 });

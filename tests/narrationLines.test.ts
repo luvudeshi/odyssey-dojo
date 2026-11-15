@@ -204,12 +204,15 @@ test("docs/narration-lines.md lists the same ids, speakers, moments and texts as
 
 // ---- speaking ----
 
-/** A voice whose clips are recorded instead of played, with the story functions on top. `end` finishes the newest clip. */
+/**
+ * A voice whose clips are recorded instead of played, a second one for the monsters' channel, and the story functions
+ * on top. `end` finishes the newest clip.
+ */
 function fakeStory(options: { available?: (id: string) => boolean; random?: () => number } = {}) {
   const started: string[] = [];
   const stopped: string[] = [];
   const ends: (() => void)[] = [];
-  const voice = createVoice({
+  const fake = (): ReturnType<typeof createVoice> => createVoice({
     available: options.available ?? (() => true),
     play: (id, done) => {
       started.push(id);
@@ -220,19 +223,22 @@ function fakeStory(options: { available?: (id: string) => boolean; random?: () =
     },
     random: () => 0,
   });
+  const voice = fake();
+  const taunts = fake();
   const story = createStoryVoice({
     speak: (id) => voice.speak(id),
     playing: () => voice.playing(),
     stop: (id) => {
       voice.stop(id);
     },
+    taunts,
     random: options.random ?? (() => 0),
     sleep: (ms) =>
       new Promise((resolve) => {
         setTimeout(resolve, ms);
       }),
   });
-  return { voice, story, started, stopped, end: () => ends.at(-1)?.() };
+  return { voice, taunts, story, started, stopped, end: () => ends.at(-1)?.() };
 }
 
 /** Records what a promise settles to without waiting for it. */
@@ -375,14 +381,14 @@ test("a missing clip, an unknown stop and a monster with no taunts all resolve f
 });
 
 test("a wait that is not a number means do not wait", async () => {
-  const { voice, story } = fakeStory();
+  const { voice, taunts, story } = fakeStory();
   voice.speak("win");
+  taunts.speak("taunt_sirens_1");
   const spoken = watch(story.speakNarration("circe", "before", Number.NaN));
   const endless = watch(story.speakMonsterTaunt("circe", Number.POSITIVE_INFINITY));
   await vi.advanceTimersByTimeAsync(0);
   expect(spoken.settled).toBe(false);
-  // A taunt is first tried one poll later, and that one try is all it gets.
-  await vi.advanceTimersByTimeAsync(100);
+  // The monsters' channel is busy with another taunt, and one try is all this one gets.
   expect(endless.settled).toBe(false);
   expect(vi.getTimerCount()).toBe(0);
 });
@@ -403,8 +409,8 @@ test("Homer's new line cuts off a different story line that is still playing, so
   expect(before.settled).toBe("pending");
 });
 
-test("Homer cuts off a taunt and the title line too, but never one of Athena's lines", async () => {
-  for (const busyWith of ["taunt_circe_1", "homer_title", "homer_loss"]) {
+test("Homer cuts off the title line and his own older line, but never one of Athena's lines", async () => {
+  for (const busyWith of ["homer_title", "homer_loss"]) {
     const { voice, story, started, stopped } = fakeStory();
     voice.speak(busyWith);
     void story.speakNarration("scylla", "before");
@@ -422,15 +428,15 @@ test("Homer cuts off a taunt and the title line too, but never one of Athena's l
   }
 });
 
-test("a taunt does not cut off Homer: only Homer's own next line does", async () => {
-  const { voice, story, started, stopped } = fakeStory();
+test("a taunt does not cut off Homer or wait for him: it plays on the monsters' channel", async () => {
+  const { voice, taunts, story, started, stopped } = fakeStory();
   void story.speakNarration("circe", "before");
   const taunt = watch(story.speakMonsterTaunt("circe"));
-  await vi.advanceTimersByTimeAsync(TAUNT_WAIT_MS + 100);
-  expect(taunt.settled).toBe(false);
-  expect(started).toEqual(["homer_before_circe"]);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(taunt.settled).toBe("pending");
+  expect(started).toEqual(["homer_before_circe", "taunt_circe_1"]);
   expect(stopped).toEqual([]);
-  expect(voice.playing()).toBe("homer_before_circe");
+  expect([voice.playing(), taunts.playing()]).toEqual(["homer_before_circe", "taunt_circe_1"]);
 });
 
 test("after stopStory on leaving the intro, Athena's fight start line is spoken", async () => {
@@ -496,94 +502,106 @@ test("every monster can taunt, and the dice pick which taunt", async () => {
   }
 });
 
-test("a taunt follows Athena's phase line, and her next call cuts it short", async () => {
-  const { voice, story, started, stopped, end } = fakeStory();
-  voice.speak("phase_1");
+test("a taunt waits for Athena's phase line to end, and then her next call does not cut it", async () => {
+  const { voice, taunts, story, started, stopped, end } = fakeStory();
+  // As the fight screen does it: the taunt is asked for first, and the phase line starts later in the same frame.
   const taunt = watch(story.speakMonsterTaunt("sirens"));
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
   await vi.advanceTimersByTimeAsync(1000);
   expect(started).toEqual(["phase_1"]);
+  expect(taunt.settled).toBe("pending");
+  // The phase line ends, and the taunt starts at its next look.
   end();
   await vi.advanceTimersByTimeAsync(100);
   expect(started).toEqual(["phase_1", "taunt_sirens_1"]);
   expect(voice.speak("call_duck")).toBe(true);
-  expect(stopped).toEqual(["taunt_sirens_1"]);
-  await vi.advanceTimersByTimeAsync(100);
-  expect(taunt.settled).toBe(true);
-});
-
-test("a taunt does not wait long: after its wait it is dropped", async () => {
-  const { voice, story, started } = fakeStory();
-  voice.speak("call_duck");
-  const taunt = watch(story.speakMonsterTaunt("circe"));
-  await vi.advanceTimersByTimeAsync(TAUNT_WAIT_MS - 100);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(stopped).toEqual([]);
+  expect(taunts.playing()).toBe("taunt_sirens_1");
   expect(taunt.settled).toBe("pending");
-  await vi.advanceTimersByTimeAsync(200);
-  expect(taunt.settled).toBe(false);
-  expect(started).toEqual(["call_duck"]);
-  expect(vi.getTimerCount()).toBe(0);
-});
-
-test("a taunt asked for in the frame the phase changes lets Athena's phase line go first, whichever is called first", async () => {
-  for (const tauntFirst of [true, false]) {
-    const { voice, story, started, stopped, end } = fakeStory();
-    const ask = (): { settled: boolean | "pending" | "rejected" } => watch(story.speakMonsterTaunt("circe"));
-    const events = [{ type: "phaseChanged", index: 1, name: "The Club" }] as const;
-    let taunt: ReturnType<typeof ask>;
-    // The same tick, as in the fight loop: nothing runs between the two calls.
-    if (tauntFirst) {
-      taunt = ask();
-      voice.handle(events);
-    } else {
-      voice.handle(events);
-      taunt = ask();
-    }
-    expect(started, String(tauntFirst)).toEqual(["phase_1"]);
-    await vi.advanceTimersByTimeAsync(1500);
-    // The taunt never started, so nothing was cut.
-    expect(started, String(tauntFirst)).toEqual(["phase_1"]);
-    expect(stopped, String(tauntFirst)).toEqual([]);
-    end();
-    await vi.advanceTimersByTimeAsync(100);
-    expect(started, String(tauntFirst)).toEqual(["phase_1", "taunt_circe_1"]);
-    expect(stopped, String(tauntFirst)).toEqual([]);
-    expect(taunt.settled, String(tauntFirst)).toBe("pending");
-    end();
-    await vi.advanceTimersByTimeAsync(100);
-    expect(taunt.settled, String(tauntFirst)).toBe(true);
-  }
-});
-
-test("a taunt waits out Athena's longest phase line, which is 2.9 seconds", async () => {
-  const { voice, story, started, end } = fakeStory();
-  const taunt = watch(story.speakMonsterTaunt("suitors"));
-  voice.handle([{ type: "phaseChanged", index: 2, name: "Blinded" }]);
-  await vi.advanceTimersByTimeAsync(2900);
-  expect(started).toEqual(["phase_2"]);
+  // The newest clip is Athena's call. The taunt's own end is what settles its promise.
   end();
   await vi.advanceTimersByTimeAsync(100);
-  expect(started).toEqual(["phase_2", "taunt_suitors_1"]);
   expect(taunt.settled).toBe("pending");
-});
-
-test("a taunt dropped by stopStory before its first try is never heard", async () => {
-  const { story, started } = fakeStory();
-  const taunt = watch(story.speakMonsterTaunt("circe"));
-  story.stopStory();
-  await vi.advanceTimersByTimeAsync(TAUNT_WAIT_MS);
-  expect(taunt.settled).toBe(false);
-  expect(started).toEqual([]);
+  taunts.stop("taunt_sirens_1");
+  await vi.advanceTimersByTimeAsync(100);
+  expect(taunt.settled).toBe(true);
   expect(vi.getTimerCount()).toBe(0);
 });
 
-test("a taunt never talks over Homer or Athena", async () => {
-  for (const busyWith of ["homer_before_circe", "win", "call_block", "fight_start"]) {
-    const { voice, story, started } = fakeStory();
-    voice.speak(busyWith);
-    const taunt = watch(story.speakMonsterTaunt("circe", 0));
-    await vi.advanceTimersByTimeAsync(100);
-    expect(taunt.settled, busyWith).toBe(false);
-    expect(started, busyWith).toEqual([busyWith]);
-  }
+test("a taunt is dropped when the phase line still holds the voice after TAUNT_WAIT_MS", async () => {
+  const { voice, story, started } = fakeStory();
+  const taunt = watch(story.speakMonsterTaunt("sirens"));
+  // This stand-in clip never ends by itself.
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
+  await vi.advanceTimersByTimeAsync(TAUNT_WAIT_MS - 100);
+  expect(taunt.settled).toBe("pending");
+  await vi.advanceTimersByTimeAsync(100);
+  expect(taunt.settled).toBe(false);
+  expect(started).toEqual(["phase_1"]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("a second taunt asked for while the first waits for the phase line joins it or is dropped, and the first still plays", async () => {
+  const { voice, story, started, end } = fakeStory();
+  const first = watch(story.speakMonsterTaunt("sirens"));
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
+  await vi.advanceTimersByTimeAsync(300);
+  const same = watch(story.speakMonsterTaunt("sirens"));
+  const other = watch(story.speakMonsterTaunt("circe"));
+  await vi.advanceTimersByTimeAsync(0);
+  expect([first.settled, same.settled, other.settled]).toEqual(["pending", "pending", false]);
+  end();
+  await vi.advanceTimersByTimeAsync(100);
+  expect(started).toEqual(["phase_1", "taunt_sirens_1"]);
+  end();
+  await vi.advanceTimersByTimeAsync(100);
+  expect([first.settled, same.settled]).toEqual([true, true]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("one taunt at a time: a second one is dropped at once, or waits for the first only when asked to", async () => {
+  const { taunts, story, started } = fakeStory();
+  void story.speakMonsterTaunt("sirens");
+  const dropped = watch(story.speakMonsterTaunt("circe"));
+  await vi.advanceTimersByTimeAsync(0);
+  expect(dropped.settled).toBe(false);
+  const patient = watch(story.speakMonsterTaunt("circe", 500));
+  await vi.advanceTimersByTimeAsync(300);
+  expect(started).toEqual(["taunt_sirens_1"]);
+  taunts.stop("taunt_sirens_1");
+  await vi.advanceTimersByTimeAsync(100);
+  expect(started).toEqual(["taunt_sirens_1", "taunt_circe_1"]);
+  expect(patient.settled).toBe("pending");
+});
+
+test("stopStory silences a taunt that is playing and leaves Athena's line alone", async () => {
+  const { voice, taunts, story, stopped } = fakeStory();
+  voice.speak("call_duck");
+  const taunt = watch(story.speakMonsterTaunt("circe"));
+  // The taunt looks at the voice one tick after it is asked for, and a call does not hold it back.
+  await vi.advanceTimersByTimeAsync(0);
+  story.stopStory();
+  expect(stopped).toEqual(["taunt_circe_1"]);
+  expect([voice.playing(), taunts.playing()]).toEqual(["call_duck", null]);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(taunt.settled).toBe(true);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("stopStory leaves no timer running: not the newest line's, and not that of a line it took the place of", async () => {
+  vi.resetModules();
+  // There is no Audio here, so the shared voice has no clips and every line waits for one until it gives up.
+  const story = await import("../src/audio/storyVoice");
+  const first = watch(story.speakNarration("circe", "before"));
+  const second = watch(story.speakNarration("sirens", "before"));
+  const taunt = watch(story.speakMonsterTaunt("circe", 5000));
+  await vi.advanceTimersByTimeAsync(50);
+  expect(vi.getTimerCount()).toBeGreaterThan(0);
+  story.stopStory();
+  expect(vi.getTimerCount()).toBe(0);
+  await vi.advanceTimersByTimeAsync(0);
+  expect([first.settled, second.settled, taunt.settled]).toEqual([false, false, false]);
 });
 
 test("nothing a broken voice does can make a story function reject or throw", async () => {
@@ -591,12 +609,15 @@ test("nothing a broken voice does can make a story function reject or throw", as
   const boom = (): never => {
     throw new Error("broken");
   };
-  const fine: StoryVoiceDeps = { speak: () => true, playing: () => null, stop: () => undefined, random: () => 0, sleep: () => Promise.resolve() };
+  const channel = { speak: () => true, playing: () => null, stop: () => undefined };
+  const fine: StoryVoiceDeps = { ...channel, taunts: channel, random: () => 0, sleep: () => Promise.resolve() };
   const broken: StoryVoiceDeps[] = [
     { ...fine, speak: boom },
     { ...fine, playing: boom },
     { ...fine, random: boom },
     { ...fine, stop: boom, playing: () => "homer_win" },
+    { ...fine, taunts: { speak: boom, playing: boom, stop: boom } },
+    { ...fine, taunts: { speak: () => true, playing: () => "taunt_circe_1", stop: boom } },
     { ...fine, speak: () => false, sleep: () => Promise.reject(new Error("no timers")) },
   ];
   for (const deps of broken) {
@@ -647,19 +668,21 @@ function fakeAudio(play: () => Promise<void>) {
 function audioStory(play: () => Promise<void>) {
   const audio = fakeAudio(play);
   const voice = createVoice({ available: () => true, play: audioPlayer(audio.open), random: () => 0 });
+  const taunts = createVoice({ available: () => true, play: audioPlayer(audio.open), random: () => 0 });
   const story = createStoryVoice({
     speak: (id) => voice.speak(id),
     playing: () => voice.playing(),
     stop: (id) => {
       voice.stop(id);
     },
+    taunts,
     random: () => 0,
     sleep: (ms) =>
       new Promise((resolve) => {
         setTimeout(resolve, ms);
       }),
   });
-  return { audio, voice, story };
+  return { audio, voice, taunts, story };
 }
 
 test("clips are asked for in their own folders: narration, taunts, and Athena's for the lines recorded first", async () => {
@@ -695,11 +718,11 @@ test("blocked audio and a clip that fails to load both resolve quietly and free 
   const failing = audioStory(() => Promise.resolve());
   const second = watch(failing.story.speakMonsterTaunt("charybdis"));
   await vi.advanceTimersByTimeAsync(100);
-  expect(failing.voice.playing()).toBe("taunt_charybdis_1");
+  expect(failing.taunts.playing()).toBe("taunt_charybdis_1");
   failing.audio.fire("error");
   await vi.advanceTimersByTimeAsync(100);
   expect(typeof second.settled).toBe("boolean");
-  expect(failing.voice.playing()).toBeNull();
+  expect(failing.taunts.playing()).toBeNull();
   expect(vi.getTimerCount()).toBe(0);
 });
 

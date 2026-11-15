@@ -1,6 +1,5 @@
 // The pieces that wire a stop's sound into a fight: the ambience gain under speech and pause, and the event override in sfx.
 import { expect, test, vi } from "vitest";
-import { setEventOverride } from "../src/audio/sfx";
 import { ambienceGain } from "../src/audio/stopAudio";
 import { stopClipFor } from "../src/audio/stopSounds";
 import type { CombatEvent } from "../src/core/types";
@@ -27,11 +26,47 @@ test("circe's wand telegraphs with the wand, lands as a squeal, and an unlisted 
   expect(stopClipFor("circe", { type: "telegraph", attack: { ...wand, id: "unlisted" } })).toBeNull();
 });
 
-test("an event override can be set and cleared without error", () => {
-  const seen = vi.fn(() => true);
-  setEventOverride(seen);
-  setEventOverride(null);
-  expect(seen).not.toHaveBeenCalled();
-  const event: CombatEvent = { type: "whiffed" };
-  expect(event.type).toBe("whiffed");
+test("an event override that plays the sound skips the usual one, and one that declines lets it through", async () => {
+  const started: unknown[] = [];
+  class FakeContext {
+    readonly sampleRate = 44100;
+    readonly destination = {};
+    state = "running";
+    createGain = () => ({ gain: { value: 1 }, connect: (node: unknown) => node });
+    createBuffer = (_channels: number, length: number) => ({ length, getChannelData: () => new Float32Array(length) });
+    createBufferSource = () => {
+      const source = { buffer: null, playbackRate: { value: 1 }, connect: (node: unknown) => node, start: () => started.push(source) };
+      return source;
+    };
+    decodeAudioData = () => Promise.reject(new Error("no clip"));
+    resume = () => Promise.resolve();
+  }
+  vi.useFakeTimers();
+  vi.resetModules();
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  vi.stubGlobal("AudioContext", FakeContext);
+  vi.stubGlobal("fetch", () => Promise.reject(new Error("offline")));
+  try {
+    const fresh = await import("../src/audio/sfx");
+    const event: CombatEvent = { type: "whiffed" };
+    const takes = vi.fn(() => true);
+    fresh.setEventOverride(takes);
+    fresh.playEvent(event);
+    expect(takes).toHaveBeenCalledExactlyOnceWith(event);
+    expect(started).toHaveLength(0);
+
+    const declines = vi.fn(() => false);
+    fresh.setEventOverride(declines);
+    fresh.playEvent(event);
+    expect(declines).toHaveBeenCalledExactlyOnceWith(event);
+    expect(started).toHaveLength(1);
+
+    fresh.setEventOverride(null);
+    fresh.playEvent(event);
+    expect(started).toHaveLength(2);
+  } finally {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  }
 });

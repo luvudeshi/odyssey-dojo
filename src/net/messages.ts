@@ -9,7 +9,9 @@ export type GuestMessage =
 export type HostMessage =
   | { readonly type: "start"; readonly enemyId: string; readonly styleId: string; readonly seed: number }
   | { readonly type: "state"; readonly seq: number; readonly state: CombatState; readonly events: readonly CombatEvent[] }
-  | { readonly type: "end"; readonly won: boolean };
+  | { readonly type: "end"; readonly won: boolean }
+  /** The host left the fight for the quest map; the room stays open for the next one. */
+  | { readonly type: "stop" };
 
 /** Sent by the relay itself: whether the other member's stream is open. */
 export interface PeerMessage {
@@ -78,6 +80,8 @@ export function parseMessage(value: unknown): NetMessage | null {
       return { type: "state", seq: value.seq, state: value.state, events: value.events };
     case "end":
       return typeof value.won === "boolean" ? { type: "end", won: value.won } : null;
+    case "stop":
+      return { type: "stop" };
     default:
       return null;
   }

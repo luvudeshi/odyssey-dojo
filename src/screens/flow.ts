@@ -1,7 +1,7 @@
 // The screen flow as a pure reducer: title -> style -> map -> intro -> fight -> result -> map.
 import type { EnemySpec, FightingStyle } from "../core/types";
 
-export type Screen = "title" | "style" | "map" | "intro" | "fight" | "result";
+export type Screen = "title" | "together" | "host" | "join" | "guest" | "style" | "map" | "intro" | "fight" | "result";
 
 export interface Flow {
   readonly screen: Screen;
@@ -11,6 +11,8 @@ export interface Flow {
   readonly seed: number;
   /** Ids of the enemies beaten so far. */
   readonly cleared: readonly string[];
+  /** True while this player hosts an online room: the fight is shared with a guest. */
+  readonly hosting: boolean;
 }
 
 export type FlowAction =
@@ -23,9 +25,15 @@ export type FlowAction =
   | { readonly type: "retry"; readonly seed: number }
   | { readonly type: "restart"; readonly seed: number }
   | { readonly type: "quit" }
-  | { readonly type: "toMap" };
+  | { readonly type: "toMap" }
+  | { readonly type: "together" }
+  | { readonly type: "hostRoom" }
+  | { readonly type: "joinRoom" }
+  | { readonly type: "joined" }
+  | { readonly type: "hosted"; readonly together: boolean }
+  | { readonly type: "toTitle" };
 
-export const START: Flow = { screen: "title", style: null, index: 0, seed: 0, cleared: [] };
+export const START: Flow = { screen: "title", style: null, index: 0, seed: 0, cleared: [], hosting: false };
 
 /** Where the game opens. `?stop=<enemy id>` marks every earlier stop as beaten, to reach a later fight for a demo or a check. */
 export function startAt(enemies: readonly EnemySpec[], stopId: string | null): Flow {
@@ -33,8 +41,27 @@ export function startAt(enemies: readonly EnemySpec[], stopId: string | null): F
   return index < 0 ? START : { ...START, cleared: enemies.slice(0, index).map((enemy) => enemy.id) };
 }
 
+/** `?room=CODE` opens the join screen; otherwise as `startAt`. */
+export function openAt(enemies: readonly EnemySpec[], stopId: string | null, room: string | null): Flow {
+  return room === null ? startAt(enemies, stopId) : { ...START, screen: "join" };
+}
+
 export function flowReducer(flow: Flow, action: FlowAction): Flow {
   switch (action.type) {
+    case "together":
+      return flow.screen === "title" ? { ...flow, screen: "together" } : flow;
+    case "hostRoom":
+      return flow.screen === "together" ? { ...flow, screen: "host" } : flow;
+    case "joinRoom":
+      return flow.screen === "together" ? { ...flow, screen: "join" } : flow;
+    case "joined":
+      return flow.screen === "join" ? { ...flow, screen: "guest" } : flow;
+    case "hosted":
+      return flow.screen === "host" ? { ...flow, screen: "style", hosting: action.together } : flow;
+    case "toTitle":
+      return flow.screen === "together" || flow.screen === "host" || flow.screen === "join" || flow.screen === "guest"
+        ? { ...flow, screen: "title", hosting: false }
+        : flow;
     case "ready":
       return flow.screen === "title" ? { ...flow, screen: "style" } : flow;
     case "pickStyle":

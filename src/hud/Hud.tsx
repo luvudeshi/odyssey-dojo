@@ -4,6 +4,7 @@ import type { CombatState, EnemySpec, MoveDef, MoveDiagram } from "../core/types
 import { PowerBar } from "./PowerBar";
 import { PhaseBanner } from "./PhaseBanner";
 import { RatingFlash } from "./RatingFlash";
+import { TogetherFlash } from "./TogetherFlash";
 import { MOVES } from "../moves/registry";
 import { useSettings } from "../settings/store";
 
@@ -79,6 +80,7 @@ export function Hud({ enemy, state }: { enemy: EnemySpec; state: CombatState }) 
       </div>
       <PowerBar power={state.power} />
       <RatingFlash />
+      <TogetherFlash two={state.players === 2} />
       <PhaseBanner />
       {phase.kind === "intro" && <div className="banner">{enemy.name}<small>{enemy.title}</small></div>}
       {move && (phase.kind === "defend" || phase.kind === "strike" || phase.kind === "finisher") && (
