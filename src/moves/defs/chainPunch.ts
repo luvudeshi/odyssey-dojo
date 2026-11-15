@@ -12,8 +12,8 @@ const FOLLOW_MS = 700;
 function followsOther(history: PoseHistory, side: Side): boolean {
   const frame = latest(history);
   const other = otherSide(side);
-  if (!frame || !armThrust(history, side) || armOut(frame, other)) return false;
-  return recent(history, FOLLOW_MS).some((old) => armOut(old, other));
+  if (!frame || !armThrust(history, side) || armOut(frame, other, history.baseline)) return false;
+  return recent(history, FOLLOW_MS).some((old) => armOut(old, other, history.baseline));
 }
 
 export const move: MoveDef = {
@@ -30,6 +30,6 @@ export const move: MoveDef = {
   },
   quality(history) {
     const frame = latest(history);
-    return strikeQuality(history, { sides: [frame && armOut(frame, "left") ? "left" : "right"] });
+    return strikeQuality(history, { sides: [frame && armOut(frame, "left", history.baseline) ? "left" : "right"] });
   },
 };

@@ -5,7 +5,7 @@
 import type { PoseFrame } from "../../src/core/types";
 import { createPoseInput } from "../../src/input/poseInput";
 import { MOVES } from "../../src/moves/registry";
-import { EMPTY_HISTORY, pushFrame } from "../../src/pose/signals";
+import { EMPTY_HISTORY, pushFrame, shoulderWidth, shoulderWidth3d } from "../../src/pose/signals";
 import { CLEAN, seeded, seenBy } from "./noisyCamera";
 
 export interface Body {
@@ -71,4 +71,41 @@ export function fired(frames: readonly PoseFrame[]): string[] {
     for (const strike of input.struck) seen.add(strike.move);
   }
   return [...seen].sort();
+}
+
+/** Frames at the start of every `sequence` that stand still and set the baseline (SETTLE_FRAMES in ./poses.ts). */
+export const CALIBRATION_FRAMES = 20;
+
+/**
+ * The same frame with the player turned about the vertical axis through the hips. Positive degrees bring the
+ * player's right shoulder toward the camera (a turn to their own left), negative the left shoulder.
+ *
+ * The model is a camera far enough away that depth does not change size (weak perspective):
+ * - 3D points are rotated rigidly: x' = x cos a + z sin a, z' = z cos a - x sin a, y unchanged;
+ * - in the picture, each point's sideways offset from the body's centre line (the middle of the shoulders)
+ *   shrinks by cos a, and the point's 3D depth z shows up sideways as z sin a, at `perMetre` shares of the
+ *   frame width per metre. Picture height does not change.
+ */
+export function turnedFrame(frame: PoseFrame, degrees: number, perMetre: number): PoseFrame {
+  const angle = (degrees * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const centre = (frame.image[11]?.x ?? 0.5) / 2 + (frame.image[12]?.x ?? 0.5) / 2;
+  return {
+    t: frame.t,
+    image: frame.image.map((point, index) => ({
+      ...point,
+      x: centre + (point.x - centre) * cos + (frame.world[index]?.z ?? 0) * perMetre * sin,
+    })),
+    world: frame.world.map((point) => ({ ...point, x: point.x * cos + point.z * sin, z: point.z * cos - point.x * sin })),
+  };
+}
+
+/** The recording with every frame from number `from` on turned. `from` 0 is a player who never faced the camera. */
+export function recordingTurned(frames: readonly PoseFrame[], degrees: number, from: number): PoseFrame[] {
+  const first = frames[0];
+  if (!first) return [];
+  // Shares of the frame width one metre covers, from the standing frame: 0.16 / 0.4 m on the fixture.
+  const perMetre = shoulderWidth(first) / shoulderWidth3d(first);
+  return frames.map((frame, index) => (index < from ? frame : turnedFrame(frame, degrees, perMetre)));
 }
