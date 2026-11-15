@@ -196,7 +196,7 @@ export function FightScreen(props: {
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
       <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
-      <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
+      {!over && <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />}
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu
