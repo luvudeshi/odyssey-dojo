@@ -15,7 +15,8 @@ import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
 import { lookIs } from "../../ui/lookSwitch";
-import { SetBackdrop } from "../../ui/set/parts";
+import { BackButton, SetBackdrop } from "../../ui/set/parts";
+import { StyleIcon } from "../../ui/set/styleIcons";
 import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
@@ -158,14 +159,17 @@ export function Dojo(props: DojoProps) {
   const own = move ? view.reps.filter((rep) => rep.moveId === move.id) : [];
   const last = view.phase === "result" ? view.last : null;
 
+  const obsidian = lookIs("obsidian");
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      {lookIs("obsidian") ? <SetBackdrop src="/textures/set/obsidian/yard.jpg" /> : <ForgeScene />}
+      {obsidian ? <SetBackdrop src="/textures/set/obsidian/yard.jpg" /> : <ForgeScene />}
       <header className="dojo-top">
-        <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
+        <p className="dojo-title">Training dojo <span>{style?.name ?? (obsidian ? "Choose your style" : "")}</span></p>
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
         {!picking && <p className="dojo-points" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
-        {onQuit && !done && <button type="button" className="dojo-button dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</button>}
+        {onQuit && !done && (obsidian
+          ? <BackButton className="dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</BackButton>
+          : <button type="button" className="dojo-button dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</button>)}
       </header>
 
       {picking && (
@@ -175,6 +179,7 @@ export function Dojo(props: DojoProps) {
           <div className="dojo-styles">
             {STYLES.map((each, index) => (
               <button key={each.id} type="button" className="dojo-button dojo-style" autoFocus={index === 0} onClick={() => { setChosen(each); }}>
+                {obsidian && <StyleIcon id={each.id} />}
                 <b>{each.name}</b>
                 <span>{each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")}</span>
               </button>
@@ -189,7 +194,7 @@ export function Dojo(props: DojoProps) {
           <div className="dojo-outline">
             <MoveGuide key={move.id} move={move} history={() => history.current} size="large" />
           </div>
-          <section className="dojo-side" aria-live="polite">
+          <section className={obsidian ? "dojo-side set-panel" : "dojo-side"} aria-live="polite">
             <p className="dojo-cue">{view.phase === "show" ? "Watch the outline" : view.phase === "go" ? "Your turn!" : " "}</p>
             <h1 className="dojo-name">{move.name}</h1>
             {last ? (

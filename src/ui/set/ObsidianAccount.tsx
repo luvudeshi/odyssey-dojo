@@ -6,7 +6,7 @@ import { NAME_MAX, renameProfile, useProfile } from "../../account/store";
 import { FEAT_ICON, Icon, type IconName } from "../../account/ui/icons";
 import type { EnemySpec } from "../../core/types";
 import { SettingsPanel } from "../SettingsPanel";
-import { SetBackdrop, SetTitle } from "./parts";
+import { BackButton, SetBackdrop, SetTitle } from "./parts";
 import "./screens.css";
 import "./account.css";
 
@@ -25,7 +25,8 @@ function Tile(props: { feat: Achievement; on: (id: string | null) => void }) {
       <button type="button" className={`set-feat ${feat.done ? "is-done" : "is-locked"}`} onMouseEnter={set} onMouseLeave={clear} onFocus={set} onBlur={clear}
         aria-label={`${feat.name}. ${feat.done ? "Won" : "Not won yet"}. ${feat.how}${p && !feat.done ? ` ${String(p.have)} of ${String(p.goal)} ${p.unit}.` : ""}`}>
         <Icon name={FEAT_ICON[feat.id] ?? "laurel"} className="set-feat__icon" />
-        <span className="set-feat__name">{feat.name}{p && !feat.done && <small>{p.have}/{p.goal}</small>}</span>
+        <span className="set-feat__name">{feat.name}</span>
+        {p && !feat.done && <small className="set-feat__n">{p.have}/{p.goal}</small>}
         {p && !feat.done && <i className="set-feat__bar"><b style={{ width: `${String(Math.round((p.have / p.goal) * 100))}%` }} /></i>}
         {!feat.done && <Icon name="lock" className="set-feat__lock" />}
       </button>
@@ -64,6 +65,7 @@ export function ObsidianAccount(props: { enemies: readonly EnemySpec[]; onBack: 
     <main className="menu--account set-acc">
       <SetBackdrop src="/textures/set/obsidian/hall.jpg" />
       <aside className="set-acc__side">
+        <BackButton onClick={props.onBack}>Main menu</BackButton>
         <SetTitle kicker="Account">The Hall of the Hero</SetTitle>
         <div className="set-panel set-acc__hero">
           <label className="set-acc__name">
@@ -77,7 +79,6 @@ export function ObsidianAccount(props: { enemies: readonly EnemySpec[]; onBack: 
         <Detail feat={picked ?? feats.find((feat) => !feat.done)} picked={picked !== undefined} />
         <div className="set-acc__actions">
           <button type="button" className="set-btn" onClick={() => { setSettingsOpen(true); }}><Icon name="sliders" />Open settings</button>
-          <button type="button" className="set-back" onClick={props.onBack}><svg viewBox="0 0 64 64" aria-hidden="true"><path d="M40 10 L16 32 L40 54 M16 32 H56" /></svg>Main menu</button>
         </div>
       </aside>
       <section className="set-panel set-acc__feats" aria-label="Achievements">

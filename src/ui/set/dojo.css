@@ -1,0 +1,50 @@
+/* ---- the Training Dojo in the Obsidian set: same title, buttons, panels and back button as the kit; its slabs match the menu's ---- */
+html[data-look="obsidian"] .dojo { --dj-font: var(--ob-display); font-family: var(--ob-body); background: #05040a; }
+html[data-look="obsidian"] .dojo > .set-backdrop { position: absolute; z-index: 0; --veil: radial-gradient(ellipse 60% 38% at 50% 40%, rgba(4, 3, 8, 0.5), transparent 100%), linear-gradient(rgba(4, 3, 8, 0.6), transparent 22%); }
+/* The title: the Hall of the Hero's size, glow and kicker. The style name is the kicker above it. */
+html[data-look="obsidian"] .dojo-top { align-items: center; gap: 1.6rem; }
+html[data-look="obsidian"] .dojo-title { display: flex; flex-direction: column-reverse; font-size: clamp(3rem, 7.4vh, 4.6rem); letter-spacing: 0.035em; }
+html[data-look="obsidian"] .dojo-title span { margin-bottom: 0.35rem; font: 700 1.15rem/1 var(--ob-body); letter-spacing: 0.3em; text-shadow: 0 2px 3px #000; -webkit-text-fill-color: var(--ob-ice); color: var(--ob-ice); }
+html[data-look="obsidian"] .dojo-end-title { font-size: 3.6rem; letter-spacing: 0.04em; }
+html[data-look="obsidian"] .dojo-pick .dojo-end-title { font-size: clamp(3rem, 7vh, 4.4rem); }
+html[data-look="obsidian"] .dojo-progress { font: 400 1.5rem/1 var(--ob-display); letter-spacing: 0.08em; color: var(--ob-ice-hi); text-shadow: 0 2px 3px #000; }
+html[data-look="obsidian"] .dojo-points { clip-path: var(--ob-shard); }
+html[data-look="obsidian"] .dojo-points span { font: 700 1.15rem/1 var(--ob-body); letter-spacing: 0.2em; }
+html[data-look="obsidian"] .dojo-pick .dojo-closing { font-size: 1.6rem; max-width: 52rem; color: #fff; text-shadow: 0 2px 6px #000, 0 0 18px #000; }
+html[data-look="obsidian"] .dojo-card { padding: 1.2rem 1.7rem 1.4rem; }
+html[data-look="obsidian"] .dojo-name, html[data-look="obsidian"] .dojo-grade, html[data-look="obsidian"] .dojo-gain, html[data-look="obsidian"] .dojo-total b { font-weight: 400; }
+html[data-look="obsidian"] .dojo-buttons .dojo-button { font-size: 1.6rem; padding: 0.7rem 2.2rem; }
+html[data-look="obsidian"] .dojo-pick > .dojo-key { clip-path: var(--ob-shard); padding: 0.4rem 1.8rem; }
+
+/* The style pick: five slabs like the menu's. Each has its device cut into the glass. Ice at rest; hover or focus burns lava. */
+html[data-look="obsidian"] .dojo-styles { flex-wrap: nowrap; gap: 1.2rem; max-width: min(100%, 84rem); margin: 1rem 0 0.8rem; }
+html[data-look="obsidian"] .dojo-style {
+  --shard: polygon(14% 0, 86% 3%, 100% 22%, 96% 86%, 78% 100%, 18% 97%, 0 80%, 4% 14%); --edge: var(--ob-edge-ice); --vein: var(--ob-ice);
+  flex: 1 1 0; width: auto; min-width: 0; min-height: clamp(18rem, 44vh, 27rem); box-sizing: border-box; padding: 1.4rem 1.7rem 1.6rem; display: grid; grid-template-rows: 1fr auto auto; justify-items: center; align-content: end; gap: 0.6rem;
+}
+html[data-look="obsidian"] .dojo-style::before { background: var(--edge); }
+html[data-look="obsidian"] .dojo-style::after { background: linear-gradient(97deg, transparent 80%, var(--vein) 80.6%, var(--vein) 81.4%, transparent 82%) 0 0 / 100% 100% no-repeat, radial-gradient(ellipse at 50% 108%, color-mix(in srgb, var(--vein) 42%, transparent), transparent 62%), var(--ob-glass-t); }
+html[data-look="obsidian"] .dojo-style b { max-width: 100%; white-space: nowrap; font: 400 clamp(1.4rem, 1.75vw, 2rem)/1 var(--ob-display); letter-spacing: 0.05em; text-shadow: 0 0 14px color-mix(in srgb, var(--vein) 90%, transparent), 0 2px 0 #000; }
+html[data-look="obsidian"] .dojo-style span { min-height: 4.6em; font: 500 1.15rem/1.3 var(--ob-body); color: #fff; }
+html[data-look="obsidian"] .dojo-style:is(:hover, :focus-visible) { --edge: linear-gradient(165deg, #fff, var(--ob-lava) 40%, #7a2206 70%, var(--ob-hot)); --vein: var(--ob-lava); transform: translateY(-8px); }
+html[data-look="obsidian"] .dojo-style:is(:hover, :focus-visible) b { color: var(--ob-hot); }
+html[data-look="obsidian"] .dojo-style:is(:hover, :focus-visible)::after { background: linear-gradient(97deg, transparent 80%, var(--vein) 80.6%, var(--vein) 81.4%, transparent 82%) 0 0 / 100% 100% no-repeat, radial-gradient(ellipse at 50% 100%, rgba(255, 106, 20, 0.7), transparent 72%), var(--ob-glass-t); }
+html[data-look="obsidian"] .dojo-style:focus-visible { outline: 3px solid #f0faff; outline-offset: 8px; }
+
+/* The practice view: both halves are panels of glass, and every small word is 18 px or more on a backing. */
+html[data-look="obsidian"] .dojo-side { background: none; padding: 1.4rem 1.8rem 1.6rem; max-width: 31rem; }
+html[data-look="obsidian"] .dojo-cue { padding: 0.3rem 1.5rem; font: 400 1.5rem/1.2 var(--ob-display); letter-spacing: 0.14em; color: var(--ob-ice-hi); box-shadow: inset 0 0 0 2px var(--ob-ice); }
+html[data-look="obsidian"] .dojo[data-phase="go"] .dojo-cue { color: #1b0c04; box-shadow: none; }
+html[data-look="obsidian"] .dojo-how { font-size: 1.6rem; color: #fff; }
+html[data-look="obsidian"] .dojo-key { font-size: 1.25rem; color: #fff; }
+html[data-look="obsidian"] .dojo-dots li { font-size: 1.25rem; color: #fff; }
+html[data-look="obsidian"] .dojo-outline .mg-kind { padding: 0.3rem 1.4rem; font: 400 1.35rem/1.2 var(--ob-display); letter-spacing: 0.2em; }
+html[data-look="obsidian"] .dojo-outline .mg-match { gap: 0.7rem; font: 400 1.5rem/1 var(--ob-display); letter-spacing: 0.08em; color: #fff; }
+html[data-look="obsidian"] .dojo-outline .mg-match-number { min-width: 4.4ch; color: var(--ob-hot); }
+html[data-look="obsidian"] .dojo-outline .mg-checks { --mg-check: 1.3rem; }
+html[data-look="obsidian"] .dojo-outline .mg-checks li { color: #fff; }
+html[data-look="obsidian"] .dojo-outline .mg-steps figcaption { font: 400 1.6rem/1 var(--ob-display); color: var(--ob-hot); }
+html[data-look="obsidian"] .dojo-outline .mg-depth { font-size: 1.15rem; }
+/* With no camera the guide dims the match row and ticks; keep them readable. */
+html[data-look="obsidian"] .dojo-outline .move-guide[data-live="false"] :is(.mg-match, .mg-bar, .mg-tick) { opacity: 0.9; }
+html[data-look="obsidian"] .dojo-outline .mg-match-bar { border-color: var(--ob-ice); }
