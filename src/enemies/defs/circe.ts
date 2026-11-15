@@ -13,10 +13,10 @@ export const enemy: EnemySpec = {
   hp: 360,
   strikeWindowMs: 2400,
   attacks: [
-    { id: "wand_left", name: "Wand stroke", telegraphMs: 1600, damage: 9, counter: "dodge_right" },
-    { id: "wand_right", name: "Wand stroke", telegraphMs: 1600, damage: 9, counter: "dodge_left" },
-    { id: "cup", name: "Flung cup", telegraphMs: 1700, damage: 10, counter: "duck" },
-    { id: "spell", name: "Spell of swine", telegraphMs: 1900, damage: 13, counter: "block", weight: 0.7 },
+    { id: "wand_left", name: "Wand stroke", telegraphMs: 1600, damage: 6, counter: "dodge_right" },
+    { id: "wand_right", name: "Wand stroke", telegraphMs: 1600, damage: 6, counter: "dodge_left" },
+    { id: "cup", name: "Flung cup", telegraphMs: 1700, damage: 6, counter: "duck" },
+    { id: "spell", name: "Spell of swine", telegraphMs: 1900, damage: 10, counter: "block", weight: 0.7 },
   ],
   phases: [
     // She plays the host: slow, sweet, one cup at a time.
