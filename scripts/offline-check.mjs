@@ -259,13 +259,23 @@ async function cameraPass(browser, base, log, ms) {
   log.stage = "camera";
   await page.goto(base, { waitUntil: "load" });
   await page.getByRole("button", { name: "Fight with your body (webcam)" }).click();
-  // The style screen comes up both when the tracker starts and when it fails; the notice says which.
-  await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor({ timeout: 90_000 });
-  const notice = (await page.locator("main.menu .notice").innerText()).trim();
-  const started = notice.startsWith("Starting the camera");
+  // A tracker that starts leads to the god scan; one that fails leads straight to the style menu with a notice.
+  const scan = page.getByRole("button", { name: "Reveal my god" });
+  const styles = page.getByRole("heading", { name: "Choose your fighting style" });
+  await scan.or(styles).waitFor({ timeout: 90_000 });
+  const started = await scan.isVisible();
   const startedAt = Date.now();
+  const notice = started ? "" : (await page.locator("main.menu .notice").innerText()).trim();
+  let god = "";
   let calibration = "";
   if (started) {
+    // The scan sends one picture to /api/reveal. No server answers, so the god must be chosen in the browser.
+    await scan.click();
+    const begin = page.getByRole("button", { name: "Begin the journey" });
+    await begin.waitFor({ timeout: 40_000 });
+    god = (await page.locator("main.reveal .reveal-name").innerText()).trim();
+    await begin.click();
+    await styles.waitFor();
     await page.locator("main.menu button").first().click();
     await page.locator("button.stop.open").first().click();
     await page.getByRole("button", { name: `Face ${STOP}` }).click();
@@ -274,7 +284,7 @@ async function cameraPass(browser, base, log, ms) {
     await page.waitForTimeout(Math.max(0, ms - (Date.now() - startedAt)));
   }
   await context.close();
-  return { started, notice, calibration, seconds: (Date.now() - startedAt) / 1000 };
+  return { started, notice, god, calibration, seconds: (Date.now() - startedAt) / 1000 };
 }
 
 function countBy(items, keyOf) {
@@ -285,13 +295,13 @@ function countBy(items, keyOf) {
 
 const folderOf = (entry) => entry.path.split("/")[1] || "/";
 const line = (entry) => `    ${(entry.ms / 1000).toFixed(1).padStart(6)} s  ${entry.stage.padEnd(7)} ${entry.type.padEnd(10)} ${entry.result.padEnd(4)} ${entry.method} ${entry.external ? entry.url : entry.path}`;
+const isApi = (entry) => entry.path.startsWith("/api/") || entry.path.startsWith("/replays");
 
 function report(log, fight, camera) {
   const external = log.requests.filter((entry) => entry.external);
   const local = log.requests.filter((entry) => !entry.external);
   const keyboard = local.filter((entry) => entry.pass === "keyboard");
-  const api = keyboard.filter((entry) => entry.path.startsWith("/api/") || entry.path.startsWith("/replays"));
-  const failed = local.filter((entry) => !/^[23]\d\d$/.test(entry.result) && !api.includes(entry));
+  const failed = local.filter((entry) => !/^[23]\d\d$/.test(entry.result) && !isApi(entry));
   const late = keyboard.filter((entry) => entry.afterFirstPrompt);
   const list = (title, entries) => { say(`  ${title}: ${String(entries.length)}`); entries.forEach((entry) => { say(line(entry)); }); };
 
@@ -303,7 +313,7 @@ function report(log, fight, camera) {
   external.forEach((entry) => { say(line(entry)); });
   say(`  keyboard pass by folder: ${countBy(keyboard, folderOf)}`);
   say(`  keyboard pass by screen: ${countBy(keyboard, (entry) => entry.stage)}`);
-  list("calls to the AI server (none is running)", api);
+  list("calls to the AI server in the keyboard pass (none is running)", keyboard.filter(isApi));
   list("other local requests that did not get a 2xx or 3xx", failed);
   list(`asked for after the first prompt card (${((log.firstPromptAt ?? 0) / 1000).toFixed(1)} s)`, late);
   say(`\nFonts: heading drawn with ${fight.fonts.heading.join(", ")}; buttons with ${fight.fonts.button.join(", ")}; web fonts declared by the page: ${String(fight.fonts.webFontsDeclared)}`);
@@ -313,8 +323,9 @@ function report(log, fight, camera) {
   log.pageErrors.forEach((entry) => { say(`    [${entry.pass} ${entry.stage}] ${entry.text}`); });
   if (camera) {
     const pose = local.filter((entry) => entry.pass === "camera" && entry.path.startsWith("/mediapipe/"));
-    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s` : ""}`);
+    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, god scan chose "${camera.god}", then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s` : ""}`);
     list("pose files asked for, all from localhost", pose);
+    list("calls to the AI server in the camera pass (none is running)", local.filter((entry) => entry.pass === "camera" && isApi(entry)));
   } else say("\nCamera pass: skipped (--no-camera)");
 }
 
