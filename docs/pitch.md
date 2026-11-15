@@ -83,13 +83,13 @@ Boxer is the style the pacing test plays, and each of its strikes uses one arm.
 
 ### About 0:20 to 1:10. His bar is full. The Cave: the two beats
 
-**Judge:** a red card names a defense; they hold it until the blow lands. A gold card names a strike and a gold ring marks the weak spot; they throw it. In this phase he swings and grabs, with over two seconds of warning.
+**Judge:** a red card names a defense; they do it once before the blow lands. A gold card names a strike and a gold ring marks the weak spot; they throw it. In this phase he swings and grabs, with over two seconds of warning.
 
-**Say on the first red card (9 words):** "Red card: do what it says, and hold it."
+**Say on the first red card (9 words):** "Red card: do what it says before he hits."
 
 **Say on the first gold card (10 words):** "Gold card: his weak spot is lit. Throw that strike."
 
-Then be quiet for three exchanges. If the judge freezes, read the card to them: "Lean right. Hold it." If they miss the first one, let it go; the next card teaches the same thing.
+Then be quiet for three exchanges. If the judge freezes, read the card to them: "Lean right." If they miss the first one, let it go; the next card teaches the same thing.
 
 **Say after those (24 words):** "Watch the card shrink. After two clean reps the drawing goes. After five it is only a timer, and I will call the move."
 
