@@ -1,0 +1,51 @@
+/* The fight HUD in pebble mosaic: light edge pieces over the 3D view. Colours come from --pb-* in src/theme.css.
+   Anything read in half a second (move word, HOLD, key, health, timer) is plain type, 14 px or more, outlined. */
+.fight { position: relative; height: 100%; }
+.hud { position: absolute; inset: 0; pointer-events: none; font-family: var(--pb-font-body); color: var(--pb-text); }
+.hud * { box-sizing: border-box; }
+
+.hb-bar { position: absolute; top: 14px; width: 36%; }
+.hb-bar--left { left: 14px; }
+.hb-bar--right { right: 14px; text-align: right; }
+.hb-name { display: inline-block; margin: 0 0 -2px 10px; padding: 2px 14px; border: 2px solid var(--pb-lead); border-bottom: 0; border-radius: 6px 6px 0 0; background: var(--pb-dusk); font: 700 14px/1.3 var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline); }
+.hb-bar--right .hb-name { margin: 0 10px -2px 0; }
+.hb-bar__frame { padding: 6px 7px; border: 2px solid var(--pb-lead); border-radius: 10px; background: rgba(14, 10, 8, 0.82); box-shadow: 0 0 0 2px rgba(8, 5, 4, 0.6), 0 4px 12px rgba(0, 0, 0, 0.45); }
+.hb-bar__inner { position: relative; height: 20px; }
+.hb-bar--right .pb-meter { margin-left: auto; }
+
+.hb-score-wrap { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); text-align: center; }
+.hb-score.pb-panel { min-width: 8rem; padding: 4px 22px; font: 700 28px/1.2 var(--font-display); letter-spacing: 0.1em; text-shadow: 0 0 4px var(--pb-outline), 0 0 4px var(--pb-outline); }
+.hb-combo { display: inline-block; margin-top: 4px; padding: 1px 12px; border: 2px solid var(--pb-lead); border-radius: 6px; background: var(--pb-terra-dark); font: 700 14px/1.3 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--pb-text); }
+
+.hb-power { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hb-power span { font: 700 14px/1 var(--font-display); letter-spacing: 0.22em; text-transform: uppercase; text-shadow: 0 0 3px var(--pb-outline), 0 0 3px var(--pb-outline); }
+
+/* Banners: plain, big, outlined. */
+.hb-intro { position: absolute; top: 33%; width: 100%; text-align: center; }
+.hb-intro .pb-heading { display: inline-block; filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.7)); }
+.hb-intro small { display: block; margin-top: 8px; font: 700 26px/1.2 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--pb-text); text-shadow: 0 0 5px var(--pb-outline), 0 0 5px var(--pb-outline), 0 2px 0 var(--pb-outline); }
+.hb-phase { position: absolute; top: 92px; left: 50%; transform: translateX(-50%); padding: 4px 28px; border: 2px solid var(--pb-lead); border-radius: 10px; background: var(--pb-dusk); font: 700 26px/1.2 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--pb-ochre-light); text-shadow: 0 0 3px var(--pb-outline); white-space: nowrap; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55); }
+.hb-rating { position: absolute; top: 35%; width: 100%; text-align: center; font: 700 44px/1.1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--pb-ochre-light); text-shadow: 0 0 6px var(--pb-outline), 0 0 6px var(--pb-outline), 0 3px 0 var(--pb-outline); }
+.hb-duo { position: absolute; top: 14px; left: 50%; margin-left: 9rem; padding: 2px 12px; border: 2px solid var(--pb-lead); border-radius: 6px; background: var(--pb-dusk); font: 700 14px/1.3 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; }
+.hb-together { position: absolute; top: 28%; width: 100%; text-align: center; font: 700 40px/1.1 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--pb-cream); text-shadow: 0 0 6px var(--pb-outline), 0 0 6px var(--pb-outline), 0 3px 0 var(--pb-outline); }
+
+/* The prompt card: always at the right edge, vertically centred, clear of the hero (left of centre) and the monster. */
+.pb-card.hb-card { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); min-height: 0; padding-bottom: 52px; text-align: center; }
+.hb-card.full { min-height: 380px; }
+.hb-card.word { min-height: 240px; }
+.hb-card.mini { min-height: 160px; }
+.hb-card .stick { display: block; width: 6.5rem; height: 6.5rem; margin: 2px auto 0; fill: none; stroke: var(--pb-cream); stroke-width: 4.2; stroke-dasharray: 0 7; stroke-linecap: round; stroke-linejoin: round; }
+.hb-card .stick-head { fill: var(--pb-cream); stroke-dasharray: none; stroke-width: 1; stroke: var(--pb-lead); }
+.hb-card .stick-joint { fill: var(--pb-terra); stroke: var(--pb-lead); stroke-width: 1; stroke-dasharray: none; }
+.hb-card .pb-move { font-size: 26px; letter-spacing: 0.05em; }
+.hb-card .pb-hint { margin: 6px 0 0; }
+.hb-card kbd { display: inline-block; padding: 2px 9px; border: 2px solid var(--pb-cream); border-radius: 6px; background: #3a2d26; font: 700 14px var(--font-display); letter-spacing: 0.06em; color: var(--pb-text); }
+.hb-card .pb-tag { margin-right: 4px; }
+.hb-card .pb-teach { margin-top: 6px; }
+/* The real situation the attack stands for: one short line, below the attack's name. */
+.hb-situation { margin: 4px 0 0; font: 600 14px/1.25 var(--pb-font-body); color: #f3ead8; text-shadow: 0 0 3px var(--pb-outline), 0 0 3px var(--pb-outline); }
+@media (max-height: 760px) {
+  .hb-card.full { min-height: 340px; }
+  .hb-card .stick { width: 5rem; height: 5rem; }
+  .hb-card .pb-teach { display: none; }
+}
