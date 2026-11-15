@@ -64,8 +64,8 @@ beside him telling him what to do. That is self-defense, and that is a coach.
 
   Two fighters who throw the same strike together hit twice as hard.
 - **Accounts and a Hall of heroes.** Sign in on the Account screen to keep your name, settings,
-  character and trophies on another browser, and see the best scores. Without an account, progress
-  stays in your browser.
+  character and trophies on another browser, and see the best scores. A signed-in player can change
+  their sign-in name and password there. Without an account, progress stays in your browser.
 
 | Main menu | Multiplayer |
 |---|---|
