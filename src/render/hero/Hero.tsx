@@ -23,6 +23,7 @@ import { createReach } from "./reach";
 import type { HeroReach } from "./reach";
 import { trackShare } from "./track/blend";
 import { createBodyTracker } from "./track/BodyTracker";
+import { dodge, pivotShift } from "../effects/dodge/dodgeMotion";
 import type { BodyTracker } from "./track/BodyTracker";
 
 const GHOST_OFFSET: readonly [number, number, number] = [-0.9, 0, 0.2];
@@ -72,6 +73,8 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
   const target = useRef({ at: [0, 0, 0] as [number, number, number], v: new Vector3() });
   const home = useRef<[number, number, number]>([0, 0, 0]);
   const input = useRef<MutableInput>(newInput());
+  const turn = useRef({ x: 0, y: 0 });
+  const kept = useRef(new Set<string>());
   const prepare = useMemo(() => {
     const tint = tinter(candidate.tint);
     return (root: Object3D): void => {
@@ -91,7 +94,11 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
     if (!g) return;
     const h = home.current;
     h[0] = battle.heroX + (tracker.current?.stepX ?? 0); h[1] = 0; h[2] = HOME_Z + battle.heroZ;
-    g.position.set(h[0] + battle.reachX, battle.reachY + (poser.current?.lift ?? 0), h[2] + battle.reachZ);
+    // The dodge look leans the whole body about his low middle (dodgeMotion).
+    const on = dodge.active;
+    const shift = pivotShift(on ? dodge.tiltZ : 0, turn.current);
+    g.rotation.z = on ? dodge.tiltZ : 0;
+    g.position.set(h[0] + battle.reachX + shift.x, battle.reachY + (poser.current?.lift ?? 0) + shift.y, h[2] + battle.reachZ);
     // A tracked duck lowers the pelvis itself; squashing the whole model on top would double it.
     g.scale.y = MathUtils.damp(g.scale.y, battle.held.has("duck") && !tracker.current?.active ? (candidate.rig.duck?.squash ?? 1) : 1, 14, Math.min(delta, 0.05));
   });
@@ -120,7 +127,14 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
             // A kick is thrown only in the leap; a later held jump tucks both legs.
             const kick: Act["kick"] = l.air > 0 && KICKS.has(move) ? (move === "knee" ? "knee" : "front_kick") : null;
             const t = target.current;
-            p.update(l, battle.held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta);
+            // With the dodge look the dodge's own crouch and turn come from dodgeMotion, so the stance leaves the held dodges out.
+            let held: ReadonlySet<string> = battle.held;
+            if (dodge.active) {
+              kept.current.clear();
+              for (const m of battle.held) if (m !== "dodge_left" && m !== "dodge_right") kept.current.add(m);
+              held = kept.current;
+            }
+            p.update(l, held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta, dodge.active ? dodge.crouch : 0);
           }
           if (group.current) reaches.current.get(root)?.update(group.current, home.current, now, l);
         }}

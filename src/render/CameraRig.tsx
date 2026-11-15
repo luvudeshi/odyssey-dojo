@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { MathUtils, PerspectiveCamera } from "three";
 import { battle, calmMotion, nowSeconds } from "./battle";
 import { cameraShot, makeShot } from "./cameraShots";
+import { dodge } from "./effects/dodge/dodgeMotion";
 import type { Shot } from "./cameraShots";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
@@ -16,6 +17,10 @@ export function CameraRig() {
     const dt = Math.min(delta, 0.05);
     const { target, now } = (shots.current ??= { target: makeShot(), now: makeShot() });
     cameraShot(target, battle, nowSeconds(), calmMotion());
+    if (dodge.active) {
+      // The shot follows the hero sideways, which hides his travel in a dodge. Give back most of that.
+      target.px -= dodge.x * 0.45; target.lx -= dodge.x * 0.28;
+    }
     const k = target.lambda;
     now.px = MathUtils.damp(now.px, target.px, k, dt);
     now.py = MathUtils.damp(now.py, target.py, k, dt);
