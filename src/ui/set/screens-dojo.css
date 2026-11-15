@@ -45,6 +45,8 @@
   .dojo-set-count { margin-left: 12px !important; }
   .dojo-set-camera { color: var(--st-dim); }
   .dojo-set-start { justify-self: end; min-height: 50px; padding: 6px 48px; font-size: 24px; }
+  /* The camera preview sits bottom right (about 224 px from the edge): keep the button left of it where the panel runs under it, none from about 1570 px up. */
+  .dojo:has(.dojo-camera video) .dojo-set-start { margin-right: clamp(0px, calc(784px - 50vw), 162px); }
 
   /* the move list: bronze tick boxes on the glass */
   .dojo-set-moves { grid-template-columns: 1fr 1.45fr 0.9fr 2.2fr; gap: 12px 28px; padding-right: 6px; }
