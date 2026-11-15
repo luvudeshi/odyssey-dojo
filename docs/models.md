@@ -49,26 +49,44 @@ export const model: MonsterModel = {
 
 `/?model=dev` swaps Polyphemus for the CC0 test robot. Add `&debug` and read `window.__modelDebug` (`clip`, `time`, `scrub`, `loop`, `clips`) to see what the mixer is playing.
 
-## The hero, as candidates
+## The hero: the spartan
 
-`?hero=<id>` swaps the bronze figure for an animated GLB hero (`knight`, `adventurer`). Code is in `src/render/hero/`: `candidates.ts` (file, fit, tint, which clip plays for each action), `heroClips.ts` (the pure action-to-clip rules, tested in `tests/heroClips.test.ts`) and `Hero.tsx`. Without the flag nothing changes.
+The owner picked the spartan, and it is the hero with no URL flag (`?hero=` is gone; any value is ignored). Code is in `src/render/hero/`: `defs/spartan.tsx` (file, fit, which clip plays for each action), `heroClips.ts` (the pure action-to-clip rules, `tests/heroClips.test.ts`), `gearRule.ts` (which gear is in his hands, `tests/hero-gear.test.ts`), `gear/` (helmet, cuirass, cape and greaves from `spartanGear.tsx`; shield, spear and stake from `carriedGear.tsx`) and `Hero.tsx`. The GLB is preloaded at import, so he is normally there the moment a fight starts.
 
-- Both the keyboard and the webcam go through `battle` (`held`, `struckMove`/`struckAt`, `playerHitAt`, the combat phase), so both trigger clips.
-- A strike clip is scrubbed by the fight clock, not played freely: it starts so the contact frame lands 80 ms after the engine reports the strike. Hurt is scrubbed the same way. Block and idle loop (duck holds a frozen crouch frame or squashes the model); dodge, victory and defeat play once.
-- The old pose-driven figure becomes a faint blue ghost (25% opacity) only while a live webcam frame arrives, offset to the hero's left. It is hidden for keyboard play. It is the full bronze figure until the GLB has loaded, or if it fails to load.
-- Add `&debug` and read `window.__heroGroup`, `window.__battle`, `window.__poseRef` to drive the hero from a browser test.
+- Both the keyboard and the webcam go through `battle` (`held`, `struckMove`/`struckAt`, `playerHitAt`, `styleId`, the combat phase), so both trigger clips.
+- A strike clip is scrubbed by the fight clock, not played freely: it starts so the contact frame lands 80 ms after the engine reports the strike. Hurt is scrubbed the same way. Block and idle loop; duck holds the crouch loop; dodge, victory and defeat play once.
+- The code-built bronze figure shows until the GLB has loaded, or for good if it fails to load. After that it is a faint blue ghost (25% opacity, offset to his left) only while a live webcam frame arrives, and hidden for keyboard play.
+- Add `&debug` and read `window.__heroGroup`, `window.__battle`, `window.__now`, `window.__poseRef`, `window.__camera` to drive him from a browser test.
+
+### Gear: nothing in his hands at rest
+
+A fighter punches and blocks with bare fists. At rest the round bronze shield is slung on his back, over the cape, and both hands are empty. In the Hoplite style the spear is slung across his back too; no other style has a spear at all. `heldGear` (pure, `gearRule.ts`) says what is in his hand: the spear only for `spear_thrust` and `overhead_strike` in the Hoplite style, the stake only for `stake_thrust` (the Polyphemus finisher, any style), nothing otherwise and nothing while he blocks, ducks, dodges, is hit, wins or loses. The item scales up in the right hand as its clip starts and scales away when the clip ends, and the slung spear hides while the other is in his hand. Block is both fists up in front of the face (the prompt card says "Bring both fists up to your face"); idle is a boxer's guard with both fists at chin height.
+
+Arms: the pack's clips were authored for sword and shield, so the arm tracks of `Guard_Idle`, `Guard_Block`, `Dodge_L` and `Dodge_R` were overwritten in the GLB with constant fists-up poses solved by two-bone IK (fist targets in front of the chin, elbows down). `Dodge_*` borrow the idle guard. Hurt, victory, death and the strike clips keep their own arms. The GLB (757 KB) is the same file otherwise.
+
+### Framing
+
+The camera is `src/render/cameraShots.ts` (and the first-frame numbers in `Scene.tsx`). Base shot: position (1.4, 2.15, 4.9) looking at (0.8, 1.5, -1.6), fov 52. The strike shot used to push in and look 60% toward the weak spot, which dropped his feet out of the bottom of the frame; it now sits further back (z 6.4, y 2.9) and looks 25% toward the weak spot, still with a narrower lens. The finisher and victory orbit has radius 7 and sweeps 0.9 rad (it was 6 and 1.1) and looks lower, and the hit kick is smaller. `tests/hero-framing.test.ts` projects his feet (both boots, stance depth included), shoulders and helmet through the camera for rest, defend (dodging, knocked back), strike (hit landing), finisher, won and lost at 34 moments, and fails if any is outside 94% of the frame. A second test projects every enemy's weak spots in the strike shot and fails if his body covers one. Known: Polyphemus's raised club still leaves the top of the frame on a windup (unchanged).
 
 ### Model log
 
-Checked in the running fight (`?hero=<id>&debug`, keyboard play) at 1440x810. Screenshots are in `docs/screenshots/hero-*`.
+Checked in the running fight (keyboard play, `/`, 1440x810; `docs/screenshots/hero-spartan-default-*.png`).
 
 | Name | Source | Licence | Size | Fit used | Clips used | Verdict |
 |---|---|---|---|---|---|---|
-| Knight (KayKit Adventurers 1.0) | https://kaylousberg.itch.io/kaykit-adventurers | CC0 | 2.5 MB (from 3.6 MB: other shields, offhand sword and 2H sword removed, 19 of 78 clips kept) | targetHeight 1.1 (bone height; the chibi head and helmet add height on top), rotationY pi, cape tinted crimson, helmet bronze | Idle, Blocking, Jump_Land (duck stand-in, frozen at 0.3 so it holds the crouch), Dodge_Left/Right, 1H Slice_Horizontal (default strike), Chop (overhead), Slice_Diagonal (hook, uppercut), Stab (thrusts), Hit_A, Cheer, Death_A | kept as candidate, resized. Round shield and sword are the pack's own and sit on the hand slots cleanly. Strikes read from behind; block and duck are subtle from the over-the-shoulder camera because the big head hides the arms |
-| Adventurer (Quaternius) | https://quaternius.com (poly.pizza listing; the exact page URL was not recorded with the download, CC0 taken from the candidate licence check) | CC0 | 1.6 MB (16 of 24 clips kept) | targetHeight 1.5 (bone height, about 1.75 m rendered), rotationY pi, no tint | Idle_Sword, Idle_Neutral (block stand-in), Idle_Neutral (block and duck stand-in; duck squashes the model to 75%, because Roll has root motion and tumbled into the floor), Run_Left/Right (dodge stand-in), Punch_Right (default strike), Punch_Left, Kick_Left/Right (hook, uppercut, hammer fist), Sword_Slash (thrusts), HitRecieve, Wave (victory stand-in), Death | kept as candidate, resized. Proportions fit the monster and cave best, but it is a modern backpacker in olive clothes, not Greek, and has no block or duck clip |
-| Universal Base Character, male (Quaternius) with UAL1 and UAL2 clips | https://quaternius.itch.io/universal-base-characters | CC0 | 2.3 MB packed (4K textures to 512 webp) | targetHeight 1.75 | UAL2 binds by bone name (Sword_Regular_A/B, Melee_Hook, Sword_Block, Hit_Knockback, Idle_Shield_Loop); UAL1 does not (its bones are Blender `DEF-` names with a different rest pose, so rotations cannot be copied by name) | rejected, not shipped. The clips work, but the model is a realistic bare-chested mannequin that clashes with the stylized low-poly cave, and the pack's death, punch and idle clips are the UAL1 ones that cannot bind. Screenshot kept: `docs/screenshots/hero-base-idle-rejected.png` |
+| Spartan: Universal Animation Library 1 and 2 mannequin and clips (Quaternius), flat-shaded matte skin, gear built in code | https://quaternius.com/animviewer.html (UAL1 Standard, UAL2 Standard; `License.txt` in both) | CC0 1.0 | 757 KB | `targetHeight` 1.544 (bone box; renders the 1.83 m mesh at about 1.8 m), `rotationY` pi, `offset` z 0.8 (steps him back from the camera so his feet and a crouch stay in frame), adult proportions (head about 1/7.5 of the height) | Guard_Idle, Guard_Block, Crouch_Idle_Loop, Dodge_L/R, Punch_Jab (default strike), Punch_Cross, Melee_Hook, Sword_Regular_A (overhead strike), Sword_Regular_B (thrusts, stretched to 0.55 s, contact at 0.5 s), Hurt, Victory, Death01. UAL1 clips were copied onto the UAL2 skeleton by bone name (identical rest transforms), scale tracks and every translation except the pelvis dropped. Guard_Idle, Guard_Block, Dodge_L/R, Hurt and Victory are stand-ins built from Sword_Idle (pelvis turned 55 degrees toward the giant, lean for the dodges, flinch, arms in a V), with the arms re-solved as above | kept: the hero |
 
-The cave and the primitive Polyphemus are untouched by this PR. Packing used `@gltf-transform` from a temp folder (not added to package.json): removed unused accessory meshes and clips, pruned, deduped.
+Review notes: his round shield is a matte bronze (the first, shinier one blew out to white when he ducked under the camera). Not verified: a spear thrust caught at full extension in the finisher camera; fists in the webcam path (clips are the same, the pose input is the keyboard's); Dodge_* with the baked guard at full lean (checked at one moment).
+
+### Rejected heroes
+
+Removed from the repo (files, tests, screenshots and URL ids), with the reason:
+
+- Knight (KayKit Adventurers, CC0): big head, bulky, the owner's words.
+- Adventurer (Quaternius, CC0): a modern backpacker, not Greek, and no block or duck clip.
+- Hoplite (Adventurer re-dressed): the square cape hid the body.
+- Warrior: the owner preferred the spartan.
+- Universal Base Character (bare mannequin, never shipped): realistic and bare-chested, clashes with the low-poly cave. Screenshot kept: `docs/screenshots/hero-base-idle-rejected.png`.
 
 `/?model=<id>` swaps Polyphemus for a candidate: `dev` (CC0 test robot), `giant`, `classic` (table in `src/render/models/candidates.ts`; the default look is unchanged without the flag). Add `&debug` and read `window.__modelDebug` (`clip`, `time`, `scrub`, `loop`, `clips`) to see what the mixer is playing.
 
@@ -109,7 +127,7 @@ Every model or set piece brought into the fight, looked at in the running Polyph
 | Sheep (4) | built in code | ours | merged | scaled x1.5, three fleece lumps, dark head and legs | none | redone, still small | The first sheep were pale cream and clipped to white blobs under the orange sun. Now earth-toned wool with a dark face; they read as grey woolly animals behind the fence, though at the screen edge they are still small. |
 | Sea | built in code shader, `cave/Sea.tsx` | ours | 1 quad | y=-1.5, runs to the horizon, reflects the same sky function as the dome | shader time | resized | Now mirrors the dusk sky so the horizon is seamless. Earlier: checker pattern showed at the horizon; ripple tilt softened and faded with distance. Low quality drops the ripples. |
 | Light shafts, dust motes | built in code | ours | 6 beams | high only | pulse | kept | Gone on low as required. |
-| Hero (boxer, knight) | existing in repo, not mine | n/a | n/a | about 1.8 m | existing | not changed | Boxer seen in every shot, knight (`?model=giant&hero=knight`) at idle only (`cave-mouth-knight.png`). Both stand on the floor, face the giant, scale right. Nothing sits between the camera and the hero. |
+| Hero (boxer, then the knight) | existing in repo, not mine | n/a | n/a | about 1.8 m | existing | not changed | Boxer seen in every shot; the knight was only seen at idle and has since been removed (the spartan is the hero now). Both stood on the floor, face the giant, scale right. Nothing sits between the camera and the hero. |
 | Polyphemus | existing in repo, not mine | n/a | n/a | about 5 m | existing | not changed | Seen with `?model=giant` (GLB) through idle, every windup (club left/right, grab, boulder), strikes, Blinded, finisher, death and loss. Head and raised club clear the roof (7 m). The giant turns pale peach for about 0.4 s when the killing blow lands (a 70-unit point light from HitEffects plus the hit flash); the rest of the finisher it is dark rust (re-checked in `cave-mouth-finisher.png`). Left as deliberate impact feedback. |
 
 Not brought in and not tested in the fight: the Poly Haven photoscans (boulder_01, stone_fire_pit, antique_ceramic_vase_01, rock_face_01, namaqualand_cliff_02, mountainside, marble_bust) and the small_harbour_sunset HDRI. Photo textures on large shapes break the flat-shaded look, so the set pieces are built in code instead.

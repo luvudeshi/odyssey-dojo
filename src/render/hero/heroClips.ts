@@ -55,7 +55,7 @@ export function strikeWindow(timed: Timed): number {
   return (1 - strikeStart(timed)) * timed.seconds;
 }
 
-export function chooseHeroPose(rig: HeroRig, input: HeroInput): HeroPose {
+export function chooseHeroPose(rig: Pick<HeroRig, "punch" | "thrust" | "hurt">, input: HeroInput): HeroPose {
   const strike = isThrust(input.struckMove, input.finisherMove) ? rig.thrust : rig.punch;
   if (input.lost) return "defeat";
   if (input.won && input.sinceStrike >= strikeWindow(strike)) return "victory";
