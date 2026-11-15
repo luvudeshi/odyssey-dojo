@@ -1,5 +1,7 @@
 // Google Gemini through the Interactions API. Model ids and field names were checked against the docs on 2026-11-14.
 import { GoogleGenAI } from "@google/genai";
+import { log } from "../../src/core/log";
+import { createRedactor } from "../lib/redact";
 import type { AiClients, ImageRequest, JsonRequest } from "./types";
 
 // Fastest stable model that takes an image and returns schema-bound JSON; the second is tried once if the first fails.
@@ -23,6 +25,7 @@ function hopeless(error: unknown): boolean {
 export function createGemini(apiKey: string): Pick<AiClients, "json" | "image"> {
   // Image input and image output are only served by the v1beta API.
   const client = new GoogleGenAI({ apiKey, apiVersion: "v1beta" });
+  const why = createRedactor([apiKey]);
 
   async function jsonOnce(model: string, request: JsonRequest): Promise<unknown> {
     const interaction = await client.interactions.create(
@@ -77,11 +80,15 @@ export function createGemini(apiKey: string): Pick<AiClients, "json" | "image"> 
   async function firstThatWorks<T>(models: readonly string[], run: (model: string) => Promise<T | null>, signal: AbortSignal): Promise<T | null> {
     let last: Error | null = null;
     for (const model of models) {
+      const started = Date.now();
       try {
         const result = await run(model);
         if (result !== null) return result;
       } catch (error) {
-        if (signal.aborted || hopeless(error)) throw error;
+        if (signal.aborted) throw error;
+        // Which model failed and how long it took: the route only ever hears about the last one.
+        log("warn", "gemini_model_failed", { model, ms: Date.now() - started, why: why(error) });
+        if (hopeless(error)) throw error;
         last = error instanceof Error ? error : new Error(String(error));
       }
     }
