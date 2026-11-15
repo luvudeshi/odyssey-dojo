@@ -134,7 +134,7 @@ test("every request goes to /api/account/ and nowhere else", async () => {
 
 test("nothing in src/ names a database: no connection string, no host, no variable the server keeps", () => {
   const SECRETS = /postgres(ql)?:\/\/|DATABASE_URL|sslmode=|timescale\.com|tigerdata\.(com|cloud)|process\.env/i;
-  const files = readdirSync("src", { recursive: true }).filter((name) => /\.(ts|tsx|css|json|html)$/.test(name));
+  const files = readdirSync("src", { recursive: true, encoding: "utf8" }).filter((name) => /\.(ts|tsx|css|json|html)$/.test(name));
   expect(files.length).toBeGreaterThan(100);
   expect(files.some((name) => name.endsWith("sync.ts"))).toBe(true);
   expect(files.filter((name) => SECRETS.test(readFileSync(join("src", name), "utf8")))).toEqual([]);

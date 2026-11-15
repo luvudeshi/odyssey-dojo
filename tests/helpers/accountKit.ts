@@ -1,12 +1,18 @@
 // For the account tests: the three real stores over a made-up localStorage, and a made-up account server behind fetch.
 import { createProfileStore } from "../../src/account/store";
-import type { ProfileStore } from "../../src/account/store";
+import type { FightResult, ProfileStore } from "../../src/account/store";
+import { newTally } from "../../src/account/tally";
 import type { AccountFetch } from "../../src/account/client";
 import type { LocalStores } from "../../src/account/snapshot";
 import type { TokenStorage } from "../../src/account/session";
 import { loadCharacter, saveCharacter } from "../../src/characters/characters";
 import { createSettingsStore } from "../../src/settings/store";
 import type { SettingsStore } from "../../src/settings/store";
+
+/** One finished fight as the game records it: fought as the boxer, hit once, with nothing else to count. */
+export function fight(enemyId: string, won: boolean, score: number, mastery: Readonly<Record<string, number>> = {}): FightResult {
+  return { enemyId, won, score, mastery, styleId: "boxer", tally: { ...newTally(), hitsTaken: 1 } };
+}
 
 export interface Memory extends TokenStorage {
   readonly data: Map<string, string>;

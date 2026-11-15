@@ -1,5 +1,6 @@
 // The player's profile: a hero name and what they have done so far, kept in this browser's localStorage.
-// There is no server and no password: "signing in" is typing a name. Every field read back is checked.
+// The game plays from this store whether or not anyone is signed in; an account (./sync) only copies it to and fro.
+// Every field read back is checked.
 import { useSyncExternalStore } from "react";
 import { log } from "../core/log";
 import { browserStorage } from "../settings/store";
@@ -114,7 +115,10 @@ export interface ProfileStore {
   readonly recordDojo: (perfect: boolean) => void;
   /** One fight played as the guest of a room. The host's fights come through `record`. */
   readonly recordRoom: () => void;
-  /** Puts a whole profile in place of this one (a save coming back from the account). It is checked like stored JSON. */
+  /**
+   * Takes the fields of a profile that came back from the account, each checked like stored JSON.
+   * A field it does not hold stays as it is here, so a save from before a field existed can never zero it.
+   */
   readonly replace: (profile: unknown) => void;
   readonly subscribe: (listener: () => void) => () => void;
 }
@@ -142,7 +146,10 @@ export function createProfileStore(storage: SettingsStorage | null): ProfileStor
     record: (fight) => { save(withFight(current, fight)); },
     recordDojo: (perfect) => { save({ ...current, dojo: current.dojo + 1, dojoPerfect: current.dojoPerfect + (perfect ? 1 : 0) }); },
     recordRoom: () => { save({ ...current, rooms: current.rooms + 1 }); },
-    replace: (profile) => { save(parseProfile(JSON.stringify(profile ?? null))); },
+    replace: (profile) => {
+      const given = typeof profile === "object" && profile !== null && !Array.isArray(profile) ? profile : {};
+      save(parseProfile(JSON.stringify({ ...current, ...given })));
+    },
     subscribe(listener) {
       listeners.add(listener);
       return () => { listeners.delete(listener); };
