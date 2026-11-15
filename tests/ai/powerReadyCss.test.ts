@@ -59,6 +59,17 @@ test("the banner and everything in it lets clicks through", () => {
   for (const rule of RULES) expect(rule.declarations.get("pointer-events") ?? "none", rule.selector).toBe("none");
 });
 
+test("it is centred on the lower edge of the fight, and is wide, not tall: the name on the left, the gesture on the right", () => {
+  const root = RULES.find((rule) => rule.selector === ".power-ready.power-ready--live")?.declarations;
+  expect(root?.get("left")).toBe("var(--power-ready-left, 0px)");
+  expect(root?.get("right")).toBe("var(--power-ready-right, 0px)");
+  expect(root?.get("justify-content")).toBe("center");
+  expect(root?.get("bottom")).toMatch(/^var\(--power-ready-bottom, clamp\(\d+px, [\d.]+vh, \d+px\)\)$/);
+  expect(root?.has("top")).toBe(false);
+  const plate = RULES.find((rule) => rule.selector === ".power-ready .power-ready__plate")?.declarations;
+  expect(plate?.get("grid-template-areas")).toBe('"title how" "move how"');
+});
+
 test("colours are the god's accent or a theme variable, each with a fallback for a theme that drops the name", () => {
   let coloured = 0;
   for (const rule of RULES) {

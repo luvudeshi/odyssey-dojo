@@ -26,11 +26,10 @@ const box: CSSProperties = { position: "absolute", border: "1px dashed #fff6", c
 function Stage({ god }: { god: GodId | null }) {
   return (
     <div className="fight" style={{ background: DARK, overflow: "hidden" }}>
-      <div style={{ ...box, left: "1rem", bottom: "1rem", width: "clamp(9rem, 20vw, 20rem)", aspectRatio: "4 / 3.4" }}>camera panel</div>
-      <div style={{ ...box, right: 24, top: "50%", width: 272, height: 380, transform: "translateY(-50%)" }}>prompt card</div>
-      <div style={{ ...box, left: "50%", bottom: 14, width: 250, height: 32, transform: "translateX(-50%)" }}>power chip (pebble HUD)</div>
-      <div style={{ ...box, left: 100, top: 92, width: 196, height: 38 }}>power chip (star chart)</div>
-      <div style={{ ...box, left: "37%", top: "56%", width: "11%", height: "34%" }}>hero</div>
+      <div style={{ ...box, left: 20, bottom: 20, width: "clamp(10rem, 16.7vw, 15rem)", aspectRatio: "4 / 3" }}>camera panel</div>
+      <div style={{ ...box, right: 24, top: "50%", width: 300, height: 440, transform: "translateY(-50%)" }}>prompt card</div>
+      <div style={{ ...box, left: 96, top: 94, width: 250, height: 42 }}>power chip</div>
+      <div style={{ ...box, left: "38%", top: "55%", width: "10%", height: "33%" }}>hero</div>
       {VOICE ? <PowerReady god={god} power={1} keyboard={KEYS} /> : <PowerReady god={god} power={1} keyboard={KEYS} announce={silent} />}
     </div>
   );
