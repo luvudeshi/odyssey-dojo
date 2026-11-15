@@ -98,6 +98,7 @@ Most likely first. Each has one action.
 | God card and QR code | `SharePanel` is only on the test page `/src/ai/lab/`. The game's result screen does not show it at `f654f56` | Not in the game. Look at the result screen before you promise it |
 | `?debug` | Adds a "q: quality" line to the fight and puts internals on `window` | No |
 | `?ghost=1` | Turns on the gold move ghost (off by the lead's choice on Saturday) | No |
+| `?model=classic`, `?model=dev` | Older Polyphemus model, or a test robot | No |
 | `?look=a`, `b`, `base` | Drafts of the Charybdis stop. Which one is best: not checked | No |
 | `?burst=b`, `c` | Other drawings of the dodge burst | Harmless; leave off |
 | `?pose=cpu` | Runs body tracking on the CPU. The game already falls back to it by itself | Only if tracking will not start. Not checked |

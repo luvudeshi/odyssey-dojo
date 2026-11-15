@@ -1,0 +1,82 @@
+/* Storm and bronze for the Training Dojo's own steps: the setup step, the strip of moves, Change moves and the grade view.
+   The kit (set.css, screens.css) styles the header, panels, buttons and Back; this file adds what only the Dojo has.
+   The rules sit under :root:root like the kit's, so they outrank dojo.css, dojoSetup.css and dojoTrack.css. Nothing is under 18 px. */
+:root:root {
+  /* ---------- header: Change moves sits beside the points coin, top right ---------- */
+  .dojo-top > .dojo-top-right { position: absolute; top: 24px; right: 26px; display: flex; align-items: center; gap: 16px; }
+  .dojo-top-right > .dojo-points { position: static; margin: 0 !important; clip-path: none; }
+  .dojo-top-right > .dojo-change { min-height: 52px; font-size: 19px; padding: 8px 22px; }
+
+  /* ---------- setup step: one panel under the title, the subtitle on the painting ---------- */
+  .dojo[data-phase="pick"] { height: 100vh; min-height: 0; padding-top: 142px; padding-bottom: 20px; }
+  .dojo-setup { flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; max-width: 1180px; gap: 0; margin: 0 auto; align-items: stretch; }
+  .dojo-setup-title { flex: none; margin: -34px 0 4px !important; letter-spacing: 0.04em; text-transform: none; text-align: center; font: 600 24px/1.2 var(--st-body); color: var(--st-dim); }
+  .dojo-set-panel {
+    flex: 0 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto minmax(0, auto) auto; gap: 6px 20px;
+    padding: 12px 26px 14px; text-align: left;
+  }
+  .dojo-set-panel > fieldset, .dojo-set-group { min-width: 0; margin: 0; padding: 0; border: 0; background: none; border-radius: 0; }
+  .dojo-set-group legend { padding: 0; margin-bottom: 6px; font: 400 23px/1.1 var(--st-display); letter-spacing: 0.06em; text-transform: none; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+  .dojo-set-group[data-group="kicks"] legend, .dojo-set-group[data-group="style"] legend { color: var(--st-gold); }
+  .dojo-set-note { margin: 4px 0 0 !important; font: 500 18px/1.25 var(--st-body); color: var(--st-dim); }
+  .dojo-set-row { gap: 10px; }
+  .dojo-set-styles { grid-column: 1 / -1; }
+  .dojo-set-tools { grid-column: 1; grid-row: 2; }
+  .dojo-set-reps { grid-column: 2; grid-row: 2; }
+  .dojo-set-reps legend { float: left; margin: 0 14px 0 0; padding: 0; line-height: 40px; }
+  .dojo-set-reps .dojo-set-row { gap: 16px; min-height: 40px; }
+  .dojo-set-moves { grid-column: 1 / -1; grid-row: 3; min-height: 0; overflow-y: auto; scrollbar-color: var(--st-bronze-mid) transparent; }
+  .dojo-set-camera { grid-column: 1; grid-row: 4; align-self: center; text-align: left; }
+  .dojo-set-start { grid-column: 2; grid-row: 4; }
+
+  .dojo-set-style { min-height: 40px; padding: 2px 16px; font-size: 18px; }
+  .dojo-set-style[aria-pressed="true"] { color: var(--st-bronze-dark); text-shadow: 0 1px 0 rgba(255, 240, 200, 0.7); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); border-color: #3a1d08; }
+  .dojo-set-tools { padding-top: 8px; border-top: 1px solid rgba(224, 165, 82, 0.4); }
+  .dojo-set-tools .dojo-set-button { min-height: 38px; padding: 2px 18px; font-size: 18px; }
+  .dojo-set-count, .dojo-set-camera { font: 600 20px/1.2 var(--st-body); color: var(--st-ink); }
+  .dojo-set-count { margin-left: 12px !important; }
+  .dojo-set-camera { color: var(--st-dim); }
+  .dojo-set-start { justify-self: end; min-height: 50px; padding: 6px 48px; font-size: 24px; }
+
+  /* the move list: bronze tick boxes on the glass */
+  .dojo-set-moves { grid-template-columns: 1fr 1.45fr 0.9fr 2.2fr; gap: 12px 28px; padding-right: 6px; }
+  .dojo-set-group[data-group="more"] .dojo-set-list { grid-template-columns: 1fr 1fr; column-gap: 12px; }
+  .dojo-set-list { gap: 0; }
+  .dojo-set-move { gap: 12px; padding: 1px 6px; font: 600 21px/1.15 var(--st-body); color: var(--st-ink); }
+  .dojo-set-move:hover { background: rgba(224, 165, 82, 0.16); }
+  .dojo-set-move small { font: 500 18px var(--st-body); color: var(--st-dim); }
+  .dojo-set-move input {
+    appearance: none; flex: none; position: relative; width: 26px; height: 26px; margin: 0; border: 3px solid var(--st-bronze); border-radius: 6px;
+    background: linear-gradient(#061a1d, #0c2f33); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6), 0 0 0 1px #140a04;
+  }
+  .dojo-set-move input[type="radio"] { border-radius: 50%; }
+  .dojo-set-move input:checked { background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); border-color: var(--st-bronze-hi); }
+  .dojo-set-move input:checked::after { content: ""; position: absolute; left: 6px; top: 1px; width: 7px; height: 13px; border: solid var(--st-bronze-dark); border-width: 0 4px 4px 0; transform: rotate(40deg); }
+  .dojo-set-move input[type="radio"]:checked::after { left: 5px; top: 5px; width: 8px; height: 8px; border: 0; border-radius: 50%; background: var(--st-bronze-dark); transform: none; }
+  .dojo-set-move input:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; }
+
+  /* ---------- strip of moves along the bottom of a session ---------- */
+  .dojo-track {
+    gap: 14px; padding: 4px 14px; color: var(--st-ink); border: 4px solid transparent; border-radius: 14px;
+    background: linear-gradient(rgba(14, 52, 56, 0.78), rgba(4, 20, 23, 0.86)) padding-box, linear-gradient(160deg, #ffe6b0, #d79a45 22%, #7a4416 55%, #c98f37 82%, #5a300f) border-box;
+    box-shadow: 0 0 0 1px #140a04, inset 0 0 0 2px #140a04, 0 10px 22px rgba(0, 0, 0, 0.55);
+  }
+  .dojo:has(.dojo-camera video) > .dojo-track { margin-right: 13rem; }
+  .dojo-track-count { font: 400 20px var(--st-display); letter-spacing: 0.04em; color: var(--st-gold); border-right: 2px solid var(--st-bronze-mid); padding-right: 14px; }
+  .dojo-track-chip { gap: 10px; padding: 5px 14px; font: 600 20px var(--st-body); color: var(--st-dim); background: linear-gradient(#0c2f33, #061a1d); border: 2px solid var(--st-bronze-lo); border-radius: 999px; }
+  .dojo-track-state { font: 700 18px var(--st-body); letter-spacing: 0.06em; }
+  .dojo-track-name { font: 700 20px var(--st-body); color: var(--st-ink); }
+  .dojo-track-chip[data-status="next"] .dojo-track-name { font-weight: 600; color: var(--st-dim); }
+  .dojo-track-grade { font: 600 18px var(--st-body); }
+  .dojo-track-chip[data-status="current"] { background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); border-color: #3a1d08; }
+  .dojo-track-chip[data-status="current"] :is(.dojo-track-name, .dojo-track-state, .dojo-track-grade) { color: var(--st-bronze-dark); }
+  .dojo-track-row:focus-visible { outline: 3px solid var(--st-focus); }
+
+  /* ---------- grade view: gold, not lava ---------- */
+  .dojo-end-title { font: 400 44px/1.1 var(--st-display); letter-spacing: 0.04em; color: var(--st-gold); background: none; -webkit-background-clip: border-box; background-clip: border-box; filter: none; text-shadow: 0 3px 0 #1a0d06; }
+  .dojo-total { font: 600 28px var(--st-body); color: var(--st-ink); }
+  .dojo-total b { font: 400 68px/1 var(--st-display); color: var(--st-gold); text-shadow: 0 3px 0 #1a0d06, 0 0 18px rgba(255, 170, 70, 0.4); }
+  .dojo-total span { color: var(--st-dim); }
+  .dojo-closing { font: 500 24px/1.3 var(--st-body); color: var(--st-ink); }
+  .dojo-tuned { font: 600 22px/1.3 var(--st-body); color: var(--st-gold); }
+}
