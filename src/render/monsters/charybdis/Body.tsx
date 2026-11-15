@@ -16,9 +16,9 @@ import { LookParts } from "./lookParts";
 import { makeWaterMaterial, updateWater } from "./waterMaterial";
 
 const RINGS = 3;
-// ?look=a or ?look=b swaps in downloaded pieces for the owner to compare; no flag is today's look.
+// The anglerfish look ("a") is the owner's pick and the default. ?look=b is the tentacle look, ?look=base the one built in code.
 const LOOK = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("look");
-const ALT = LOOK === "a" || LOOK === "b" ? LOOK : null;
+const ALT = LOOK === "base" ? null : LOOK === "b" ? "b" : "a";
 const WALL_X = 3.4;
 const eyeColor = new Color();
 const eyeFrom = new Color();
