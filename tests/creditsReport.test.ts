@@ -157,6 +157,23 @@ describe("the paths a line names", () => {
     expect(pathsNamed("Everything under public/ is ours.")).toEqual([]);
   });
 
+  it("does not read the whole public folder as a pattern, with stars or in bold or italics", () => {
+    expect(pathsNamed("Everything in **public/** is CC0.")).toEqual([]);
+    expect(pathsNamed("`public/**` CC0")).toEqual([]);
+    expect(pathsNamed("*public/*")).toEqual([]);
+    expect(pathsNamed("`public/*` and `public/*/*` and `public/*/` and `public/*.*`")).toEqual([]);
+    // A pattern whose first part names something is still read.
+    expect(pathsNamed("`public/*.svg` and `public/ui/*`")).toEqual(["public/*.svg", "public/ui/*"]);
+  });
+
+  it("leaves every file without a credit when a line only names the whole public folder", () => {
+    const files = [file("public/favicon.svg"), file("public/ui/a.svg"), file("public/models/x.glb")];
+    for (const text of ["Everything in **public/** is CC0.", "`public/**` is CC0.", "*public/* is CC0.", "`public/*/*` is CC0."]) {
+      const report = buildReport(files, [{ file: "CREDITS.md", text }]);
+      expect(report.rows.map((row) => row.gap)).toEqual(["no credit", "no credit", "no credit"]);
+    }
+  });
+
   it("drops the stars of markdown bold, so a bold path is not read as a pattern", () => {
     expect(pathsNamed("**public/hdri/sky.hdr** and *public/models/a.glb* and **public/audio/sfx/**")).toEqual([
       "public/hdri/sky.hdr",
@@ -363,7 +380,9 @@ describe("the report", () => {
 
 describe("bundled software and model files", () => {
   const HEAD = ["| Software | Files | Source | Licence |", "|---|---|---|---|"];
-  const DECODER = "| Mesh decoder by Example Corp | `public/draco/` | https://example.com/decoder | Apache-2.0 |";
+  const FOLDER = "| Mesh decoder by Example Corp | `public/draco/` | https://example.com/decoder | Apache-2.0 |";
+  const DECODER =
+    "| Mesh decoder by Example Corp | `public/draco/decoder.js`, `public/draco/decoder.wasm` | https://example.com/decoder | Apache-2.0 |";
   const report = (paths: string[], ...rows: string[]) =>
     buildReport(paths.map((path) => file(path)), [{ file: "CREDITS.md", text: [...HEAD, ...rows].join("\n") }]);
 
@@ -401,6 +420,28 @@ describe("bundled software and model files", () => {
     expect(readSoftwareLicence("MIT", "| Decoder by Example Corp | https://example.com | MIT |").status).toBe("ok");
   });
 
+  it("does not read a line that denies a software licence as that licence", () => {
+    const denied = "`public/draco/decoder.js` is not Apache-2.0, by Example Corp, https://example.com/decoder";
+    expect(readSoftwareLicence(denied).status).toBe("missing");
+    expect(readSoftwareLicence("Decoder by Example Corp, https://example.com, not MIT").status).toBe("missing");
+    expect(readSoftwareLicence("Decoder by Example Corp, https://example.com, non-MIT").status).toBe("missing");
+    expect(readSoftwareLicence("Decoder by Example Corp, https://example.com, not BSD-3-Clause").status).toBe("missing");
+    const built = buildReport([file("public/draco/decoder.js")], [{ file: "CREDITS.md", text: denied }]);
+    expect(built.rows[0]?.gap).toBe("no licence on the credit line");
+  });
+
+  it("refuses a line that gives an art licence and a software licence together", () => {
+    const both = "`public/draco/decoder.js` by Example Corp, https://example.com/decoder, CC0 and Apache-2.0";
+    expect(readSoftwareLicence(both)).toEqual({ status: "not-allowed", label: "CC0" });
+    expect(readSoftwareLicence("Decoder by Sam Pie, https://example.com, CC BY 4.0 or MIT").status).toBe("not-allowed");
+    expect(readSoftwareLicence("Decoder, https://example.com, CC BY 4.0 or MIT").status).toBe("not-allowed");
+    expect(readSoftwareLicence("Decoder by Example Corp, https://example.com, MIT, made by the team").status).toBe(
+      "not-allowed",
+    );
+    const built = buildReport([file("public/draco/decoder.js")], [{ file: "CREDITS.md", text: both }]);
+    expect(built.rows[0]).toMatchObject({ gap: "licence not allowed", licence: "CC0" });
+  });
+
   it("does not let an art licence or our own work stand in for a software licence", () => {
     expect(readSoftwareLicence("Decoder by Example Corp, https://example.com, CC0")).toEqual({
       status: "not-allowed",
@@ -411,7 +452,19 @@ describe("bundled software and model files", () => {
     expect(readSoftwareLicence("Decoder by Example Corp, https://example.com, MIT, non-commercial").status).toBe("not-allowed");
   });
 
-  it("credits a software folder from CREDITS.md and says so on each row", () => {
+  it("does not credit a software file through a folder or a star pattern, only by its exact path", () => {
+    const stars = "| Mesh decoder by Example Corp | `public/draco/decoder*` | https://example.com/decoder | Apache-2.0 |";
+    const paths = ["public/draco/decoder.js", "public/draco/decoder.wasm", "public/draco/zz_dummy.png"];
+    expect(report(paths, FOLDER).rows.map((row) => row.gap)).toEqual(["no credit", "no credit", "no credit"]);
+    expect(report(paths, stars).rows.map((row) => row.gap)).toEqual(["no credit", "no credit", "no credit"]);
+    // With the files named, a file dropped into the folder later is still a gap.
+    expect(report(paths, FOLDER, DECODER).rows.map((row) => row.gap)).toEqual([null, null, "no credit"]);
+    // The art folders keep their folder credits.
+    const sfx = "Everything under `public/audio/sfx/` was generated by the team with ElevenLabs.";
+    expect(report(["public/audio/sfx/won.mp3"], sfx).gaps).toBe(0);
+  });
+
+  it("credits software files named in CREDITS.md and says so on each row", () => {
     const built = report(["public/draco/decoder.js", "public/draco/decoder.wasm", "public/hdri/cave.hdr"], DECODER);
     const decoder = built.rows.find((row) => row.path === "public/draco/decoder.wasm");
     expect(decoder).toMatchObject({
@@ -465,16 +518,20 @@ describe("bundled software and model files", () => {
     );
   });
 
-  it("lets an exact software line that is not allowed beat a folder credit", () => {
-    const banned = "| Plugin by Example Corp | `public/draco/plugin.js` | https://example.com/p | Example Corp terms of use |";
-    const built = report(["public/draco/decoder.js", "public/draco/plugin.js"], DECODER, banned);
-    expect(built.rows.map((row) => row.gap)).toEqual([null, "licence not allowed"]);
+  it("lets a software line that is not allowed beat an allowed line for the same file", () => {
+    const banned = "| Decoder by Example Corp | `public/draco/decoder.js` | https://example.com/p | Example Corp terms of use |";
+    const built = report(["public/draco/decoder.js", "public/draco/decoder.wasm"], DECODER, banned);
+    expect(built.rows.map((row) => row.gap)).toEqual(["licence not allowed", null]);
   });
 
-  it("does not take a model log's folder line as a credit for software", () => {
+  it("does not take a model log's folder line as a credit for software, but notes an exact one", () => {
     const log = "The decoder in `public/draco/` is by Example Corp, https://example.com/decoder, Apache-2.0.";
     const built = buildReport([file("public/draco/decoder.js")], [{ file: "docs/models.md", text: log }]);
     expect(built.rows[0]?.gap).toBe("no credit");
+    const exact = "`public/draco/decoder.js` is by Example Corp, https://example.com/decoder, Apache-2.0.";
+    const noted = buildReport([file("public/draco/decoder.js")], [{ file: "docs/models.md", text: exact }]);
+    expect(noted.rows[0]).toMatchObject({ gap: null, where: "docs/models.md:1" });
+    expect(noted.rows[0]?.note).toContain("not in CREDITS.md");
   });
 
   it("checks icons and other files outside the old asset folders as art", () => {

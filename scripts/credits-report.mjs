@@ -1,7 +1,8 @@
 // Lists every file under public/ with its credit line, licence and size. Run it with `make credits`.
 // It exits 1 when a file has no credit, no licence, or a licence the rules do not allow for its class.
 // Art and sound may be CC0, CC BY with the author, or made by the team.
-// Bundled software and model files (the folders in SOFTWARE_ROOTS) carry their own open licence instead.
+// Bundled software and model files (the folders in SOFTWARE_ROOTS) carry their own open licence instead,
+// and each of those files must be named by its exact path.
 // How a credit line must be written is in docs/licences.md.
 
 import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
@@ -27,7 +28,9 @@ export const ASSET_ROOTS = ["public"];
 /**
  * Folders of bundled software and model files: code and machine-learning models that other people publish
  * under their own open licence. They are not art. A file is in this class only because of its folder,
- * so an art asset cannot pass by writing "MIT" on its credit line. Each entry ends with a slash.
+ * so an art asset elsewhere cannot pass by writing "MIT" on its credit line. A file in one of these folders
+ * is credited only by a line that names its exact path: a folder or `*` credit does not count here, so a
+ * file nobody looked at cannot pick up the licence of its neighbours. Each entry ends with a slash.
  */
 export const SOFTWARE_ROOTS = ["public/draco/", "public/mediapipe/"];
 
@@ -53,9 +56,11 @@ const TEAM = /\b(?:made|generated|recorded|built|drawn) by the team\b[^|.`;]*/i;
 const AUTHOR = /\bby (?!the\b)([A-Z0-9@][^,;|()`]*?)(?= is licensed\b|[,;|()`]|$)/;
 const PATH = /(?<![\w./-])public\/[\w.\-/*]+/g;
 // The open licences a bundled software or model file may carry. Plain "BSD" with no clause count is not read.
-const APACHE = new RegExp(`\\bApache(?:${SEP}License)?,?(?:${SEP}Version)?${SEP}2\\.0\\b`, "i");
-const MIT = /\bMIT\b/;
-const BSD = new RegExp(`\\bBSD${SEP}([23])${SEP}Clause\\b`, "i");
+// As with CC0, "not Apache-2.0" and "non-MIT" say the opposite, so they are not read as that licence.
+const DENIED = "(?<!\\bnot )(?<!\\bnon-)";
+const APACHE = new RegExp(`${DENIED}\\bApache(?:${SEP}License)?,?(?:${SEP}Version)?${SEP}2\\.0\\b`, "i");
+const MIT = new RegExp(`${DENIED}\\bMIT\\b`);
+const BSD = new RegExp(`${DENIED}\\bBSD${SEP}([23])${SEP}Clause\\b`, "i");
 const LINK = /\bhttps?:\/\/[^\s|`<>]+/;
 
 /**
@@ -107,22 +112,18 @@ export function readLicence(text, context = text) {
 /**
  * Reads the licence of a bundled software or model file: Apache-2.0, MIT, or BSD with 2 or 3 clauses.
  * The line must also name the author with the word "by" and give a link to the source.
- * A CC0, CC BY or made-by-the-team line is not allowed here: these folders hold other people's software.
+ * A CC0, CC BY or made-by-the-team line is not allowed here, even when it names a software licence as well:
+ * these folders hold other people's software, and a line that gives two licences is not a clear credit.
  * @param {string} text
  * @param {string} [context]
  * @returns {Licence}
  */
 export function readSoftwareLicence(text, context = text) {
-  for (const pattern of NOT_ALLOWED) {
-    const bad = pattern.exec(text);
-    if (bad) return { status: "not-allowed", label: bad[0] };
-  }
+  const art = readLicence(text, context);
+  if (art.status !== "missing") return { status: "not-allowed", label: art.label };
   const bsd = BSD.exec(text);
   const name = APACHE.test(text) ? "Apache-2.0" : MIT.test(text) ? "MIT" : bsd ? `BSD-${bsd[1] ?? ""}-Clause` : null;
-  if (name === null) {
-    const art = readLicence(text, context);
-    return art.status === "missing" ? art : { status: "not-allowed", label: art.label };
-  }
+  if (name === null) return art;
   const author = AUTHOR.exec(context)?.[1]?.trim();
   if (author === undefined || author === "") return { status: "no-author", label: name };
   if (!LINK.test(context)) return { status: "no-source", label: name };
@@ -143,8 +144,24 @@ function cells(line) {
 }
 
 /**
+ * True when a pattern names something under one of ASSET_ROOTS and its first part below the root has a
+ * letter or a digit in it. So `public/`, `public/*`, `public/**` and `public/*\/*` name nothing, and one
+ * line cannot credit every file. `public/*.svg` still names the SVG files at the top of the folder.
+ * @param {string} pattern
+ * @returns {boolean}
+ */
+function namesSomething(pattern) {
+  return ASSET_ROOTS.some((root) => {
+    if (!pattern.startsWith(`${root}/`)) return false;
+    const first = pattern.slice(root.length + 1).split("/")[0] ?? "";
+    return /[A-Za-z0-9]/.test(first);
+  });
+}
+
+/**
  * The `public/...` paths, folders (trailing slash) and `*` patterns a line names.
  * Stars left by markdown bold or italics are dropped: after a file extension, and two or more after a slash.
+ * A pattern that would cover the whole root is dropped too (see namesSomething).
  * @param {string} line
  * @returns {string[]}
  */
@@ -156,7 +173,7 @@ export function pathsNamed(line) {
         .replace(/(\.[A-Za-z0-9]+)\*+$/, "$1")
         .replace(/\/\*{2,}$/, "/"),
     )
-    .filter((pattern) => ASSET_ROOTS.some((root) => pattern === `${root}/` || pattern.startsWith(`${root}/`)));
+    .filter(namesSomething);
 }
 
 /**
@@ -233,6 +250,7 @@ const STATUS_RANK = { "not-allowed": 0, "no-author": 1, "no-source": 1, ok: 2, m
  * So a folder credit cannot hide a pattern or an exact line that says the file is not allowed.
  * At the same level a problem wins (not allowed, then no author or no source link, then an allowed licence),
  * and CREDITS.md comes before a model log.
+ * A bundled software or model file is credited only by its exact path, in any credit file.
  * The line comes back with `licence` set to the reading for this file's class: art or bundled software.
  * @param {string} path
  * @param {CreditLine[]} lines
@@ -247,7 +265,7 @@ export function findCredit(path, lines) {
     for (const pattern of line.patterns) {
       const kind = matchKind(pattern, path);
       if (kind === null) continue;
-      if (kind !== "exact" && line.file !== MAIN_CREDITS) continue;
+      if (kind !== "exact" && (software || line.file !== MAIN_CREDITS)) continue;
       const rank =
         (licence.status === "missing" ? 1000 : 0) +
         KIND_RANK[kind] * 100 +
