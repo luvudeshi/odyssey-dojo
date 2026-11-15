@@ -72,8 +72,9 @@ test("sign-in: 200 gives the session; 401, 429 and 503 are named", async () => {
   expect(await answering(200, { token: "short", name: "Luv" }).client.signIn("Luv", "x")).toEqual({ ok: false, error: "unreachable" });
 });
 
+interface Turn { readonly status: number; readonly body?: unknown; readonly retryAfter?: string }
 /** A client whose server gives these answers in turn (the last one again after that), the requests it was sent and the waits it made. */
-function inTurn(answers: readonly { status: number; body?: unknown; retryAfter?: string }[]) {
+function inTurn(answers: readonly Turn[]) {
   const sent: { url: string; init: Init }[] = [];
   const waits: number[] = [];
   const fetch: AccountFetch = (url, init) => {
@@ -90,7 +91,7 @@ function inTurn(answers: readonly { status: number; body?: unknown; retryAfter?:
 }
 
 test("a sign-in or sign-up the server had no place for is sent again by itself, twice at most, after the wait it named", async () => {
-  const busy = { status: 429, body: { error: "slow_down" }, retryAfter: "1" };
+  const busy: Turn = { status: 429, body: { error: "slow_down" }, retryAfter: "1" };
   const session = { token: TOKEN, name: "Luv" };
   // Many sign in in the same second: the second try gets a place.
   const once = inTurn([busy, { status: 200, body: session }]);
@@ -117,7 +118,7 @@ test("a sign-in or sign-up the server had no place for is sent again by itself, 
 });
 
 test("a longer wait is a budget used up: shown at once and never sent again", async () => {
-  const cases = [
+  const cases: readonly Turn[] = [
     { status: 429, body: { error: "slow_down" }, retryAfter: "59" },
     { status: 429, body: { error: "slow_down" }, retryAfter: String(BUSY_WAIT_MAX_S + 1) },
     { status: 429, body: { error: "signups_closed" }, retryAfter: "600" },

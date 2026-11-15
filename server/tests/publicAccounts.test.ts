@@ -388,7 +388,7 @@ test("no command in the doc prints the connection string when the string is not 
   // The laptop's CA file, the public server's CA file, and the database tests.
   expect(commands).toHaveLength(3);
   const user = "madeupuser7", password = "madeuppass7", host = "madeup-host7.example";
-  for (const bad of [`postgres://${user}:${password}@${host}:notaport/tsdb?sslmode=require`, `postgres://${user}:${password}@${host} :5432/tsdb`, ""]) {
+  for (const bad of [`postgres://${user}:${password}@${host}:notaport/madeupdb7?sslmode=require`, `postgres://${user}:${password}@${host} :5432/madeupdb7`, ""]) {
     for (const script of commands) {
       const ran = spawnSync(process.execPath, ["-e", script], { env: { PATH: process.env.PATH ?? "", DATABASE_URL: bad }, encoding: "utf8", timeout: 20_000 });
       const said = ran.stdout + ran.stderr;
