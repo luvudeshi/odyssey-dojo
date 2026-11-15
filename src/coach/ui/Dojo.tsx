@@ -6,9 +6,10 @@
 // React renders only when the phase, the move or the repetition changes; the time bar is written straight to the page.
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FightingStyle, PoseFrame, PoseHistory } from "../../core/types";
+import { ENEMIES } from "../../enemies/registry";
 import { MOVES } from "../../moves/registry";
 import { STYLES } from "../../styles/registry";
-import { DOJO_REPS, closingLine, currentMove, keyRep, movesFor, skipResult, startDojo, summariseDojo, tickDojo } from "../dojo";
+import { DOJO_REPS, assessmentFrom, closingLine, currentMove, keyRep, movesFor, skipResult, startDojo, summariseDojo, tickDojo, tuningLine } from "../dojo";
 import type { DojoConfig, DojoRep, DojoState, DojoSummary } from "../dojo";
 import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
@@ -149,6 +150,8 @@ export function Dojo(props: DojoProps) {
   const guide = move ? guideFor(move) : null;
   const done = !picking && (view.phase === "done" || !move);
   const summary = useMemo(() => (done ? summariseDojo(view.reps) : null), [done, view.reps]);
+  // What Done changes in the fights: the game keeps `assessmentFrom(summary)` and tunes every monster with it.
+  const tuned = useMemo(() => (summary && summary.reps.length > 0 ? tuningLine(assessmentFrom(summary), ENEMIES) : null), [summary]);
   const own = move ? view.reps.filter((rep) => rep.moveId === move.id) : [];
   const last = view.phase === "result" ? view.last : null;
 
@@ -242,6 +245,7 @@ export function Dojo(props: DojoProps) {
                 )}
             </div>
           </div>
+          {tuned && <p className="dojo-tuned">{tuned}</p>}
           <div className="dojo-buttons">
             <button type="button" className="dojo-button" onClick={() => { setRound((count) => count + 1); }}>Train again</button>
             {chosen && !props.style && <button type="button" className="dojo-button" onClick={() => { setChosen(null); }}>Another style</button>}
