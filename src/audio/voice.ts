@@ -4,6 +4,8 @@ import { log } from "../core/log";
 import { getSettings } from "../settings/store";
 import { clipUrl, isPhaseLine, phaseLineId } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
+import { releaseAudio } from "./release";
+import { tabHidden, watchTab } from "./tab";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
 const WARNINGS = ["warn_1", "warn_2", "warn_3"] as const;
@@ -189,17 +191,22 @@ export interface ClipAudio {
   addEventListener(type: "ended" | "error", listener: () => void): void;
 }
 
-/** Plays clips through audio elements. A failed load or a blocked play() reports done, so the voice is never left waiting. */
+/**
+ * Plays clips through audio elements. A failed load or a blocked play() reports done, so the voice is never left waiting.
+ * Each element is used for one line and let go of when the line ends, fails or is cut off.
+ */
 export function audioPlayer(open: (url: string) => ClipAudio): VoiceDeps["play"] {
   return (id, done) => {
     // Homer's and the monsters' clips have folders of their own; every other id is Athena's.
     const audio = open(storyClipUrl(id));
     const timer = setTimeout(() => {
       audio.pause();
+      releaseAudio(audio);
       done();
     }, MAX_CLIP_MS);
     const finish = (): void => {
       clearTimeout(timer);
+      releaseAudio(audio);
       done();
     };
     audio.addEventListener("ended", finish);
@@ -211,7 +218,17 @@ export function audioPlayer(open: (url: string) => ClipAudio): VoiceDeps["play"]
     return () => {
       clearTimeout(timer);
       audio.pause();
+      releaseAudio(audio);
     };
+  };
+}
+
+/** The same player, except that nothing starts while the tab is hidden: the line is reported done at once. */
+function whileSeen(play: VoiceDeps["play"]): VoiceDeps["play"] {
+  return (id, done) => {
+    if (!tabHidden()) return play(id, done);
+    done();
+    return () => undefined;
   };
 }
 
@@ -240,13 +257,13 @@ export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   };
   load(INDEX_URL, true);
   for (const url of storyIndexes) load(url, false);
-  return { available: (id) => clips.has(id), play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume })), random: Math.random };
+  return { available: (id) => clips.has(id), play: whileSeen(audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume }))), random: Math.random };
 }
 
 /** The same clips at `gain` times the volume, through audio elements that no other voice's line stops. */
 function quieter(deps: VoiceDeps, gain: number): VoiceDeps {
   if (typeof Audio === "undefined") return deps;
-  return { ...deps, play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain })) };
+  return { ...deps, play: whileSeen(audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain }))) };
 }
 
 // Created with the module so the clip indexes are loaded before the first fight starts.
@@ -256,13 +273,15 @@ const shared = createVoice(sharedDeps);
 const monsters = createVoice(quieter(sharedDeps, TAUNT_VOLUME), "taunt");
 /** True from the frame a fight is won or lost until the next fight begins. No taunt starts meanwhile. */
 let fightOver = false;
+/** True while the fight is paused. No taunt starts meanwhile: one that was waiting for Athena's phase line is dropped. */
+let fightPaused = false;
 
 /**
  * The monsters' own channel: a taunt plays over Athena's calls and is not cut by them, and it never holds her voice.
  * One taunt at a time: a second one asked for while the first plays is refused. So is any taunt once the fight is over.
  */
 export const tauntVoice: Pick<Voice, "speak" | "playing" | "stop"> = {
-  speak: (id) => !fightOver && monsters.speak(id),
+  speak: (id) => !fightOver && !fightPaused && monsters.speak(id),
   playing: () => monsters.playing(),
   stop: (id) => {
     monsters.stop(id);
@@ -307,3 +326,31 @@ export function voicePlaying(): string | null {
 export function stopLine(id: string): void {
   shared.stop(id);
 }
+
+/**
+ * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. Nothing is queued, so nothing
+ * comes back afterwards. With `keepEnding`, the result line and Homer's lines play on. The fight calls this through
+ * useStopAudio when it is left.
+ */
+export function stopFightVoice(keepEnding = false): void {
+  const taunt = monsters.playing();
+  if (taunt !== null) monsters.stop(taunt);
+  const line = shared.playing();
+  if (line === null) return;
+  if (keepEnding && (urgency(line) === RESULT || line.startsWith("homer_"))) return;
+  shared.stop(line);
+}
+
+/**
+ * Called with true when the fight is paused and false when it carries on. A pause cuts the line being spoken and keeps
+ * taunts from starting. The fight counts as paused once it is over too, so the result line and Homer's lines play on.
+ */
+export function pauseFightVoice(paused: boolean): void {
+  fightPaused = paused;
+  if (paused) stopFightVoice(true);
+}
+
+// A hidden tab plays nothing: what is being said is cut, and whileSeen keeps anything new from starting until it is shown.
+watchTab((hidden) => {
+  if (hidden) stopFightVoice();
+});

@@ -5,6 +5,7 @@ import type { CombatEvent } from "../core/types";
 import { getSettings } from "../settings/store";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
+import { tabHidden, watchTab } from "./tab";
 
 interface Player {
   readonly context: AudioContext;
@@ -121,6 +122,22 @@ function unlockOnGesture(context: AudioContext): void {
   for (const gesture of GESTURES) window.addEventListener(gesture, unlock);
 }
 
+/**
+ * Stops the context's clock while the tab is hidden, and starts it again when the tab is back. Everything that plays
+ * through the context (effects, music, a stop's ambience) falls silent with it and carries on from where it was.
+ */
+function quietWhileHidden(context: AudioContext): void {
+  const follow = (hidden: boolean): void => {
+    try {
+      (hidden ? context.suspend() : context.resume()).catch(() => undefined);
+    } catch (error) {
+      log("warn", "sfx.tabFailed", error);
+    }
+  };
+  watchTab(follow);
+  if (tabHidden()) follow(true);
+}
+
 function createPlayer(): Player | null {
   if (typeof AudioContext === "undefined") return null;
   try {
@@ -131,6 +148,7 @@ function createPlayer(): Player | null {
     void loadClips(context);
     warmUp(context);
     unlockOnGesture(context);
+    quietWhileHidden(context);
     return { context, master };
   } catch (error) {
     log("warn", "sfx.unavailable", error);
@@ -164,7 +182,10 @@ function sharedPlayer(): Player | null {
   return player;
 }
 
-/** The game's one audio context. The music plays through it too, so the click that unlocks effects unlocks music. */
+/**
+ * The game's one audio context, made once and kept for the whole session: every fight, restart and map visit plays
+ * through it. The music plays through it too, so the click that unlocks effects unlocks music. Nothing here closes it.
+ */
 export function sharedAudioContext(): AudioContext | null {
   return sharedPlayer()?.context ?? null;
 }
@@ -180,6 +201,8 @@ export function setEventOverride(next: EventOverride | null): void {
 export function playEvent(event: CombatEvent): void {
   const { type } = event;
   if (!(type in EVENTS)) return;
+  // A hidden tab stays silent, and asking the context to run again there would bring the music back with it.
+  if (tabHidden()) return;
   if (override?.(event)) return;
   const active = sharedPlayer();
   if (!active) return;
