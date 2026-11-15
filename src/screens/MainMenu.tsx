@@ -2,7 +2,8 @@
 // shields under the logo (menuShields.tsx).
 // Story mode and the dojo start the webcam, or the keyboard when the "Play with" setting says so (Account, Settings).
 // Behind them: the storm in Scylla's strait (MenuScene).
-import { speakLine } from "../audio/voice";
+import { lineAvailable, speakLine } from "../audio/voice";
+import { nextTitleLine } from "../audio/titleLine";
 import { Button, Panel } from "../ui/pebble";
 import { SetTitle } from "../ui/set/Set";
 import { BronzeDefs, DEVICES, ShieldCard } from "./menuShields";
@@ -41,7 +42,7 @@ export function MainMenu(props: {
   onTraining: () => void;
   onAccount: () => void;
 }) {
-  const story = (): void => { speakLine("homer_title"); props.onStory(); };
+  const story = (): void => { speakLine(nextTitleLine(lineAvailable)); props.onStory(); };
   return (
     <Panel as="main" className="menu menu--title">
       <MenuScene />
