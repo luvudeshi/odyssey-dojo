@@ -11,7 +11,9 @@ export type HostMessage =
   | { readonly type: "state"; readonly seq: number; readonly state: CombatState; readonly events: readonly CombatEvent[] }
   | { readonly type: "end"; readonly won: boolean }
   /** The host left the fight for the quest map; the room stays open for the next one. */
-  | { readonly type: "stop" };
+  | { readonly type: "stop" }
+  /** Sent now and then by an idle host so the relay keeps the room; the guest ignores it (parseMessage drops it). */
+  | { readonly type: "keep" };
 
 /** Sent by the relay itself: whether the other member's stream is open. */
 export interface PeerMessage {
