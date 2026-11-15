@@ -1,0 +1,43 @@
+/* The training dojo's setup step (DojoSetup.tsx): the style, the moves to tick, the tries at each. Plain on purpose:
+   it stands on its own, with the dojo's colours as fallbacks, so the dojo screen can restyle it. No text under 18 px. */
+.dojo-setup {
+  --ds-ink: var(--dj-ink, #f6f0ff);
+  --ds-dim: var(--dj-dim, #ddd2c4);
+  --ds-ice: var(--dj-ice-text, #a8dcff);
+  --ds-amber: var(--dj-amber, #ffb04a);
+  --ds-line: var(--dj-line, #4a4258);
+  --ds-font: var(--dj-font, Copperplate, "Copperplate Gothic Bold", Optima, Georgia, serif);
+  box-sizing: border-box; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.9rem;
+  width: 100%; max-width: 78rem; margin: 0 auto; color: var(--ds-ink); text-align: left; line-height: 1.2;
+}
+:where(.dojo-setup) :where(p, h1, ul) { margin: 0; padding: 0; }
+.dojo-setup-title { font-family: var(--ds-font); font-size: 2.2rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; color: #ffd890; text-shadow: 0 2px 2px #000; }
+
+.dojo-set-button {
+  padding: 0.5rem 1.3rem; font-family: inherit; font-size: 1.25rem; font-weight: 700; line-height: 1.2; letter-spacing: 0.04em;
+  color: var(--ds-ink); background: #14111a; border: 2px solid var(--ds-line); border-radius: 4px; cursor: pointer;
+}
+.dojo-set-button:hover { border-color: var(--ds-amber); }
+.dojo-set-button:focus-visible { outline: 3px solid #f0faff; outline-offset: 4px; }
+.dojo-set-button:disabled { opacity: 0.45; cursor: default; }
+.dojo-set-style[aria-pressed="true"] { color: #1b0c04; background: linear-gradient(#e6f6ff, #9fd8ff); border-color: #f0faff; }
+.dojo-set-start { padding: 0.75rem 2.4rem; font-size: 1.5rem; color: #1b0c04; background: linear-gradient(#ffe8a8, #ff9a2a 60%, #c8400c); border-color: #ffd890; }
+
+.dojo-set-group { box-sizing: border-box; min-width: 0; margin: 0; padding: 0.7rem 1.1rem 0.9rem; border: 2px solid var(--ds-line); border-radius: 4px; background: #07060ae0; }
+.dojo-set-group legend { padding: 0 0.5rem; font-family: var(--ds-font); font-size: 1.2rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ds-ice); }
+.dojo-set-group[data-group="style"] legend, .dojo-set-group[data-group="kicks"] legend { color: var(--ds-amber); }
+.dojo-set-styles, .dojo-set-moves, .dojo-set-tools { width: 100%; }
+.dojo-set-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; }
+.dojo-set-note { margin-top: 0.5rem !important; font-size: 1.15rem; line-height: 1.3; color: var(--ds-dim); }
+.dojo-set-tools .dojo-set-button { padding: 0.35rem 1.1rem; font-size: 1.15rem; }
+.dojo-set-count, .dojo-set-camera { font-size: 1.25rem; }
+.dojo-set-camera { color: var(--ds-dim); }
+
+.dojo-set-moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); align-items: start; gap: 0.9rem; }
+.dojo-set-list { display: grid; gap: 0.15rem; list-style: none; }
+.dojo-set-move { display: flex; align-items: center; gap: 0.6rem; padding: 0.25rem 0.4rem; font-size: 1.3rem; line-height: 1.2; border-radius: 4px; cursor: pointer; }
+.dojo-set-move:hover { background: #ffffff14; }
+.dojo-set-move input { flex: none; width: 1.4rem; height: 1.4rem; margin: 0; accent-color: var(--ds-amber); cursor: pointer; }
+.dojo-set-move input:focus-visible { outline: 3px solid #f0faff; outline-offset: 3px; }
+.dojo-set-move small { font-size: 1.125rem; color: var(--ds-dim); }
+.dojo-set-reps .dojo-set-row { gap: 1.6rem; }
