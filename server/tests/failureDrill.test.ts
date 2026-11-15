@@ -272,7 +272,7 @@ test("a portrait that is not a picture is no portrait, and the god is not held b
   }
 });
 
-test("a request that is not what a route asks for is refused at once with a 400 or a 404, and never held", async () => {
+test("a request that is not what a route asks for is refused at once with a 400, a 401 or a 404, and never held", async () => {
   drill = await serve({ json: () => stalled(athena), voices: () => stalled(voices), speech: () => stalled(MP3) }, { timeouts: TIMEOUTS });
   const cases: [string, unknown, number][] = [
     ["/api/level", { phrase: "", god: "athena", rival_god: "zeus" }, 400],
@@ -297,6 +297,15 @@ test("a request that is not what a route asks for is refused at once with a 400 
     expect(answer.result.status, path).toBe(404);
     expect(answer.ms, path).toBeLessThan(AT_ONCE_MS);
   }
+  // A real room and a token that is not one of its two: refused at once, and nothing is delivered to the host.
+  const room = await (await drill.call("/api/rooms", {})).json() as { code: string; token: string };
+  const forged = await timed(() => up().call(`/api/rooms/${room.code}/send`, { token: "nope", message: { type: "hello" } }));
+  expect(forged.result.status).toBe(401);
+  expect(await forged.result.json()).toEqual({ error: "bad_token" });
+  expect(forged.ms).toBeLessThan(AT_ONCE_MS);
+  const stranger = await timed(() => up().call(`/api/rooms/${room.code}/poll?token=nope`));
+  expect(stranger.result.status).toBe(401);
+  expect(stranger.ms).toBeLessThan(AT_ONCE_MS);
   // A port that is not a port is ignored, and the address still comes back.
   const address = await drill.call("/api/rooms/address?port=<script>");
   expect(address.status).toBe(200);
