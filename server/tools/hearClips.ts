@@ -1,6 +1,7 @@
 // Checks what every voice clip says: sends each to speech to text and compares the transcript with the line it is meant to say.
 //   npx tsx --env-file=<path to .env> server/tools/hearClips.ts            the table: clip, verdict, expected, heard
-//   npx tsx --env-file=<path to .env> server/tools/hearClips.ts --check    the same, and exit 1 when a clip differs or could not be heard
+//   npx tsx --env-file=<path to .env> server/tools/hearClips.ts --check    the same, and exit 1 when a clip differs
+//                                                                          (a clip that could not be checked is always exit 1)
 //                                                                          (--cache=<file> keeps the transcripts somewhere else)
 // A machine transcript, not a person listening: docs/audio-heard.md says what that does and does not show.
 // Uses ElevenLabs speech to text (POST /v1/speech-to-text, checked against the API reference on 2026-11-14), which
@@ -112,6 +113,7 @@ async function main(): Promise<void> {
 
   const counts = { same: 0, differs: 0, "cut?": 0, failed: 0 };
   let sent = 0;
+  let unmeasured = 0;
   let refused: string | null = null;
   say(`${"clip".padEnd(42)} ${"verdict".padEnd(8)} expected | heard`);
   for (const path of paths) {
@@ -151,12 +153,14 @@ async function main(): Promise<void> {
       writeFileSync(cacheFile, `${JSON.stringify(cache)}\n`);
     }
     const end = measureEnd(file);
+    if (end === null) unmeasured += 1;
     const report = judge(expected, { ...transcript, durationMs: transcript.durationMs ?? end?.durationMs ?? null, endDb: end?.endDb ?? null });
     counts[report.verdict] += 1;
     say(`${path.padEnd(42)} ${report.verdict.padEnd(8)} ${expected} | ${transcript.text}`);
     if (report.verdict !== "same") say(`${"".padEnd(51)} ${detail(report)}`);
   }
   say(`${String(paths.length)} clips: ${String(counts.same)} same, ${String(counts.differs)} differ, ${String(counts["cut?"])} may be cut, ${String(counts.failed)} not checked. ${String(sent)} sent to speech to text, the rest read from ${cacheFile}`);
+  if (unmeasured > 0) say(`ffmpeg could not read ${String(unmeasured)} clips (is it on PATH?), so the level at their end was not measured: a clip that stops mid-sound may show as "same"`);
   if (counts.failed > 0 || (flags.includes("--check") && counts.differs > 0)) process.exitCode = 1;
 }
 
