@@ -35,8 +35,9 @@ export const register: Register = (router, { ai, config }) => {
       const gaveUp = (): void => { reject(signal.reason instanceof Error ? signal.reason : new Error("gave up on the voice list")); };
       signal.addEventListener("abort", gaveUp, { once: true });
       list(signal).then((found) => {
-        // An empty list is a wrong answer, not a fact to keep: kept, every later line would fail until a restart.
-        if (found.length === 0) reject(new Error("no voice available"));
+        // An empty list, or something that is not a list, is a wrong answer and not a fact to keep:
+        // kept, every later line would fail until a restart.
+        if (!Array.isArray(found) || found.length === 0) reject(new Error("no voice available"));
         else resolve(found);
       }, reject);
     });
