@@ -226,6 +226,12 @@ test("who is counted: the proxy's own X-Forwarded-For entry behind a public serv
     expect(callerOf("127.0.0.1", headers, true), JSON.stringify(headers)).toBe(RELAYED);
   }
   expect(callerOf("127.0.0.1", {}, true)).toBe(THIS_MACHINE);
+  // A proxy that shares the server's own network reaches it from loopback, as a tunnel does. It passes Cf-Connecting-Ip
+  // on as the caller wrote it, so behind such a proxy that header is not read: it would be a fresh budget for every made-up value.
+  const spoofed = { "cf-connecting-ip": "192.0.2.201", "x-forwarded-for": "203.0.113.7" };
+  expect(callerOf("127.0.0.1", spoofed, true)).toBe("via 203.0.113.7");
+  // Without the setting the server takes that proxy for a tunnel and believes the header: why a public server sets it.
+  expect(callerOf("127.0.0.1", spoofed)).toBe("via 192.0.2.201");
 });
 
 test("unknown tokens are counted before the database is asked, a known one is given back, and a known account is counted for itself", () => {

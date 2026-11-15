@@ -5,15 +5,22 @@ import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
 import {
-  MAX_ROOMS_PER_CLIENT, MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
-  THIS_MACHINE, clientKey, createRoomLimits,
+  MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
+  THIS_MACHINE, clientKey, createRoomLimits, roomsPerClient,
 } from "../lib/roomLimits";
 import { publicRooms } from "../lib/localOnly";
-import { MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
+import { AWAY_MS, MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
 import type { Refusal, RelayMessage } from "../lib/rooms";
 
-/** A comment line this often keeps proxies and browsers from closing a quiet stream. */
-export const HEARTBEAT_MS = 15_000;
+/**
+ * A "beat" this often keeps proxies and browsers from closing a quiet stream, and tells the page its stream is alive:
+ * a page that stops getting beats knows the stream died without a word and polls instead (STREAM_QUIET_MS in
+ * src/net/transport.ts, which must stay well above this). It is a comment line for readers that only want the
+ * stream kept open, and a data line with no number for the page. It is the server talking, not a player, so it
+ * does not count as use of the room.
+ */
+export const HEARTBEAT_MS = 5_000;
+const BEAT = `: keep\ndata: ${JSON.stringify({ type: "beat" })}\n\n`;
 const STREAM_HEADERS = { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" };
 
 function refuse(response: Response, refusal: Refusal): void {
@@ -73,21 +80,28 @@ export const register: Register = (router) => {
 
   router.post("/api/rooms", (request, response) => {
     const who = client(request);
+    const open = publicRooms();
+    // With public rooms one caller can be many people (../lib/roomLimits), so a room made a moment ago is not taken
+    // from a host whose page has not connected yet. AWAY_MS is how long a member may be gone before the room says so.
+    const grace = open ? AWAY_MS : 0;
     let wait = limits.create(who);
     // A caller at its cap gets the place of a room it left behind: there is no call that closes a room.
-    if (wait === 0 && who !== THIS_MACHINE && rooms.heldBy(who) >= MAX_ROOMS_PER_CLIENT) wait = rooms.freeOne(who);
+    if (wait === 0 && who !== THIS_MACHINE && rooms.heldBy(who) >= roomsPerClient(open)) wait = rooms.freeOne(who, grace);
     if (wait > 0) {
       slowDown(response, wait);
       return;
     }
     // Other callers stop short of the cap, so they can never take the last rooms from the laptop that runs the server.
     const kept = who === THIS_MACHINE ? 0 : ROOMS_KEPT_FOR_THIS_MACHINE;
-    const room = rooms.size() - rooms.heldBy(THIS_MACHINE) >= MAX_ROOMS - kept ? null : rooms.create(who);
+    const full = (): boolean => rooms.size() - rooms.heldBy(THIS_MACHINE) >= MAX_ROOMS - kept;
+    // With public rooms, a stranger at that cap gets the place of a room some stranger left behind.
+    const room = full() && !(open && who !== THIS_MACHINE && rooms.freeOther(THIS_MACHINE, grace)) ? null : rooms.create(who);
     if (room === null) {
       log("warn", "rooms_at_cap", { rooms: rooms.size() });
       response.status(503).json({ error: "too_many_rooms" });
       return;
     }
+    limits.made(who);
     log("info", "room_created", { code: room.code, rooms: rooms.size() });
     response.json(room);
   });
@@ -142,7 +156,7 @@ export const register: Register = (router) => {
     push(peerEvent(attached.peerJoined));
     const heartbeat = setInterval(() => {
       rooms.sweep();
-      write(": keep\n\n");
+      write(BEAT);
     }, HEARTBEAT_MS);
     response.on("close", () => {
       clearInterval(heartbeat);
