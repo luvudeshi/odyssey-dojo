@@ -155,7 +155,7 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
   let edits = 0;
   let sentEdits = 0;
   let applying = false;
-  let started = false;
+  let listening = false;
 
   const setState = (next: AccountState): void => {
     state = next;
@@ -214,7 +214,7 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
    * Forgets the session here. The stored one is removed only when it is this page's: a newer one from another tab stays.
    * `settled` says the account has everything this browser has, which is noted for whoever signs in next (LEFT_KEY).
    */
-  const forget = (error: string, settled = false): void => {
+  const forget = (said: string, settled = false): void => {
     const mine = session;
     stop();
     session = null;
@@ -225,11 +225,11 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
         if (settled) storage?.setItem(LEFT_KEY, JSON.stringify({ name: mine.name, mark: mark() }));
         else storage?.removeItem(LEFT_KEY);
       }
-    } catch (error_) {
-      log("warn", "account.session_save", error_);
+    } catch (error) {
+      log("warn", "account.session_save", error);
     }
     persisted = false;
-    setState({ status: "signedOut", error });
+    setState({ status: "signedOut", error: said });
   };
   /** True when the progress in this browser is what a different account left behind, untouched since, and that account has it all. */
   const leftByAnother = (name: string): boolean => {
@@ -327,13 +327,13 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
       return working;
     }
     const mine = session;
-    const round_ = work().finally(() => {
+    const started = work().finally(() => {
       working = null;
       // Someone else signed in while the round ran: they have not been served yet.
       if (session && session.token !== mine?.token) void run();
     });
-    working = round_;
-    return round_;
+    working = started;
+    return started;
   };
 
   const changed = (): void => {
@@ -376,8 +376,8 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
       return () => { listeners.delete(listener); };
     },
     start() {
-      if (started) return;
-      started = true;
+      if (listening) return;
+      listening = true;
       stores.profile.subscribe(changed);
       stores.settings.subscribe(changed);
       stores.character.subscribe(changed);

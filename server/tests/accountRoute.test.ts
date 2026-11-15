@@ -302,7 +302,7 @@ const ACCOUNT_ID = "0d15ea5e-0000-4000-8000-000000000000";
 interface Fixed {
   readonly accounts: Accounts;
   /** The name of each call that reached the accounts, in order. */
-  readonly asked: string[];
+  asked: string[];
   /** How many calls are inside the accounts right now, and the most there ever were at once. */
   inside: number;
   most: number;
@@ -311,7 +311,7 @@ interface Fixed {
 }
 
 function fixed(): Fixed {
-  const state: Fixed = { accounts: null as unknown as Accounts, asked: [], inside: 0, most: 0, hold: null };
+  const state: Omit<Fixed, "accounts"> = { asked: [], inside: 0, most: 0, hold: null };
   const answer = async <T>(what: string, value: T): Promise<T> => {
     state.asked.push(what);
     state.inside += 1;
