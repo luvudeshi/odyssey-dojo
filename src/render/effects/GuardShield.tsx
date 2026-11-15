@@ -1,5 +1,5 @@
-// The guard shield: a round hoplite shield of light that rises in front of the hero while block is held
-// (keyboard and webcam alike, through battle.held), pulses while held and shrinks away when dropped.
+// The guard shield: a round hoplite shield of light that rises in front of the hero while block is held and the card
+// asks for a block (keyboard and webcam alike, through battle.held), pulses while held and shrinks away when dropped.
 // A counted block flashes it and throws sparks off its face. Reduced motion gets a plain still shield.
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
@@ -7,7 +7,7 @@ import { AdditiveBlending } from "three";
 import type { Group, MeshBasicMaterial, Points } from "three";
 import { battle, calmMotion, decay, nowSeconds } from "../battle";
 import { HOME_Z } from "../PlayerFigure";
-import { BURST_S, shieldScale, stepShield } from "./defendTiming";
+import { BURST_S, shieldScale, shieldUp, stepShield } from "./defendTiming";
 import { createPool, emit, stepPool } from "./sparks";
 
 export const SHIELD_Y = 1.25;
@@ -30,7 +30,8 @@ export function GuardShield() {
     const now = nowSeconds();
     const s = live.current;
     const calm = calmMotion();
-    s.level = stepShield(s.level, battle.held.has("block"), dt);
+    const sinceBlock = battle.defendedMove === "block" ? now - battle.defendedAt : -1;
+    s.level = stepShield(s.level, shieldUp(battle.held, battle.state?.phase, sinceBlock), dt);
     const g = group.current;
     if (g) {
       g.visible = s.level > 0.001;
