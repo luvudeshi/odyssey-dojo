@@ -15,7 +15,7 @@ Run on 14 November 2026 on `main` at `7557bdf`. Apple M4, macOS 15.6, Chrome 157
 
 The one request is `POST https://odml.pa.googleapis.com/v1/log`. It is a usage log sent by `@mediapipe/tasks-vision` 1.2.3, 60 seconds after the pose tracker starts. See "The pose library's log" below.
 
-`main` moved while this was written. The full check was run at `532abb2` (before the god scan and the music were wired in), `130acfc`, `2cd0666` and `7557bdf`, six times in all and twice at the last, and the keyboard-only check four more times. The result was the same each time. The numbers below are from `7557bdf`.
+`main` moved while this was written. The full check was run at `532abb2` (before the god scan and the music were wired in), `130acfc`, `2cd0666`, `7557bdf` and `c34a1af`, seven times in all, and the keyboard-only check four more times. The result was the same each time. The numbers below are from the two runs at `7557bdf`; the run at `c34a1af` gave the same ones.
 
 ## The keyboard fight
 
