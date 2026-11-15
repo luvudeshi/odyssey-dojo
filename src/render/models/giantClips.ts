@@ -16,7 +16,7 @@ export const GIANT_FIT: ModelFit = { targetHeight: 4.6, rotationY: 0 };
 /** The pack names every clip with this prefix. */
 const P = "EnemyArmature|EnemyArmature|EnemyArmature|";
 
-/** Attack raises both arms overhead and slams down: it reads as a club swing, a boulder lift and a grab, so all attacks share it. Jump did not read. */
+/** Attack raises both arms overhead and slams down, so every attack shares it; giantWindup.ts leans the whole body per attack id so they still read apart. Jump did not read. */
 const SPEEDS = [1, 1.15, 1.5] as const;
 
 /** One config per phase, since the playback speed is part of the config. Blinded walks about wildly and faster. */
