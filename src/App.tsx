@@ -39,7 +39,7 @@ import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
 import type { HostLink } from "./net/host";
 import { WebcamGate } from "./screens/WebcamGate";
-import { getSettings, useSettings } from "./settings/store";
+import { cameraUnder, getSettings, setSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 import { Cutscene } from "./screens/cutscene/Cutscene";
@@ -82,7 +82,7 @@ export function App() {
   const unlocks = <UnlockNotice items={fresh} onDone={() => { setFresh([]); }} />;
   // A notice belongs to its own result screen: leaving it (retry, map, quit) drops what was left of it.
   useEffect(() => { if (flow.screen !== "result") setFresh([]); }, [flow.screen]);
-  const { musicVolume } = useSettings();
+  const { musicVolume, controls } = useSettings();
   useEffect(() => { setMusicVolume(musicVolume); }, [musicVolume]);
   // Menu music on every screen but the fight and its result. Silent until the first click, then it starts.
   useEffect(() => { if (flow.screen !== "fight" && flow.screen !== "result") startMusic("menu"); }, [flow.screen]);
@@ -104,8 +104,10 @@ export function App() {
 
   // Starts the camera. `room` is true for the host's "Start" in a room: a camera that fails there must not cost the
   // room and the friend waiting in it, so the host stays where it is and plays on the keyboard.
+  // Picking the camera sets Play with back to Camera, so the fights after this one are handed the camera too.
   const beginCamera = (room: boolean): void => {
     keyboardOnly.current = false;
+    setSettings({ controls: "camera" });
     setCameraProblem("");
     setNotice("Starting the camera... If the browser asks for the camera at the top of this window, choose Allow.");
     camera.start().then(
@@ -129,6 +131,8 @@ export function App() {
         setNotice("");
         // Stay put: the player chooses the keyboard, never the failure.
         setCameraProblem(cameraErrorMessage(error));
+        // The camera problem card is on the main menu only: the two-player card's start must not land back on the Multiplayer screen with nothing said.
+        setPanel(null);
         dispatch({ type: "toTitle" });
       },
     );
@@ -174,7 +178,8 @@ export function App() {
         hosting={flow.screen === "host"}
         code={roomFromSearch(window.location.search) ?? ""}
         onOpen={() => { dispatch({ type: "hostRoom" }); }}
-        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); beginCamera(true); }}
+        // Two players on one camera have no room to keep and cannot play without the camera: a camera that fails there goes to the problem card.
+        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); beginCamera(!duoCamera.on()); }}
         onSolo={() => { keyboardOnly.current = true; dispatch({ type: "hosted", together: false }); }}
         onClose={() => { setPanel("multiplayer"); dispatch({ type: "toTitle" }); }}
         onJoined={(next) => { setJoined(next); dispatch({ type: "joinRoom" }); dispatch({ type: "joined" }); }}
@@ -248,12 +253,15 @@ export function App() {
   }
 
   return (
+    // "Use keyboard instead" at calibration sets Play with to Keyboard, so no later fight is handed the camera or asks to calibrate,
+    // until "Use camera" on a fight's panel or Play with back on Camera.
     <CameraPanelContext value={{ status: cameraStatus, onCamera: startCamera }}>
       <WebcamGate
         key={flow.seed}
         enemy={enemy}
         style={flow.style}
-        tracker={tracker}
+        tracker={cameraUnder(controls, tracker)}
+        onKeyboard={() => { setSettings({ controls: "keyboard" }); }}
         god={HERO_POWER[character]}
         hero={characterById(character).name}
         link={flow.hosting ? hostLink : null}
