@@ -37,7 +37,7 @@ export const PRACTICE_TIPS = {
   still: tip("no move seen", "I did not see a move. Take your time, then do it once, clearly."),
   // Any move with no table of its own, or one whose every measured part was strong but still did not count.
   strike: tip("whole move", "Do it as one sharp move from your guard, then come straight back to guard."),
-  defend: tip("whole move", "Make the move bigger and hold it for a moment, eyes on what is coming."),
+  defend: tip("whole move", "Make the move bigger and do it once, clearly, while the attack is coming."),
   // Straight punches and pushes: jab, cross, reverse punch, spear thrust, double palm, chain punch.
   reach: tip("reach", "Reach all the way out, then bring the hand straight back to your face."),
   height: tip("height", "Finish with your fist level with your shoulder, not above or below it."),
@@ -64,7 +64,7 @@ export const PRACTICE_TIPS = {
   sweepOpen: tip("arm", "Open your arm out nearly straight as the sweep finishes."),
   // Block.
   guard: tip("guard", "Bring both fists right up to your cheeks. Hands at your chest leave your head open."),
-  hold: tip("hold", "Keep your hands up for a moment longer. Lower them only when it is safe."),
+  hold: tip("hold", "Keep your fists up for a beat so the guard reads clearly. Once is enough."),
   // Duck.
   depth: tip("depth", "Drop lower: bend your knees until your head is under where it was."),
   knees: tip("knees", "Bend your knees, not your waist, and keep your eyes up on what is coming."),
