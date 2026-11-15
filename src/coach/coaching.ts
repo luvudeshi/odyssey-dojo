@@ -9,7 +9,7 @@ import { otherSide } from "../moves/handSignals";
 import { SIDES } from "../moves/legSignals";
 import { readMeasure } from "../moves/measures";
 import type { Measure } from "../moves/measures";
-import { pushFrame } from "../pose/signals";
+import { JOINT, joint, pushFrame, shoulderWidth } from "../pose/signals";
 import { entryOf } from "./guide";
 import type { PracticeTip } from "./practice";
 
@@ -215,11 +215,27 @@ export function faultFor(moveId: string, measure: Measure): Fault | undefined {
 }
 
 const NEARLY = 0.95;
+/** A hand, elbow, knee or foot this far, in shoulder widths, from where it was on the first frame has moved. */
+const MOVED = 0.25;
+const LIMBS = [
+  JOINT.leftElbow, JOINT.rightElbow, JOINT.leftWrist, JOINT.rightWrist, JOINT.leftKnee, JOINT.rightKnee, JOINT.leftAnkle, JOINT.rightAnkle,
+];
+
+/** True when some limb is away from where the try started: the player is doing something, not standing ready. */
+function moving(frame: PoseFrame, first: PoseFrame): boolean {
+  const width = shoulderWidth(first);
+  if (width === 0) return false;
+  return LIMBS.some((index) => {
+    const [from, to] = [joint(first.image, index), joint(frame.image, index)];
+    return Math.hypot(to.x - from.x, to.y - from.y) / width >= MOVED;
+  });
+}
 
 /**
  * What a try at a move judged condition by condition got wrong. `options` are the move's conditions (one list per
  * side, as in src/moves/measures.ts). The try is read at its best moment: the frame, and the side, where the most
- * conditions held (one that nearly held counts for part). The tip is for a condition that failed there: the first
+ * conditions held (one that nearly held counts for part), among the frames the player was moving on, so standing
+ * ready is not taken for the best the try got. The tip is for a condition that failed there: the first
  * in the order the move's faults are written. Null when the move has no faults written, or nothing failed.
  */
 export function faultOf(
@@ -229,20 +245,23 @@ export function faultOf(
   if (!faults) return null;
   let best: { readonly score: number; readonly failed: readonly Measure[] } | null = null;
   let history: PoseHistory = { frames: [], baseline };
-  for (const frame of frames) {
-    if (!Number.isFinite(frame.t)) continue;
+  const timed = frames.filter((frame) => Number.isFinite(frame.t));
+  const first = timed[0];
+  const anyMoving = first !== undefined && timed.some((frame) => moving(frame, first));
+  for (const frame of timed) {
     history = pushFrame(history, frame);
+    if (anyMoving && first && !moving(frame, first)) continue;
     for (const measures of options) {
       const reads = measures.map((measure) => readMeasure(measure, history));
       const score = reads.reduce((sum, read) => {
         const near = Number.isNaN(read.margin) ? 0 : Math.min(NEARLY, Math.max(0, 1 + read.margin / 100));
         return sum + (read.passed ? 2 : near);
       }, 0);
-      if (!best || score > best.score) best = { score, failed: measures.filter((_, index) => !reads[index]?.passed) };
+      if (!best || score >= best.score) best = { score, failed: measures.filter((_, index) => !reads[index]?.passed) };
     }
   }
   if (!best) return null;
   const failed = best.failed.map((measure) => entryOf(faults, measure));
-  const first = faults.find((fault) => failed.includes(fault));
-  return first ? { part: first.part, tip: first.tip } : null;
+  const worst = faults.find((fault) => failed.includes(fault));
+  return worst ? { part: worst.part, tip: worst.tip } : null;
 }

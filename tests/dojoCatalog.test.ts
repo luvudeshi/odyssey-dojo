@@ -1,6 +1,7 @@
 // What the training dojo offers to practise (src/coach/catalog.ts): the styles, the grouped list of moves a player
 // ticks, the choice kept for next time, and a session that trains exactly the ticked moves in the order shown.
 import { describe, expect, test } from "vitest";
+import { COACHING } from "../src/coach/coaching";
 import {
   DOJO_CHOICE_KEY, DOJO_DEFENDS, DOJO_MEASURES, REPS_CHOICES, WHOLE_BODY_NOTE, dojoGuideFor, dojoJudgeRep, dojoMenu, dojoTipFor, dojoMoveOf, dojoStyles, loadChoice, menuIds, needsWholeBody, pickedInOrder,
   saveChoice, startingSetup, usualMoves,
@@ -214,8 +215,11 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
 
   test("an extra move's tips are its own: a missed try with nobody moving, and the fallback line", () => {
     const kick = need(dojoMoveOf("roundhouse_kick"));
-    expect(dojoTipFor(kick)).toBe(need(EXTRA_TIPS.roundhouse_kick).tip);
-    expect(dojoTipFor(need(dojoMoveOf("jab")))).toBe(PRACTICE_TIPS.strike.tip);
+    // Every move the dojo trains has its own line on how to make it (src/coach/coaching.ts).
+    expect(dojoTipFor(kick)).toBe(COACHING.roundhouse_kick?.whole.tip);
+    expect(dojoTipFor(need(dojoMoveOf("jab")))).toBe(COACHING.jab?.whole.tip);
+    expect(need(EXTRA_TIPS.roundhouse_kick).tip.length).toBeGreaterThan(0);
+    expect(PRACTICE_TIPS.strike.tip.length).toBeGreaterThan(0);
     const missed = gradeAttempt(kick, []);
     expect(missed.grade.tier).toBe("needs_work");
     expect(missed.tip).toBeTruthy();
