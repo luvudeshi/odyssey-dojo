@@ -1,4 +1,6 @@
-// The screen flow as a pure reducer: title -> style -> map -> intro -> fight -> result -> map.
+// The screen flow as a pure reducer: title -> style -> map -> intro (optional warm-up) -> fight -> result -> map.
+import type { Assessment } from "../coach/contract";
+import { tuneFor } from "../coach/warmup";
 import type { EnemySpec, FightingStyle } from "../core/types";
 
 export type Screen = "title" | "together" | "host" | "join" | "guest" | "style" | "map" | "intro" | "fight" | "result";
@@ -13,6 +15,8 @@ export interface Flow {
   readonly cleared: readonly string[];
   /** True while this player hosts an online room: the fight is shared with a guest. */
   readonly hosting: boolean;
+  /** What the optional warm-up found out about the player; null until it is done. The monsters are tuned with it. */
+  readonly assessment: Assessment | null;
 }
 
 export type FlowAction =
@@ -21,6 +25,7 @@ export type FlowAction =
   | { readonly type: "changeStyle" }
   | { readonly type: "enter"; readonly index: number }
   | { readonly type: "begin"; readonly seed: number }
+  | { readonly type: "warmed"; readonly assessment: Assessment }
   | { readonly type: "ended"; readonly enemyId: string; readonly won: boolean }
   | { readonly type: "retry"; readonly seed: number }
   | { readonly type: "restart"; readonly seed: number }
@@ -33,7 +38,7 @@ export type FlowAction =
   | { readonly type: "hosted"; readonly together: boolean }
   | { readonly type: "toTitle" };
 
-export const START: Flow = { screen: "title", style: null, index: 0, seed: 0, cleared: [], hosting: false };
+export const START: Flow = { screen: "title", style: null, index: 0, seed: 0, cleared: [], hosting: false, assessment: null };
 
 /** Where the game opens. `?stop=<enemy id>` marks every earlier stop as beaten, to reach a later fight for a demo or a check. */
 export function startAt(enemies: readonly EnemySpec[], stopId: string | null): Flow {
@@ -72,6 +77,8 @@ export function flowReducer(flow: Flow, action: FlowAction): Flow {
       return flow.screen === "map" && flow.style ? { ...flow, index: action.index, screen: "intro" } : flow;
     case "begin":
       return flow.screen === "intro" ? { ...flow, seed: action.seed, screen: "fight" } : flow;
+    case "warmed":
+      return flow.screen === "intro" ? { ...flow, assessment: action.assessment } : flow;
     case "ended":
       if (flow.screen !== "fight") return flow;
       return {
@@ -104,4 +111,9 @@ export function unlocked(
 ): boolean {
   if (!canPlay[index]) return false;
   return enemies.every((enemy, i) => i >= index || !canPlay[i] || cleared.includes(enemy.id));
+}
+
+/** The monster for this fight: tuned to the player when the warm-up was done, the registry's own otherwise. */
+export function enemyFor(enemy: EnemySpec, assessment: Assessment | null): EnemySpec {
+  return assessment ? tuneFor(enemy, assessment) : enemy;
 }

@@ -4,7 +4,11 @@ import { LevelResponseSchema } from "./contracts";
 import type { LevelRequest, LevelResponse } from "./contracts";
 import { fallbackLevel } from "./fallbacks";
 
-const LEVEL_TIMEOUT_MS = 10000;
+/**
+ * How long the player may watch "The Muse is composing" before a bundled fight is used. The server gives the model
+ * levelMs (server/env.ts) and then answers with a bundled fight itself, so this only runs out when the server is stuck.
+ */
+export const LEVEL_TIMEOUT_MS = 6500;
 
 export async function generateLevel(
   request: LevelRequest,

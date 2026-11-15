@@ -1,5 +1,5 @@
 // The calm sea all round the islet: a big sheet of flat triangles that rock very gently, so the sun glitters in
-// facets. Teal by the shore, deep blue farther out, pale where it meets the haze.
+// facets. Teal by the shore, deep indigo farther out, rose where it meets the haze.
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Color, Float32BufferAttribute, MeshStandardMaterial, PlaneGeometry } from "three";
@@ -13,7 +13,7 @@ export function Sea({ low }: { low: boolean }) {
   const geometry = useMemo(() => {
     const plane = new PlaneGeometry(SIZE, SIZE, SEGMENTS, SEGMENTS).rotateX(-Math.PI / 2);
     const position = plane.getAttribute("position");
-    const near = new Color("#2fb8b0"), far = new Color("#1d6fb0"), haze = new Color("#cfe6ea");
+    const near = new Color("#2a8f9a"), far = new Color("#2a4f92"), haze = new Color("#c98f9c");
     const colors = new Float32Array(position.count * 3);
     const c = new Color();
     for (let i = 0; i < position.count; i++) {
