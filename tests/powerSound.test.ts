@@ -21,6 +21,8 @@ vi.mock("react", async (original) => ({
     if (cleanup) mounted.cleanups.push(cleanup);
   },
   useRef: <T>(value: T) => ({ current: value }),
+  // The banner keeps a little state for a key pressed between cards; it never changes in these tests.
+  useState: <T>(value: T) => [value, () => undefined],
 }));
 
 const FOLDER = "public/audio/power";
