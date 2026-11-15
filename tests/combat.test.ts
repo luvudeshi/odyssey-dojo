@@ -32,6 +32,34 @@ test("a defense held when the attack lands opens a strike", () => {
   expect(state.mastery).toEqual({ block: 1 });
 });
 
+test("a defense made once while the attack is coming counts, even when let go before it lands", () => {
+  const waiting = run(toDefend(), idle, 300).state;
+  const dodged = run(waiting, blocking, 100).state;
+  expect(dodged.phase.kind).toBe("defend");
+  const { state, events } = run(run(dodged, idle, 300).state, idle, 300);
+  expect(events).toEqual(["defended", "opening"]);
+  expect(state.playerHp).toBe(PLAYER_HP);
+  expect(state.mastery).toEqual({ block: 1 });
+});
+
+test("a defense carried over from before the attack was shown and then let go does not count", () => {
+  const carried = run(toDefend(), blocking, 300).state;
+  const { state, events } = run(run(carried, idle, 300).state, idle, 400);
+  expect(events).toEqual(["playerHit"]);
+  expect(state.playerHp).toBe(40);
+});
+
+test("a defense let go and made again after the attack was shown counts", () => {
+  const carried = run(toDefend(), blocking, 200).state;
+  const again = run(run(carried, idle, 200).state, blocking, 100).state;
+  expect(run(again, idle, 500).events).toEqual(["defended", "opening"]);
+});
+
+test("another defense made while the attack is coming does not count", () => {
+  const wrong = run(toDefend(), { held: new Set(["duck"]), struck: [] }, 500).state;
+  expect(run(wrong, idle, 500).events).toEqual(["playerHit"]);
+});
+
 test("no defense means the player is hit, and two hits lose the fight", () => {
   const first = run(toDefend(), idle, 1000);
   expect(first.events).toEqual(["playerHit"]);
