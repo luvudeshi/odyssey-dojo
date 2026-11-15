@@ -57,7 +57,7 @@ These are effects, stop sounds and music. This change does not touch those files
 5. **Lines made at run time are not levelled.** `narration.ts` plays what `/api/speech` returns at its own level. Recorded Homer lines came out near -22.3 LUFS before this change, so a line made at run time will likely be about 3 LU under the recorded ones.
 6. **Calls have up to 301 ms of silence after them.** Not trimmed here.
 
-At commit 7557bdf no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
+At commit c34a1af no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
 
 ## What was changed
 
