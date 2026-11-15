@@ -3,7 +3,7 @@
 > **HackUTA 2026** (November 14 to 15, 2026). Theme: Homer's Odyssey.
 >
 > 🎮 **[Play at OdysseyDojo.club](https://odysseydojo.club)**
-<!-- link: the Devpost submission goes here once it is public -->
+> · 📺 **[Watch the demo video](https://youtu.be/_zRIFUWPyI0)** · 🏆 **[Devpost submission](https://devpost.com/software/oddysey-fighter)**
 
 **Learn real self-defense, one monster at a time.** Odyssey Dojo is a browser fighting game where your
 body is the controller. Your webcam watches you block, duck, dodge and strike while you follow Odysseus
