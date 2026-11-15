@@ -354,6 +354,18 @@ const oneHanded = (side: Side): Written[] => [
   max(`${side} fist's sideways travel in # ms`, "Punch forward, not sideways", 0),
   max(`${side} fist swept across`, "Straight, not a hook", 0),
   max(`${otherSide(side)} fist swept across just now`, "Not straight after a hook", 0),
+  max(`${side} arm folding up or dropping in the last # ms`, "Fist going out, not back", 0),
+];
+/**
+ * One arm of a move made with both, or of one with more to it than the punch (`strike` in src/moves/measures.ts).
+ * The rows that show only while they fail name their side, so two arms in one list never read the same.
+ */
+const strike = (side: Side, snap = 2): Written[] => [
+  min(`${side} arm out on this frame and the one before`, `${cap(side)} arm out`),
+  min(`${side} elbow opened or upper arm rose in # ms`, `Snap ${side} arm out fast`, snap),
+  min(`ms since ${side} hand was over the punching band`, `No ${side} chop from overhead`, 0),
+  max(`${side} fist's sideways travel in # ms`, `${cap(side)} hand forward, not wide`, 0),
+  max(`${side} arm folding up or dropping in the last # ms`, `${cap(side)} hand out, not back`, 0),
 ];
 const rising = (side: Side, hand: string): Written[] => [
   min(`${side} wrist above the shoulder line`, `${cap(side)} ${hand} up to chin`),
@@ -372,7 +384,8 @@ const rising = (side: Side, hand: string): Written[] => [
 ];
 const chain = (side: Side): Written[] => [
   ...thrust(side),
-  group(`${otherSide(side)} arm not out`, `Pull ${otherSide(side)} fist back`, 2),
+  ...strike(side),
+  max(`${otherSide(side)} arm reach now`, `Pull ${otherSide(side)} fist back`, 2),
   max(`ms since ${otherSide(side)} arm was out`, `${cap(otherSide(side))} punch goes first`),
 ];
 const thrown = (side: Side): Written[] => [
@@ -399,6 +412,68 @@ const kneeUp = (side: Side): Written[] => [
 ];
 const eitherSide = (build: (side: Side) => Written[]): Written[] => SIDES.flatMap(build);
 
+// The moves only the dojo knows (./extra/moves). Their conditions are named in those files.
+const roundhouse = (side: Side): Written[] => [
+  min("legs in view", "Whole body in view", 3),
+  max(`ms since ${side} knee was up and out to the side`, "Knee up and out first"),
+  min(`${side} foot lifted high`, `Lift ${side} foot hip high`),
+  min(`${side} leg snapped straight`, `Snap ${side} leg straight`, 2),
+  max(`${side} foot round to the front`, "Bring foot round to front", 0),
+];
+const sideKick = (side: Side): Written[] => [
+  min("legs in view", "Whole body in view", 3),
+  max(`ms since ${side} knee was lifted and folded`, "Lift your knee first"),
+  min(`${side} foot out to the side`, `Push ${side} foot out sideways`),
+  min(`${side} foot off the floor`, `Lift ${side} foot higher`, 0),
+  min(`${side} leg pushed straight`, `Push ${side} leg straight`, 2),
+];
+const lowKick = (side: Side): Written[] => [
+  min("legs in view", "Whole body in view", 3),
+  min(`${side} foot off the floor`, `Lift ${side} foot off floor`, 0),
+  max(`${side} foot kept low`, "Keep it at shin height", 2),
+  min(`${side} leg kept straight`, `Keep ${side} leg straight`),
+  min(`${side} foot out in front`, `Flick ${side} foot forward`),
+  max(`ms since ${side} foot was on the floor`, "Make it one quick flick", 0),
+  min(`ms since ${side} knee was lifted high`, "Don't lift your knee high", 0),
+];
+const highBlock = (side: Side): Written[] => [
+  min(`${side} wrist up at your forehead`, `${cap(side)} hand up to forehead`),
+  min(`${side} elbow up and out`, `${cap(side)} elbow up and out`),
+  min(`${side} forearm lying across`, "Forearm across, not upright", 2),
+  max(`${side} forearm kept level`, "Keep forearm level", 2),
+  max(`${otherSide(side)} hand kept down`, `Keep ${otherSide(side)} hand down`, 0),
+  min(`ms ${side} forearm has stayed up`, "Hold it up a beat", 0),
+];
+const lowBlock = (side: Side): Written[] => [
+  max(`ms since ${side} hand was across at the other shoulder`, "Start at other shoulder"),
+  max(`${side} hand swept down low`, `Sweep ${side} hand down low`),
+  min(`${side} hand out past its hip`, `Finish past your ${side} hip`, 2),
+  min(`${side} arm ends straight`, `End with ${side} arm straight`, 2),
+];
+const palmHeel = (side: Side): Written[] => [
+  min(`${side} arm pushed out`, `Push ${side} palm out`),
+  min(`${side} hand at face height`, `${cap(side)} palm at face height`),
+  max(`${side} hand below head top`, "Not above your head", 0),
+  max(`${side} hand in front`, "Straight ahead, not wide", 0),
+  min(`${side} upper arm lifted`, "Lift your elbow as you push", 0),
+  min(`${side} arm's snap out in # ms`, `Snap ${side} palm out fast`, 2),
+  group(`${otherSide(side)} hand not pushing too`, `Keep ${otherSide(side)} hand back`, 0),
+  min(`ms since ${side} hand was over the head`, "Not a chop from overhead", 0),
+];
+const elbowStrike = (side: Side): Written[] => [
+  max(`${side} arm folded tight`, `Fold ${side} arm tight`),
+  min(`${side} elbow up at shoulder height`, `${cap(side)} elbow shoulder high`),
+  min(`${side} elbow swung across in # ms`, `Swing ${side} elbow across`, 2),
+  max(`${side} elbow in front of the chest`, "Finish in front of chest", 2),
+];
+const wristRelease = (side: Side): Written[] => [
+  min(`ms ${side} arm stayed out first`, `Hold ${side} arm out first`),
+  max(`${side} elbow folded`, `Fold ${side} elbow tight`),
+  max(`${side} hand in at its shoulder`, `${cap(side)} hand to your shoulder`, 2),
+  min(`${side} elbow pointing forward`, "Point elbow forward", 2),
+  max(`ms since ${side} arm was held out in front`, "Then fold in quickly", 0),
+];
+
 /**
  * The labels written for each move's conditions in src/moves/measures.ts. Each is tied to its condition by the
  * condition's name (`conditionKey`) and the way it compares, never by its place in the list, so the table can
@@ -414,11 +489,13 @@ export const LABELS: Readonly<Record<string, readonly Written[]>> = {
     group("arms not both flung out to their sides", "Thrust forward, not wide", 0),
     max("both arms flung out to their sides", "Thrust forward, not wide", 0),
     ...punch("left", "No left chop from overhead"), ...punch("right", "No right chop from overhead"),
+    ...strike("left"), ...strike("right"),
   ],
-  double_palm: [...thrust("left"), ...thrust("right"), max("gap between the wrists", "Hands close together")],
+  double_palm: [...thrust("left"), ...thrust("right"), ...strike("left", 3), ...strike("right", 3), max("gap between the wrists", "Hands close together", 2)],
   chain_punch: eitherSide(chain),
   reverse_punch: [
-    ...thrust("right"), max("left wrist above the shoulder line", "Left fist back at hip"), max("left elbow bent", "Left elbow bent", 0),
+    ...thrust("right"), ...strike("right"),
+    max("left wrist above the shoulder line", "Left fist back at hip"), max("left elbow bent", "Left elbow bent back", 0),
   ],
   hook: eitherSide((side) => [
     min(`${side} elbow bend`, "Don't fold arm too tight", 0), max(`${side} elbow bend`, `Keep ${side} elbow bent`),
@@ -472,6 +549,14 @@ export const LABELS: Readonly<Record<string, readonly Written[]>> = {
   dodge_left: [min("side step confidence", "Move your body left")],
   dodge_right: [min("side step confidence", "Move your body right")],
   jump: [min("hop confidence", "Hop up off the floor")],
+  roundhouse_kick: eitherSide(roundhouse),
+  side_kick: eitherSide(sideKick),
+  low_kick: eitherSide(lowKick),
+  high_block: eitherSide(highBlock),
+  low_block: eitherSide(lowBlock),
+  palm_heel: eitherSide(palmHeel),
+  elbow_strike: eitherSide(elbowStrike),
+  wrist_release: eitherSide(wristRelease),
 };
 
 /**
@@ -487,12 +572,17 @@ export function labelOf(
   return found && !shared ? { label: found.label, rank: found.rank, written: true } : { label: plainLabel(measure), rank: 0, written: false };
 }
 
-function entryFor(moveId: string, measure: Measure): Written | undefined {
+/** The entry written for a condition, among `entries`: the same way of comparing, and the longest key that fits its name. */
+export function entryOf<Entry extends Pick<Written, "key" | "kind">>(entries: readonly Entry[], measure: Measure): Entry | undefined {
   const key = conditionKey(measure.name);
   const kind = kindOf(measure);
-  return (LABELS[moveId] ?? [])
+  return entries
     .filter((entry) => entry.kind === kind && (key === entry.key || key.startsWith(`${entry.key},`)))
-    .reduce<Written | undefined>((best, entry) => (!best || entry.key.length > best.key.length ? entry : best), undefined);
+    .reduce<Entry | undefined>((best, entry) => (!best || entry.key.length > best.key.length ? entry : best), undefined);
+}
+
+function entryFor(moveId: string, measure: Measure): Written | undefined {
+  return entryOf(LABELS[moveId] ?? [], measure);
 }
 
 const MAX_SHOWN = 4;

@@ -8,6 +8,8 @@ import { otherSide, throwDegrees, upperArmLift, wristOut, wristRise } from "../.
 import { strikeQuality } from "../../../pose/quality";
 import { elbowAngle } from "../../../pose/signals";
 import { atLeast, atMost, eitherSide, now, since, wristOverNose } from "../signals";
+import { legRose } from "../../../moves/looseSignals";
+import { armWentForward } from "../../../moves/defs/cross";
 
 /** The elbow reads as open from here, in degrees. A hand pushed at the camera reads short of straight. */
 export const PALM_OPEN = 120;
@@ -55,6 +57,9 @@ export const move: MoveDef = {
   teaches: "The heel of your open hand is sturdier than your knuckles and less likely to get hurt.",
   detect(history) {
     return strike.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(armWentForward(history, "left"), armWentForward(history, "right"));
   },
   quality(history) {
     const side = strike.side(history);

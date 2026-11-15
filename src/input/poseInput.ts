@@ -27,7 +27,7 @@ export const ASK_GRACE_MS = 250;
 /** The loose reading needs at least this many frames to compare. */
 const ASKED_MIN_FRAMES = 3;
 
-/** Returns a reader. `ask` is the strike the prompt asks for (null for none): that move may read looser (`detectAsked`). Defenses count while held, and for RELEASE_MS after; a strike counts once each time it crosses ON. */
+/** Returns a reader. `ask` is the move the prompt asks for, a strike, a defend or a finisher (null for none; see `askedMove`): that move may read looser (`detectAsked`). Defenses count while held, and for RELEASE_MS after; a strike counts once each time it crosses ON. */
 export function createPoseInput(
   moves: ReadonlyMap<string, MoveDef>,
 ): (history: PoseHistory, ask?: string | null) => CombatInput {
