@@ -91,6 +91,11 @@ export function phaseLineId(name: unknown): string {
   return LINE_IDS.has(id) && !/^\d+$/.test(slug) ? id : ANY_PHASE;
 }
 
+/** Whether this line, or whatever else the voice says it is speaking, is one of the phase lines. */
+export function isPhaseLine(id: string | null): boolean {
+  return id?.startsWith("phase_") ?? false;
+}
+
 export function clipUrl(id: string): string {
   return `/audio/athena/${id}.mp3`;
 }
