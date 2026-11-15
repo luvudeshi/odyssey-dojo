@@ -5,12 +5,13 @@
 // The punch: hands up in a guard, then one arm snapped straight, aimed a given number of degrees above or below
 // level. Every replay goes through the real pose input, so "counts" means what the game means.
 //
-// What sets the numbers (src/moves/handSignals.ts): a fist is at shoulder height within SHOULDER_HEIGHT torso
-// lengths of its shoulder, 0.3 m on the 0.5 m torso every body here has. Shoulder width is not in it, so it
-// must not move the angles at all. Arm length is: a longer arm carries the fist further off level at the same
-// angle, so 0.60 m arms stop 4 degrees sooner than 0.55 m arms. When fist height was measured in shoulder widths
-// (before the baseline carried a torso length) the same sweep gave 41 up / 24 down at 0.30 m shoulders with
-// 0.55 m arms, and 38 up / 22 down with 0.60 m arms.
+// What sets the numbers (src/moves/handSignals.ts, the lenient strikes of the lenient-strikes PR): an arm is out
+// while its upper arm is lifted between PUNCH_LIFT (40) and 140 degrees from hanging, so a straight arm counts
+// from 49 degrees below level to 49 above on every body here. The fist's height band (PUNCH_HEIGHT torso
+// lengths) is wider than that, and the over-the-head check is measured on the same 3D ruler, so neither shoulder
+// width nor arm length moves the angles. The bent-elbow reading (LIFT_BENT) waits for the upper arm to stop
+// rising, or a straight arm on its way over the head would count up to about 90 degrees. Before, the band was SHOULDER_HEIGHT (0.3 m on the 0.5 m torso) and the
+// pins were 45 up / 36 down with 0.55 m arms and 41 up / 32 down with 0.60 m arms.
 import { describe, expect, test } from "vitest";
 import type { PoseFrame } from "../../src/core/types";
 import { baselineOf } from "../../src/pose/signals";
@@ -48,12 +49,12 @@ interface Case {
   readonly down: number;
 }
 
-const FIXTURE: Case = { name: "0.40 m shoulders, 0.55 m arms (the fixture)", build: FIXTURE_BUILD, up: 45, down: 36 };
+const FIXTURE: Case = { name: "0.40 m shoulders, 0.55 m arms (the fixture)", build: FIXTURE_BUILD, up: 49, down: 49 };
 const NARROW: readonly Case[] = [
-  { name: "0.34 m shoulders, 0.55 m arms", build: { shoulders: 0.34, arm: 0.55, torso: 0.5 }, up: 45, down: 36 },
-  { name: "0.30 m shoulders, 0.55 m arms", build: { shoulders: 0.3, arm: 0.55, torso: 0.5 }, up: 45, down: 36 },
-  { name: "0.34 m shoulders, 0.60 m arms", build: { shoulders: 0.34, arm: 0.6, torso: 0.5 }, up: 41, down: 32 },
-  { name: "0.30 m shoulders, 0.60 m arms", build: { shoulders: 0.3, arm: 0.6, torso: 0.5 }, up: 41, down: 32 },
+  { name: "0.34 m shoulders, 0.55 m arms", build: { shoulders: 0.34, arm: 0.55, torso: 0.5 }, up: 49, down: 49 },
+  { name: "0.30 m shoulders, 0.55 m arms", build: { shoulders: 0.3, arm: 0.55, torso: 0.5 }, up: 49, down: 49 },
+  { name: "0.34 m shoulders, 0.60 m arms", build: { shoulders: 0.34, arm: 0.6, torso: 0.5 }, up: 49, down: 49 },
+  { name: "0.30 m shoulders, 0.60 m arms", build: { shoulders: 0.3, arm: 0.6, torso: 0.5 }, up: 49, down: 49 },
 ];
 const PUNCHES: readonly (readonly [string, Side])[] = [["jab", "left"], ["cross", "right"]];
 /** "Within a few degrees" of the fixture's angles. */

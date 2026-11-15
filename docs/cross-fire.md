@@ -27,13 +27,13 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 jab | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 2 cross | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 3 hook | . | . | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 3 hook | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 4 uppercut | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 5 spear_thrust | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 6 overhead_strike | . | . | . | cat | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
+| 6 overhead_strike | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
 | 7 reverse_punch | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 8 knife_hand | . | cat | . | cat | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | cat | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
+| 8 knife_hand | . | cat | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
 | 10 double_palm | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
 | 11 chain_punch | cat | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 12 rising_palm | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
@@ -43,7 +43,7 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 | 16 duck | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . |
 | 17 dodge_left | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . |
 | 18 dodge_right | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . |
-| 19 thunderbolt | . | . | . | cat | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
+| 19 thunderbolt | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
 | 20 trident_sweep | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . |
 | 21 aegis_push | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
 | 22 swift_dash | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | cat | . | . | . | . |
@@ -62,7 +62,8 @@ the pairs that matter are the ones inside one style's strikes plus those ten mov
 styles (a karate reverse punch reading as a boxer's cross) are never asked of the same player in the same
 fight, and the fight only counts the strike it asked for.
 
-Before this issue 15 such pairs fired. Seven are fixed, eight are left and pinned.
+Before this issue 15 such pairs fired. Seven were fixed then, and an eighth (thunderbolt read as uppercut) by the
+lenient-strikes PR; seven are left and pinned.
 
 ## Fixed
 
@@ -75,26 +76,33 @@ Before this issue 15 such pairs fired. Seven are fixed, eight are left and pinne
 | double palm | rising palm | Kung Fu | the same |
 | moon arrow | uppercut | Boxer, Pankration | the same: the bow arm and the string hand come up together |
 | sun burst | spear thrust | Hoplite | `spear_thrust`: both wrists flung out past their own sides are not a thrust at the camera |
+| thunderbolt | uppercut | Boxer, Pankration | lenient-strikes PR: `risingHand` reads the elbow's height, and the hand must end at chin height or above (0.2 shoulder widths over the shoulder line) |
 
 The two `risingHand` rules (`src/moves/handSignals.ts`) are shared by the uppercut and the rising palm:
 
 - **Not while the elbow is opening.** A cross thrown from the waist passes chin height with its elbow part
   bent, inside 400 ms of the hand being down: that was an uppercut. `armOpening` (20 degrees in 100 ms) is the
   measure the jab and the cross already use for an arm on its way out. An uppercut's elbow closes or holds.
-- **Not when the other hand has come up too.** If the other wrist was also below the waist line inside 400 ms
-  and is now above chest height (0.6 shoulder widths under the shoulder line), it is a guard going up or the
-  start of a two-handed push.
+- **Not when the other hand has come up too.** If the other wrist rose by half the rising hand's own minimum
+  (0.375 shoulder widths) in the same 450 ms, at any stage of the way, it is a guard going up or the start of a
+  two-handed push. (Before the lenient-strikes PR this was "below the waist inside 400 ms and now above chest
+  height", which a looser uppercut fired ahead of.)
+- **The elbow stays low.** Since the lenient-strikes PR an upper arm lifted more than 55 degrees from hanging
+  is a punch, not a rising hand: how high the elbow comes is the one feature between the cross and the uppercut.
 
-The spear thrust rule uses `flungWide`, which the jab and the cross already use, but needs BOTH wrists out, so
+The spear thrust rule uses `flungWide`, which the jab and the cross used before the lenient-strikes PR, but needs BOTH wrists out, so
 a thrust by a player turned 30 degrees (one wrist out, the other in) still counts.
 
 The `risingHand` rules also remove the pair found in #178: a jab or cross aimed 20 to 40 degrees upward, 300 ms
 after the hands come up, used to read as a rising palm or an uppercut as well. The same test file checks it on
 the fixture's build, on 0.30 m shoulders with 0.60 m arms and on 0.28 m shoulders with 0.55 m arms.
 
-What this costs, and has not been tried on a real body: an uppercut thrown while the other hand is still on its
-way up from the waist does not count until that hand has been up for 400 ms. From a guard, or with the other
-arm hanging, it counts as before.
+What this costs, and has not been tried on a real body: an uppercut thrown while the other hand is also on its
+way up does not count. From a guard, or with the other arm hanging or on a desk, it counts.
+
+The jab and the cross no longer use `flungWide`: since the lenient-strikes PR they are `strike` in
+`src/moves/handSignals.ts`, which lets a fist land up to 1.6 shoulder widths out and rules out an upper arm
+pointing out to its own side. That is what keeps the moon arrow's bow arm, raised sideways, from reading as a jab.
 
 ## Left, and why
 
@@ -109,7 +117,6 @@ stops. That is good news when it happens: take the pair out of `LEFT` and out of
 | double palm | aegis push | Kung Fu | The same motion by design: both palms pushed straight out from the chest. |
 | aegis push | double palm | Kung Fu | The same. |
 | aegis push | spear thrust | Hoplite | A thrust is both arms snapped straight at shoulder height, and so is a push. Only the hand spacing could split them, and the existing spear thrust tests thrust with the wrists 0.72 shoulder widths apart, inside the push's 0.9. Where a real player's hands end up in the picture needs a real trace. |
-| thunderbolt | uppercut | Boxer, Pankration | Raising the hand over the head takes it from the waist past the chin with a bent elbow, which is the uppercut, and the uppercut fires on arrival: it cannot know the hand will keep going. Waiting for the hand to stop, or reading how high the elbow is, both need real timing to set. |
 | swift dash | dodge right | every style | By design: a dash is one fast step to the side, and a step to the side is a dodge. A dodge is held, not thrown, and does nothing while the fight waits for a strike. |
 
 The first five and the last need a design change, not a threshold: one of each pair would have to become a
@@ -123,12 +130,13 @@ pinned in the same test (`OUTSIDE`) so a change shows up.
 
 | Done | Also read as | Why |
 |---|---|---|
-| reverse punch, knife hand | cross | The right arm snaps straight at shoulder height. The cross does not look at the left hand's hip, or at where the right hand started. |
+| reverse punch, knife hand | cross | The right arm is punched out fast. The cross does not look at the left hand's hip, or at where the right hand started. |
 | chain punch | jab, cross | A chain punch is a jab and then a cross. |
 | double palm | spear thrust | Both arms snapped straight; see aegis push above. |
-| hook, hammer fist | rising palm | The left hand comes up from the waist with a bent elbow on its way to the start of the move. |
-| overhead strike, knife hand | uppercut | The same with the right hand. |
 | stake thrust | aegis push | The stake's grip at the chest is the push's start, and the arms end straight. The stake is only asked for as the Polyphemus finisher. |
+
+Since the lenient-strikes PR, hook, hammer fist, overhead strike and knife hand no longer also read as the rising
+strike of the same hand: the rising hand must end at chin height or above with the elbow kept low.
 
 ## Not tested
 
