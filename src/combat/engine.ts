@@ -6,6 +6,7 @@ import type {
   EnemySpec,
   FightingStyle,
 } from "../core/types";
+import { askable, swapFor } from "../moves/waistUp";
 
 export const PLAYER_HP = 100;
 const INTRO_MS = 1500;
@@ -113,12 +114,15 @@ function beginStrike(
   enemy: EnemySpec,
   style: FightingStyle,
   before: readonly CombatEvent[],
+  legs: boolean,
 ): StepResult {
   const spot = pick(enemy.weakSpots, state.seed);
   const fitting = spot.item.moves.filter((move) => style.strikes.includes(move));
   const rolled = roll(spot.seed);
   const pool = fitting.length > 0 ? fitting : style.strikes;
-  const move = pool[Math.floor(rolled.value * pool.length)] ?? style.strikes[0];
+  const picked = pool[Math.floor(rolled.value * pool.length)] ?? style.strikes[0];
+  // Waist-up play (#239): a kick the camera cannot see is not asked for; the nearest hand strike is, with the same roll.
+  const move = askable(picked, legs) ? picked : swapFor(picked, style, spot.item.moves);
   return {
     state: {
       ...state,
@@ -166,19 +170,23 @@ function seenAfter(seen: "ready" | "met" | undefined, held: boolean): "ready" | 
   return held ? seen : "ready";
 }
 
-/** Advance the fight by dtMs. A defense counts if it is made once after the attack is shown, or is held at the moment the attack lands. */
+/**
+ * Advance the fight by dtMs. A defense counts if it is made once after the attack is shown, or is held at the moment the attack lands.
+ * `legs` says whether the camera sees the player's legs (src/moves/waistUp.ts); leave it out for keyboard play.
+ */
 export function step(
   state: CombatState,
   enemy: EnemySpec,
   style: FightingStyle,
   input: CombatInput,
   dtMs: number,
+  legs = true,
 ): StepResult {
   const open = state.phase.kind === "defend" || state.phase.kind === "strike";
   if (open && state.power >= 1 && input.struck.some((thrown) => POWER_MOVES.has(thrown.move))) {
     const spent = unleash(state, enemy);
     if (spent.state.phase.kind !== "defend" && spent.state.phase.kind !== "strike") return spent;
-    const rest = step(spent.state, enemy, style, input, dtMs);
+    const rest = step(spent.state, enemy, style, input, dtMs, legs);
     return { state: rest.state, events: [...spent.events, ...rest.events] };
   }
   const phase = state.phase;
@@ -215,7 +223,7 @@ export function step(
       if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft, ...(seen ? { seen } : {}) } }, events: [] };
       if (seen === "met" || held) {
         const blocked = fill({ ...learned(state, attack.counter), score: state.score + 50 }, POWER_PER_DEFEND);
-        return beginStrike(blocked, enemy, style, [{ type: "defended", attack }]);
+        return beginStrike(blocked, enemy, style, [{ type: "defended", attack }], legs);
       }
       const playerHp = Math.max(0, state.playerHp - attack.damage);
       const hit: CombatEvent = { type: "playerHit", attack, damage: attack.damage };

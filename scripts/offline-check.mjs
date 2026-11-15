@@ -151,6 +151,7 @@ function readHud() {
   const ended = document.querySelector(".fight .overlay button") !== null;
   return {
     kind: card ? (card.matches(".pb-card--defend, .sky-card--defend") ? "defend" : "strike") : null,
+    finish: card?.matches(".sky-card--finish") ?? false,
     key: card?.querySelector("kbd")?.textContent ?? null,
     word: card?.querySelector(".pb-move, .sky-card__word")?.textContent ?? "",
     target: card?.querySelector(".pb-target, .sky-card__target")?.textContent ?? "",
@@ -165,6 +166,11 @@ function readHud() {
 
 /** The label on the card to the `event.key` the game listens for (see keyLabel in src/hud/Hud.tsx). */
 const keyFor = (label) => (label === "Space" ? " " : label.length === 1 ? label.toLowerCase() : label);
+
+/** A win's headline: "Polyphemus falls", or for a stop the ship gets past, "Past the Sirens" (src/enemies/wording.ts). */
+function wonHeading(heading) {
+  return heading !== "" && heading !== "You are struck down";
+}
 
 /**
  * Plays by the prompt card: holds the key of a defend until the card changes, taps the key of a strike.
@@ -198,8 +204,8 @@ async function playFight(page, log, maxMs) {
         if (hud.score === card.score + DEFEND_SCORE && hud.you === card.you) tally.defends += 1;
         else if (hud.you < card.you) tally.hitsTaken += 1;
         else tally.unclear += 1;
-      } else if (card.target === "Finish it") {
-        tally.finisher = hud.ended && / falls?$/.test(hud.heading);
+      } else if (card.finish || card.target === "Finish it") {
+        tally.finisher = hud.ended && wonHeading(hud.heading);
       } else if (hud.enemy < card.enemy) tally.strikes += 1;
       else flying = { enemy: card.enemy, until: Date.now() + LAND_MS };
       card = null;
@@ -208,14 +214,14 @@ async function playFight(page, log, maxMs) {
     if (hud.ended || Date.now() - started > maxMs) {
       if (held !== null) await page.keyboard.up(held);
       if (flying) tally.strikesMissed += 1;
-      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: / falls?$/.test(hud.heading), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
+      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: wonHeading(hud.heading), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
     }
     if (!card && id) {
       if (hud.key === null) throw new CheckError("the prompt card shows no key: key hints are off in the saved settings");
       log.firstPromptAt ??= Date.now() - log.t0;
       const key = keyFor(hud.key);
       tally.keys.add(hud.key);
-      card = { id, kind: hud.kind, target: hud.target, key, score: hud.score, you: hud.you, enemy: hud.enemy, tappedAt: Date.now() };
+      card = { id, kind: hud.kind, finish: hud.finish, target: hud.target, key, score: hud.score, you: hud.you, enemy: hud.enemy, tappedAt: Date.now() };
       if (hud.kind === "defend") {
         await page.keyboard.down(key);
         held = key;

@@ -16,6 +16,8 @@ export interface ShareFight {
   readonly god: Pick<GodReveal, "god" | "epithet"> | null;
   /** The hero the player fought as. Names the card when there is no god; omitted, the card is of Odysseus himself. */
   readonly hero?: string | undefined;
+  /** The name of the hero's power, e.g. "THUNDERBOLT". Shown on the card as "Power: Thunderbolt". */
+  readonly power?: string | undefined;
   readonly won: boolean;
   readonly enemyName: string;
   /** The enemy's title, e.g. "The Cyclops of the Cave". */
@@ -31,12 +33,13 @@ export type CardWords = Omit<GodCardData, "portrait" | "qr">;
 export function cardWords(fight: ShareFight, hasQr = false): CardWords {
   const god = fight.god === null ? null : GODS[fight.god.god];
   const other = fight.hero !== undefined && fight.hero !== "Odysseus";
+  const power = fight.power === undefined ? "" : `Power: ${fight.power.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}`;
   const style = fight.style.trim() === "" ? "" : `Fighting style: ${fight.style.trim()} · `;
   return {
     godName: god?.name ?? fight.hero ?? "Odysseus",
     // Odysseus gives himself this title when he shouts his name to Polyphemus (Odyssey 9.504).
     epithet: fight.god?.epithet ?? (other ? "hero of the Odyssey" : "sacker of cities"),
-    domain: god?.domain ?? (other ? "Fighter at the dojo" : "King of Ithaca"),
+    domain: [god?.domain ?? (other ? "Fighter at the dojo" : "King of Ithaca"), power].filter((part) => part !== "").join(" · "),
     enemyName: fight.enemyName,
     fightTitle: fight.fightTitle,
     score: Number.isFinite(fight.score) ? fight.score : 0,
