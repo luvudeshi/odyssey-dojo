@@ -3,7 +3,7 @@ import { startFight, step } from "../src/combat/engine";
 import { ENEMIES } from "../src/enemies/registry";
 import { STYLES } from "../src/styles/registry";
 import { battle, resetBattle, syncBattle } from "../src/render/battle";
-import { BURST_S, burstFade, burstKind, burstProgress, burstVariant, easeOut, shieldScale, shieldUp, stepShield } from "../src/render/effects/defendTiming";
+import { BURST_S, burstFade, burstKind, burstProgress, easeOut, shieldScale, shieldUp, stepShield } from "../src/render/effects/defendTiming";
 
 test("the shield rises in about 120 ms while held and leaves in about 150 ms once dropped", () => {
   let level = 0;
@@ -33,10 +33,6 @@ test("a burst eases in and out: dark at both ends, no pop, and ease-out never ov
   expect(burstFade(0.6)).toBeLessThan(burstFade(0.3));
   expect([0, 0.25, 0.5, 1].map(easeOut).every((v, i, all) => v >= (all[i - 1] ?? 0) && v <= 1)).toBe(true);
   expect(easeOut(0.5)).toBeGreaterThan(0.5);
-});
-
-test("the dodge version comes from ?burst= and defaults to a", () => {
-  expect(["", "?burst=a", "?burst=b", "?debug&burst=c", "?burst=z"].map(burstVariant)).toEqual(["a", "a", "b", "c", "a"]);
 });
 
 test("syncBattle stamps the move and time when a defend counts, and not before", () => {
