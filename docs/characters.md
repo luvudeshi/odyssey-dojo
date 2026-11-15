@@ -28,7 +28,7 @@ Odysseus is today's hero, unchanged, so the other four cost between 66 fewer and
 
 ## Files
 
-- `characters.ts`: the five as plain data (id, name, line, palette, gear list), `characterById`, `DEFAULT_CHARACTER`, and the stored choice: `loadCharacter()` and `saveCharacter(id)` keep the id in localStorage under `odyssey-fighter.character`. No storage, a storage that throws, or an id we do not know all give Odysseus.
+- `characters.ts`: the five as plain data (id, name, line, palette, gear list), `characterById`, `DEFAULT_CHARACTER`, and the stored choice: `loadCharacter()` and `saveCharacter(id)` keep the id in localStorage under `odyssey-dojo.character`. No storage, a storage that throws, or an id we do not know all give Odysseus.
 - `gear/`: the pieces. `headGear.tsx` (crested helmet, hair, beard in two lengths, three-pronged crown, laurel wreath), `bodyGear.tsx` (cuirass, scale cuirass, tunic, aegis, cloak, himation, kilt, greave, hip sword), `backGear.tsx` (trident, thunderbolt, round shield, owl shield), `materials.tsx`, and `registry.tsx`, which names every piece, the bone it hangs on and how to draw it in a palette.
 - `anchors.tsx`: `anchorsFor(id)` gives the map from bone name to nodes, in the shape of the spartan's `SPARTAN_ANCHORS`. For Odysseus it is `SPARTAN_ANCHORS` itself.
 - `CharacterFigure.tsx`: one character in idle on the real body (the spartan's file, height and skin through `RiggedModel`).
