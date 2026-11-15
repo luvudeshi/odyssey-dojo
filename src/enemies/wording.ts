@@ -1,4 +1,4 @@
-// Two sentences the screens build from an enemy: the win headline verb and the intro's call to hold fast.
+// Two sentences the screens build from an enemy: the win headline and the intro's call to hold fast.
 // Some foes are plural (the Sirens, the Suitors) or female (Circe, Scylla, Charybdis), so "falls" and "him" need data.
 
 interface Grammar {
@@ -15,8 +15,16 @@ const GRAMMAR: Readonly<Record<string, Grammar>> = {
   suitors: { verb: "fall", pronoun: "them" },
 };
 
-/** The win headline, e.g. "The Sirens fall". An unknown id gets the singular verb. */
+/** The three stops the ship gets past: nobody falls there (see ./endings.ts), so the headline names the getting past. */
+const ESCAPE_HEADLINES: Readonly<Record<string, string>> = {
+  sirens: "Past the Sirens",
+  scylla: "Through the strait",
+  charybdis: "Clear of Charybdis",
+};
+
+/** The win headline, e.g. "Polyphemus falls" or "Past the Sirens". An unknown id gets the singular verb. */
 export function fallsLine(enemyId: string, name: string): string {
+  if (Object.hasOwn(ESCAPE_HEADLINES, enemyId)) return ESCAPE_HEADLINES[enemyId] ?? name;
   return `${name} ${GRAMMAR[enemyId]?.verb ?? "falls"}`;
 }
 
