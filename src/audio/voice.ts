@@ -254,7 +254,7 @@ const shared = createVoice(sharedDeps);
 export const tauntVoice: Pick<Voice, "speak" | "playing" | "stop"> = createVoice(quieter(sharedDeps, TAUNT_VOLUME), "taunt");
 
 /** Silences the monster, whatever it is saying. */
-export function stopTaunt(): void {
+function stopTaunt(): void {
   const id = tauntVoice.playing();
   if (id !== null) tauntVoice.stop(id);
 }
