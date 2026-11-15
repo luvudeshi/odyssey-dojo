@@ -169,9 +169,18 @@ export function sharedAudioContext(): AudioContext | null {
   return sharedPlayer()?.context ?? null;
 }
 
+/** A fight's own sound for an event: returns true when it played one, and the usual sound is then skipped. */
+type EventOverride = (event: CombatEvent) => boolean;
+let override: EventOverride | null = null;
+
+export function setEventOverride(next: EventOverride | null): void {
+  override = next;
+}
+
 export function playEvent(event: CombatEvent): void {
   const { type } = event;
   if (!(type in EVENTS)) return;
+  if (override?.(event)) return;
   const active = sharedPlayer();
   if (!active) return;
   if (active.context.state === "running") {

@@ -104,7 +104,7 @@ test("a room idle for thirty minutes is removed and its streams are ended; use k
   attach(store, idle.code, idle.guest, guestEar);
 
   now += IDLE_MS - 1;
-  expect(store.send(busy.code, busy.guest, { type: "strike" })).toBe("dropped");
+  expect(store.send(busy.code, busy.host, { type: "strike" })).toBe("dropped");
   expect(store.size()).toBe(2);
   now += 1;
   store.sweep();

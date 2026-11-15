@@ -36,5 +36,6 @@ export const ROOM_MESSAGES: Readonly<Record<string, string>> = {
   unknown_room: "No room has that code. Check the letters, or ask your friend for a new one.",
   room_full: "That room already has two fighters.",
   too_many_rooms: "The server has too many rooms open. Try again in a minute.",
+  slow_down: "Too many tries from this network. Wait a minute and try again.",
   unreachable: "Cannot reach the game server. Is it running?",
 };
