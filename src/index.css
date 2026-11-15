@@ -9,13 +9,15 @@ body { background: var(--pb-ground-deep); color: var(--ink); font-family: var(--
 
 /* Over the fight: a pebble panel in the middle (the step-back notice); win and loss restyle it in endPanel.css. */
 .overlay { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; width: min(40rem, 92vw); max-height: 94vh; overflow: hidden; padding: 1.8rem 2rem; text-align: center; color: var(--pb-text); background: var(--pb-ground-deep) var(--pebble-ground) repeat; border: 2px solid var(--pb-lead); border-radius: var(--pb-radius-panel); box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.7), 0 0 0 100vmax rgba(8, 5, 4, 0.66); }
-.overlay h1 { margin: 0 0 0.4rem; font: 700 clamp(1.6rem, 3.6vw, 2.4rem) var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--pb-ochre-light); }
-.overlay p { margin: 0.3rem 0; font: 600 1.1rem var(--pb-font-body); }
-.overlay h1 + p:not([class]) { padding: 0.1rem 1.4rem; font: 700 1.4rem var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--pb-text); }
+.overlay > * { position: relative; }
+.overlay h1 { margin: 0 0 0.4rem; font: 700 clamp(1.8rem, 3.4vw, 2.4rem)/1.15 var(--pb-font-body); color: var(--pb-ochre-light); }
+.overlay p { margin: 0.3rem 0; font: 600 20px/1.35 var(--pb-font-body); }
+.overlay h1 + p:not([class]) { padding: 0.1rem 1.4rem; font: 700 22px var(--pb-font-body); color: var(--pb-text); }
+.overlay .pb-btn { margin: 6px 0; }
 
 .hurt-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; box-shadow: inset 0 0 14vmin 5vmin var(--purple); }
 .hurt-flash.on { animation: hurt-flash 0.5s ease-out; }
 @keyframes hurt-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
 .learned { width: 100%; margin: 0.4rem 0; padding: 0.4rem 1rem; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
-.learned h2 { font-size: 0.95rem; margin: 0; letter-spacing: 0.2em; text-transform: uppercase; }
+.learned h2 { font-size: 18px; margin: 0; }
 .learned ul { list-style: none; padding: 0; margin: 0.3rem 0; }

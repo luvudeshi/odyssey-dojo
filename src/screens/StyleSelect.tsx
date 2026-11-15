@@ -6,7 +6,7 @@ export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: s
   useEffect(() => { installGround(); }, []);
   return (
     <Panel as="main" ornament className="menu menu--style">
-      <PebbleHeading as="h1" text={"Choose your fighting style".toUpperCase()} px={42} tone="ochre" />
+      <PebbleHeading as="h1" text="Choose your fighting style" px={42} tone="ochre" />
       <p className="notice">{props.notice}</p>
       <div className="styles">
         {props.styles.map((style) => (

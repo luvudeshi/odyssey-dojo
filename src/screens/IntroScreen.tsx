@@ -38,7 +38,7 @@ export function IntroScreen(props: {
   return (
     <Panel as="main" ornament className="menu menu--intro">
       {enemy.place && <p className="notice intro-place">{enemy.place}{enemy.book ? `, Book ${String(enemy.book)}` : ""}</p>}
-      <PebbleHeading as="h1" text={enemy.name.toUpperCase()} px={48} tone="ochre" />
+      <PebbleHeading as="h1" text={enemy.name} px={60} tone="ochre" />
       <p className="verse">{enemy.title}. {holdFastLine(enemy.id)}</p>
       <div className="menu__row">
         <Button primary autoFocus onClick={onBegin}>Face {enemy.name}</Button>
