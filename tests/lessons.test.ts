@@ -101,7 +101,7 @@ test("best and workOn need at least two tries", () => {
   expect(lessons.workOn?.moveId).toBe("block");
   expect(lessons.lines).toEqual([
     "You saw 7 attacks and got out of the way of 5.",
-    "Your dodge right held 3 of 3 times: moving sideways, not straight back, takes you out of an attack's path...",
+    "Your dodge right held 3 of 3 times: moving sideways, not straight back, takes you out of an attack's path so you can get away.",
     "Work on: block. Hands high protects your head while you look for a way out.",
     "Your longest run without being hit: 4 attacks in a row.",
   ]);
