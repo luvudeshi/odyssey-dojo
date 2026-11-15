@@ -3,8 +3,9 @@
 // always add up to the fight's score.
 //   - A landed strike's points go to whoever threw it. Thrown by both ("Together!"), each gets half.
 //   - A defend's points are shared when both had to make it; with one player they are player one's.
-//   - Anything else that scores (the god's power) is player one's, whose gesture it is.
+//   - The god's power goes to whoever made its gesture: player two alone, both (half each), or else player one.
 // Pure, apart from the small store at the foot that the link writes and the HUD's line reads.
+import { POWER_MOVES } from "../combat/engine";
 import type { CombatEvent, Strike } from "../core/types";
 
 export interface PlayerTally {
@@ -43,8 +44,13 @@ export function tallyAfter(tally: DuoTally, frame: TallyFrame): DuoTally {
   // A hit with no strike of player two's in it is player one's: so is every hit of a fight player two is not in.
   const second = hit !== undefined && threw(1);
   const first = hit !== undefined && (threw(0) || !second);
-  const shared = hit ? first && second : frame.bothDefend && frame.events.some((event) => event.type === "defended");
-  const toFirst = shared ? Math.ceil(gained / 2) : second ? 0 : gained;
+  // The god's power lands with no enemyHit: it is whoever's strikes held the power's gesture on this frame.
+  const power = !hit && frame.events.some((event) => event.type === "powerUnleashed");
+  const gestured = (player: 0 | 1): boolean => (frame.struck ?? []).some((strike) => POWER_MOVES.has(strike.move) && strike.player === player);
+  const powerSecond = power && gestured(1);
+  const powerFirst = power && (gestured(0) || !powerSecond);
+  const shared = hit ? first && second : power ? powerFirst && powerSecond : frame.bothDefend && frame.events.some((event) => event.type === "defended");
+  const toFirst = shared ? Math.ceil(gained / 2) : second || (powerSecond && !powerFirst) ? 0 : gained;
   const [one, two] = tally.players;
   return {
     players: [
