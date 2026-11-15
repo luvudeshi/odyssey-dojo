@@ -54,7 +54,7 @@ const list = (items: readonly string[]): string =>
 function readIndex(folder: string): readonly string[] | null {
   try {
     // A Windows editor may save the file with a byte order mark. The browser skips it, so this does too.
-    const data: unknown = JSON.parse(readFileSync(join(folder, "index.json"), "utf8").replace(/^﻿/, ""));
+    const data: unknown = JSON.parse(readFileSync(join(folder, "index.json"), "utf8").replace(/^\uFEFF/, ""));
     return Array.isArray(data) && data.every((id) => typeof id === "string") ? data : null;
   } catch {
     return null;
