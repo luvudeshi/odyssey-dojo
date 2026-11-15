@@ -61,7 +61,7 @@ export const KEY_SHAPES = [
 export function decodeEnvFile(bytes) {
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return bytes.subarray(2).toString("utf16le");
   const text = bytes.toString("utf8");
-  return text.startsWith("﻿") ? text.slice(1) : text;
+  return text.startsWith("\uFEFF") ? text.slice(1) : text;
 }
 
 /**
