@@ -333,7 +333,7 @@ export const LABELS: Readonly<Record<string, (side: Side) => Label[]>> = {
     m("Whole body in view", 3), m(`${cap(side)} knee up high`), m("Foot tucked under knee", 2), m("Hold it up a moment", 2),
     x("Start with foot on floor"),
   ],
-  block: same([x("Left arm not punching"), x("Right arm not punching"), m("Both fists by your face")]),
+  block: same([m("Both fists up by your face")]),
   duck: same([m("Drop your shoulders lower")]),
   dodge_left: same([m("Move your body left")]),
   dodge_right: same([m("Move your body right")]),
