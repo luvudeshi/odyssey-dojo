@@ -97,4 +97,4 @@ After the two fixes the script passed six runs out of six with the diff applied.
 ## Known rough edges
 
 - The "You + Friend" tag stays up for the rest of a fight after player two leaves, and after a take-over. It is drawn by the HUD (`src/hud/TogetherFlash.tsx`) from the fight's own state, which was started for two; nothing in `src/duo` can change it. The link knows the truth: `link.guestHere()` is false once player two has left. The smoke script prints a NOTE line while this is so.
-- At a 1280 px wide window the Multiplayer row fits two cards, so the new card is on the second row and the page must be scrolled to reach it; at 1600 px all three are in one row.
+- With the FaceTime card shown there are four cards in the Multiplayer row. They fit in one row with no scrolling from 1280x720 up; the row is then wider and its buttons are set in smaller type (`.mp-cards:has(.ft-card)` in `src/ui/set/screens-mp.css`).
