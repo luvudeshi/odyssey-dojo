@@ -1,17 +1,22 @@
-// The Multiplayer screen, laid out like the owner's Dance Fantasy rooms in Odyssey Dojo's mosaic. A bar along the top
-// (the game's name, the hero, the way back), then the choices as tall stone cards in one row: host a room, or join one
-// by its code (a scanned link fills the code in). Opening a room turns the whole screen into the room (RoomHost).
-// Rooms need the game's own server (/api/rooms).
+// The Multiplayer screen, laid out like the owner's Dance Fantasy rooms, in the Obsidian Rift look of the fight HUD.
+// A bar along the top (the game's name, the hero, the way back), then the choices as tall glass slabs in one row: host a
+// room, or join one by its code (a scanned link fills the code in). Opening a room turns the whole screen into the room
+// (RoomHost). Rooms need the game's own server (/api/rooms).
 import { useProfile } from "../account/store";
 import { Icon } from "../account/ui/icons";
 import type { HostLink } from "../net/host";
-import { Button, Panel, PebbleHeading } from "../ui/pebble";
+import { useEffect } from "react";
+import { Button, Panel } from "../ui/pebble";
 import { RoomToken } from "./RoomArt";
 import { RoomHost } from "./RoomHost";
 import { RoomJoin } from "./RoomJoin";
 import type { Joined } from "./RoomJoin";
+import { installRiftHall } from "./riftHall";
 import "./account.css";
 import "./multiplayer.css";
+
+/** Where the embers rise from, in % of the screen's width. */
+const EMBERS = [6, 14, 23, 31, 42, 55, 63, 71, 80, 88, 95] as const;
 
 export function Multiplayer(props: {
   /** True once "Open a room" was pressed: the screen is the live room. */
@@ -27,8 +32,10 @@ export function Multiplayer(props: {
   onBack: () => void;
 }) {
   const { name } = useProfile();
+  useEffect(() => { installRiftHall(); }, []);
   return (
-    <Panel as="main" ornament className={`menu menu--rooms mp ${props.hosting ? "mp--room" : "mp--choices"}`}>
+    <Panel as="main" className={`menu menu--rooms mp ${props.hosting ? "mp--room" : "mp--choices"}`}>
+      <div className="mp-embers" aria-hidden="true">{EMBERS.map((at) => <i key={at} style={{ left: `${String(at)}%` }} />)}</div>
       <header className="mp-top">
         <span className="mp-top__brand">Odyssey <b>Dojo</b></span>
         <span className="mp-top__hero"><Icon name="helmet" />{name || "Odysseus"}</span>
@@ -39,7 +46,7 @@ export function Multiplayer(props: {
       ) : (
         <>
           <div className="mp-head">
-            <PebbleHeading as="h1" text="Multiplayer" px={60} tone="ochre" />
+            <h1 className="mp-burn">Multiplayer</h1>
             <p className="lead">Two fighters, one monster. Strike the same move together to hit twice as hard.</p>
           </div>
           {/* One row of choices. A third card (another way to play together) goes in this list as one more <section>. */}
@@ -51,8 +58,8 @@ export function Multiplayer(props: {
               <p className="mp-card__as"><small>Your hero name</small><b>{name || "Odysseus"}</b><small>Change it on the Account screen.</small></p>
               <Button primary onClick={props.onOpen}>Open a room</Button>
             </section>
-            <section className="mp-card">
-              <RoomToken icon="join" size={84} className="mp-card__sticker" />
+            <section className="mp-card mp-card--ice">
+              <RoomToken icon="join" size={84} className="mp-card__sticker mp-token--ice" />
               <h2><span className="mp-kicker">Join a</span> Room</h2>
               <p>Scanned a friend's QR code? The code is already filled in.</p>
               <RoomJoin initialCode={props.code} onJoined={props.onJoined} />

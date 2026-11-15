@@ -7,7 +7,7 @@ import { toDataURL } from "qrcode";
 import { createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createRoom, openRoom } from "../net/transport";
-import { Button, PebbleHeading } from "../ui/pebble";
+import { Button } from "../ui/pebble";
 import { CodeFrame } from "./RoomArt";
 import { RoomTags } from "./RoomTags";
 import { browserDeps, fetchLanBase, LAN_BASE_TIMEOUT_MS } from "./roomNet";
@@ -63,7 +63,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
   if (phase.kind !== "open") {
     return (
       <div className="room mp-wait">
-        <PebbleHeading as="h1" text="Multiplayer" px={60} tone="ochre" />
+        <h1 className="mp-burn">Multiplayer</h1>
         {phase.kind === "making" && <p className="notice">Opening a room...</p>}
         {phase.kind === "failed" && (
           <>
@@ -90,7 +90,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
         <div className="mp-lobby__head">
           <hgroup className="mp-lobby__titles">
             <p className="mp-kicker">Your</p>
-            <PebbleHeading as="h1" text="Room" px={88} tone="ochre" />
+            <h1 className="mp-burn mp-burn--room">Room</h1>
             <p className="mp-lobby__enter">A friend scans the card with a phone, or types the code on another computer.</p>
           </hgroup>
           <div className="mp-qr">
