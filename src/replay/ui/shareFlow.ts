@@ -152,18 +152,27 @@ export function shareStep(state: ShareState, event: ShareEvent): ShareState {
   return { kind: "shared", links: event.links, videoFailed: event.videoFailed };
 }
 
+/** What the status line has to know about the page besides the share itself. */
+export interface ShareShows {
+  /** The QR code is on the page. A code that did not load is not offered for scanning. */
+  readonly qr?: boolean;
+  /** The card carries the player's portrait from the scan, which the scan screen said is not saved. */
+  readonly portrait?: boolean;
+}
+
 /**
- * The one line under the Share button. Before the press it says exactly what will be uploaded: `card` and `video` as they stand.
- * `qrShown` is whether the QR code is on the page: a code that did not load is not offered for scanning.
+ * The one line under the Share button. Before the press it says exactly what will be uploaded: `card` and `video` as they stand,
+ * and that the player's portrait goes with the card when it is on it.
  */
-export function statusLine(state: ShareState, card: Blob | null, video: Blob | null, qrShown = false): string {
+export function statusLine(state: ShareState, card: Blob | null, video: Blob | null, shows: ShareShows = {}): string {
   if (state.kind === "preparing") return "Painting your card. You can share it once it is finished.";
   if (state.kind === "uploading" && state.stage === "video") return "Sending the fight video...";
   if (state.kind === "uploading") return sendsCard(card) ? "Sending the card..." : "Making the replay page...";
   if (state.kind === "shared" && state.videoFailed) return "The fight video did not upload. The link opens the page without it.";
-  if (state.kind === "shared") return qrShown ? "Scan the code, or open the link, to see it on a phone." : "Open the link to see it on a phone.";
+  if (state.kind === "shared") return shows.qr === true ? "Scan the code, or open the link, to see it on a phone." : "Open the link to see it on a phone.";
   if (state.kind === "failed") return "Sharing is unavailable right now. You can still save the card.";
-  const parts: string[] = sendsCard(card) ? ["this card"] : [];
+  const parts: string[] = [];
+  if (sendsCard(card)) parts.push(shows.portrait === true ? "this card, with your portrait on it," : "this card");
   if (sendsVideo(video)) parts.push(`the video of your fight (${(video.size / 1e6).toFixed(1)} MB)`);
   if (parts.length === 0) return "There is nothing to share yet.";
   return `Share uploads ${parts.join(" and ")} to this game's server. Anyone with the link can see it.`;
@@ -211,4 +220,16 @@ export async function runShare(job: ShareJob, send: (event: ShareEvent) => void,
     log("warn", "share_failed", error);
   }
   tell({ type: "done", links, videoFailed });
+}
+
+/**
+ * A share of which only one runs at a time: a press while one is running starts nothing, so it makes no second replay page.
+ * The panel's own state cannot be the guard, because presses that land before it is drawn again all see the state from before the first.
+ */
+export function oneShareAtATime(run: typeof runShare = runShare): typeof runShare {
+  let running: Promise<void> | null = null;
+  return (job, send, deps) => {
+    running ??= run(job, send, deps).finally(() => { running = null; });
+    return running;
+  };
 }

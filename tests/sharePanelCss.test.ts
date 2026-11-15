@@ -31,7 +31,7 @@ const RULES = parse(SHEET).filter((rule) => /^(section)?\./.test(rule.selector))
 const rule = (selector: string): ReadonlyMap<string, string> | undefined => RULES.find((candidate) => candidate.selector === selector)?.declarations;
 
 test("every colour comes from a theme variable or from where the panel is mounted, so the panel follows the theme when it changes", () => {
-  const THEMED = /^(var\(--[\w-]+\)|inherit|currentColor|transparent)$/;
+  const THEMED = /^(var\(--[\w-]+(, (currentColor|transparent|inherit))?\)|inherit|currentColor|transparent)$/;
   let coloured = 0;
   for (const { selector, declarations } of RULES) {
     for (const property of ["color", "background", "background-color", "border-color", "outline-color"]) {
@@ -51,6 +51,20 @@ test("every colour comes from a theme variable or from where the panel is mounte
   }
   expect(coloured).toBeGreaterThanOrEqual(4);
   expect(SHEET.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|oklch\(/i);
+});
+
+test("a theme that renames a variable still shows the progress bar: every colour variable has a fallback, and the fill and the track fall back to different things", () => {
+  const colours = RULES.flatMap(({ declarations }) => ["color", "background", "border", "outline"].map((property) => declarations.get(property) ?? ""));
+  const variables = colours.filter((value) => value.includes("var(--"));
+  expect(variables.length).toBeGreaterThanOrEqual(2);
+  for (const value of variables) expect(value).toMatch(/var\(--[\w-]+, (currentColor|transparent|inherit)\)$/);
+  const track = rule(".share-panel .share-progress");
+  const fill = rule(".share-panel .share-progress span");
+  // The edge is the text colour of wherever the panel is mounted, so it shows on any ground.
+  expect(track?.get("border")).toMatch(/ currentColor$/);
+  expect(track?.get("background")).toMatch(/, transparent\)$/);
+  expect(fill?.get("background")).toMatch(/, currentColor\)$/);
+  expect(rule(".share-panel .share-card")?.get("border")).toMatch(/ currentColor$/);
 });
 
 test("every rule sits under .share-panel with two classes, so it outranks the theme's button and paragraph rules", () => {

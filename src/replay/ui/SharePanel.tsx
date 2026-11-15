@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { GodReveal } from "../../ai/revealGod";
 import { godCardBlob } from "../godCard";
-import { IDLE, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, portraitWithin, replayMeta, runShare, sendsCard, sendsVideo, shareStep, statusLine } from "./shareFlow";
+import { IDLE, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, oneShareAtATime, portraitWithin, replayMeta, sendsCard, sendsVideo, shareStep, statusLine } from "./shareFlow";
 import type { PaintedFrom, ShareFight } from "./shareFlow";
 import "./sharePanel.css";
 
@@ -65,6 +65,8 @@ export function SharePanel(props: SharePanelProps) {
   const [qr, setQr] = useState<HTMLImageElement | null>(null);
   const [paint, setPaint] = useState<Paint | null>(null);
   const stop = useRef<AbortController | null>(null);
+  // Presses that land before the panel is drawn again all see the same state, so the share itself refuses to run twice.
+  const [runShare] = useState(() => oneShareAtATime());
   const qrUrl = state.kind === "shared" ? state.links.qrUrl : null;
   // A code the canvas cannot draw (an SVG with no size, in some browsers) is left off the card, and so is "Scan".
   const qrOnCard = qr !== null && qr.naturalWidth > 0;
@@ -145,7 +147,7 @@ export function SharePanel(props: SharePanelProps) {
           )
         )}
         {busy && <div className={`share-progress share-stage-${view.stage}`} role="progressbar" aria-label="Uploading"><span /></div>}
-        <p className="share-small" role="status">{statusLine(view, blob, video, qr !== null)}</p>
+        <p className="share-small" role="status">{statusLine(view, blob, video, { qr: qr !== null, portrait: portrait !== null })}</p>
         {card && <button className="share-action" onClick={() => { saveCard(card.url, cardFileName(words.godName)); }}>Save card</button>}
         {onClose && <button className="quiet share-quiet" onClick={onClose}>Close</button>}
       </div>
