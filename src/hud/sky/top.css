@@ -54,7 +54,7 @@
 @keyframes sk-pulse { 50% { transform: scale(1.06); } }
 
 /* Banners: big display type on a solid plate, so they read over a dark cave and a bright sunset alike. */
-.sky-hud .sk-phase, .sky-hud .sk-intro, .sky-hud .hb-rating, .sky-hud .hb-together { background: var(--sky-glaze); border: 2px solid var(--sky-clay); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+.sky-hud .sk-phase, .sky-hud .sk-intro, .sky-hud .hb-rating, .sky-hud .hb-together { text-shadow: none; background: var(--sky-glaze); border: 2px solid var(--sky-clay); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
 .sky-hud .sk-phase { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 8px 22px; font: 700 28px/1.1 var(--sky-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-bone); animation: sk-in 0.4s ease-out; }
 .sky-hud .sk-phase small { margin-right: 0.5em; font-size: 22px; color: var(--sky-star); }
 @keyframes sk-in { from { opacity: 0; } }
@@ -93,6 +93,8 @@
   .sky-hud .sk-intro h2 { font-size: 40px; }
   .sky-hud .sk-intro small { font-size: 18px; }
 }
+/* A phone held sideways: tighter lettering so the monster's name fits its shorter bar. */
+@media (max-height: 520px) { .sky-hud .sk-bar__row { letter-spacing: 0.04em; } }
 /* Big screens: the whole HUD grows with the screen, so its type keeps the same share of the view as at 1280 x 720. */
 @media (min-width: 1700px) and (min-height: 950px) {
   .fight > .sky-hud { zoom: 1.35; }
