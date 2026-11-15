@@ -4,9 +4,10 @@
 // browserSession.ts gives it the real ones and the timers.
 import type { CombatInput, EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import type { HostLink } from "../net/host";
+import { isBridge } from "./answer";
 import type { Answer, FaceTimeApi, RoomSeat } from "./api";
 import { bridgeReady } from "./bridge";
-import { IDLE, callMsLeft, callStep, clock, isOpen } from "./callMachine";
+import { IDLE, callMsLeft, callStep, clock, isLive, isOpen } from "./callMachine";
 import type { CallEffect, CallEvent, CallFailure, CallState } from "./callMachine";
 import { GRADE_MS, frameHud, gradeWord } from "./frameHud";
 import type { FrameHud } from "./frameHud";
@@ -21,6 +22,11 @@ import type { FaceTimeRoom, RoomEvent } from "./room";
  * silence is hung up on by the call service, so a late greeting is better than none.
  */
 export const BRIDGE_FALLBACK_MS = 3000;
+/**
+ * The same wait on an answered call (answer.ts). There the ready sign is known to come, and a greeting before it
+ * is not heard, so the wait is long: it only covers a sign that never arrives.
+ */
+export const ANSWER_FALLBACK_MS = 8000;
 /** How often the call service is asked whether the call is still on. */
 export const POLL_EVERY_MS = 2000;
 /** A body found in the friend's camera this recently counts as in view. */
@@ -64,6 +70,12 @@ export interface FaceTimeSession {
   standIn(now: number): Promise<void>;
   /** The bridge's seat for the stand-in page while such a call is open, else null. */
   standInSeat(): RoomSeat | null;
+  /**
+   * Answers a FaceTime call (answer.ts): the caller has come into `joined`, a room of the call service's that this
+   * page is already in. The picture and the sound are published now, and from here the call runs as a dialled one
+   * does. When it ends the room is left, never closed: it is not this game's room.
+   */
+  answer(now: number, joined: FaceTimeRoom): Promise<void>;
   hangUp(now: number): void;
   /** Back to idle after a call ended or failed. */
   reset(): void;
@@ -100,6 +112,10 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
   let bodyAt = -Infinity;
   /** The room's name once the server gave a seat in it: what hang up closes. */
   let roomName: string | null = null;
+  /** True while the call is one that was answered: only the FaceTime bridge is the friend, and the room is not ours to close. */
+  let answering = false;
+  /** True when the fallback, not the ready sign, started the greeting of an answered call. */
+  let fellBack = false;
   const listeners = new Set<() => void>();
 
   const teardown = (): void => {
@@ -122,6 +138,8 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     friendSeat = null;
     fallbackAt = null;
     grade = null;
+    answering = false;
+    fellBack = false;
   };
 
   const run = (effect: CallEffect, mine: number): void => {
@@ -158,9 +176,16 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
 
   const onRoom = (mine: number) => (event: RoomEvent): void => {
     if (mine !== generation || !isOpen(state)) return;
+    // An answered call's room also holds the silent agent: only the FaceTime bridge is the friend there.
+    if (answering && "identity" in event && !isBridge(event.identity)) return;
     switch (event.type) {
+      case "joined":
+        break;
       case "metadata":
-        if (bridgeReady(event.metadata)) dispatch({ type: "bridge_ready", now: lastNow });
+        if (!bridgeReady(event.metadata)) break;
+        // The fallback greeted before FaceTime was up: the ten seconds start now, so sound again.
+        if (fellBack) { fellBack = false; void sound?.greet().catch(() => undefined); }
+        dispatch({ type: "bridge_ready", now: lastNow });
         break;
       case "video": {
         watcher?.stop();
@@ -169,7 +194,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
           friendLink?.friend.setHere(false);
           break;
         }
-        fallbackAt = lastNow + BRIDGE_FALLBACK_MS;
+        fallbackAt = lastNow + (answering ? ANSWER_FALLBACK_MS : BRIDGE_FALLBACK_MS);
         deps.watchFriend(event.track).then(
           (next) => {
             if (mine !== generation || !isOpen(state)) { next.stop(); return; }
@@ -192,7 +217,9 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
         dispatch({ type: "remote_ended", now: lastNow });
         break;
       case "disconnected":
-        fail("room_lost");
+        // The call service closes an answered call's room when the call is over: that is the friend's end, not a fault.
+        if (answering && isLive(state)) dispatch({ type: "remote_ended", now: lastNow });
+        else fail("room_lost");
         break;
     }
   };
@@ -270,6 +297,28 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
       });
     },
     standInSeat: () => friendSeat,
+    async answer(now, joined) {
+      if (isOpen(state)) return;
+      lastNow = now;
+      detail = "";
+      generation += 1;
+      const mine = generation;
+      friendLink = createFriendLink();
+      dispatch({ type: "dial", now });
+      answering = true;
+      room = joined;
+      joined.on(onRoom(mine));
+      try {
+        // The caller is in the room and FaceTime is still connecting: the one picture and the one sound go out now.
+        picture = deps.startPicture();
+        sound = deps.startSound();
+        await joined.publish(picture.track, sound.track);
+      } catch {
+        if (mine === generation && isOpen(state)) fail("room_lost", NOT_JOINED);
+        return;
+      }
+      if (mine === generation && isOpen(state)) dispatch({ type: "placed", now: lastNow });
+    },
     hangUp(now) { dispatch({ type: "hang_up", now }); },
     reset() {
       if (isOpen(state)) return;
@@ -306,6 +355,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
       if (!isOpen(state)) return;
       if (fallbackAt !== null && now >= fallbackAt) {
         fallbackAt = null;
+        fellBack = answering && !isLive(state);
         dispatch({ type: "bridge_ready", now });
       }
       dispatch({ type: "tick", now });
