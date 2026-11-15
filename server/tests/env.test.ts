@@ -1,9 +1,10 @@
-// The server port is always a usable number, whatever the environment says.
-import { mkdtempSync, rmSync } from "node:fs";
+// The server port is always a usable number, whatever the environment says, and the public address follows a tunnel as it starts and stops.
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { loadConfig, parsePort } from "../env";
+import { TUNNEL_FILE } from "../lib/address";
 
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
@@ -28,6 +29,32 @@ test("loadConfig reads AI_SERVER_PORT and never yields NaN", () => {
     expect(loadConfig(root).port).toBe(8787);
     vi.stubEnv("AI_SERVER_PORT", "");
     expect(loadConfig(root).port).toBe(8787);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the public address is PUBLIC_BASE_URL or PUBLIC_URL when set, else a running tunnel's, looked up on every read", () => {
+  const root = mkdtempSync(join(tmpdir(), "env-"));
+  const tunnel = "https://kingston-inside-best-graphic.trycloudflare.com";
+  const file = join(root, "server/data", TUNNEL_FILE);
+  try {
+    vi.stubEnv("PUBLIC_BASE_URL", "");
+    vi.stubEnv("PUBLIC_URL", "");
+    // One config, as the running server has: it sees the tunnel come and go without a restart.
+    const config = loadConfig(root);
+    expect(config.publicBaseUrl).toBeNull();
+    mkdirSync(join(root, "server/data"), { recursive: true });
+    writeFileSync(file, JSON.stringify({ url: tunnel, pid: process.pid }));
+    expect(config.publicBaseUrl).toBe(tunnel);
+    rmSync(file);
+    expect(config.publicBaseUrl).toBeNull();
+
+    writeFileSync(file, JSON.stringify({ url: tunnel, pid: process.pid }));
+    vi.stubEnv("PUBLIC_URL", "https://named.example");
+    expect(loadConfig(root).publicBaseUrl).toBe("https://named.example");
+    vi.stubEnv("PUBLIC_BASE_URL", "http://192.168.1.20:8787");
+    expect(loadConfig(root).publicBaseUrl).toBe("http://192.168.1.20:8787");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

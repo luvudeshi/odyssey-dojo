@@ -2,6 +2,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { log } from "../src/core/log";
+import { tunnelAddress } from "./lib/address";
 
 const DEFAULT_PORT = 8787;
 
@@ -11,7 +12,11 @@ export interface Config {
   readonly elevenLabsKey: string | null;
   /** Where caches and replays are written. Ignored by git. */
   readonly dataDir: string;
-  /** What a phone should open to reach this server, e.g. http://192.168.1.20:8787. Null means work it out per request. */
+  /**
+   * What a phone should open to reach this server, e.g. http://192.168.1.20:8787. Null means work it out per request.
+   * From loadConfig this is PUBLIC_BASE_URL (or PUBLIC_URL), else the address of a tunnel opened by scripts/tunnel.mjs.
+   * That one is looked up on every read, because a tunnel starts and stops while the server runs.
+   */
   readonly publicBaseUrl: string | null;
   /** The built game, served by this server when it exists. */
   readonly distDir: string;
@@ -40,13 +45,17 @@ export function parsePort(raw: string | null): number {
 export function loadConfig(root: string = process.cwd()): Config {
   const envFile = resolve(root, ".env");
   if (existsSync(envFile)) process.loadEnvFile(envFile);
+  const dataDir = resolve(root, "server/data");
+  const fixedUrl = value("PUBLIC_BASE_URL") ?? value("PUBLIC_URL");
   return {
     // Not PORT: hosts and dev tools set that for the web page, and the two must not collide.
     port: parsePort(value("AI_SERVER_PORT")),
     geminiKey: value("GEMINI_API_KEY"),
     elevenLabsKey: value("ELEVENLABS_API_KEY"),
-    dataDir: resolve(root, "server/data"),
-    publicBaseUrl: value("PUBLIC_BASE_URL"),
+    dataDir,
+    get publicBaseUrl() {
+      return fixedUrl ?? tunnelAddress(dataDir);
+    },
     distDir: resolve(root, "dist"),
     timeouts: { levelMs: 9000, revealMs: 8000, portraitMs: 12000, speechMs: 15000 },
   };
