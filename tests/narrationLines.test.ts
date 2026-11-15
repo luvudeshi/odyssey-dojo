@@ -6,6 +6,7 @@ import doc from "../docs/narration-lines.md?raw";
 import { ATHENA_LINES } from "../src/audio/athenaLines";
 import {
   ALL_STORY_LINES,
+  HOMECOMING_ID,
   isStoryLine,
   NARRATION_LINES,
   narrationId,
@@ -17,7 +18,7 @@ import {
   tauntIds,
 } from "../src/audio/narrationLines";
 import { STORY_LINES } from "../src/audio/storyLines";
-import { createStoryVoice, NARRATION_WAIT_MS, speakMonsterTaunt, speakNarration, speakResult, stopStory, TAUNT_WAIT_MS } from "../src/audio/storyVoice";
+import { createStoryVoice, NARRATION_WAIT_MS, speakHomecoming, speakMonsterTaunt, speakNarration, speakResult, stopStory, TAUNT_WAIT_MS } from "../src/audio/storyVoice";
 import type { StoryVoiceDeps } from "../src/audio/storyVoice";
 import { audioPlayer, browserDeps, createVoice, speakTaunt, stopLine, voicePlaying } from "../src/audio/voice";
 import type { ClipAudio } from "../src/audio/voice";
@@ -91,10 +92,12 @@ test("every stop has one line before and one after, and Polyphemus's opening lin
       if (id !== null) reached.add(id);
     }
   }
-  // No new line is left over: each one is some stop's before or after line.
-  expect(NARRATION_LINES.map((line) => line.id).sort()).toEqual([...reached].filter((id) => id !== "homer_intro_polyphemus").sort());
+  // No new line is left over: each one is some stop's before or after line, or Homer's one closing line.
+  const stopLines = NARRATION_LINES.filter((line) => line.id !== HOMECOMING_ID);
+  expect(stopLines.length).toBe(NARRATION_LINES.length - 1);
+  expect(stopLines.map((line) => line.id).sort()).toEqual([...reached].filter((id) => id !== "homer_intro_polyphemus").sort());
   expect(NARRATION_LINES.some((line) => line.id === "homer_before_polyphemus")).toBe(false);
-  for (const line of NARRATION_LINES) {
+  for (const line of stopLines) {
     expect(line.id, line.id).toMatch(new RegExp(`^homer_(before|after)_${line.enemyId}$`));
     expect(QUEST_ORDER as readonly string[], line.id).toContain(line.enemyId);
   }
@@ -820,6 +823,7 @@ test("where there is no audio at all, the shared functions are silent, not broke
   expect(await speakNarration("nobody", "after", 0)).toBe(false);
   expect(await speakResult("circe", true, 0)).toBe(false);
   expect(await speakResult("circe", false, 0)).toBe(false);
+  expect(await speakHomecoming(0)).toBe(false);
   expect(await speakMonsterTaunt("sirens", 0)).toBe(false);
   for (const enemy of ENEMIES) expect(speakTaunt(enemy.id), enemy.id).toBe(false);
   expect(speakTaunt("nobody")).toBe(false);
