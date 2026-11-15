@@ -249,3 +249,15 @@ test("a browser on this machine is not counted", async () => {
   const port = await listen();
   for (let attempt = 0; attempt < JOIN_LIMIT + 5; attempt += 1) expect(await send(port, "POST", "/api/rooms/ZZZZ/join", [])).toBe(404);
 });
+
+test("the poll route answers through the tunnel, and a spending route beside it still does not", async () => {
+  const port = await listen();
+  const headers = { "cf-connecting-ip": "203.0.113.7", "cf-ray": "x", "x-forwarded-for": "203.0.113.7" };
+  expect(isTunnelPath("/api/rooms/abcd/poll")).toBe(true);
+  expect(mayAnswer("/api/rooms/ABCD/poll", "127.0.0.1", headers)).toBe(true);
+  expect(mayAnswer("/api/rooms/abcd/POLL", "127.0.0.1", headers)).toBe(true);
+  // The real app: the poll reaches the room routes (an unknown room is 404, not the guard's 403), and the level route is refused.
+  expect(await send(port, "GET", "/api/rooms/QQQQ/poll?token=x&after=0", TUNNEL)).toBe(404);
+  expect(await send(port, "POST", "/api/level", TUNNEL, LEVEL)).toBe(403);
+  expect(await send(port, "GET", "/api/level", TUNNEL)).toBe(403);
+});

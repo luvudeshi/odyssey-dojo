@@ -176,15 +176,12 @@ Two things would weaken this, so do not do them:
 Cloudflare's quick tunnel page lists these limits: no uptime guarantee, at most 200 requests in flight, and "Quick
 Tunnels do not support Server-Sent Events (SSE)."
 
-The room relay sends the other player's messages over an event stream (`GET /api/rooms/:code/events`). If the tunnel
-holds that stream back, the guest joins the room but never sees the fight move. This was not tested, because no real
-tunnel was run. Check it with one phone before the demo: start the script, join a room from the phone, and see that
-both sides move. If the guest does not get messages, there are two ways out:
-
-- give the relay a second way to deliver messages that is not an event stream, such as a short poll
-  (`GET /api/rooms/:code/poll?token=...&after=N`). That is a change in `server/routes/rooms.ts` and
-  `src/net/transport.ts`, outside this task;
-- or use a named tunnel on a Cloudflare account and set `PUBLIC_URL` to its https address.
+The room relay sends the other player's messages over an event stream (`GET /api/rooms/:code/events`), and it also
+answers a long poll (`GET /api/rooms/:code/poll?token=...&after=N`, see docs/rooms.md). The client opens the stream
+first and, when the stream says nothing for 3 seconds, polls instead, so a guest behind a quick tunnel still gets the
+fight. The poll path is tested against the real relay; it was not tested through a real tunnel, because none was run.
+Check it with one phone before the demo: start the script, join a room from the phone, and see that both sides move.
+If it still fails, use a named tunnel on a Cloudflare account and set `PUBLIC_URL` to its https address.
 
 ## Not tested
 

@@ -8,7 +8,7 @@ import {
   MAX_ROOMS_PER_CLIENT, MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
   THIS_MACHINE, clientKey, createRoomLimits,
 } from "../lib/roomLimits";
-import { MAX_MESSAGE_BYTES, MAX_ROOMS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
+import { MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
 import type { Refusal, RelayMessage } from "../lib/rooms";
 
 /** A comment line this often keeps proxies and browsers from closing a quiet stream. */
@@ -122,7 +122,10 @@ export const register: Register = (router) => {
       if (response.writableLength > MAX_STREAM_BACKLOG_BYTES) response.destroy();
       else response.write(text);
     };
-    const push = (message: RelayMessage): void => { write(`data: ${JSON.stringify(message)}\n\n`); };
+    // A numbered message carries its number as the event id; the opening line below has none.
+    const push = (message: RelayMessage, seq?: number): void => {
+      write(`${seq === undefined ? "" : `id: ${String(seq)}\n`}data: ${JSON.stringify(message)}\n\n`);
+    };
     const attached = rooms.attach(request.params.code, token, {
       message: push,
       end: () => { response.end(); },
@@ -144,6 +147,41 @@ export const register: Register = (router) => {
       clearInterval(heartbeat);
       attached.detach();
       release();
+    });
+  });
+
+  /**
+   * The same messages as the event stream, for a client the stream does not reach (a Cloudflare quick tunnel holds
+   * the whole answer back). Answers at once with the messages after `after`, or holds the request until one arrives
+   * or POLL_HOLD_MS passes. A client that hangs up, and a room that is removed, end the request and its timer.
+   */
+  router.get("/api/rooms/:code/poll", (request, response) => {
+    const who = client(request);
+    const token = typeof request.query.token === "string" ? request.query.token : "";
+    const asked = request.query.after;
+    if (asked !== undefined && (typeof asked !== "string" || !/^\d{1,15}$/.test(asked))) {
+      response.status(400).json({ error: "bad_request" });
+      return;
+    }
+    const wait = limits.poll(who);
+    if (wait > 0) {
+      slowDown(response, wait);
+      return;
+    }
+    const polling = rooms.poll(request.params.code, token, Number(asked ?? 0), (result) => {
+      if (!response.writableEnded) response.set("Cache-Control", "no-store").json(result);
+    });
+    if (typeof polling === "string") {
+      refuseCounted(response, who, polling);
+      return;
+    }
+    const timer = setTimeout(() => {
+      rooms.sweep();
+      polling.stop(true);
+    }, POLL_HOLD_MS);
+    response.on("close", () => {
+      clearTimeout(timer);
+      polling.stop(false);
     });
   });
 
