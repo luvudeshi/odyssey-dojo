@@ -1,0 +1,113 @@
+/* Storm and bronze, per screen: how the kit (set.css) reaches the main menu, the Training Dojo and the Account screen.
+   Nothing here is under 18 px. */
+:root:root {
+  /* ---------- main menu: the same title, text and ribbons as the other screens; shields and painting stay ---------- */
+  .menu--title .set-title { margin-bottom: 0.4rem; }
+  .menu--title p.lead { font: 700 clamp(20px, 1.5vw, 24px)/1.3 var(--st-body); color: var(--st-gold); letter-spacing: 0.02em; }
+  .menu--title p.notice { font: 600 20px/1.3 var(--st-body); color: var(--st-dim); }
+  .menu-shield__name, .dojo-style .menu-shield__name { font-family: var(--st-display); font-weight: 400; letter-spacing: 0.06em; font-size: clamp(20px, 1.55vw, 25px); }
+  .menu .menu-shield__line, .dojo-style .menu-shield__line { font-family: var(--st-body); font-weight: 700; font-size: 18px; color: var(--st-ink); }
+
+  /* ---------- Training Dojo ---------- */
+  .dojo { --dj-font: var(--st-display); background: var(--st-abyss); }
+  .dojo > .set-backdrop { position: absolute; z-index: 0; }
+  /* One header on every Dojo view: back top-left, title and subtitle centred, points top-right. */
+  .dojo { padding-top: 150px; }
+  .dojo > .dojo-top { position: absolute; left: 0; right: 0; top: 0; height: 0; display: block; min-height: 0; }
+  .dojo-top > .set-title { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+  .dojo-top > .set-sub { position: absolute; top: 112px; left: 0; right: 0; letter-spacing: 0.04em; text-transform: none; }
+  .dojo-top > .set-back { position: absolute; top: 24px; left: 26px; margin: 0; }
+  .dojo-top > .dojo-points { position: absolute; top: 24px; right: 26px; margin: 0 !important; display: flex; align-items: baseline; gap: 10px; padding: 6px 22px 8px; clip-path: none; }
+  .dojo-points span { font: 700 18px var(--st-body); letter-spacing: 0.04em; text-transform: none; color: var(--st-dim); }
+  .dojo-points b { font: 400 34px/1.05 var(--st-display); color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+
+  /* pick view */
+  .dojo-pick { gap: 1.2rem; }
+  .dojo-pick > .dojo-closing { max-width: 48rem; padding: 14px 40px; font: 500 22px/1.35 var(--st-body); color: var(--st-ink); text-shadow: none; }
+  .dojo-pick > .dojo-key { padding: 8px 28px; clip-path: none; font: 600 20px var(--st-body); color: var(--st-ink); }
+  .dojo-styles { --shield: clamp(112px, 10.6vw, 176px); flex-wrap: nowrap; gap: clamp(8px, 1.6vw, 28px); max-width: none; width: 100%; margin: 0.4rem 0 0; }
+  .dojo-style.menu-shield {
+    display: flex; flex-direction: column; align-items: center; flex: 0 1 calc(var(--shield) + 76px); width: auto; min-width: 0; min-height: 0; gap: 0; padding: 6px 4px 8px;
+    border: 0; border-radius: 50% 50% 18px 18px / 40% 40% 18px 18px; background: none; box-shadow: none; color: var(--st-ink); perspective: 700px; text-align: center;
+  }
+  .dojo-style.menu-shield::before, .dojo-style.menu-shield::after { display: none; }
+  .dojo-style.menu-shield:hover { transform: none; }
+  .dojo-style.menu-shield:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 6px; }
+  .dojo-style .menu-shield__line { margin-top: 8px; padding: 2px 8px; max-width: 14rem; font-size: 18px; text-shadow: 0 0 3px #000, 0 1px 4px #000, 0 0 12px #000; background: radial-gradient(closest-side, rgba(3, 7, 9, 0.7), transparent); }
+
+  /* practice view: a bronze-rimmed frame with a sea-glass inside, a panel for the words */
+  .dojo-outline { padding: 6px; }
+  .dojo-outline::before, .dojo-outline::after { display: none; }
+  .dojo-outline:has([data-matched="true"]) { border-color: #7fe08a; }
+  .dojo-outline .move-guide { --mg-accent: var(--st-gold); --mg-ink: var(--st-ink); --mg-bg: #04100f; background: none; border: 0; box-shadow: none; }
+  .dojo-outline .move-guide.defend { --mg-accent: #8fe6dd; }
+  .dojo-outline .mg-kind { margin: 0 0 8px; padding: 0; clip-path: none; background: none; box-shadow: none; font: 400 24px var(--st-display); letter-spacing: 0.12em; color: var(--mg-accent); }
+  .dojo-outline .mg-match { font: 400 24px var(--st-display); letter-spacing: 0.08em; color: var(--st-gold); }
+  .dojo-outline .mg-match-bar { height: 1.5rem; border-color: var(--st-bronze); border-radius: 6px; background: #04100f; }
+  .dojo-outline .mg-match-number { color: var(--st-ink); }
+  .dojo-outline .move-guide[data-live="false"] :is(.mg-match, .mg-bar, .mg-tick) { opacity: 0.85; }
+  .dojo-outline .mg-tick { border-color: var(--st-bronze); opacity: 1; }
+  .dojo-outline .mg-checks li { font: 600 22px/1.2 var(--st-body); color: var(--st-ink); }
+  .dojo-outline .mg-bar { background: rgba(255, 255, 255, 0.2); }
+  .dojo-outline .mg-svg line { stroke: var(--st-ink); }
+  .dojo-side { gap: 0.7rem; padding: 1.4rem 1.7rem 1.6rem; }
+  .dojo-cue { font: 400 22px var(--st-display); letter-spacing: 0.1em; clip-path: none; border-radius: 8px; color: var(--st-gold); background: #04100f; box-shadow: inset 0 0 0 2px var(--st-bronze-mid); }
+  .dojo[data-phase="go"] .dojo-cue { color: var(--st-bronze-dark); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); box-shadow: none; }
+  .dojo-name { font: 400 clamp(46px, 4.4vw, 64px)/1 var(--st-display); letter-spacing: 0.02em; color: var(--st-gold); text-shadow: 0 3px 0 #1a0d06; }
+  .dojo-how { font: 500 clamp(22px, 1.8vw, 28px)/1.25 var(--st-body); color: var(--st-ink); text-shadow: none; }
+  .dojo-outline .mg-match { color: var(--st-ink); }
+  .dojo-key { font: 600 20px var(--st-body); color: var(--st-dim); }
+  .dojo-key kbd { background: #04100f; border-color: var(--st-bronze); box-shadow: none; color: var(--st-gold); }
+  .dojo-time { clip-path: none; border-radius: 8px; background: #04100f; box-shadow: inset 0 0 0 2px var(--st-bronze-mid); }
+  .dojo-time-fill { background: linear-gradient(#bff3ee, var(--st-teal)); }
+  .dojo[data-phase="go"] .dojo-time-fill { background: linear-gradient(#fff1c2, var(--st-bronze) 60%, var(--st-bronze-mid)); }
+  .dojo-tip { font: 500 22px/1.3 var(--st-body); background: rgba(4, 18, 21, 0.9); box-shadow: inset 4px 0 0 var(--st-bronze), inset 0 0 0 1px rgba(224, 165, 82, 0.35); }
+  .dojo-dots li { font: 700 20px var(--st-body); }
+  .dojo-end-title { font: 400 44px var(--st-display); letter-spacing: 0.04em; }
+  .dojo-card h2 { font: 400 26px var(--st-display); letter-spacing: 0.06em; color: var(--st-gold); }
+  .dojo-card:last-child h2 { color: var(--st-gold); }
+  .dojo-card { clip-path: none; padding: 1.3rem 1.8rem 1.5rem; background-image: var(--st-rivet), var(--st-rivet), var(--st-rivet), var(--st-rivet), linear-gradient(rgba(12, 42, 46, 0.9), rgba(4, 18, 21, 0.92)); }
+  .dojo-card li, .dojo-card p { font: 500 22px/1.3 var(--st-body); }
+  .dojo-camera video { border-color: var(--st-bronze); box-shadow: 0 0 0 4px #04100f, 0 0 18px rgba(224, 165, 82, 0.4); }
+
+  /* ---------- Account: the painted hall. Two open walls of trophies on light glass, the name and coins on the painting, one panel for the next deed ---------- */
+  .acc-hall, .acc-hall__stage { background: var(--st-abyss); }
+  .acc-title.set-title { left: 320px; width: 800px; top: 20px; white-space: nowrap; text-shadow: none; }
+  .acc-count { left: 444px; right: auto; width: 552px; top: 112px; bottom: auto; }
+  .acc-count b { font: 400 28px var(--st-display); color: var(--st-gold); }
+  .acc-herm { left: 484px; top: 168px; bottom: auto; width: 472px; height: auto; gap: 14px; padding: 0; border: 0; background: none; box-shadow: none; }
+  .acc-name { text-shadow: 0 2px 8px #000; }
+  .acc-name span { font: 700 18px var(--st-body); letter-spacing: 0.12em; color: var(--st-bronze); }
+  .acc-name input { width: 400px; font-family: var(--st-display); font-weight: 400; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; border-bottom: 2px solid var(--st-bronze-mid); }
+  .acc-name input::placeholder { color: rgba(217, 207, 182, 0.55); }
+  .acc-name input:focus-visible { outline-color: var(--st-focus); }
+  .acc-stats { gap: 14px; }
+  .acc-stats .acc-icon { stroke: var(--st-bronze-hi); }
+  .acc-stats > div { min-width: 124px; }
+  .acc-wall { top: 100px; bottom: 28px; width: 438px; gap: 6px; justify-content: space-evenly; padding: 10px 14px 12px; }
+  .acc-wall > section { display: flex; flex-direction: column; flex: 1 1 auto; justify-content: center; }
+  .acc-wall ul { column-gap: 0; row-gap: 6px; }
+  .acc-beam { margin: 0 0 6px; padding: 0 4px 6px; font: 400 26px var(--st-display); letter-spacing: 0.04em; text-transform: none; color: var(--st-gold); background: none; border: 0; border-bottom: 1px solid rgba(224, 165, 82, 0.55); box-shadow: none; text-shadow: 0 2px 0 #1a0d06; }
+  .acc-beam b { font: 700 20px var(--st-body); color: var(--st-dim); }
+  .acc-trophy { padding: 12px 2px 4px; }
+  .acc-trophy__peg { display: none; }
+  /* Each trophy sits on a bronze medallion: lit gold when won, a plain dark one with a clear outline when not. */
+  .acc-trophy .acc-trophy__icon { box-sizing: content-box; width: 34px; height: 34px; padding: 8px; border-radius: 50%; stroke-width: 3.4; }
+  .acc-trophy.is-done .acc-trophy__icon { stroke: #ffe6b0; background: radial-gradient(circle at 35% 30%, #b87a2c, #5a300f 80%); border: 2px solid #ffd27a; filter: drop-shadow(0 2px 0 #1a0d06) drop-shadow(0 0 8px rgba(255, 184, 74, 0.55)); }
+  .acc-trophy.is-locked .acc-trophy__icon { stroke: #d6e8e4; stroke-opacity: 0.9; stroke-width: 3; stroke-dasharray: none; background: rgba(4, 18, 21, 0.78); border: 2px solid rgba(224, 165, 82, 0.55); }
+  .acc-trophy__name { margin-top: 5px; font: 700 18px/1.15 var(--st-body); color: var(--st-ink); text-shadow: 0 1px 3px #000; }
+  .acc-trophy.is-locked .acc-trophy__name { font-weight: 600; color: #e2dac4; }
+  .acc-trophy__name small { display: block; font-size: 18px; color: var(--st-gold); }
+  .acc-trophy.is-active { background: rgba(224, 165, 82, 0.2); }
+  .acc-detail { left: 484px; width: 472px; top: auto; bottom: 28px; gap: 4px; padding: 14px 26px 16px; }
+  .acc-detail__tag { font: 700 18px var(--st-body); letter-spacing: 0.16em; color: var(--st-bronze); }
+  .acc-detail__name { font: 400 32px/1.1 var(--st-display); color: var(--st-gold); }
+  .acc-detail__how { font: 500 20px/1.3 var(--st-body); color: var(--st-ink); }
+  .acc-detail__progress { font-size: 18px; }
+  .acc-detail__bar { background: rgba(255, 255, 255, 0.16); }
+  .acc-detail__bar i { background: linear-gradient(#ffe6b0, var(--st-bronze)); }
+  /* Back top-left like every screen; settings top-right. */
+  .acc-actions { left: 26px; right: 26px; top: 24px; bottom: auto; flex-direction: row-reverse; justify-content: space-between; }
+  .acc-actions .set-back .acc-btn__icon { display: none; }
+  .acc-actions .pb-btn:not(.set-back) { min-height: 52px; }
+}
