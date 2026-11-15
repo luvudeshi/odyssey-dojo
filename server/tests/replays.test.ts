@@ -13,6 +13,7 @@ import type { Config } from "../env";
 import { baseUrl, lanAddress } from "../lib/address";
 import { escapeHtml } from "../lib/replayPage";
 import { MAX_REPLAYS, createReplay, isReplayId } from "../lib/replayStore";
+import { listFiles } from "./support/paths";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4, 5, 6, 7, 8]);
 const CARD = `data:image/png;base64,${PNG.toString("base64")}`;
@@ -62,9 +63,9 @@ async function create(call: Call, body: unknown = { meta, card: CARD }): Promise
   return CreateReplayResponseSchema.parse(await response.json());
 }
 
-/** Every file under the data folder, so a test can prove a request changed nothing. */
+/** Every file under the data folder, so a test can prove a request changed nothing. Forward slashes on every machine. */
 function listing(): string[] {
-  return readdirSync(dataDir, { recursive: true, encoding: "utf8" }).sort();
+  return listFiles(dataDir);
 }
 
 test("a replay is created with an unambiguous id, and its page, card and QR code are served", async () => {
