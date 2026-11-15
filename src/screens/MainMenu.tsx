@@ -1,5 +1,5 @@
 // The main menu: Story mode (the quest map), Multiplayer (rooms), the Training Dojo and the Account, as four cards under the logo.
-// Story mode and the dojo start the webcam; the small link under the cards plays on the keyboard instead.
+// Story mode and the dojo start the webcam, or the keyboard when the "Play with" setting says so (Account, Settings).
 // Behind them: the storm in Scylla's strait (MenuScene).
 import type { ReactNode } from "react";
 import { speakLine } from "../audio/voice";
@@ -35,12 +35,12 @@ const LAUREL = (
   </>
 );
 
-function Card(props: { primary?: boolean; icon: ReactNode; name: string; line: string; onClick: () => void }) {
+function Card(props: { primary?: boolean; icon: ReactNode; name: string; line?: string; onClick: () => void }) {
   return (
     <button className={`style-card menu-card ${props.primary ? "menu-card--primary" : ""}`} onClick={props.onClick}>
       <svg className="menu-card__icon" viewBox="0 0 64 64" aria-hidden="true">{props.icon}</svg>
       <span className="style-card__name">{props.name}</span>
-      <small>{props.line}</small>
+      {props.line && <small>{props.line}</small>}
     </button>
   );
 }
@@ -50,16 +50,18 @@ export function MainMenu(props: {
   name: string;
   notice: string;
   problem: string;
+  /** Story mode: the camera or the keyboard, as the setting says. */
   onStory: () => void;
+  /** The two ways on from the camera problem card. */
+  onCamera: () => void;
   onKeyboard: () => void;
   onMultiplayer: () => void;
   onTraining: () => void;
   onAccount: () => void;
 }) {
   const story = (): void => { speakLine("homer_title"); props.onStory(); };
-  const keyboard = (): void => { speakLine("homer_title"); props.onKeyboard(); };
   return (
-    <Panel as="main" ornament className="menu menu--title">
+    <Panel as="main" className="menu menu--title">
       <MenuScene />
       <h1 className="sr-only">Odyssey Dojo</h1>
       <Logo height={Math.min(250, Math.max(130, Math.round(window.innerHeight * 0.22)))} />
@@ -68,16 +70,15 @@ export function MainMenu(props: {
       <nav className="menu-cards" aria-label="Main menu">
         <Card primary icon={SHIP} name="Story mode" line="The road home to Ithaca, fought with your body" onClick={story} />
         <Card icon={PAIR} name="Multiplayer" line="Host a room or join a friend's" onClick={props.onMultiplayer} />
-        <Card icon={SHIELD} name="Training Dojo" line="Learn each move, graded on every try" onClick={props.onTraining} />
+        <Card icon={SHIELD} name="Training Dojo" onClick={props.onTraining} />
         <Card icon={LAUREL} name="Account" line="Your name, achievements and settings" onClick={props.onAccount} />
       </nav>
-      <button className="menu-link" onClick={keyboard}>Play on the keyboard instead</button>
       <p className="notice">{props.notice}</p>
       {props.problem && (
         <div className="overlay">
           <h1>The camera did not start</h1>
           <p>{props.problem}</p>
-          <Button primary onClick={props.onStory}>Try the camera again</Button>
+          <Button primary onClick={props.onCamera}>Try the camera again</Button>
           <Button onClick={props.onKeyboard}>Play on the keyboard</Button>
         </div>
       )}

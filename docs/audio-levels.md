@@ -28,13 +28,14 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | Athena | An audio element at the voice volume (`voice.ts`). Default 1, so the file's own level. | -15.6 LUFS (-16.8 to -14.0) |
 | Homer | The same path (`storyVoice.ts` speaks through `voice.ts`). | -19.0 LUFS (-20.1 to -19.0) |
 | A monster's taunt | Its own channel, at `TAUNT_VOLUME` 0.7 of the voice volume (`voice.ts`). It plays under Athena's calls. | -22.1 LUFS (-23.6 to -21.9) |
-| Effects (`sfx`) | The file's own level, times `LEVELS[type]`, times `MASTER_GAIN` 0.5 (`sfx.ts`). Files are not levelled. | -25.8 LUFS (-41.2 to -16.7) |
+| Effects (`sfx`) | The file's own level, times `LEVELS[type]`, times `MASTER_GAIN` 0.5 (`sfx.ts`). Files are not levelled. | -24.6 LUFS (-41.2 to -16.7) |
 | Stop events | Each clip is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `EVENT_GAIN` 0.5 (`stopAudio.ts`). | -22.4 LUFS (-31.4 to -17.0) |
 | A god's power (`power`) | Each clip is raised or lowered to RMS 0.13 with its peak held to 0.9, then times `POWER_GAIN` 0.7 (`powerSound.ts`). The silence a clip starts with is skipped. It plays in place of `sfx/powerUnleashed`. | -18.9 LUFS (-22.0 to -16.7) |
 | Music | Each clip is brought to its scene's RMS (0.1 to 0.18), then times `MUSIC_GAIN` 0.3, times the music volume (`music.ts`). | fight -27.5, boss -26.7, menu -30.8, loss -26.8, win -23.1 LUFS |
 | Music under a spoken line | The two loops drop by half (`DUCK` 0.5). The stings do not. | fight -40.0, menu -42.5 LUFS |
 | Ambience | Each clip is brought to RMS 0.08, then times `AMBIENCE_GAIN` 0.16, times the music volume (`stopAudio.ts`). | -38.2 LUFS (-39.1 to -37.6) |
 | The unlock chime and the four defend sounds | Five files in the effects folder (`cues.ts` names them, `sfx.ts` plays them). Each is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `DEFEND_GAIN` 0.6 or `UNLOCK_GAIN` 0.45. The silence a clip starts with is skipped. | defends -21.4 LUFS (-24.0 to -18.8), chime -19.4 LUFS |
+| The two sounds of a phase change | Two more files levelled the same way: the war horn (`sfx/phaseSting`) times `PHASE_GAIN` 0.7, dropping to `PHASE_TAIL` 0.45 of itself after 0.3 s, and the drum hit (`sfx/phaseChanged`) times `PHASE_DRUM_GAIN` 0.5. | horn -17.2 LUFS as it comes in and -24.1 after; with its shape -20.9; drum -25.5; the two together -19.4 |
 
 Athena's range leaves out `athena/fight_start.mp3`, which was replaced by a shorter take while this work was under way and was levelled afterwards (see "What was changed"). It is at -15.6 LUFS, inside the range.
 
@@ -45,12 +46,12 @@ What was wanted: Athena's calls clearly on top, Homer and the monsters near her,
 - **Athena is on top.** Her lines sit at -15.6 LUFS.
 - **Homer is near her now**, 3.4 LU under. Before this change he was 7 LU under (about -22.3 LUFS).
 - **A taunt is 6.5 LU under her.** The clips are 3.4 LU under hers, and `TAUNT_VOLUME` takes 3.1 dB more because a taunt plays at the same time as her calls. Before this change a taunt was 9.6 LU under her (-25.0 LUFS), quieter than most of the effects around it. It is now level with the median stop event (-22.4) and still 2.2 LU under the hit sound (`enemyHit`, -19.9). `TAUNT_VOLUME` was not changed: it is in `voice.ts`, which others are editing, and nobody has heard whether a louder taunt masks her calls.
-- **Most effects are under Athena.** The median effect is 10 LU under her, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
+- **Most effects are under Athena.** The median effect is 9 LU under her, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
 - **Music is under the voice, ambience well under.** On 14 November the owner asked for music that can be heard, so `MUSIC_GAIN` went from 0.16 to 0.3 (5.5 dB more) with the three new tracks. The fight music is 8.5 LU under Athena, and 14.5 LU under while she speaks. The menu track is 12 LU under Homer, 18 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7); the music is now short of that even with the dip, by choice. If a line is hard to hear in a loud room, lower `MUSIC_GAIN` or the music volume setting.
 
 ### The unlock chime and the defend sounds
 
-Added later the same day: five clips in `public/audio/sfx`, made with `npx tsx server/tools/genClips.ts sfx`. `unlock.mp3` is the chime for an unlocked achievement (`playUnlock()` in `src/audio/sfx.ts`). `defendBlock`, `defendDodge`, `defendDuck` and `defendJump` play on a `defended` event in place of `sfx/defended.mp3`, picked by the attack's counter; a defend with no clip of its own still plays `defended.mp3`. The files are as ElevenLabs returned them, between -41.1 and -16.6 LUFS, so `sfx.ts` levels each one when it loads, the way the stop events are levelled. They are listed apart from the other effects below (`sfx (unlock and defends)`) because of that.
+Added later the same day: five clips in `public/audio/sfx`, made with `npx tsx server/tools/genClips.ts sfx`. `unlock.mp3` is the chime for an unlocked achievement (`playUnlock()` in `src/audio/sfx.ts`). `defendBlock`, `defendDodge`, `defendDuck` and `defendJump` play on a `defended` event in place of `sfx/defended.mp3`, picked by the attack's counter; a defend with no clip of its own still plays `defended.mp3`. The files are as ElevenLabs returned them, between -41.1 and -16.6 LUFS, so `sfx.ts` levels each one when it loads, the way the stop events are levelled. They are listed apart from the other effects below (`sfx (unlock, defends and phase change)`) because of that.
 
 - **The defends sit between -24.0 and -18.8 LUFS at the listener, median -21.4.** The one clip they replace (`sfx/defended`) is at -23.4, a hit on the enemy (`sfx/enemyHit`) at -19.9 and Athena at -15.6. A figure in LUFS is rough on clips this short: the meter works in blocks of 0.4 s.
 - **The chime is at -19.4 LUFS**, level with Homer (-19.0), 3.8 LU under Athena and 9.2 LU over the win sting (-28.6) it plays on top of. It goes straight to the output and stops nothing: a line being spoken carries on.
@@ -72,11 +73,61 @@ So the block is a bright hit that is over in a fifth of a second, the duck is th
 - **When a defend is heard.** The sound plays on the engine's `defended` event, which comes when the attack would have landed. The burst round the hero is drawn earlier, the moment the defend counts, so with an early dodge the two are apart by up to the attack's warning time. The old single sound was timed the same way.
 - Nobody has listened to any of the five.
 
+### The phase change
+
+Added on 15 November. A fight changes phase twice, and the lead asked for a sting that marks it.
+
+**What a phase change sounded like before.** `sfx/phaseChanged.mp3` did play, on every `phaseChanged` event, through a gain of 0.5 (a browser log of one fight shows it start twice). It was not heard. At the listener it was at -36.3 LUFS: 8.8 LU under the fight music at full (-27.5), 2.8 LU under the music while it is dipped (-33.5), 16.4 LU under the hit sound that starts in the same frame (`sfx/enemyHit`, -19.9) and 20.7 LU under Athena's phase line, which also starts in that frame. 94% of its energy is under 300 Hz, so a laptop's speakers play little of it at any level.
+
+**What it sounds like now.** Two sounds, started in the same frame as the hit, the banner and Athena's line:
+
+- **A war horn**, `sfx/phaseSting.mp3`: a new clip, 1.6 s, made with `npx tsx server/tools/genClips.ts sfx --only=phaseSting`. It is a chord of three notes (311, 390 and 466 Hz: E flat, G and B flat) that comes in over 0.1 s, holds to 0.8 s and is gone by 1.2 s. 98% of its energy is between 120 Hz and 1 kHz, and 1% is above 1 kHz, where the consonants of speech are.
+- **The drum hit**, the old `sfx/phaseChanged.mp3`, now levelled the way the horn is, so it plays 10.8 dB louder than it did: -25.5 LUFS, 2.0 LU over the fight music at full. It is loudest in its first 0.3 s.
+
+So the old clip was kept and the horn is layered over it, not put in its place: the old clip is a drum and nothing else, and none of the four takes of the new clip gave a drum and a held note together.
+
+**In Scylla's fight and the suitors'**, the stop's own sound (her howl, their jeer) plays in place of the drum, as before, and the horn plays under it. In the other four fights it is the horn and the drum.
+
+**Levels.** `sfx.ts` brings each of the two to RMS 0.12 with its peak held to 0.9 (`cues.ts`), which lowers the horn to 0.68 of itself and raises the drum 3.5 times.
+
+| | gain | at the listener | against the fight music at full (-27.5), dipped (-33.5) | against Athena's lines (-15.6 as listed here; see the note on mono files) |
+|---|---|---|---|---|
+| the horn as it comes in, first 0.3 s | `PHASE_GAIN` 0.7 | -17.2 LUFS | 10.3 LU over, 16.3 LU over | 1.6 LU under as listed, 4.6 LU under on two speakers |
+| the horn after that | times `PHASE_TAIL` 0.45 (7 dB less), with a time constant of 0.08 s | -24.1 LUFS | 3.4 LU over, 9.4 LU over | 8.5 LU under as listed, 11.5 LU under on two speakers |
+| the horn as a whole, with that shape | | -20.9 LUFS, peak 0.38 | 6.6 LU over, 12.6 LU over | 5.3 and 8.3 LU under |
+| the drum | `PHASE_DRUM_GAIN` 0.5 | -25.5 LUFS, peak 0.45 | 2.0 LU over, 8.0 LU over | 9.9 and 12.9 LU under |
+| the two together | | -19.4 LUFS, peak 0.45 | 8.1 LU over, 14.1 LU over | 3.8 and 6.8 LU under |
+
+Against the boss music (-26.7) every "over" figure is 0.8 LU less. The table below gives the horn at the level it comes in at, -17.2; it does not know about the drop.
+
+**Why the horn drops after 0.3 s.** Athena's phase line starts in the same frame (10 ms after the horn in the browser log) and the horn's chord lasts as long as her first words. Her line cannot be moved later to give the horn a lead: the longest phase line (`phase_the_toll`, 2.80 s) ends 0.2 s before the first call of the new phase, and a call that finds a phase line still playing is dropped, not queued (`voice.ts`). So the horn is loud while it comes in and low under her words.
+
+**Does it mask her line.** Worked out from the files and the game's gains, for nine phase lines, over the 50 ms stretches where her voice is within 15 dB of its loudest in the first 1.2 s. "Everything else" is the horn, the drum, the hit sound and the dipped fight music together.
+
+| band | her voice over everything else, median for a line | the same with no horn |
+|---|---|---|
+| 300 Hz to 1 kHz, where the horn is | 4.3 to 11.2 dB | 18.8 to 24.8 dB |
+| 1 to 4 kHz, where most of what makes speech understood is | 11.0 to 22.2 dB | 13.6 to 31.2 dB |
+
+So the horn takes most of her margin in its own band and leaves her on top there, and takes 1.6 to 9 dB in the band above. In single 50 ms stretches she is under everything else by up to 5 dB in the low band and 3 dB in the band above; with no horn the hit sound puts her under by up to 2 dB in the band above. In Scylla's and the suitors' fights the howl and the jeer already left her 2.5 to 9.5 dB over everything else in the low band; with the horn it is 2.3 to 5.9 dB.
+
+**Is the horn heard.** In its own band (200 Hz to 1 kHz) it is 11 to 18 dB over the fight music at full as it comes in and 7.5 to 17 dB over it afterwards, across nine stretches of the track, and 6 dB more against the dipped music it really plays with.
+
+**The key.** The fight track's strongest notes are C, G and B flat, which fits C minor; the horn's E flat chord is that key's relative major, so its three notes are all in that scale. The boss track has no clear key by this measure (its strongest note is D). This is a pitch count, not listening.
+
+**Clipping.** The horn peaks at 0.38 at the output and the drum at 0.45. Added to her line, the hit sound and the music, the sum for one speaker passes 1.0 at its loudest sample in 3 of 9 lines (up to 1.13). With no horn it does in 4 of 9 (up to 1.08), from her line and the hit sound.
+
+**A note on mono files.** Every voice clip is a mono file; every effect, stop sound and music clip is stereo. ffmpeg reads a mono file 3 LU lower than the same sound on two channels (`ebur128` with `dualmono` off), and a browser sends a mono file to both speakers at full level. So against anything stereo, every voice figure in this doc is 3 LU lower than what is played: Athena's -15.6 is -12.6 next to the music's -27.5. The tables were not changed, since the voice targets are file figures. "On two speakers" above includes the 3 LU.
+
+**The takes.** The horn is the third of four (four paid calls). The first was a drum hit with 94% of its energy under 300 Hz, like the old clip. The second and the fourth, which asked for a drum, horns and a choir together, gave one hit that was over in 0.3 s and 0.5 s. `server/tools/genClips.ts` has the prompts.
+
+Nobody has listened to the horn, the levelled drum, or the two with her line.
+
 ### What the numbers say is wrong, and was not changed
 
 These are effects, stop sounds and music. This change does not touch those files, and none of these is one constant.
 
-1. **The effect files are not levelled, and they differ by 24.5 LU at the listener.** `sfx.ts` plays a file at its own level. `LEVELS` was set for the built-in synthesised sounds, which all peak at 0.9. The files that replaced them do not. `opening` (-41.2), `whiffed` (-39.7), `lost` (-38.5) and `phaseChanged` (-36.3) are 20 LU or more under Athena and are likely not heard. `playerHit` (-28.6) is 8.7 LU quieter than `enemyHit` (-19.9), so the hit you take is much quieter than the hit you land. `finished` (-16.7) is about as loud as Athena. Suggested fix: have `sfx.ts` level each file when it loads, with `stopClipLevel` from `stopAudio.ts`, as the stop sounds already are.
+1. **The effect files are not levelled, and they differ by 24.5 LU at the listener.** `sfx.ts` plays a file at its own level. `LEVELS` was set for the built-in synthesised sounds, which all peak at 0.9. The files that replaced them do not. `opening` (-41.2), `whiffed` (-39.7) and `lost` (-38.5) are 20 LU or more under Athena and are likely not heard. `phaseChanged` was a fourth, at -36.3; it is levelled now (see "The phase change"). `playerHit` (-28.6) is 8.7 LU quieter than `enemyHit` (-19.9), so the hit you take is much quieter than the hit you land. `finished` (-16.7) is about as loud as Athena. Suggested fix: have `sfx.ts` level each file when it loads, with `stopClipLevel` from `stopAudio.ts`, as the stop sounds already are.
 2. **Some hit sounds start late.** `sfx/playerHit` has 197 ms of silence before the sound, `sfx/enemyHit` 88 ms, `stops/sirens/swoop` 339 ms, `stops/suitors/throw` 196 ms, `stops/scylla/snap` 155 ms, `stops/suitors/hurt` 107 ms. Suggested fix: start each buffer past its silence (`source.start(0, offset)`), or trim the files.
 3. **The stop events still differ by 14 LU after levelling.** Levelling is by RMS over the whole clip, so a clip that is mostly tail comes out quiet. `stops/scylla/snap` (-31.4), `stops/sirens/wave` (-29.0) and `stops/sirens/hurt` (-27.0) are the quiet ones. `stops/circe/wand` (-17.0) and `stops/circe/squeal` (-18.5) are louder than a taunt.
 4. **The win sting is 5.4 LU louder than the fight music** (-28.6 against -34.0), for the same reason: it has 1.8 s of quiet tail, so its RMS underrates it. It is still 9.6 LU under Homer's result line and 13 LU under Athena's.
@@ -215,6 +266,7 @@ The clips that were rewritten. "limiter" marks the ones that went through it.
 - **The first clips to listen to** are the five move calls that went through the limiter: `call_any_defend`, `call_duck`, `call_spear_thrust`, `call_stake_thrust` and `call_swift_dash`. A player hears these in every fight. Four of them were within 1.5 LU of the target already and were rewritten only because their peak was 0.1 to 0.6 dB over the tolerance.
 - The levels were not measured in a browser. "At the listener" is the file's loudness plus the gains read from the code.
 - LUFS on a clip of one or two seconds is rough. Two calls 1 LU apart may not sound different.
+- The phase change (the horn, the levelled drum, and both under Athena's line) was checked in a browser only as a log of what started, when and through what gain. What it does to her line is worked out from the files, not measured from the browser's output.
 
 ## Measured now
 
@@ -230,8 +282,8 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | music | 5 | -14.5 | -11.0 | -9.8 | 4.7 | -26.8 (-30.8 to -23.1) |
 | narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
 | power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
-| sfx (unlock and defends) | 5 | -41.1 | -23.2 | -16.6 | 24.5 | -21.1 (-24.0 to -18.8) |
-| sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
+| sfx (unlock, defends and phase change) | 7 | -41.1 | -23.2 | -10.7 | 30.4 | -21.1 (-25.5 to -17.2) |
+| sfx | 10 | -31.1 | -16.9 | -10.7 | 20.4 | -24.6 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
 | stops (events) | 20 | -38.0 | -20.1 | -12.3 | 25.7 | -22.4 (-31.4 to -17.0) |
 | taunts | 15 | -20.5 | -19.0 | -18.8 | 1.7 | -22.1 (-23.6 to -21.9) |
@@ -245,14 +297,15 @@ None.
 - `music/menu.mp3`: -4.0 LU from the median of music at the listener
 - `music/win.mp3`: +3.7 LU from the median of music at the listener
 - `power/hermes.mp3`: -3.1 LU from the median of power at the listener
-- `sfx/enemyHit.mp3`: +5.9 LU from the median of sfx at the listener
-- `sfx/finished.mp3`: +9.1 LU from the median of sfx at the listener
-- `sfx/lost.mp3`: -12.7 LU from the median of sfx at the listener
-- `sfx/opening.mp3`: -15.4 LU from the median of sfx at the listener
-- `sfx/phaseChanged.mp3`: -10.5 LU from the median of sfx at the listener
-- `sfx/playerHit.mp3`: 197 ms of silence before the sound
-- `sfx/powerUnleashed.mp3`: +5.4 LU from the median of sfx at the listener
-- `sfx/whiffed.mp3`: -13.9 LU from the median of sfx at the listener
+- `sfx/phaseChanged.mp3`: -4.4 LU from the median of sfx (unlock, defends and phase change) at the listener
+- `sfx/phaseSting.mp3`: +3.9 LU from the median of sfx (unlock, defends and phase change) at the listener
+- `sfx/enemyHit.mp3`: +4.7 LU from the median of sfx at the listener
+- `sfx/finished.mp3`: +7.9 LU from the median of sfx at the listener
+- `sfx/lost.mp3`: -13.9 LU from the median of sfx at the listener
+- `sfx/opening.mp3`: -16.6 LU from the median of sfx at the listener
+- `sfx/playerHit.mp3`: -4.0 LU from the median of sfx at the listener; 197 ms of silence before the sound
+- `sfx/powerUnleashed.mp3`: +4.2 LU from the median of sfx at the listener
+- `sfx/whiffed.mp3`: -15.1 LU from the median of sfx at the listener
 - `stops/circe/squeal.mp3`: +3.9 LU from the median of stops (events) at the listener
 - `stops/circe/wand.mp3`: +5.4 LU from the median of stops (events) at the listener
 - `stops/scylla/snap.mp3`: -9.0 LU from the median of stops (events) at the listener; 155 ms of silence before the sound
@@ -373,7 +426,7 @@ None.
 | `power/poseidon.mp3` | 2.20 | -12.1 | -0.4 | 0 | 0 | -4.6 | -16.7 |
 | `power/zeus.mp3` | 2.00 | -28.1 | -12.9 | 265 | 283 | 8.9 | -19.2 |
 
-### sfx (unlock and defends)
+### sfx (unlock, defends and phase change)
 
 | clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
 |---|---|---|---|---|---|---|---|
@@ -381,6 +434,8 @@ None.
 | `sfx/defendDodge.mp3` | 0.68 | -26.6 | -14.7 | 94 | 85 | 7.8 | -18.8 |
 | `sfx/defendDuck.mp3` | 0.68 | -23.2 | -7.7 | 114 | 0 | 2.1 | -21.1 |
 | `sfx/defendJump.mp3` | 0.48 | -41.1 | -26.8 | 52 | 123 | 17.1 | -24.0 |
+| `sfx/phaseChanged.mp3` | 1.48 | -30.3 | -11.7 | 0 | 0 | 4.8 | -25.5 |
+| `sfx/phaseSting.mp3` | 1.60 | -10.7 | -2.1 | 0 | 21 | -6.5 | -17.2 |
 | `sfx/unlock.mp3` | 1.08 | -16.7 | -6.4 | 0 | 103 | -2.7 | -19.4 |
 
 ### sfx
@@ -392,7 +447,6 @@ None.
 | `sfx/finished.mp3` | 2.48 | -10.7 | -1.5 | 0 | 0 | -6.0 | -16.7 |
 | `sfx/lost.mp3` | 3.00 | -31.1 | -18.9 | 31 | 193 | -7.4 | -38.5 |
 | `sfx/opening.mp3` | 0.60 | -29.2 | -18.8 | 0 | 36 | -12.0 | -41.2 |
-| `sfx/phaseChanged.mp3` | 1.48 | -30.3 | -11.7 | 0 | 0 | -6.0 | -36.3 |
 | `sfx/playerHit.mp3` | 0.68 | -22.6 | -6.2 | 197 | 244 | -6.0 | -28.6 |
 | `sfx/powerUnleashed.mp3` | 2.00 | -14.4 | -1.5 | 0 | 35 | -6.0 | -20.4 |
 | `sfx/telegraph.mp3` | 1.00 | -18.4 | -1.4 | 15 | 0 | -7.4 | -25.8 |
