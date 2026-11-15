@@ -1,5 +1,6 @@
 // The rules levelClips.ts works by: which clips are voice, what is out of tolerance, how a clip is fixed, and the
 // tables in docs/audio-levels.md. Pure: no files and no ffmpeg, so the tests run it. The doc explains every number.
+import { CUE_CLIPS, CUE_LOUDNESS, CUE_PEAK, DEFEND_GAIN, UNLOCK_CLIP, UNLOCK_GAIN } from "../../src/audio/cues";
 
 /** Athena's own lines are brought to this loudness. It is the median of her clips as they were first made. */
 export const ATHENA_TARGET_LUFS = -15.5;
@@ -37,9 +38,9 @@ const PEAK_MARGIN_DB = 0.05;
 const SFX_MASTER = 0.5;
 const SFX_LEVELS: Readonly<Record<string, number>> = { telegraph: 0.85, opening: 0.5, whiffed: 0.55, defended: 0.8, won: 0.85, lost: 0.85 };
 /** music.ts: MUSIC_GAIN, MAX_LEVEL and the loudness of each scene. */
-const MUSIC_GAIN = 0.16;
+const MUSIC_GAIN = 0.3;
 const MAX_LEVEL = 12;
-const MUSIC_LOUDNESS: Readonly<Record<string, number>> = { menu: 0.1, fight: 0.16, win: 0.14, loss: 0.14 };
+const MUSIC_LOUDNESS: Readonly<Record<string, number>> = { menu: 0.1, fight: 0.16, boss: 0.18, win: 0.14, loss: 0.14 };
 /** stopAudio.ts: EVENT_* and AMBIENCE_*. */
 const STOP_EVENT = { gain: 0.5, loudness: 0.12, peak: 0.9 };
 const STOP_AMBIENCE = { gain: 0.16, loudness: 0.08, peak: 2 };
@@ -49,6 +50,8 @@ const POWER = { gain: 0.7, loudness: 0.13, peak: 0.9 };
 const MUSIC_VOLUME = 0.7;
 /** voice.ts: TAUNT_VOLUME. A monster's taunt is spoken on its own channel, under Athena's calls. */
 const TAUNT_VOLUME = 0.7;
+/** The unlock chime and the defend sounds (src/audio/cues.ts). They are in the effects folder but are levelled when they load. */
+const isCue = (path: string): boolean => path.split("/")[0] === "sfx" && CUE_CLIPS.includes(nameOf(path));
 
 export interface Measure {
   /** The file under public/audio, such as "athena/call_jab.mp3". */
@@ -98,6 +101,7 @@ export function groupOf(path: string): string {
   const folder = path.split("/")[0] ?? "";
   if (folder === "athena" && targetFor(path) !== ATHENA_TARGET_LUFS) return nameOf(path).startsWith("taunt_") ? "athena (Polyphemus)" : "athena (Homer)";
   if (folder === "stops") return nameOf(path) === "ambience" ? "stops (ambience)" : "stops (events)";
+  if (isCue(path)) return "sfx (unlock and defends)";
   return folder;
 }
 
@@ -111,6 +115,7 @@ export function playbackDb(path: string, rms: number, peak: number): number {
   };
   let gain = name.startsWith("taunt_") && targetFor(path) !== null ? TAUNT_VOLUME : 1;
   if (folder === "sfx") gain = (SFX_LEVELS[name] ?? 1) * SFX_MASTER;
+  if (isCue(path)) gain = level(CUE_LOUDNESS, CUE_PEAK) * (name === UNLOCK_CLIP ? UNLOCK_GAIN : DEFEND_GAIN);
   if (folder === "music") gain = level(MUSIC_LOUDNESS[name] ?? rms, Number.POSITIVE_INFINITY) * MUSIC_GAIN * MUSIC_VOLUME;
   if (folder === "stops") {
     gain = name === "ambience"

@@ -13,6 +13,7 @@ import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
+import { ENEMIES } from "../enemies/registry";
 import { CameraView } from "../hud/CameraView";
 import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
@@ -68,7 +69,8 @@ export function FightScreen(props: {
 
   useEffect(() => {
     battle.styleId = style.id;
-    startMusic("fight");
+    // The last stop on the map gets its own, heavier track.
+    startMusic(enemy.id === ENEMIES.at(-1)?.id ? "boss" : "fight");
     speakLine("fight_start");
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
