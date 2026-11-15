@@ -1,8 +1,7 @@
 // Direction A, "Painted reveal": the boss's painting comes up out of black, the name slams in, the picture cracks open.
-// Everything is a function of one clock (ms), so ?cutAt=<ms> can freeze any frame. Only transform and opacity move.
+// Everything is a function of one clock (ms), so a test can run any frame. Only transform and opacity move.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { playEvent } from "../../audio/sfx";
-import { CUT_AT } from "../../ui/lookSwitch";
 import { BOSS_CUTS, type Weather } from "./bosses";
 import "./cutscene.css";
 import { clamp01, curve, cutBeat, DARK_END, easeIn, easeOut, REDUCED_MS, REVEAL_END, SLAM_MS, TOTAL_MS } from "./timing";
@@ -44,14 +43,13 @@ const JAG_RIGHT = "polygon(0 0, 100% 0, 100% 100%, 0 100%, 2% 94%, 0.5% 86%, 2.5
 export function Cutscene({ id, name, onDone }: { readonly id: string; readonly name: string; readonly onDone: () => void }) {
   const boss = BOSS_CUTS[id];
   const [reduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const [ms, setMs] = useState(CUT_AT ?? 0);
+  const [ms, setMs] = useState(0);
   const finished = useRef(false);
   const finish = (): void => { if (!finished.current) { finished.current = true; onDone(); } };
   const finishRef = useRef(finish);
   finishRef.current = finish;
 
   useEffect(() => {
-    if (CUT_AT !== null) return undefined;
     const start = performance.now();
     let frame = 0;
     const tick = (now: number): void => {
@@ -83,7 +81,7 @@ export function Cutscene({ id, name, onDone }: { readonly id: string; readonly n
   // The one sound: the war horn, on the big beat.
   const sounded = useRef(false);
   useEffect(() => {
-    if (CUT_AT !== null || reduced || sounded.current || ms < SLAM_MS) return;
+    if (reduced || sounded.current || ms < SLAM_MS) return;
     sounded.current = true;
     playEvent({ type: "phaseChanged", index: 1, name });
   }, [ms, reduced, name]);

@@ -43,7 +43,6 @@ import { getSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 import { Cutscene } from "./screens/cutscene/Cutscene";
-import { LOOK } from "./ui/lookSwitch";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 // The one camera of the session: every calibration and fight reads it, and nothing between fights stops it.
@@ -65,7 +64,7 @@ export function App() {
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
-  // Draft ?look=a: the boss cutscene plays over the map after a stop is picked, then the fight starts.
+  // The boss cutscene plays over the map after a stop is picked, then the fight starts.
   const [cut, setCut] = useState<number | null>(null);
 
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
@@ -74,6 +73,7 @@ export function App() {
   // The character shown in the picker (the scan's, or the stored one), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
   const [characterPicked, setCharacterPicked] = useState(false);
+  const [confirmed, setConfirmed] = useState<CharacterId | null>(null);
   // Writes to the profile through `change` and shows whatever that unlocked.
   const noting = (change: () => void): void => {
     const before = achievements(getProfile(), ENEMIES);
@@ -200,21 +200,25 @@ export function App() {
   }
 
   if (flow.screen === "style" && tracker && !scanned) {
-    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} />;
+    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} onBack={() => { dispatch({ type: "toTitle" }); }} />;
   }
 
   // After the scan, before the style: the five characters, with the god's one already chosen.
   if (flow.screen === "style" && !characterPicked) {
     return (
-      <main className="menu">
-        <CharacterPicker value={character} onChange={setCharacter} onDone={(id) => { setCharacter(confirmCharacter(id)); setCharacterPicked(true); }} />
-      </main>
+      <CharacterPicker
+        value={character}
+        onChange={setCharacter}
+        onDone={(id) => { setCharacter(confirmCharacter(id)); setConfirmed(id); setCharacterPicked(true); }}
+        // Opened from "Change character": back to the style choice with the old character. First visit: back to the menu.
+        onBack={() => { if (confirmed === null) { dispatch({ type: "toTitle" }); } else { setCharacter(confirmed); setCharacterPicked(true); } }}
+      />
     );
   }
 
   if (flow.screen === "style") {
     return (
-      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} />
+      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} onBack={() => { dispatch({ type: "toTitle" }); }} />
     );
   }
 
@@ -229,11 +233,7 @@ export function App() {
           open={(index) => CAN_PLAY[index] ?? false}
           onEnter={(index) => {
             const next = ENEMIES[index];
-            if (LOOK === "a" && next) setCut(index);
-            else {
-              if (next) stopIntro.current = narrateIntro(next.id);
-              dispatch({ type: "enter", index, seed: Date.now() });
-            }
+            if (next) setCut(index);
           }}
           onStyle={() => { dispatch({ type: "changeStyle" }); }}
           onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}

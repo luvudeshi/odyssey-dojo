@@ -15,6 +15,7 @@ import { STYLES } from "../src/styles/registry";
 import { GOOD, attempt, scriptedPlayer, shapesFor, standingBaseline } from "../tools/dojo/player";
 import type { Effort } from "../tools/dojo/player";
 import { need } from "./helpers/need";
+import { keyName } from "../src/coach/ui/keyName";
 
 const moveOf = (id: string): MoveDef => need(MOVES.get(id));
 const guideOf = (id: string) => need(guideFor(moveOf(id)));
@@ -451,5 +452,14 @@ describe("the skill number", () => {
       expect(need(weak.attacks[index]).telegraphMs).toBeGreaterThan(attack.telegraphMs);
       expect(need(strong.attacks[index]).telegraphMs).toBeLessThan(attack.telegraphMs);
     });
+  });
+});
+
+describe("keyName", () => {
+  test("shows arrows as glyphs, Space by name and letters in capitals", () => {
+    expect(keyName("ArrowDown")).toBe("↓");
+    expect(keyName("ArrowLeft")).toBe("←");
+    expect(keyName(" ")).toBe("Space");
+    expect(keyName("k")).toBe("K");
   });
 });

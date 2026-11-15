@@ -10,7 +10,7 @@ In a hurry: "Set it up on the demo laptop" is next. A sponsor judge wants "What 
 
 - Built: the six account routes and the two of the hall, the rules, the limits, the database code, the browser's sync and merge, the sign-in dialog and the board of the hall.
 - **It runs against the real Tiger Data service** (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0). The driver is `pg` 8.23.1, pinned in `package.json` with the lockfile. The 27 database tests pass there, with the database's certificate checked, and the two-browser run under "What was run against the real database" was done on it.
-- **Neither the sign-in nor the hall is on the Account page until the lead adds four lines** to `src/screens/Account.tsx` (his file; the lines are in the PR). Until then nothing imports the sync or the hall, so the game makes no account request at all and sends no fight.
+- **Neither the sign-in nor the hall is on the Account page until the lead adds three lines** to `src/screens/Account.tsx` (his file): two imports and `<AccountSignIn><HallOfHeroes /></AccountSignIn>` after the count of trophies. Until then nothing imports the sync or the hall, so the game makes no account request at all and sends no fight.
 - The service luvudeshi made already holds the five real objects: `accounts`, `sessions`, `saves`, the hypertable `fights` and the continuous aggregate `fights_hourly`. They are empty.
 
 ## Set it up on the demo laptop
@@ -39,7 +39,7 @@ Today the demo laptop runs the server with no keys at all. With nothing done, ac
    It must answer `{"available":true}`. The first answer takes about half a second and the log says `accounts_ready`. Then `curl http://localhost:8787/api/heroes` answers a JSON object that starts with `{"at":` and the log says `heroes_ready`.
 
    Or run `npm run preflight`: its `accounts` line says `ON` when the database answers from this laptop (and whether its certificate was checked), or `OFF` with the reason: `no_database_url`, `bad_ca_file`, `no_answer` and the code. It also says when the running server was started before `.env` was filled in. Accounts off is a WARN, never a FAIL.
-6. **Look at the Account page** (with the lead's four lines in). Bottom right, above the buttons: "Saved in this browser only." and a **Sign in** button beside "Open settings". Under the right wall: a **Hall of heroes** button. If the line says "Accounts are not available here." there is no database: see the table below.
+6. **Look at the Account page** (with the lead's three lines in). In the middle, under the name and the three coins: "Your account", "Saved in this browser only. Sign in or create an account to keep it.", a bright **Sign in** button and a **Hall of heroes** button beside it. If none of that is there, the server has no database: see the table below.
 7. **Make the demo's hero names first**, on the laptop itself, before the tunnel is opened. Sign in, win one fight, open the Hall of heroes: the hero is on the podium. There is no email and no reset, so a name belongs to whoever takes it first.
 
 If it answers `{"available":false}`, the server log says why, in one line:
@@ -88,16 +88,16 @@ The limits on the connection: 4 connections at most (a free service has no poole
 
 ## What the Account page shows
 
-The Account page is the hall of the hero, one scene. The account part is one line of words and one button. The line sits bottom right, above the row of buttons on the floor. The button is the first in that row. The name and password are asked in a dialog.
+The Account page is one scene in the Storm and bronze look. The account part is one block in the middle, under the name and the three coins and above the panel of the next deed: the words "Your account", two lines that say where the progress is kept, and a row of two buttons. The name and password are asked in a dialog.
 
-| State | The line says | The button |
+| State | The block says | Its buttons |
 | --- | --- | --- |
-| No database, the database is down, or the server cannot be reached | "Saved in this browser only. Accounts are not available here." | none, and no Hall of heroes button |
-| Signed out | "Saved in this browser only." | "Sign in" |
+| No database, the database is down, or the server cannot be reached | Nothing: the block is not drawn and the page is as it is without accounts | none |
+| Signed out | "Saved in this browser only. Sign in or create an account to keep it." | "Sign in" (the bright one) and "Hall of heroes" |
 | The dialog | Hero name, Password, "Sign in", "Create account", "Back". Under them, what went wrong, in plain words. | |
-| Signed in | "Signed in as *name*." then "Saved to your account.", "Saving..." or "Not sent yet. Kept in this browser." | "Sign out" |
+| Signed in | "Signed in as *name*." then "Saved to your account.", "Saving..." or "Not sent yet. Kept in this browser." | "Sign out" and "Hall of heroes" |
 
-The **Hall of heroes** button stands under the right wall, beside the count of trophies. It opens the board in a dialog (see "The hall of heroes"). It is there whenever the server has accounts, signed in or not.
+The **Hall of heroes** button is in the block's row, beside "Sign in". It opens the board in a dialog (see "The hall of heroes"). It is there whenever the server has accounts, signed in or not.
 
 - Signed out, the game asks the server nothing until the Account page opens. Then it asks once whether accounts are on, and when they are, once for the hall. With accounts off the hall is never asked for.
 - Signed in, the save is fetched when the game starts and each time the Account page opens. It is sent 1.5 seconds after a fight or a change.
@@ -279,7 +279,7 @@ Things to know:
 - `delete from fights where ...` by hand leaves the hours already written down in `fights_hourly` until `call refresh_continuous_aggregate('fights_hourly', null, null);`. Deleting the account takes its row off both lists at once; the count of fights in all still includes its fights until the next refresh (30 minutes at most).
 - Only fights on the road are sent (what `recordFight` is given). The guest of a room and the Training Dojo send nothing.
 - The god is sent only when `src/App.tsx` passes it to `recordFight` (one line, the lead's file, in the PR). Without it the god is empty and everything else works.
-- The board needs the sign-in part on the same page: `HallOfHeroes` learns from the account's state whether the server has accounts, and `AccountSignIn` is what asks for that state when the page opens.
+- The board needs the sign-in part on the same page: `HallOfHeroes` learns from the account's state whether the server has accounts, and `AccountSignIn` is what asks for that state when the page opens. On the Account screen the hall's button is put inside the sign-in part, so the two stand in one row: `<AccountSignIn><HallOfHeroes /></AccountSignIn>`.
 
 Not checked for the hall:
 
@@ -345,8 +345,8 @@ Things to know about these limits:
 ## When the database is down
 
 - `GET /api/account/status` answers `{"available":false}`. Every other route answers 503 at once, before reading a body.
-- A signed-out player sees "Accounts are not available here." and plays as before.
-- A signed-in player keeps playing from the browser. The card says "Not sent yet. Kept in this browser." and the save goes when the database is back.
+- A signed-out player sees no account block on the Account page (no sign-in, no Hall of heroes) and plays as before.
+- A signed-in player keeps playing from the browser. The block says "Not sent yet. Kept in this browser." and the save goes when the database is back.
 - Nothing throws into the game and the offline check is not touched: `npm run preflight -- --offline` passes with no `DATABASE_URL`. Its `accounts` line is a SKIP there; without `--offline` it is a WARN that says `OFF` and why.
 - No error text from the database reaches the browser. The log gets one line with a short code.
 - **A database that stops answering while the server runs** (tried with the real service behind a forwarder that swallowed every byte): each request still got its 503 within 3 s, the fourth and later ones at once, `/api/health` answered in 1 ms throughout, and the server kept running. Accounts came back by themselves 6 s after the database did, with the save as it was.
@@ -410,7 +410,7 @@ All of it on the Tiger Data service (free plan, PostgreSQL 18.6, TimescaleDB 2.3
 - **Refusals, as the player reads them:** a wrong password ("Wrong name or password."), a taken name ("That hero name is taken. Pick another, or sign in."), and from a visitor through the tunnel ten wrong tries answered 401 and the eleventh 429 ("Too many tries. Wait a minute, then try again."). The right password from that address then waited too; the laptop's own browser still got in.
 - **Through the tunnel's headers** (`Cf-Connecting-Ip`, `Cf-Ray`, `X-Forwarded-For` on every request): sign-in works and is counted as a stranger, and the hall is read with the "You" mark.
 - **No request to `/api/account` or `/api/heroes` before the Account page is opened**, signed out, with the database on, off and silent. A whole fight sends none either. With the database off or silent the Account page asks the status once and never the hall.
-- **The off states:** no `DATABASE_URL`: "Accounts are not available here." after 64 ms. A database port that takes the connection and says nothing: the same after 2.8 s (the limit is 4 s). A port nothing listens on: status `false` in 8 ms, sign-up and the two hall paths 503 in 1 ms. In all three the fight was played, won and kept in the browser.
+- **The off states** (run when the page still said so in words; today it draws no account block instead): no `DATABASE_URL`: "Accounts are not available here." after 64 ms. A database port that takes the connection and says nothing: the same after 2.8 s (the limit is 4 s). A port nothing listens on: status `false` in 8 ms, sign-up and the two hall paths 503 in 1 ms. In all three the fight was played, won and kept in the browser.
 - **`npm run preflight -- --offline`:** 3 pass, 1 warn (no AI keys), 0 fail, with and without `DATABASE_URL`.
 - **The built game holds no part of the connection string:** built with the string in the environment, then searched for the host, the user, the password, the database name, "postgres", "DATABASE_URL" and "sslmode". None is in it.
 - The accounts the runs made (one a run), with their saves and their fights, were deleted afterwards. The tables stay, empty.
