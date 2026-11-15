@@ -242,3 +242,23 @@ Not checked:
   `local_only`, a room joined through Caddy. Do these before you rely on it.
 - The SSH tunnel for hosting a room.
 - That the build fits in memory on the 1 GB plan.
+
+## Accounts on the hosted copy
+
+Accounts and the hall of heroes (`docs/accounts.md`) work on the hosted copy once three things are true.
+
+1. **Caddy reaches the game as a caller on the same machine.** The game answers the account paths and the hall only to its own machine (a tunnel that runs there). `docker-compose.yml` runs Caddy inside the game's network (`network_mode: "service:game"`) and the Caddyfile hands requests to `127.0.0.1:8787`, so Caddy is such a caller. Every request still carries `X-Forwarded-For`, so the routes that spend keys, room making and health stay closed to visitors. Checked on the live server: `/api/account/status` answers, `/api/level`, `/api/speech`, `/api/health` and `POST /api/rooms` still answer 403.
+2. **The database string is in `.env` on the instance.** Add the two lines to `deploy/vultr/.env` there, by hand over SSH. Never put the string in git, an issue, a PR or a chat.
+   ```
+   DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require
+   DATABASE_CA_FILE=/app/certs/tiger-ca.pem
+   ```
+   Put the CA file (see `docs/accounts.md`, set-up step 3; it is not a secret) at `deploy/vultr/certs/tiger-ca.pem` on the instance. Leave the second line out to run with the certificate unchecked. Then `docker compose up -d` in `deploy/vultr`.
+3. **The Account page shows the sign-in.** That is the lead's four lines in `src/screens/Account.tsx` (see `docs/accounts.md`).
+
+Check: `https://<domain>/api/account/status` must answer `{"available":true}`. `{"available":false}` means the string is missing or the database did not answer; `docker compose logs game` names the reason in one line.
+
+Limits to know:
+
+- Behind Vercel every visitor reaches Caddy from Vercel's addresses, so visitors share the per-address budgets in `server/lib/accountLimits.ts` (40 new accounts and 30 sign-ins a minute an address). That is room enough for a demo hall, not for a crowd.
+- There is no email and no password reset. A hero name belongs to whoever takes it first.

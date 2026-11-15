@@ -18,6 +18,7 @@ import { RiggedModel } from "../render/models/RiggedModel";
 import { HOME_Z } from "../render/PlayerFigure";
 import { duoCamera } from "./duoCamera";
 import type { DuoCamera } from "./duoCamera";
+import { secondDrawn } from "./secondDrawn";
 
 /** Metres to the hero's right (player two stands on the right of the picture), and half a step nearer the monster, so the HUD at the bottom does not cover it. */
 export const SECOND_PLACE: readonly [number, number, number] = [1.25, 0, HOME_Z - 0.2];
@@ -64,6 +65,7 @@ function Spartan({ camera }: { camera: DuoCamera }) {
       tweakMaterial={spartan.tweakMaterial}
       afterMixer={(root, delta) => {
         const now = nowSeconds();
+        secondDrawn.at = performance.now();
         frame.current = camera.second(now * 1000) ?? frame.current;
         trackers.current.get(root)?.update(frame.current, now, delta, trackShare(read(now), spartan.rig.hurt.seconds));
       }}
