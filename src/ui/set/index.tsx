@@ -3,6 +3,7 @@
 import type { ButtonHTMLAttributes, ElementType, ReactNode } from "react";
 import "./set.css";
 import "./screens.css";
+import "./roles.css";
 
 /** A painting filling the window at full quality. Only a veil sits over it, and only where the caller asks. */
 export function SetBackdrop(props: { src: string; position?: string; veil?: "none" | "top" | "bottom" | "soft" }) {
@@ -87,5 +88,14 @@ export function SetPlaque(props: { primary?: boolean; device: ReactNode; name: s
       <span className="set-plaque__name">{props.name}</span>
       {props.line && <small className="set-plaque__line">{props.line}</small>}
     </button>
+  );
+}
+
+/** A small marble medallion with a device in gold relief: the plaque's medal on its own, for a card that has its own markup. */
+export function SetMedal(props: { device: ReactNode }) {
+  return (
+    <span className="set-plaque__medal set-medal" aria-hidden="true">
+      <svg viewBox="0 0 120 120"><g className="set-device" transform="translate(17 17) scale(0.9)">{props.device}</g></svg>
+    </span>
   );
 }

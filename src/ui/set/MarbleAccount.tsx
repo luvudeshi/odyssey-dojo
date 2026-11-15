@@ -27,7 +27,7 @@ export function MarbleAccount(props: { enemies: readonly EnemySpec[]; onBack: ()
     <main className="menu--account set-screen set-account">
       <SetBackdrop src="/textures/set/marble/day-hall.jpg" position="50% 50%" />
       <div className="set-account__grid">
-        <SetPanel className="set-account__hero">
+        <SetPanel className="set-account__hero set-panel--stele">
           <SetTitle kicker="Account">The Hall of the Hero</SetTitle>
           <label className="set-name">
             <span>Your name</span>
@@ -38,14 +38,14 @@ export function MarbleAccount(props: { enemies: readonly EnemySpec[]; onBack: ()
             <SetStat icon={<Icon name="laurel" className="acc-icon" />} value={profile.wins} label="Won" />
             <SetStat icon={<Icon name="star" className="acc-icon" />} value={profile.bestScore} label="Best score" />
           </dl>
+          <p className="set-account__count"><b>{won}</b> of {feats.length} trophies won</p>
           <Detail feat={picked ?? feats.find((feat) => !feat.done)} picked={picked !== undefined} />
           <div className="set-account__actions">
             <SetButton onClick={() => { setSettingsOpen(true); }}><Icon name="sliders" className="acc-btn__icon" />Open settings</SetButton>
             <SetButton primary onClick={props.onBack}><Icon name="house" className="acc-btn__icon" />Main menu</SetButton>
           </div>
         </SetPanel>
-        <SetPanel className="set-account__deeds">
-          <p className="set-account__count"><b>{won}</b> of {feats.length} trophies won</p>
+        <SetPanel className="set-account__deeds set-panel--hall">
           <div className="set-account__groups">
             {GROUPS.map(([key, title]) => {
               const list = feats.filter((feat) => (GROUP_OF[feat.id] ?? "road") === key);

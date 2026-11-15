@@ -17,7 +17,8 @@ import { guideFor } from "../guide";
 import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
 import { MARBLE } from "../../ui/lookSwitch";
-import { SetBack, SetBackdrop } from "../../ui/set";
+import { DEVICES } from "../../screens/menuShields";
+import { SetBack, SetBackdrop, SetDefs, SetMedal, SetTitle } from "../../ui/set";
 import "./dojo.css";
 
 /** What the dojo needs of the camera. The game's `PoseTracker` fits; so does anything that hands out frames. */
@@ -64,6 +65,7 @@ const viewOf = (state: DojoState): View => ({
 });
 
 const TIER_WORD: Readonly<Record<GradeTier, string>> = { excellent: "Excellent", good: "Good", needs_work: "Needs improvement" };
+const MEDAL_DEVICES = [DEVICES.shield, DEVICES.pair, DEVICES.laurel, DEVICES.ship, DEVICES.shield] as const;
 const keyName = (key: string): string => (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
 
 export function Dojo(props: DojoProps) {
@@ -160,9 +162,11 @@ export function Dojo(props: DojoProps) {
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      {MARBLE ? <SetBackdrop src="/textures/set/marble/day-yard.jpg" position="50% 55%" veil="soft" /> : <ForgeScene />}
+      {MARBLE ? <><SetBackdrop src="/textures/set/marble/day-yard.jpg" position="50% 55%" veil="soft" /><SetDefs /></> : <ForgeScene />}
       <header className="dojo-top">
-        <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
+        {MARBLE
+          ? <SetTitle as="p" className="set-titleblock--bar" kicker={style?.name ?? "Odyssey Dojo"}>Training Dojo</SetTitle>
+          : <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>}
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
         {!picking && <p className="dojo-points" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
         {onQuit && !done && (MARBLE
@@ -172,11 +176,12 @@ export function Dojo(props: DojoProps) {
 
       {picking && (
         <section className="dojo-pick">
-          <h1 className="dojo-end-title">What do you want to train?</h1>
+          {MARBLE ? <SetTitle kicker="Choose your style">What do you want to train?</SetTitle> : <h1 className="dojo-end-title">What do you want to train?</h1>}
           <p className="dojo-closing">Each one is its strikes, then block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
           <div className="dojo-styles">
             {STYLES.map((each, index) => (
               <button key={each.id} type="button" className="dojo-button dojo-style" autoFocus={index === 0} onClick={() => { setChosen(each); }}>
+                {MARBLE && <SetMedal device={MEDAL_DEVICES[index % MEDAL_DEVICES.length]} />}
                 <b>{each.name}</b>
                 <span>{each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")}</span>
               </button>
@@ -224,7 +229,7 @@ export function Dojo(props: DojoProps) {
 
       {done && summary && (
         <section className="dojo-end">
-          <h1 className="dojo-end-title">Training done</h1>
+          {MARBLE ? <SetTitle kicker="Session complete">Training done</SetTitle> : <h1 className="dojo-end-title">Training done</h1>}
           <p className="dojo-total"><b>{String(summary.points)}</b> points <span>of {String(summary.maxPoints)}</span></p>
           <p className="dojo-closing">{closingLine(summary)}</p>
           <div className="dojo-columns">

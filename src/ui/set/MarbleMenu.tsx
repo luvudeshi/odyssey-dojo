@@ -23,7 +23,7 @@ export function MarbleMenu(props: MenuProps) {
     <main className="menu--title set-screen set-menu">
       <SetBackdrop src="/textures/set/marble/day-menu.jpg" position="50% 60%" />
       <SetDefs />
-      <SetPanel className="set-menu__head">
+      <SetPanel className="set-menu__head set-panel--head">
         <SetTitle kicker="A game of the Odyssey">Odyssey Dojo</SetTitle>
         <p className="set-menu__verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
         <p className="set-menu__lead">{who ? `Welcome back, ${who}. ` : ""}Learn real self-defense, one monster at a time.</p>

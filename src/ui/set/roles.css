@@ -1,0 +1,110 @@
+/* Marble look, part two: panels and plaques differ by ROLE, so the screens are not one rectangle repeated.
+   Every panel gets a gold inlay line and four gold corner caps (below). Then each role has its own shape and marble:
+   head (menu title sheet): a squared double-framed lintel, meander above and below, cool white Carrara.
+   stele (Account hero): an arched stone with the title under the arch, warm cream.
+   hall (achievements, Dojo style pick): a hall with fluted pilasters and gold capitals at both sides, grey-blue marble.
+   tablet (Dojo side and cards): a leaf-cut tablet with two long corners.
+   The meander is set with background-repeat: round, so it always ends on a whole motif. */
+:root {
+  --mb-cap: radial-gradient(circle at 0 0, #e8c25a 0 7px, #7b5710 7.5px 9px, transparent 9.5px) 0 0 / 13px 13px no-repeat,
+    radial-gradient(circle at 100% 0, #e8c25a 0 7px, #7b5710 7.5px 9px, transparent 9.5px) 100% 0 / 13px 13px no-repeat,
+    radial-gradient(circle at 0 100%, #e8c25a 0 7px, #7b5710 7.5px 9px, transparent 9.5px) 0 100% / 13px 13px no-repeat,
+    radial-gradient(circle at 100% 100%, #e8c25a 0 7px, #7b5710 7.5px 9px, transparent 9.5px) 100% 100% / 13px 13px no-repeat;
+  --mb-flutes: repeating-linear-gradient(90deg, rgba(110, 118, 135, 0.55) 0 1.5px, rgba(255, 255, 255, 0.95) 1.5px 4px, rgba(214, 208, 192, 0.9) 4px 5.5px);
+  --mb-capital: linear-gradient(180deg, #fbe9a4, #c29327 60%, #8a6416);
+  --mb-blue-marble: linear-gradient(165deg, #fbfcfc, #eef2f4 55%, #dfe6ea);
+  --mb-warm-marble: linear-gradient(165deg, #fffdf7, #f7f0df 55%, #ebe1ca);
+}
+
+/* The inlay line and corner caps, on every panel. */
+.set-panel::after, :root[data-look="marble"] .dojo-pick::after, :root[data-look="marble"] .dojo-side::after, :root[data-look="marble"] .dojo-card::after {
+  content: ""; position: absolute; inset: 5px; z-index: 0; pointer-events: none; border: 1.5px solid rgba(138, 100, 22, 0.6); border-radius: 8px; background: var(--mb-cap);
+}
+.set-panel, :root[data-look="marble"] .dojo-card, :root[data-look="marble"] .dojo-side { isolation: isolate; }
+.set-panel::before, :root[data-look="marble"] .dojo-pick::before { left: 24px; right: 24px; }
+
+/* Head: squared, double-framed, a meander below the title as well. */
+.set-panel.set-panel--head { border-radius: 4px; padding-bottom: 24px;
+  background: var(--mb-veins), var(--mb-blue-marble) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px #fff, 0 0 0 4px rgba(255, 255, 255, 0.9), 0 0 0 6px #b38a2c, var(--mb-shadow-up); }
+.set-panel--head::after { border-radius: 2px; }
+
+/* Stele: arched top; the meander moves to the foot. */
+.set-panel.set-panel--stele { border-radius: 150px 150px 12px 12px; padding-top: 50px; padding-bottom: 34px;
+  background: var(--mb-veins), var(--mb-warm-marble) padding-box, var(--mb-leaf) border-box; }
+.set-panel--stele::before { top: auto; bottom: 10px; }
+.set-panel--stele::after { border-radius: 144px 144px 8px 8px; background: radial-gradient(circle at 50% 0, #e8c25a 0 9px, #7b5710 9.5px 11px, transparent 11.5px) 50% 0 / 24px 24px no-repeat, linear-gradient(transparent, transparent); }
+
+/* Hall: pilasters with gold capitals at both sides. */
+.set-panel.set-panel--hall, :root[data-look="marble"] .dojo-pick { padding-left: 56px; padding-right: 56px;
+  background:
+    var(--mb-capital) 14px 34px / 26px 9px no-repeat, var(--mb-flutes) 14px 43px / 26px calc(100% - 78px) no-repeat, var(--mb-capital) 14px calc(100% - 34px) / 26px 9px no-repeat,
+    var(--mb-capital) calc(100% - 14px) 34px / 26px 9px no-repeat, var(--mb-flutes) calc(100% - 14px) 43px / 26px calc(100% - 78px) no-repeat, var(--mb-capital) calc(100% - 14px) calc(100% - 34px) / 26px 9px no-repeat,
+    var(--mb-veins), var(--mb-blue-marble) padding-box, var(--mb-leaf) border-box; }
+.set-panel--hall::after, :root[data-look="marble"] .dojo-pick::after { inset: 5px; }
+
+/* Tablet: Dojo side and cards, two long corners. */
+:root[data-look="marble"] .dojo-side { border-radius: 30px 6px 30px 6px; background: var(--mb-veins), var(--mb-warm-marble) padding-box, var(--mb-leaf) border-box; }
+:root[data-look="marble"] .dojo-side::after { border-radius: 26px 3px 26px 3px; }
+:root[data-look="marble"] .dojo-outline .move-guide, :root[data-look="marble"] .dojo-outline .move-guide.defend { border-radius: 6px 30px 6px 30px;
+  background: var(--mb-veins), var(--mb-blue-marble) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px #fff, inset 0 0 0 6px rgba(246, 227, 160, 0.55), inset 0 0 0 7.5px rgba(138, 100, 22, 0.6), var(--mb-shadow-up); }
+:root[data-look="marble"] .dojo-card { border-radius: 6px 24px 6px 24px; padding-top: 14px; }
+:root[data-look="marble"] .dojo-card:nth-child(2) { border-radius: 24px 6px 24px 6px; }
+
+/* Menu plaques: four different stones. Story mode an arch, the others a lintel, a tablet and a stele. */
+.set-plaque--primary { border-radius: 90px 90px 14px 14px; padding-top: 30px; }
+.set-plaque--primary::before { display: none; }
+.set-plaque--primary::after { content: ""; position: absolute; inset: 6px; border: 1.5px solid rgba(138, 100, 22, 0.7); border-radius: 84px 84px 9px 9px; pointer-events: none; }
+.set-plaque:not(.set-plaque--primary)::after { content: ""; position: absolute; inset: 5px; border: 1.5px solid rgba(138, 100, 22, 0.55); border-radius: inherit; pointer-events: none; background: var(--mb-cap); }
+.set-menu__cards .set-plaque:nth-child(2) { border-radius: 4px; background: var(--mb-veins), var(--mb-blue-marble) padding-box, var(--mb-leaf) border-box; }
+.set-menu__cards .set-plaque:nth-child(2) .set-plaque__medal { border-radius: 22%; }
+.set-menu__cards .set-plaque:nth-child(3) { border-radius: 28px 6px 28px 6px; background: var(--mb-veins), var(--mb-warm-marble) padding-box, var(--mb-leaf) border-box; }
+.set-menu__cards .set-plaque:nth-child(3) .set-plaque__medal { border-radius: 50% 50% 50% 50% / 36% 36% 64% 64%; }
+.set-menu__cards .set-plaque:nth-child(4) { border-radius: 60px 60px 8px 8px; background: var(--mb-veins), var(--mb-blue-marble) padding-box, var(--mb-leaf) border-box; }
+.set-menu__cards .set-plaque:nth-child(4)::before { display: none; }
+.set-menu__cards .set-plaque:nth-child(4)::after { border-radius: 55px 55px 4px 4px; }
+
+/* Dojo style picks: small steles, each with a medallion in gold relief instead of a dot. */
+:root[data-look="marble"] .dojo-style { border-radius: 70px 70px 10px 10px; padding-top: 22px; }
+:root[data-look="marble"] .dojo-style::before { content: none; }
+:root[data-look="marble"] .dojo-style .set-plaque__medal { width: 76px; height: 76px; margin: 0 0 4px; }
+:root[data-look="marble"] .dojo-style:nth-child(even) { border-radius: 8px; }
+:root[data-look="marble"] .dojo-style:nth-child(even) .set-plaque__medal { border-radius: 22%; }
+
+/* Title: one component everywhere. In the Dojo bar it sits left, smaller. */
+.set-titleblock--bar { align-items: flex-start; text-align: left; }
+.set-titleblock--bar .set-title { font-size: clamp(22px, 3.6vh, 30px); }
+.set-titleblock--bar .set-kicker { font-size: 18px; margin-bottom: 0; }
+.set-titleblock--bar .set-rule { width: 12rem; margin-top: 5px; }
+.set-titleblock .set-rule i { background: var(--mb-gold-fill); }
+:root[data-look="marble"] .dojo-pick .set-title { font-size: clamp(30px, 5.2vh, 46px); }
+:root[data-look="marble"] .dojo-end .set-titleblock { margin-bottom: 4px; }
+
+/* Counters: medal-style points, gold-leaf bars with the buttons' border and shadow, round tries like the Account medals. */
+:root[data-look="marble"] .dojo-points { display: inline-flex; align-items: center; gap: 10px; padding: 3px 4px 3px 18px; border: 3px solid transparent; border-radius: 999px; color: var(--mb-ink);
+  background: var(--mb-veins), linear-gradient(180deg, #fffdf8, #ece6d8) padding-box, var(--mb-leaf) border-box; box-shadow: var(--mb-shadow); }
+:root[data-look="marble"] .dojo-points span { color: var(--mb-ink); }
+:root[data-look="marble"] .dojo-points b { display: grid; place-items: center; box-sizing: border-box; min-width: 52px; height: 44px; padding: 0 10px; border-radius: 999px; font: 700 28px/1 var(--mb-display); color: #231703;
+  background: var(--mb-gold-fill); box-shadow: inset 0 0 0 2px var(--mb-gold-deep), inset 0 0 0 3px rgba(255, 246, 200, 0.8), 0 2px 4px rgba(24, 36, 60, 0.35); text-shadow: 0 1px 0 rgba(255, 244, 190, 0.75); }
+:root[data-look="marble"] .dojo-outline .mg-match-bar, :root[data-look="marble"] .dojo-time { box-sizing: border-box; height: 24px; border: 3px solid transparent; border-radius: 12px; overflow: hidden; clip-path: none;
+  background: linear-gradient(180deg, #e6e0d0, #fffdf6) padding-box, var(--mb-leaf) border-box; box-shadow: 0 2px 4px rgba(24, 36, 60, 0.3); }
+:root[data-look="marble"] .dojo-outline .mg-match-fill, :root[data-look="marble"] .dojo-time-fill, :root[data-look="marble"] .dojo[data-phase="go"] .dojo-time-fill { background: var(--mb-gold-fill); border-radius: 8px; box-shadow: inset 0 -3px 0 rgba(138, 100, 22, 0.4), inset 0 1px 0 rgba(255, 246, 200, 0.9); }
+:root[data-look="marble"] .dojo-outline .mg-match-word, :root[data-look="marble"] .dojo-outline .mg-match-number { font: 700 19px var(--mb-label); letter-spacing: 0.08em; color: var(--mb-ink); }
+:root[data-look="marble"] .dojo-dots { gap: 14px; }
+:root[data-look="marble"] .dojo-dots li { color: var(--mb-ink); }
+:root[data-look="marble"] .dojo-dot { box-sizing: border-box; width: 46px; height: 46px; clip-path: none; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f7f4ed, #e0dacb); box-shadow: inset 0 0 0 3px #4a5570, 0 2px 4px rgba(24, 36, 60, 0.3); }
+:root[data-look="marble"] .dojo-dots li[data-now] .dojo-dot { background: radial-gradient(circle at 35% 30%, #fff, #fbf1cc); box-shadow: inset 0 0 0 3px var(--mb-gold-deep), 0 0 0 4px rgba(246, 227, 160, 0.9), 0 2px 4px rgba(24, 36, 60, 0.3); }
+:root[data-look="marble"] .dojo-dots li:not([data-tier=""]) .dojo-dot { background: var(--mb-gold-fill); box-shadow: inset 0 0 0 3px var(--mb-gold-deep), inset 0 0 0 4px rgba(255, 246, 200, 0.8), 0 2px 4px rgba(24, 36, 60, 0.3); }
+:root[data-look="marble"] .dojo-dots li[data-tier="excellent"] .dojo-dot { box-shadow: inset 0 0 0 3px #17703a, inset 0 0 0 4px rgba(255, 246, 200, 0.8), 0 2px 4px rgba(24, 36, 60, 0.3); }
+:root[data-look="marble"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { box-shadow: inset 0 0 0 3px #b3321a, inset 0 0 0 4px rgba(255, 246, 200, 0.8), 0 2px 4px rgba(24, 36, 60, 0.3); }
+:root[data-look="marble"] .dojo[data-phase="go"] .dojo-cue { box-shadow: inset 0 0 0 2px var(--mb-gold-deep), var(--mb-shadow); border: 0; }
+
+/* The Dojo side tablet needs to be the anchor of its own inlay. */
+:root[data-look="marble"] .dojo-side { position: relative; }
+/* Lining figures: Big Caslon's 1 reads as a capital I and its 0 as an O, so figures are set in Didot. */
+.set-stat dd, .set-account__count b, :root[data-look="marble"] .dojo-points b, :root[data-look="marble"] .dojo-total b { font-family: Didot, "Hoefler Text", Georgia, serif; font-variant-numeric: lining-nums tabular-nums; }
+.set-account__hero .set-title { font-size: clamp(28px, 4.4vh, 36px); }
+.set-account__hero { gap: clamp(8px, 1.4vh, 14px); }
+.set-account__hero .acc-detail { min-height: 6.6rem; }
+:root[data-look="marble"] .dojo .dojo-outline .move-guide .mg-match, :root[data-look="marble"] .dojo .dojo-outline .move-guide .mg-match-word, :root[data-look="marble"] .dojo .dojo-outline .move-guide .mg-match-number { color: var(--mb-ink); opacity: 1; }
