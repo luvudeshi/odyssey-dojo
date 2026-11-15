@@ -22,7 +22,7 @@ import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { noteMiss } from "../hud/MissFlash";
-import { createMissWatch } from "../input/missWatch";
+import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -51,7 +51,7 @@ export function FightScreen(props: {
   seed: number;
   /** Set by calibration; null for keyboard play. */
   baseline?: Baseline | null;
-  /** The god the scan found, for the divine power effect; null for none. */
+  /** A god for the divine power effect; null for none. The game passes none, so Athena lends her aegis. */
   god?: GodId | null;
   /** Buttons shown once the fight is over. */
   /** Pause menu: start this fight again, or leave it for the quest map. */
@@ -121,7 +121,7 @@ export function FightScreen(props: {
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
       setLost(false);
-      const own = mergeInputs(keys, readPose(history));
+      const own = mergeInputs(keys, readPose(history, askedMove(current.phase)));
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
@@ -129,7 +129,7 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
-      if (watchMiss(from.phase, input, result.events)) noteMiss();
+      if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       fightEvents.current.push(...result.events);
@@ -166,7 +166,7 @@ export function FightScreen(props: {
     const timer = setTimeout(() => { setBlowSeen(true); }, LAST_BLOW_MS);
     return () => { clearTimeout(timer); };
   }, [won]);
-  // With no god (keyboard play or a skipped scan) Athena lends her aegis, as the power-ready banner says.
+  // With no god (every fight now) Athena lends her aegis, as the power-ready banner says.
   const patron: GodId = god ?? "athena";
   useEffect(() => { patronRef.current = patron; }, [patron]);
   const running = view === "off";
@@ -196,7 +196,8 @@ export function FightScreen(props: {
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
       <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
-      <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
+      {/* The keyboard plaque has nothing to say once the fight is over; the camera picture stays. */}
+      {!(over && !tracker) && <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />}
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu

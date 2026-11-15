@@ -5,9 +5,9 @@
 // The 3D rulers come from the calibrated baseline, measured while the player stood facing the camera, so they
 // do not change when the tracker's 3D body is off for a frame or the player turns. A baseline without them
 // (or none yet) falls back to measuring the current frame.
-import type { Baseline, PoseFrame, PoseHistory } from "../core/types";
+import type { Baseline, Landmark, PoseFrame, PoseHistory } from "../core/types";
 import {
-  JOINT, clamp01, distance2d, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth, shoulderWidth3d, torsoLength3d,
+  JOINT, clamp01, distance2d, elbowAngle, joint, latest, meanOf, recent, shoulderCenter, shoulderWidth, shoulderWidth3d, torsoLength3d,
 } from "../pose/signals";
 
 export type Side = "left" | "right";
@@ -402,4 +402,76 @@ export function punchedJustNow(history: PoseHistory, side: Side): boolean {
   const now = latest(history)?.t ?? 0;
   return history.frames.some((old, i) =>
     now - old.t <= FOLLOW_MS && straightPunch({ ...history, frames: history.frames.slice(0, i + 1) }, side) >= 0.7);
+}
+
+/** The loosest "the arm moved" reading, for a prompt that asks for it (see `armMoved`): wrist travel in shoulder widths, then degrees. */
+export const MOVED_WRIST = 0.3;
+export const MOVED_ELBOW = 30;
+export const MOVED_LIFT = 22;
+export const MOVED_MS = 500;
+/** The other arm may move at most this share of what this arm did: both arms rising together is a block, not a jab. */
+const OTHER_SHARE = 0.75;
+
+/** How far this arm has moved on `frame` since `first`, as a share of the least that counts: 1 or more is a clear movement. */
+export function armMovedBy(frame: PoseFrame, first: PoseFrame, side: Side): number {
+  const ids = armJoints(side);
+  const bendLift = seen(frame, ids.elbow) && seen(first, ids.elbow)
+    ? Math.max(Math.abs(elbowAngle(frame, side) - elbowAngle(first, side)) / MOVED_ELBOW, Math.abs(upperArmLift(frame, side) - upperArmLift(first, side)) / MOVED_LIFT)
+    : 0;
+  if (!seen(frame, ids.wrist) || !seen(first, ids.wrist)) return bendLift;
+  // Both measures are relative to the shoulder centre, so the whole body shifting in a dodge or a step cancels out.
+  const wrist = Math.hypot(wristOut(frame, side) - wristOut(first, side), wristRise(frame, side) - wristRise(first, side)) / MOVED_WRIST;
+  return Math.max(wrist, bendLift);
+}
+
+/**
+ * 1 when this arm has clearly moved over the last MOVED_MS of the history (the wrist, the elbow bend or the upper arm
+ * lift), on the latest frame and the one before it, and the other arm has moved clearly less; otherwise 0. No direction,
+ * height or speed: only for a prompt that asks for this arm, never as a strike of its own.
+ */
+export function armMoved(history: PoseHistory, side: Side): number {
+  const w = steadyWindow(history, MOVED_MS);
+  if (!w) return 0;
+  const by = (frame: PoseFrame, arm: Side): number => armMovedBy(frame, w.first, arm);
+  return by(w.now, side) >= 1 && by(w.before, side) >= 1 && by(w.now, otherSide(side)) <= OTHER_SHARE * by(w.now, side) ? 1 : 0;
+}
+
+/** One frame whose every point (image and 3D) is the mean of the frames' points, so a reading comparing two moments is not set off by shake. */
+export function meanFrame(frames: readonly PoseFrame[]): PoseFrame {
+  const average = (pick: (frame: PoseFrame) => readonly Landmark[]): Landmark[] =>
+    (frames[0] ? pick(frames[0]) : []).map((_, i) => ({
+      x: meanOf(frames, (f) => joint(pick(f), i).x),
+      y: meanOf(frames, (f) => joint(pick(f), i).y),
+      z: meanOf(frames, (f) => joint(pick(f), i).z),
+      visibility: meanOf(frames, (f) => joint(pick(f), i).visibility),
+    }));
+  return { t: frames.at(-1)?.t ?? 0, image: average((f) => f.image), world: average((f) => f.world) };
+}
+
+/** How many frames each end of a window is averaged over. */
+export const AVERAGED = 3;
+
+/** `frame` with its shoulders set to `like`'s width (same centre and tilt), so a shoulder width that shakes does not move far-off wrists in the readings that divide by it. */
+function sized(frame: PoseFrame, like: PoseFrame): PoseFrame {
+  const l = joint(frame.image, JOINT.leftShoulder);
+  const r = joint(frame.image, JOINT.rightShoulder);
+  const w = shoulderWidth(like);
+  const dy = (l.y - r.y) / 2;
+  const half = Math.sqrt(Math.max(0, (w / 2) ** 2 - dy * dy)) * Math.sign(l.x - r.x || 1);
+  const cx = (l.x + r.x) / 2;
+  return { ...frame, image: frame.image.map((p, k) => (k === JOINT.leftShoulder ? { ...p, x: cx + half } : k === JOINT.rightShoulder ? { ...p, x: cx - half } : p)) };
+}
+
+/**
+ * The frames of the last `ms` as the mean of the first AVERAGED (`first`), of the last AVERAGED (`now`) and of the AVERAGED
+ * before the newest (`before`), all on `first`'s shoulder width; null with too few frames or no shoulders.
+ */
+export function steadyWindow(history: PoseHistory, ms: number): { first: PoseFrame; now: PoseFrame; before: PoseFrame } | null {
+  const frames = recent(history, ms);
+  if (frames.length < 2 * AVERAGED) return null;
+  const first = meanFrame(frames.slice(0, AVERAGED));
+  const now = meanFrame(frames.slice(-AVERAGED));
+  const before = meanFrame(frames.slice(-AVERAGED - 1, -1));
+  return shoulderWidth(first) === 0 || shoulderWidth(now) === 0 || shoulderWidth(before) === 0
+    ? null : { first, now: sized(now, first), before: sized(before, first) };
 }

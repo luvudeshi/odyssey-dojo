@@ -1,53 +1,52 @@
 /* The hall of heroes: the button on the Account screen, and the board it opens in a dialog. All text here is 18 px or more. */
-/* The button. On the Account screen it stands on the floor under the right wall, beside the count of trophies. */
-.hall-door .pb-btn { min-width: 0; min-height: 48px; margin: 0; padding: 8px 18px; font-size: 18px; white-space: nowrap; }
+/* The button. On the Account screen it is put inside the account block (AccountSignIn), in its row, beside "Sign in". */
 .hall-door__icon { display: inline-block; flex: none; width: 24px; height: 24px; margin-right: 8px; vertical-align: -6px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
-.acc-hall__core > .hall-door { left: 976px; top: calc(100% - var(--floor) + 18px); }
 
-/* The board. It fills the width it is given and scrolls its list when the dialog is short. */
-.hall { container-type: inline-size; display: flex; flex-direction: column; gap: 8px; width: min(84vw, 40rem); min-width: 0; min-height: 0; box-sizing: border-box; margin: 0 auto 14px; padding: 10px 16px 12px; border: 2px solid var(--pb-ochre); border-radius: var(--pb-radius-panel); background: var(--pb-plaque-2); color: var(--pb-text); font-family: var(--pb-font-body); text-align: left; }
+/* The board, in the Storm and bronze look (the tokens are the kit's, src/ui/set/set.css). It stands on the dialog's own
+   sea-glass panel with no box of its own, fills the width it is given and scrolls its list when the dialog is short. */
+.hall { container-type: inline-size; display: flex; flex-direction: column; gap: 8px; width: min(84vw, 40rem); min-width: 0; min-height: 0; box-sizing: border-box; margin: 0 auto 14px; color: var(--st-ink); font-family: var(--st-body); text-align: left; }
 .hall__switch { display: flex; justify-content: center; gap: 8px; flex: none; }
-.hall .hall__switch .pb-btn { min-width: 7rem; min-height: 40px; margin: 0; padding: 4px 14px; font-size: 18px; white-space: nowrap; }
-.ui-panel:has(.hall) > .pb-btn { font-size: 20px; }
+/* The kit's button rule is under :root:root, so the size of these two is too. */
+:root:root .hall .hall__switch .pb-btn { min-width: 8rem; min-height: 44px; margin: 0; padding: 4px 18px; font-size: 19px; }
 
-.hall__none { flex: 1 1 auto; display: grid; place-items: center; min-height: 6rem; margin: 0; padding: 0 8px; font: 600 22px/1.3 var(--pb-font-body); color: var(--pb-text-dim); text-align: center; }
+.hall__none { flex: 1 1 auto; display: grid; place-items: center; min-height: 6rem; margin: 0; padding: 0 8px; font: 600 22px/1.3 var(--st-body); color: var(--st-dim); text-align: center; }
 
-/* The podium: second, first, third. The name and score sit on a block whose height says the place. */
+/* The podium: second, first, third. The name and score sit on a bronze block whose height says the place. */
 .hall__podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: end; flex: none; margin: 0; padding: 0; list-style: none; }
 .hall__step { display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
-.hall__step .hall__name { max-width: 100%; font: 700 19px/1.2 var(--pb-font-body); color: var(--pb-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hall__step .hall__score { font: 700 24px/1.1 var(--pb-font-body); font-variant-numeric: tabular-nums; color: var(--pb-ochre-light); }
-.hall__step .hall__where { max-width: 100%; margin-bottom: 3px; font: 500 18px/1.2 var(--pb-font-body); color: var(--pb-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hall__block { display: grid; place-items: center; width: 100%; border: 2px solid var(--pb-lead); border-bottom: 0; border-radius: 8px 8px 0 0; font: 700 22px/1 var(--pb-font-body); color: var(--pb-text-on-ochre); background: var(--pb-lead); }
-.hall__step--1 .hall__block { height: 46px; background: var(--pb-ochre); border-color: var(--pb-cream); }
-.hall__step--2 .hall__block { height: 34px; background: var(--pb-slate-light); border-color: var(--pb-foam); }
-.hall__step--3 .hall__block { height: 24px; background: var(--pb-terra); border-color: var(--pb-ochre-light); color: var(--pb-text); }
-.hall__step.is-empty .hall__block { background: var(--pb-dim); border-color: var(--pb-dim); color: var(--pb-text-dim); }
+.hall__step .hall__name { max-width: 100%; font: 700 19px/1.2 var(--st-body); color: var(--st-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hall__step .hall__score { font: 400 24px/1.1 var(--st-display); font-variant-numeric: tabular-nums; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+.hall__step .hall__where { max-width: 100%; margin-bottom: 3px; font: 500 18px/1.2 var(--st-body); color: var(--st-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hall__block { display: grid; place-items: center; width: 100%; box-sizing: border-box; border: 2px solid #1a0d06; border-bottom: 0; border-radius: 8px 8px 0 0; font: 400 22px/1 var(--st-display); color: var(--st-bronze-hi); text-shadow: 0 2px 0 rgba(26, 13, 6, 0.9); box-shadow: inset 0 2px 0 rgba(255, 238, 200, 0.45); }
+.hall__step--1 .hall__block { height: 46px; color: var(--st-bronze-dark); text-shadow: 0 1px 0 rgba(255, 240, 200, 0.7); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); }
+.hall__step--2 .hall__block { height: 34px; background: linear-gradient(#c98f37, #a86424 45%, #6b3a12); }
+.hall__step--3 .hall__block { height: 24px; background: linear-gradient(#8a5220, #5a300f); }
+.hall__step.is-empty .hall__block { color: var(--st-dim); text-shadow: none; background: rgba(4, 16, 15, 0.6); border-color: rgba(224, 165, 82, 0.35); box-shadow: none; }
 .hall__step--1 .hall__name { font-size: 21px; }
 .hall__step--1 .hall__score { font-size: 28px; }
 
-.hall__you { flex: none; padding: 0 7px; border-radius: 9px; font: 700 18px/1.25 var(--pb-font-body); color: var(--pb-text-on-ochre); background: var(--pb-foam); }
-.hall__step.is-you .hall__block { box-shadow: 0 0 0 3px var(--pb-foam); }
+.hall__you { flex: none; padding: 0 7px; border-radius: 9px; font: 700 18px/1.25 var(--st-body); color: var(--st-abyss); background: #bff3ee; }
+.hall__step.is-you .hall__block { box-shadow: inset 0 2px 0 rgba(255, 238, 200, 0.45), 0 0 0 3px #bff3ee; }
 
 /* Fourth to tenth. */
-.hall__list { flex: 0 1 auto; min-height: 0; margin: 0; padding: 0; list-style: none; overflow-y: auto; border-top: 2px solid var(--pb-lead); }
-.hall__list li { display: flex; align-items: baseline; gap: 8px; padding: 1px 6px; border-bottom: 1px solid var(--pb-dim); font: 600 18px/1.2 var(--pb-font-body); }
-.hall__list li.is-you { background: var(--pb-blood); outline: 2px solid var(--pb-foam); outline-offset: -2px; border-radius: 6px; }
-.hall__rank { flex: none; width: 1.4em; font-weight: 700; color: var(--pb-text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+.hall__list { flex: 0 1 auto; min-height: 0; margin: 0; padding: 0; list-style: none; overflow-y: auto; border-top: 2px solid var(--st-bronze-mid); }
+.hall__list li { display: flex; align-items: baseline; gap: 8px; padding: 1px 6px; border-bottom: 1px solid rgba(224, 165, 82, 0.28); font: 600 18px/1.2 var(--st-body); }
+.hall__list li.is-you { background: rgba(44, 138, 134, 0.4); outline: 2px solid #bff3ee; outline-offset: -2px; border-radius: 6px; }
+.hall__rank { flex: none; width: 1.4em; font-weight: 700; color: var(--st-dim); text-align: right; font-variant-numeric: tabular-nums; }
 .hall__list .hall__name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hall__list .hall__where { display: none; flex: 0 1 auto; min-width: 0; color: var(--pb-text-dim); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hall__list .hall__score { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--pb-ochre-light); }
+.hall__list .hall__where { display: none; flex: 0 1 auto; min-width: 0; color: var(--st-dim); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hall__list .hall__score { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--st-gold); }
 @container (min-width: 30rem) { .hall__list .hall__where { display: block; } }
 
 /* How busy the road has been. */
-.hall__road { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: end; flex: none; margin-top: auto; padding-top: 4px; border-top: 2px solid var(--pb-lead); }
+.hall__road { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: end; flex: none; margin-top: auto; padding-top: 4px; border-top: 2px solid var(--st-bronze-mid); }
 .hall__count { display: flex; flex-direction: column; margin: 0; }
-.hall__count b { font: 700 30px/1 var(--pb-font-body); font-variant-numeric: tabular-nums; color: var(--pb-foam); }
-.hall__count span { font: 600 18px/1.2 var(--pb-font-body); color: var(--pb-text-dim); }
+.hall__count b { font: 400 30px/1 var(--st-display); font-variant-numeric: tabular-nums; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+.hall__count span { font: 600 18px/1.2 var(--st-body); color: var(--st-dim); }
 .hall__chart { display: flex; flex-direction: column; min-width: 0; }
-.hall__chart span { font: 500 18px/1.2 var(--pb-font-body); color: var(--pb-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hall__chart span { font: 500 18px/1.2 var(--st-body); color: var(--st-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hall__pulse { display: block; width: 100%; height: 32px; }
-.hall__pulse-fill { fill: var(--pb-terra); opacity: 0.45; }
-.hall__pulse-line { fill: none; stroke: var(--pb-ochre-light); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
-.hall__stops { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0 12px; margin: 0; font: 500 18px/1.3 var(--pb-font-body); color: var(--pb-text-dim); max-height: 1.3em; overflow: hidden; }
-.hall__stop b { font-weight: 700; color: var(--pb-text); }
+.hall__pulse-fill { fill: var(--st-teal); opacity: 0.45; }
+.hall__pulse-line { fill: none; stroke: var(--st-gold); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.hall__stops { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0 12px; margin: 0; font: 500 18px/1.3 var(--st-body); color: var(--st-dim); max-height: 1.3em; overflow: hidden; }
+.hall__stop b { font-weight: 700; color: var(--st-ink); }

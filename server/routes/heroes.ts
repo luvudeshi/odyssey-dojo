@@ -1,7 +1,7 @@
 // The hall of heroes over plain HTTP: a signed-in player's finished fight is written down, and anybody may read the lists.
 // What is accepted lives in ../lib/heroRules, the database work in ../lib/heroes and the limits in ../lib/heroLimits.
 //
-// The public tunnel reaches both paths (../lib/localOnly). A fight is written only for the account its session
+// The public tunnel reaches both paths, and so does every visitor of a public server (../lib/localOnly). A fight is written only for the account its session
 // belongs to, a few a minute at most, and the hall is read from memory: the database is asked once in
 // HALL_CACHE_MS however many ask. The score is the browser's own word; docs/accounts.md says so.
 // Nothing here shows a player an error: the browser sends a fight in the background and forgets the answer.
@@ -11,7 +11,7 @@
 import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
-import { Busy } from "../lib/accountLimits";
+import { Busy, callerOf } from "../lib/accountLimits";
 import { Unavailable, bearerToken, statementsOf } from "../lib/accounts";
 import { sharedAccounts } from "../lib/accountsShared";
 import type { SharedAccounts } from "../lib/accountsShared";
@@ -19,8 +19,8 @@ import { createHeroLimits } from "../lib/heroLimits";
 import { FIGHT_BODY_BYTES, parseFightBody } from "../lib/heroRules";
 import { createHeroes } from "../lib/heroes";
 import type { HallRow, Heroes } from "../lib/heroes";
-import { wasRelayed } from "../lib/localOnly";
-import { RELAYED, THIS_MACHINE, clientKey } from "../lib/roomLimits";
+import { publicAccounts } from "../lib/localOnly";
+import { THIS_MACHINE } from "../lib/roomLimits";
 import { smallBody } from "./account";
 
 function unavailable(response: Response): void {
@@ -57,10 +57,9 @@ export const register: Register = (router, deps) => {
   };
 
   /** Who a request is counted against, as in routes/account.ts: a request that was passed on never gets the laptop's free pass. */
-  const client = (request: Request): string => {
-    const who = clientKey(request.socket.remoteAddress, request.headers);
-    return who === THIS_MACHINE && wasRelayed(request.headers) ? RELAYED : who;
-  };
+  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, publicAccounts());
+  /** How to give back what the fight of a request took of the strangers' shared counts, set once the fight was counted. */
+  const places = new WeakMap<Request, () => void>();
 
   /** Runs a handler so that nothing it throws reaches the app's error handler. No place at a gate is 429; everything else is 503. */
   const safely = (work: (request: Request, response: Response, next: () => void) => Promise<void>): RequestHandler =>
@@ -121,17 +120,18 @@ export const register: Register = (router, deps) => {
       signedOut(response);
       return;
     }
-    const wait = limits.fight(who, account.id);
-    if (wait > 0) {
-      slowDown(response, wait);
+    const place = limits.fightPlace(who, account.id);
+    if (place.wait > 0) {
+      slowDown(response, place.wait);
       return;
     }
+    places.set(request, place.notWritten);
     response.locals.accountId = account.id;
     next();
   });
 
-  /** Gives back what a fight took of the strangers' shared count when no row came of it: only fights really written use it up. */
-  const notWritten = (request: Request): void => { limits.fightNotWritten(client(request)); };
+  /** Gives back what a fight took of the strangers' shared counts when no row came of it: only fights really written use them up. */
+  const notWritten = (request: Request): void => { places.get(request)?.(); };
 
   router.post(
     "/api/account/fights",

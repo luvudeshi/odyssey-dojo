@@ -63,6 +63,8 @@ export interface FakeServer {
   available: boolean;
   /** When set, every account route but status answers this status. */
   fail: number | null;
+  /** The error named in that answer. Left out: one no server ever says. */
+  failAs?: string;
   /** When true, fetch rejects, as with no network. */
   offline: boolean;
   /** When set, a PUT waits for release() before it is answered. */
@@ -95,7 +97,7 @@ export function fakeServer(): FakeServer {
       const token = (init.headers?.Authorization ?? "").replace(/^Bearer /, "");
       if (route === "GET /api/account/status") return answer(200, { available: server.available });
       if (route === "POST /api/account/signout") { server.sessions.delete(token); return answer(204); }
-      if (server.fail !== null) return answer(server.fail, { error: "made_up" });
+      if (server.fail !== null) return answer(server.fail, { error: server.failAs ?? "made_up" });
       if (route === "POST /api/account/signup" || route === "POST /api/account/signin") {
         const key = field("name").toLowerCase();
         if (route === "POST /api/account/signup") {

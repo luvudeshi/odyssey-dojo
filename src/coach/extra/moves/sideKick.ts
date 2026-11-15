@@ -6,6 +6,7 @@ import { CHAMBER_MS, KICK_STRAIGHT, chambered } from "../../../moves/defs/frontK
 import { footLift, kneeAngle, legsVisible } from "../../../moves/legSignals";
 import { clamp01, latest } from "../../../pose/signals";
 import { ankleOut, atLeast, atMost, eitherSide, now, since, yes } from "../signals";
+import { armWent, legRose } from "../../../moves/looseSignals";
 
 /** The foot ends at least this far out to the side of its hip, in shoulder widths. */
 export const FOOT_OUT = 1.2;
@@ -35,6 +36,9 @@ export const move: MoveDef = {
   teaches: "A kick out to the side keeps someone at leg length without stepping in closer.",
   detect(history) {
     return kick.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(move.detect(history), legRose(history));
   },
   /** Better the further out the foot goes and the straighter the leg ends up. */
   quality(history) {

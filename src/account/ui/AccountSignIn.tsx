@@ -1,8 +1,11 @@
 // The account part of the Account screen: where the progress is kept, and the way to sign in or out.
-// It sits in the row of buttons on the hall's floor: one line of words above the row, and one button in it.
-// Signed out that is "Sign in"; the name and password are asked in a dialog, like the settings.
-// With no account server the line says so and the page is otherwise as it was.
+// It is one block in the middle of the screen, under the name and the coins: the words "Your account", where the
+// progress is kept, and a row of buttons. Signed out the first button is "Sign in" (the bright one); the name and
+// password are asked in a dialog, like the settings. What is put inside the element joins that row: the Account
+// screen puts the Hall of heroes there, <AccountSignIn><HallOfHeroes /></AccountSignIn>.
+// With no account server this draws nothing and the page is as it was.
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Dialog } from "../../ui/Dialog";
 import { Button } from "../../ui/pebble";
@@ -57,29 +60,29 @@ function SignInDialog(props: { firstName: string; onClose: () => void }) {
   );
 }
 
-export function AccountSignIn() {
+export function AccountSignIn(props: { children?: ReactNode }) {
   const account = useAccount();
   const profile = useProfile();
   const [open, setOpen] = useState(false);
   // Opening the Account page is the one moment a signed-out browser asks the server anything.
   useEffect(() => { void accountStatus(); }, []);
 
-  if (account.status === "signedIn") {
-    return (
-      <div className="acc-signin">
-        <p className="acc-signin__where">Signed in as <b>{account.name}</b>. <span role="status" aria-live="polite">{SAVE_TEXT[account.save]}</span></p>
-        <Button onClick={() => { void signOut(); }}>Sign out</Button>
-      </div>
-    );
-  }
-  if (account.status === "off") {
-    return <div className="acc-signin is-quiet"><p className="acc-signin__where">Saved in this browser only. Accounts are not available here.</p></div>;
-  }
+  // Until the server has said it has accounts, and when it has none, nothing is drawn.
+  if (account.status === "unknown" || account.status === "off") return null;
+  const signedIn = account.status === "signedIn";
   return (
-    <div className="acc-signin">
-      <p className="acc-signin__where">Saved in this browser only.</p>
-      {account.status !== "unknown" && <Button onClick={() => { setOpen(true); }}>Sign in</Button>}
-      {open && <SignInDialog firstName={accountName(profile.name)} onClose={() => { setOpen(false); }} />}
-    </div>
+    <section className="acc-signin" aria-label="Your account">
+      <h2 className="acc-signin__title">Your account</h2>
+      {signedIn
+        ? <p className="acc-signin__where"><span>Signed in as <b>{account.name}</b>.</span> <span role="status" aria-live="polite">{SAVE_TEXT[account.save]}</span></p>
+        : <p className="acc-signin__where"><span>Saved in this browser only.</span> <span>Sign in or create an account to keep it.</span></p>}
+      <div className="acc-signin__row">
+        {signedIn
+          ? <Button onClick={() => { setOpen(false); void signOut(); }}>Sign out</Button>
+          : <Button primary onClick={() => { setOpen(true); }}>Sign in</Button>}
+        {props.children}
+      </div>
+      {open && !signedIn && <SignInDialog firstName={accountName(profile.name)} onClose={() => { setOpen(false); }} />}
+    </section>
   );
 }

@@ -15,6 +15,7 @@ import { STYLES } from "../src/styles/registry";
 import { GOOD, attempt, scriptedPlayer, shapesFor, standingBaseline } from "../tools/dojo/player";
 import type { Effort } from "../tools/dojo/player";
 import { need } from "./helpers/need";
+import { keyName } from "../src/coach/ui/keyName";
 
 const moveOf = (id: string): MoveDef => need(MOVES.get(id));
 const guideOf = (id: string) => need(guideFor(moveOf(id)));
@@ -114,8 +115,30 @@ describe("one repetition", () => {
     expect(end.reps[0]?.reactMs).toBeLessThan(1200);
   });
 
+  test("another move during the turn does not end it or use up the repetition; the right move still counts after", () => {
+    let state = startDojo({ moves: ["jab"], reps: 1 }, 0);
+    let now = 0;
+    const feed = (frames: ReturnType<typeof attempt>): void => {
+      for (const frame of frames) {
+        now = base + frame.t;
+        state = tickDojo(state, now, frame);
+        if (state.phase !== "go") return;
+      }
+    };
+    state = tickDojo(state, state.config.showMs, null);
+    const base = state.config.showMs;
+    expect(state.phase).toBe("go");
+    feed(attempt(guideOf("block"), GOOD, 700, 1200));
+    expect(state.phase).toBe("go");
+    expect(state.reps).toEqual([]);
+    feed(attempt(guideOf("jab"), GOOD, 700, 2400, 1300));
+    expect(state.phase).toBe("result");
+    expect(state.last?.result.counted).toBe(true);
+  });
+
   test("a sloppy one still counts: Good, 100 points; a missed one needs improvement, 25 points, with one tip", () => {
-    const end = play({ moves: ["jab"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
+    // A defend, not a punch: the punches are asked for loosely, so even the made-up player's small arm movement counts as one.
+    const end = play({ moves: ["dodge_right"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
     expect(end.reps.map((each) => each.grade.label)).toEqual(["Excellent!", "Good", "Needs improvement"]);
     expect(end.reps.map((each) => each.grade.points)).toEqual([150, 100, 25]);
     expect(end.points).toBe(275);
@@ -130,9 +153,10 @@ describe("one repetition", () => {
     expect(end.reps.length).toBe(15);
     for (const id of quickMoves(boxer)) {
       const tiers = end.reps.filter((each) => each.moveId === id).map((each) => each.grade.tier);
-      expect(tiers, id).toEqual(["excellent", "good", "needs_work"]);
+      // The jab, the cross and the block are asked for loosely: the made-up player's small arm movement counts, as a Good one.
+      expect(tiers, id).toEqual(["excellent", "good", id === "jab" || id === "cross" || id === "block" ? "good" : "needs_work"]);
     }
-    expect(end.points).toBe(5 * 275);
+    expect(end.points).toBe(5 * 275 + 3 * 75);
   });
 
   test("the order is every repetition of a move, then the next move; later repetitions show the outline for less time", () => {
@@ -430,5 +454,14 @@ describe("the skill number", () => {
       expect(need(weak.attacks[index]).telegraphMs).toBeGreaterThan(attack.telegraphMs);
       expect(need(strong.attacks[index]).telegraphMs).toBeLessThan(attack.telegraphMs);
     });
+  });
+});
+
+describe("keyName", () => {
+  test("shows arrows as glyphs, Space by name and letters in capitals", () => {
+    expect(keyName("ArrowDown")).toBe("↓");
+    expect(keyName("ArrowLeft")).toBe("←");
+    expect(keyName(" ")).toBe("Space");
+    expect(keyName("k")).toBe("K");
   });
 });

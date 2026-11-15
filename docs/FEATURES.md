@@ -44,7 +44,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **in the game** The spartan hero follows your body in real time, seen from behind in a third-person battle view.
 - **in the game** Detectors written to hold for any body size, distance and a 30 degree turn. Tested on made-up poses only: no trace recorded from a real body is in the repo yet.
 - **in the game** Graphics drop to low quality when frames run slow with the camera on.
-- **built, not mounted** Two players on one camera: telling which body is which (`src/pose/players.ts`, PR #99, issue #28). The engine handles two players, but only online rooms use that today.
+- **built, not mounted** Two players on one camera (issue #28): telling which body is which (`src/pose/players.ts`, PR #99), and the rest of it in `src/duo/`: seats, a move reader for each body, the link that makes the second body the fight's second player, the second hero and the Multiplayer card. Four small changes in lead files mount it ([docs/duo.md](duo.md)). Never tried with two real people on a real camera.
 - **planned** Detector tuning on real bodies, and one full webcam fight on the demo laptop (#17, #7).
 
 ## Enemies and stops

@@ -1,6 +1,5 @@
-// Host a room. Once the server gives a code the whole screen becomes the room: the code large in a tall frame on the
-// left; on the right the title, the QR on a small tilted card with the join address under it, the fighters' name tags,
-// and one bar with the host's controls. rooms-smoke.mjs reads this screen: the code in [aria-label^="Room code"], the
+// Host a room. Once the server gives a code the whole screen becomes the room: the title, the code large in a panel
+// beside the QR card with the join address under it, the fighters' places, and one bar with the host's controls. rooms-smoke.mjs reads this screen: the code in [aria-label^="Room code"], the
 // join link on img[data-join-url], and "Start" as the button right after the [role="status"] line. Keep all three.
 import { useEffect, useRef, useState } from "react";
 import { toDataURL } from "qrcode";
@@ -8,10 +7,10 @@ import { createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createRoom, openRoom } from "../net/transport";
 import { Button } from "../ui/pebble";
-import { CodeFrame } from "./RoomArt";
+import { SetTitle } from "../ui/set/Set";
 import { RoomTags } from "./RoomTags";
 import { browserDeps, fetchLanBase, LAN_BASE_TIMEOUT_MS } from "./roomNet";
-import { ROOM_MESSAGES, joinUrl, reachableBase } from "./roomUrl";
+import { ROOM_MESSAGES, joinUrl, reachableBase, roomMessage } from "./roomUrl";
 
 type Phase =
   | { readonly kind: "making" }
@@ -33,7 +32,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
       const room = await createRoom(browserDeps);
       if (left.current) return;
       if (typeof room === "string") {
-        setPhase({ kind: "failed", why: ROOM_MESSAGES[room] ?? "" });
+        setPhase({ kind: "failed", why: roomMessage(room, window.location.hostname) });
         return;
       }
       link.current = createHostLink(openRoom(browserDeps, room));
@@ -60,55 +59,56 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
     props.onSolo();
   };
 
+  const back = <button type="button" className="set-back mp-back" onClick={leave}>Close the room</button>;
+
   if (phase.kind !== "open") {
     return (
-      <div className="room mp-wait">
-        <h1 className="mp-burn">Multiplayer</h1>
-        {phase.kind === "making" && <p className="notice">Opening a room...</p>}
-        {phase.kind === "failed" && (
-          <>
-            <p className="notice" role="alert">{phase.why}</p>
-            {phase.why === ROOM_MESSAGES.unreachable && <p>Start the game server (npm run server) to host a room, or play alone.</p>}
-            <Button onClick={props.onSolo}>Play alone</Button>
-          </>
-        )}
-        <Button onClick={leave}>Close the room</Button>
-      </div>
+      <>
+        {back}
+        <div className="room mp-wait">
+          <SetTitle>Multiplayer</SetTitle>
+          {phase.kind === "making" && <p className="notice">Opening a room...</p>}
+          {phase.kind === "failed" && (
+            <>
+              <p className="notice" role="alert">{phase.why}</p>
+              {phase.why === ROOM_MESSAGES.unreachable && <p>Start the game server (npm run server) to host a room, or play alone.</p>}
+              <Button onClick={props.onSolo}>Play alone</Button>
+            </>
+          )}
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="room mp-lobby">
-      <div className="mp-lobby__side">
-        <CodeFrame>
-          <p className="mp-frame__kicker">Friend, the code is</p>
-          <div className="room-code" aria-label={`Room code ${phase.code.split("").join(" ")}`}>{phase.code}</div>
-          <p className="mp-frame__note">Type it on another computer</p>
-        </CodeFrame>
-      </div>
-      <div className="mp-lobby__main">
+    <>
+      {back}
+      <div className="room mp-lobby">
         <div className="mp-lobby__head">
-          <hgroup className="mp-lobby__titles">
-            <p className="mp-kicker">Your</p>
-            <h1 className="mp-burn mp-burn--room">Room</h1>
-            <p className="mp-lobby__enter">A friend scans the card with a phone, or types the code on another computer.</p>
-          </hgroup>
-          <div className="mp-qr">
-            <div className="mp-qr__card">
-              <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={150} height={150} />
-              <span className="mp-qr__caption">Scan to enter</span>
+          <SetTitle kicker="Your">Room</SetTitle>
+          <p className="set-sub">A friend scans the card with a phone, or types the code on another computer.</p>
+        </div>
+        <div className="mp-lobby__row">
+          <section className="set-panel mp-code">
+            <p className="mp-code__kicker">Friend, the code is</p>
+            <div className="room-code" aria-label={`Room code ${phase.code.split("").join(" ")}`}>{phase.code}</div>
+            <p className="mp-code__note">Type it on another computer</p>
+          </section>
+          <section className="set-panel mp-qr">
+            <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={150} height={150} />
+            <div className="mp-qr__text">
+              <b>Scan to enter</b>
             </div>
-            <p className="room-url">{phase.url}</p>
-          </div>
+            <p className="room-url">{phase.url.split(/(?<=[/.?=])/).map((part, at) => <span key={at}>{part}<wbr /></span>)}</p>
+          </section>
         </div>
         <RoomTags friend={friend} />
-        <div className="mp-bar" aria-label="Room controls" role="group">
+        <div className="set-panel mp-bar" aria-label="Room controls" role="group">
           <p className="notice mp-bar__status" role="status" data-friend={friend ? "here" : "waiting"}>{friend ? "A friend has joined." : "Waiting for a friend..."}</p>
           <Button primary disabled={!friend} onClick={() => { const current = link.current; if (current) props.onStart(current); }}>Start</Button>
           <Button onClick={solo}>Play alone</Button>
-          <Button onClick={leave}>Close the room</Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

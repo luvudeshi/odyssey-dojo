@@ -8,9 +8,11 @@ import { ENEMIES } from "../enemies/registry";
 import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
+import { noteMiss } from "../hud/MissFlash";
 import { noteHit } from "../hud/RatingFlash";
 import { TouchPad } from "../hud/TouchPad";
 import { createKeyboard } from "../input/keyboard";
+import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
 import type { GuestLink } from "../net/guest";
@@ -48,6 +50,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   useEffect(() => {
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
+    const watchMiss = createMissWatch();
     let history: PoseHistory = { frames: [], baseline: null };
     let handle = 0;
     const tick = (now: number): void => {
@@ -56,12 +59,16 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
         poseRef.current = frame;
         history = pushFrame(history, frame);
       }
+      const phase = link.view()?.state.phase;
+      const asked = askedMove(phase);
       const taps = touched.current.map((move) => ({ move, quality: 0.7, player: 1 as const }));
       touched.current = [];
-      const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
+      const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history, asked) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
       noteInput(input, now / 1000);
       link.sendInput(input);
       const view = link.view();
+      // The guest sends strikes only, so its held defends are not tries.
+      if (view && watchPhase(watchMiss, view.state.phase, { ...input, held: new Set() }, view.events, now)) noteMiss();
       if (view) {
         view.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
         playVoice(view.events, view.state.phase);
