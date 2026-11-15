@@ -1,24 +1,42 @@
-/* The camera panel: bottom left, on a dark pebble ground in a lead frame with a pearl rim. */
+/* The camera panel: bottom left, a rounded rectangle on a dusk-blue pebble ground with a pearl rim. The live picture is shown nearly as the
+   camera sees it, so the player can see themselves; the skeleton is laid on it as dark-edged stones on the canvas. The tag, status dot and caption sit on the picture's lower edge. */
 .camera-view {
-  position: absolute; left: 16px; bottom: 16px; margin: 0; width: clamp(9rem, 20vw, 20rem); padding: 6px;
-  background: var(--pb-dusk) var(--pebble-dusk) repeat; border: 2px solid var(--pb-lead); border-radius: 10px;
+  position: absolute; left: 20px; bottom: 20px; margin: 0; width: clamp(10rem, 16.7vw, 15rem); padding: 0;
+  background: var(--pb-dusk) var(--pebble-dusk) repeat; border: 2px solid var(--pb-lead); border-radius: 12px;
   box-shadow: 0 0 0 2px rgba(8, 5, 4, 0.7), 0 6px 16px #000a;
   pointer-events: none; z-index: 30; /* above .overlay (20) so the picture stays bright when the body is lost */
 }
 .camera-view::before { /* pearl rim: one row of dots cut to a ring, static */
-  content: ""; position: absolute; inset: -9px; padding: 5px; border-radius: 14px; pointer-events: none;
+  content: ""; position: absolute; inset: -11px; padding: 5px; border-radius: 17px; pointer-events: none; z-index: 2;
   background: radial-gradient(circle, #e8dcc0 0 1.9px, transparent 2.4px) 0 0 / 7px 7px;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
 }
-.camera-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 6px; background: var(--pb-ground-deep); }
-.camera-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; border: 0; }
-.camera-view.mirror .camera-frame video { transform: scaleX(-1); }
-.camera-frame canvas { z-index: 1; position: absolute; inset: 0; width: 100%; height: 100%; }
-.camera-view figcaption {
-  display: flex; justify-content: space-between; gap: 0.5rem; padding: 4px 4px 0; min-height: 1.5em;
-  font: 700 12px/1.3 var(--font-display); letter-spacing: 0.06em; white-space: nowrap; text-transform: uppercase; color: var(--pb-text);
-  text-shadow: 0 0 3px var(--pb-outline);
+.camera-frame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; background: linear-gradient(#34444b, #161d21); }
+.camera-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; border: 0; filter: brightness(0.96) saturate(0.92); }
+.camera-frame::after { /* a light dusk wash, heavier at the foot where the tag and caption sit */
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: linear-gradient(rgba(34, 48, 57, 0.06), rgba(22, 29, 33, 0.28));
 }
-.camera-state[data-on="false"] { color: var(--pb-ochre-light); }
-.camera-move { color: var(--pb-ochre-light); font-weight: 700; white-space: nowrap; }
+.camera-view.mirror .camera-frame video { transform: scaleX(-1); }
+.camera-frame canvas { z-index: 2; position: absolute; inset: 0; width: 100%; height: 100%; }
+.camera-view figcaption {
+  position: absolute; inset: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; align-content: flex-end; gap: 4px 6px; padding: 8px 10px;
+  font: 700 10px/1.3 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline);
+}
+.camera-tag {
+  padding: 2px 9px; border: 2px solid var(--pb-lead); border-radius: 6px; background: var(--pb-dusk); white-space: nowrap;
+  letter-spacing: 0.16em; font-size: 10px; line-height: 1.2;
+}
+.camera-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pb-ochre); box-shadow: 0 0 0 1.5px var(--pb-outline); }
+.camera-state { padding: 1px 6px; border-radius: 5px; background: rgba(13, 10, 9, 0.78); color: var(--pb-ochre-light); white-space: nowrap; }
+.camera-view:has(.camera-state[data-on="true"]) .camera-state { /* tracking: the tag and dot say it; the words stay for screen readers */
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0;
+}
+.camera-view:has(.camera-state[data-on="false"]) .camera-dot { background: transparent; border: 2.5px solid var(--pb-terra); box-sizing: border-box; box-shadow: 0 0 0 1.5px var(--pb-outline); }
+.camera-view:has(.camera-state[data-on="false"]) .camera-tag { border-color: var(--pb-terra); }
+.camera-move {
+  position: absolute; top: 9px; right: 10px; padding: 1px 7px; border-radius: 5px; background: rgba(13, 10, 9, 0.78);
+  color: var(--pb-ochre-light); white-space: nowrap;
+}
+.camera-move:empty { display: none; }

@@ -35,7 +35,8 @@ export const move: MoveDef = {
     const rise = (ground === -Infinity ? standing.shoulderY : Math.min(ground, standing.shoulderY)) - peak;
     // The head has to rise as far, so lifting the shoulders to reach up is not a hop.
     const headRise = headGround === -Infinity ? rise : headGround - headPeak;
-    // Reaches 0.7 at about 0.18 shoulder widths, so the hop still counts just after landing.
-    return clamp01(Math.min(rise, headRise) / standing.shoulderWidth / 0.25);
+    // Held (0.5) from about 0.18 shoulder widths, so the hop still counts just after landing. Not lower: raising
+    // both fists into a guard lifts a seated player's shoulders 0.15 widths.
+    return clamp01(Math.min(rise, headRise) / standing.shoulderWidth / 0.35);
   },
 };
