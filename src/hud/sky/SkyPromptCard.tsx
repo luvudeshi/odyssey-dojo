@@ -8,11 +8,10 @@ import { promptLevel } from "../../combat/engine";
 import { MoveGuide } from "../../coach/ui/MoveGuide";
 import type { MoveDef, PoseHistory } from "../../core/types";
 import { useSettings } from "../../settings/store";
-import { currentLook } from "../../ui/lookSwitch";
 import { useBoxSize } from "../../ui/pebble/hooks";
 import { keyLabel } from "../Hud";
-import { LookShape } from "./looks/LookShape";
 import { cardGlass, jagLine } from "./rift/geometry";
+import { riftTextures } from "./rift/lava";
 import "./tokens.css";
 import "./card.css";
 
@@ -39,27 +38,35 @@ function Shape({ kind, w, h, left, label }: { kind: SkyCardKind; w: number; h: n
   // The timer redraws this every frame: the glass itself is only recut when the card changes size or kind.
   const g = useMemo(() => cardGlass(w, h, pointed), [w, h, pointed]);
   const timer = useMemo(() => (pointed ? jagLine(36, w - 36, h - 28, 9) : jagLine(32, w - 32, 30, 4)), [w, h, pointed]);
-  const stops = pointed ? ["#2a1012", "#0c0607", "#2a0c06"] : ["#1c2230", "#0a0b10", "#121624"];
+  // Both kinds are molten rock: the plate is dark and red-black, the rim cools from white-hot to deep red. Only the timer line and the tag are ice for a defend.
+  const stops = ["#2a1012", "#0c0607", "#2a0c06"];
+  const rim = `${grad}-rim`, melt = `${grad}-melt`, timerY = pointed ? h - 28 : 30, lava = riftTextures().lava;
   return (
     <svg className="sky-card__shape" viewBox={`0 0 ${n(w)} ${n(h)}`} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(left * 100)}>
       <defs>
         <linearGradient id={grad} x1="0" y1="0" x2="1" y2="1">
           {stops.map((c, i) => <stop key={c} offset={String(i / 2)} stopColor={c} />)}
         </linearGradient>
+        <linearGradient id={rim} x1="0" y1="0" x2="0" y2="1">
+          {[["0", "#fff2c0"], ["0.3", "#ff9a2a"], ["0.7", "#c8300a"], ["1", "#5a0e04"]].map(([o, c]) => <stop key={o} offset={o} stopColor={c} />)}
+        </linearGradient>
+        <pattern id={melt} patternUnits="userSpaceOnUse" x="0" y={n(timerY - 8)} width="80" height="16"><image href={lava} width="80" height="16" preserveAspectRatio="none" /></pattern>
       </defs>
       <path d={g.outline} className="sky-card__aura sky-card__aura--wide" />
       <path d={g.outline} className="sky-card__aura" />
       <path d={g.outline} className="sky-card__plate" />
       {g.facets.map((f) => <path key={f.d} d={f.d} fill={f.fill} />)}
-      <path d={g.outline} className="sky-card__rim" />
+      <path d={g.outline} className="sky-card__rim" stroke={`url(#${rim})`} />
       <path d={g.inner} fill={`url(#${grad})`} className="sky-card__panel" />
-      {pointed
-        ? <><path d={g.cracks} className="sky-card__crack sky-card__crack--glow" /><path d={g.cracks} className="sky-card__crack" /></>
-        : <path d={g.topEdge} className="sky-card__sheen" />}
+      <path d={g.cracks} className="sky-card__crack sky-card__crack--glow" />
+      <path d={g.cracks} className="sky-card__crack" />
+      {!pointed && <path d={g.topEdge} className="sky-card__sheen" />}
       {g.glints.map(([x, y]) => <path key={`${n(x)},${n(y)}`} d={star(x, y, 9)} className="sky-card__glint" />)}
       <path d={timer} pathLength="100" className="sky-card__trough" />
       <path d={timer} pathLength="100" strokeDasharray={`${String(pct)} 100`} className="sky-card__timer sky-card__timer--glow" />
-      <path d={timer} pathLength="100" strokeDasharray={`${String(pct)} 100`} className="sky-card__timer" />
+      {pointed
+        ? <><path d={timer} pathLength="100" strokeDasharray={`${String(pct)} 100`} className="sky-card__timer sky-card__timer--lava" style={{ stroke: `url(#${melt})` }} /><path d={timer} pathLength="100" strokeDasharray={`${String(pct)} 100`} className="sky-card__timer sky-card__timer--core" /></>
+        : <path d={timer} pathLength="100" strokeDasharray={`${String(pct)} 100`} className="sky-card__timer" />}
       {kind === "finish" && <path d={g.outline} className="sky-card__pulse" />}
       {kind === "finish" && (
         <g className="sky-card__burst">
@@ -87,12 +94,9 @@ export function SkyPromptCard(props: { move: MoveDef; target: string; successes:
   const tag = kind === "defend" ? "DEFEND" : kind === "finish" ? "FINISH" : "STRIKE";
   const full = level === "full";
   const word = { "--chars": String(longestWord(move.prompt)) } as CSSProperties;
-  const look = currentLook();
-  const w = box.w || FALLBACK.w, h = box.h || FALLBACK.h, label = `${move.kind === "defend" ? "Defend" : "Strike"} time left`;
   return (
-    <div ref={ref} className={`sky-hud sky-card sky-card--${kind} sky-card--${level}${look === null ? "" : ` sky-card--look-${look}`}`}>
-      {look === null ? <Shape kind={kind} w={w} h={h} left={left} label={label} /> : <LookShape look={look} strike={kind !== "defend"} w={w} h={h} left={left} label={label} />}
-      {look === "b" && <div className="lk-fissure" aria-hidden="true"><div className="lk-melt" style={{ transform: `scaleX(${String(Math.max(0, Math.min(1, left)))})` }} /></div>}
+    <div ref={ref} className={`sky-hud sky-card sky-card--${kind} sky-card--${level}`}>
+      <Shape kind={kind} w={box.w || FALLBACK.w} h={box.h || FALLBACK.h} left={left} label={`${move.kind === "defend" ? "Defend" : "Strike"} time left`} />
       <div className="sky-card__tag">{tag}</div>
       <div className="sky-card__in">
         <MoveGuide key={move.id} move={move} history={history} />
