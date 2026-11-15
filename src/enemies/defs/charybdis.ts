@@ -13,10 +13,10 @@ export const enemy: EnemySpec = {
   hp: 440,
   strikeWindowMs: 2200,
   attacks: [
-    { id: "surge_left", name: "Breaking wave", telegraphMs: 1500, damage: 10, counter: "dodge_right" },
-    { id: "surge_right", name: "Breaking wave", telegraphMs: 1500, damage: 10, counter: "dodge_left" },
-    { id: "spout", name: "Spout", telegraphMs: 1500, damage: 12, counter: "duck" },
-    { id: "undertow", name: "Undertow", telegraphMs: 1800, damage: 14, counter: "block" },
+    { id: "surge_left", name: "Breaking wave", telegraphMs: 1500, damage: 6, counter: "dodge_right" },
+    { id: "surge_right", name: "Breaking wave", telegraphMs: 1500, damage: 6, counter: "dodge_left" },
+    { id: "spout", name: "Spout", telegraphMs: 1500, damage: 8, counter: "duck" },
+    { id: "undertow", name: "Undertow", telegraphMs: 1800, damage: 11, counter: "block" },
   ],
   phases: [
     // She drinks: the water drags at you.
