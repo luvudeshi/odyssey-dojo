@@ -134,8 +134,12 @@ const handsUp: Check = {
   tips: ["Keep your hands up"], measures: "height of the lower wrist against the shoulder line", weight: 0.45,
   miss: ({ top }) => (seen(top, JOINT.leftWrist, JOINT.rightWrist) ? off(lowerHand(top), -0.9, -1.7) : 0),
 };
+/**
+ * A webcam sees almost every punch square-on, so the turn alone never costs a grade or gives a tip: its weight
+ * keeps a full miss under TIP_AT. It is kept so the table still names what is measured.
+ */
 const hips: Check = {
-  tips: ["Turn your hips into it"], measures: "how far the striking shoulder has turned in front of the other (the shoulders follow the hips)", weight: 0.45,
+  tips: ["Turn your hips into it"], measures: "how far the striking shoulder has turned in front of the other (the shoulders follow the hips)", weight: 0.2,
   miss: ({ top, side }) => (armSeen(top, side) ? off(turn(top, side), 0.2, -0.05) : 0),
 };
 const snap = (tip: string): Check => ({
