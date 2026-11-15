@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeEach, expect, test } from "vitest";
-import { TUNNEL_FILE, TUNNEL_STALE_MS, baseUrl, publicAddress, tunnelAddress } from "../lib/address";
+import { TUNNEL_FILE, TUNNEL_FILE_MAX_BYTES, TUNNEL_STALE_MS, baseUrl, publicAddress, tunnelAddress } from "../lib/address";
 
 const URL_UP = "https://kingston-inside-best-graphic.trycloudflare.com";
 const scratch = mkdtempSync(join(tmpdir(), "odyssey-address-"));
@@ -83,5 +83,16 @@ test("a file nobody has touched for a while is ignored, even if its process id i
   expect(tunnelAddress(dataDir, now - TUNNEL_STALE_MS - 2000)).toBeNull();
   const old = new Date(now - 10 * 60_000);
   utimesSync(join(dataDir, TUNNEL_FILE), old, old);
+  expect(tunnelAddress(dataDir)).toBeNull();
+});
+
+test("a file bigger than one address and one process id is not read", () => {
+  const good = { url: URL_UP, pid: process.pid };
+  save({ ...good, padding: "x".repeat(TUNNEL_FILE_MAX_BYTES - JSON.stringify({ ...good, padding: "" }).length) });
+  expect(tunnelAddress(dataDir)).toBe(URL_UP);
+  save({ ...good, padding: "x".repeat(TUNNEL_FILE_MAX_BYTES) });
+  expect(tunnelAddress(dataDir)).toBeNull();
+  // 8 MB that would parse to a good address if it were read: only its size is looked at.
+  save(`${" ".repeat(8 * 1024 * 1024)}${JSON.stringify(good)}`);
   expect(tunnelAddress(dataDir)).toBeNull();
 });
