@@ -24,7 +24,7 @@ import { SIDE, TRAVEL, hipsY } from "./defs/tridentSweep";
 import { HOOK_BENT, HOOK_FLAT, HOOK_HEIGHT, HOOK_LIFT, HOOK_STRAIGHT, SWEEP_FROM, SWEEP_SPAN } from "./defs/hook";
 import {
   COVER_MS, ELBOW_LOW, FOLLOW_MS, LOW_START, RISE_BY, RISE_HIGH, RISE_LOW, RISE_MS as HAND_RISE_MS, RISING_PALM_BEND, SHOULDER_HEIGHT,
-  ARM_MS, SIDEWAYS, THROW_DEGREES, THROW_MS, UPPERCUT_BEND, armOpening, armReach, bodyWidth, flungWide, heldReach,
+  ARM_MS, SIDEWAYS, THROW_DEGREES, THROW_MS, UPPERCUT_BEND, armOpening, armReach, bodyWidth, flungWide, folding, heldReach,
   otherSide, otherThrowing, overBand, punchedJustNow, risingHand, sidewaysTravel, sweptAcross, throwDegrees, torsoLength, travel,
   upperArmLift, wristGap, wristOut, wristRise,
 } from "./handSignals";
@@ -141,6 +141,7 @@ const strike = (side: Side): Single[] => [
   over(`ms since ${side} hand was over the punching band`, 500, since((frame, baseline) => overBand(frame, side, baseline))),
   under(`${side} fist's sideways travel in ${String(THROW_MS)} ms, when not mostly up, shoulder widths`, SIDEWAYS,
     (history) => sidewaysTravel(history, side)),
+  not(`${side} arm folding up or dropping in the last 150 ms (a hand coming to the face)`, (history) => folding(history, side)),
 ];
 /** `straightPunch`: one fist punched, the other arm not on its way out, not a hook, not the rising strike on that side. */
 const oneHanded = (side: Side, bentBelow: number): Measure[] => [
