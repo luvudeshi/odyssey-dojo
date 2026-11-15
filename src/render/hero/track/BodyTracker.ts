@@ -7,7 +7,7 @@ import type { PoseFrame } from "../../../core/types";
 import { buildBoneRig, LIMBS } from "./boneMap";
 import type { BoneRig, DrivenBone, LimbKey } from "./boneMap";
 import { arc, bendJoint, finiteQuat, finiteVec } from "./math";
-import { PoseTargets } from "./targets";
+import { HOLD_MS, PoseTargets } from "./targets";
 
 /** No new webcam frame for this long and the clip takes over (the rule PlayerFigure uses). */
 const STALE_SECONDS = 0.5;
@@ -19,6 +19,8 @@ const EASE_PER_SECOND = 10;
 const LEAVE_PER_SECOND = 6;
 /** A limb or the torso that drops out of the picture for a blink keeps its last tracked direction this long before easing back to the clip. */
 const HOLD_SECONDS = 0.35;
+/** targets.ts already holds a dropped arm or leg joint for HOLD_MS, so a limb's own hold is what is left, not a second full hold on top. */
+const LIMB_HOLD_SECONDS = HOLD_SECONDS - HOLD_MS / 1000;
 /** How far (metres) the hips may be moved to keep the lowest foot on the floor. */
 const MAX_LOWER = 0.7;
 const MAX_RAISE = 0.15;
@@ -94,7 +96,7 @@ export class BodyTracker {
     this.stepX = t.step * this.weight;
     for (const l of LIMBS) {
       if (t.dirOk[l.key]) this.limbOkAt[l.key] = now;
-      this.limbWeight[l.key] += ((now - this.limbOkAt[l.key] < HOLD_SECONDS ? 1 : 0) - this.limbWeight[l.key]) * k;
+      this.limbWeight[l.key] += ((now - this.limbOkAt[l.key] < LIMB_HOLD_SECONDS ? 1 : 0) - this.limbWeight[l.key]) * k;
     }
     if (t.torsoOk) this.torsoOkAt = now;
     this.torsoWeight += ((now - this.torsoOkAt < HOLD_SECONDS ? 1 : 0) - this.torsoWeight) * k;
