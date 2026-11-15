@@ -20,6 +20,15 @@ export const PROBE_EVERY = 6;
 /** The halves hand back to the whole picture after this many pictures in a row in which they found no more than it. */
 export const GIVE_UP = 3;
 
+/**
+ * While the halves are the reader and find two bodies, the whole picture is still read on every this-many-th picture.
+ * A half cannot see past its own edge: someone who has moved onto the middle line, or reaches across it, loses that
+ * arm for as long as the halves stay the reader.
+ */
+export const LOOK_BACK_EVERY = 30;
+/** The whole picture takes over again after showing two different people on this many pictures in a row. */
+export const LOOK_BACK_TIMES = 3;
+
 /** The screen's left half (player one's side, 0) or its right half (1). The picture on screen is the camera's, mirrored. */
 export type Side = 0 | 1;
 
@@ -77,6 +86,12 @@ export function createPairFinder(): PairFinder {
   let check = false;
   /** Pictures in a row in which the halves found fewer than two bodies. */
   let short = 0;
+  /** Pictures since the whole picture was last looked at while the halves, as the reader, found two bodies. */
+  let since = 0;
+  /** Looks in a row at which the whole picture showed two different people. */
+  let both = 0;
+  /** The whole picture showed two bodies on the picture before this one. */
+  let had = false;
 
   const forget = (): void => {
     waited = 0;
@@ -84,6 +99,9 @@ export function createPairFinder(): PairFinder {
     tried[1] = null;
     check = false;
     short = 0;
+    since = 0;
+    both = 0;
+    had = false;
   };
 
   return {
@@ -97,6 +115,19 @@ export function createPairFinder(): PairFinder {
         const halves = pairOf(half(0), half(1));
         if (halves.length >= 2) {
           short = 0;
+          since += 1;
+          // Now and then, and then on every picture while it keeps showing two people, look at the whole picture.
+          if (since >= LOOK_BACK_EVERY || both > 0) {
+            since = 0;
+            const all = whole();
+            const [one, other] = all;
+            both = one && other && !sameBody(one, other) ? both + 1 : 0;
+            if (both >= LOOK_BACK_TIMES) {
+              reader = "whole";
+              forget();
+              return all;
+            }
+          }
           return halves;
         }
         // A body short. Look at the whole picture as well: on each of the first few such pictures, then now and then.
@@ -113,9 +144,12 @@ export function createPairFinder(): PairFinder {
       const all = whole();
       if (all.length >= 2) {
         forget();
+        had = true;
         return all;
       }
-      if (check) {
+      // A body was lost from one picture to the next (two people stepped together): ask both halves at once.
+      if (check || had) {
+        had = false;
         check = false;
         tried[0] = half(0);
         tried[1] = half(1);

@@ -63,6 +63,7 @@ So while the choice is on, the tracker has two more models, each asked for one b
 - the whole picture is the first reader. While it shows two bodies the halves are not read at all;
 - while it shows fewer than two, one half is tried on every sixth picture. When the two halves together show more bodies than the whole picture, both are read once to be sure, and then the halves are the reader;
 - the halves hand back when the whole picture shows more than they do, or after three pictures in a row in which they found no more than it;
+- while the halves are the reader and find two, the whole picture is still looked at on every 30th picture, and takes over again after showing two different people three times in a row: a half cannot see past its own edge, so someone who has moved onto the middle line would otherwise lose that arm. When the whole picture drops from two bodies to fewer, both halves are asked on that same picture;
 - one person standing on the middle line is seen by both halves: two readings nearer than one shoulder width are one person, handed over once;
 - if a half model cannot be made or throws, both are closed and the whole picture is read as before.
 
