@@ -7,3 +7,9 @@ public/mediapipe
 .claude/worktrees
 !.env.example
 server/data
+
+# Demo video footage stays off the repo (Drive or local only).
+demoVideo/**/*.mp4
+demoVideo/**/*.mov
+demoVideo/**/*.MOV
+demoVideo/**/*.avi

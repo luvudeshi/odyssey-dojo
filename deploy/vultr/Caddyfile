@@ -1,0 +1,12 @@
+# Caddy answers on the domain, gets and renews its own https certificate, and hands every request to the game.
+# DOMAIN comes from the .env beside docker-compose.yml.
+#
+# Caddy adds X-Forwarded-For to what it hands over. Keep it that way: the game server reads that header as
+# "this came from outside" and refuses the routes that spend API keys. Do not strip it with header_up.
+{$DOMAIN} {
+	# The game's files are compressed. The room relay under /api/ is left alone, because it streams events.
+	@files not path /api/*
+	encode @files zstd gzip
+
+	reverse_proxy game:8787
+}

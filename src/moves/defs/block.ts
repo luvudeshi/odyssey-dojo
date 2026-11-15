@@ -65,7 +65,7 @@ export const move: MoveDef = {
   name: "Block",
   kind: "defend",
   prompt: "BLOCK",
-  hint: "Bring both fists up to your face",
+  hint: "Bring both fists up to cover your face",
   key: " ",
   diagram: { leftElbow: [40, 40], leftWrist: [44, 22], rightElbow: [60, 40], rightWrist: [56, 22] },
   teaches: "Hands high protects your head while you look for a way out",

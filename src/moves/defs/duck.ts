@@ -31,7 +31,7 @@ export const move: MoveDef = {
   name: "Duck",
   kind: "defend",
   prompt: "DUCK",
-  hint: "Bend your knees and drop your head",
+  hint: "Bend your knees to drop under the swing",
   key: "ArrowDown",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftY: 16 },
   teaches: "Bend your knees, not your waist, to drop under a swing and still see what is coming",

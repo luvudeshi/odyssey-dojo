@@ -27,8 +27,7 @@ export function MainMenu(props: {
       <MenuScene />
       <h1 className="sr-only">Odyssey Dojo</h1>
       <Logo height={Math.min(250, Math.max(130, Math.round(window.innerHeight * 0.22)))} />
-      <p className="verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
-      <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Your body is the controller.</p>
+      <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Learn real self-defense, one monster at a time.</p>
       <nav className="menu-cards" aria-label="Main menu">
         <BronzeDefs />
         <ShieldCard primary device={DEVICES.ship} name="Story mode" line="The road home to Ithaca, fought with your body" onClick={story} />
