@@ -353,6 +353,7 @@ const oneHanded = (side: Side): Written[] => [
   min(`ms since ${side} hand was over the punching band`, "Not a chop from overhead", 0),
   max(`${side} fist's sideways travel in # ms`, "Punch forward, not sideways", 0),
   max(`${side} fist swept across`, "Straight, not a hook", 0),
+  max(`${otherSide(side)} fist swept across just now`, "Not straight after a hook", 0),
 ];
 const rising = (side: Side, hand: string): Written[] => [
   min(`${side} wrist above the shoulder line`, `${cap(side)} ${hand} up to chin`),
@@ -406,8 +407,9 @@ const eitherSide = (build: (side: Side) => Written[]): Written[] => SIDES.flatMa
  * A key is the name up to any of its commas, so the unit can be left off; the longest key that fits wins.
  */
 export const LABELS: Readonly<Record<string, readonly Written[]>> = {
-  jab: oneHanded("left"),
-  cross: oneHanded("right"),
+  // Either hand counts for both; the checklist follows the hand that is closest.
+  jab: eitherSide(oneHanded),
+  cross: eitherSide(oneHanded),
   spear_thrust: [
     group("arms not both flung out to their sides", "Thrust forward, not wide", 0),
     max("both arms flung out to their sides", "Thrust forward, not wide", 0),
@@ -418,15 +420,14 @@ export const LABELS: Readonly<Record<string, readonly Written[]>> = {
   reverse_punch: [
     ...thrust("right"), max("left wrist above the shoulder line", "Left fist back at hip"), max("left elbow bent", "Left elbow bent", 0),
   ],
-  hook: [
-    min("left elbow bend", "Don't fold arm too tight", 0), max("left elbow bend", "Keep left elbow bent"),
-    max("left fist off shoulder height", "Left fist shoulder high", 2), max("widest left elbow in # ms", "Arm bent the whole way", 0),
-    max("left elbow closing in # ms", "Swing, don't curl in", 0), min("left fist's swing across in # ms", "Swing fist across fast"),
-    // The lenient-strikes branch's.
-    max("left fist off the shoulder line", "Left fist shoulder high", 2), min("left upper arm lifted from hanging", "Left elbow up and out", 3),
-    min("left fist's swing across in # ms, more than up", "Swing across, not upward", 0),
-    min("left fist's swing across in # ms, confidence", "Swing fist across fast"),
-  ],
+  hook: eitherSide((side) => [
+    min(`${side} elbow bend`, "Don't fold arm too tight", 0), max(`${side} elbow bend`, `Keep ${side} elbow bent`),
+    max(`widest ${side} elbow in # ms`, "Arm bent the whole way", 0), max(`${side} punched straight in the last # ms`, "Not right after a punch", 0),
+    max(`${side} fist off the shoulder line`, "Fist between head and chest", 2),
+    min(`${side} upper arm lifted from hanging`, `${cap(side)} elbow up and out`, 3), min(`ms since ${side} hand was over the punching band`, "Not a chop from overhead", 0),
+    min(`${side} fist's swing across in # ms, more than # times up`, "Swing flat, not upward", 0),
+    min(`${side} fist's swing across in # ms, confidence`, "Swing fist across fast"),
+  ]),
   uppercut: rising("right", "fist"),
   rising_palm: rising("left", "palm"),
   hammer_fist: [

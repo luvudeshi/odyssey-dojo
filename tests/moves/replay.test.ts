@@ -43,7 +43,8 @@ const JAB = sequence([
 
 test("the checker catches a wrong label, a missing move and a move made twice", () => {
   expect(problems(madeUp("jab", JAB), MOVES)).toEqual([]);
-  expect(replay(madeUp("jab", JAB), MOVES).strikes).toEqual(["jab"]);
+  // Jab and cross read on either hand, so a straight punch fires both, and the checker lets that pass.
+  expect(replay(madeUp("jab", JAB), MOVES).strikes).toEqual(["cross", "jab"]);
   // The same motion labelled as something else, or as nothing.
   expect(problems(madeUp("hook", JAB), MOVES).join("; ")).toMatch(/hook did not fire.*jab also fired/);
   expect(problems(madeUp(IDLE, JAB), MOVES).join("; ")).toMatch(/jab fired while idle/);
@@ -74,7 +75,7 @@ test("a trace survives being stored and loaded, and bad files are refused with a
   expect(stored.frames[0]?.t).toBe(0);
   const back = loadTrace(stored);
   expect(back.frames.length).toBe(trace.frames.length);
-  expect(replay(back, MOVES).strikes).toEqual(["jab"]);
+  expect(replay(back, MOVES).strikes).toEqual(["cross", "jab"]);
   expect(traceFileName({ move: "jab", person: " Ana María ", n: 3 })).toBe("jab-ana_mar_a-3.json");
   expect(cleanName("  ")).toBe("someone");
 

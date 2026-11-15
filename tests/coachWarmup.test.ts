@@ -106,9 +106,10 @@ describe("assessWarmup", () => {
   });
 
   test("a step's move made in another step's window does not count", () => {
-    // Every move 200 ms into the step BEFORE its own (the jab during the calibration is dropped).
+    // Every move 200 ms into the step BEFORE its own (the jab during the calibration is dropped). The one step done
+    // is the jab's: the cross made in its window is a straight punch, and jab and cross read on either hand.
     const early = assess(warmup(() => 200).map((frame) => ({ ...frame, t: frame.t - 2500 })).filter((frame) => frame.t >= 0));
-    expect(early.steps.some((result) => result.done)).toBe(false);
+    expect(early.steps.filter((result) => result.done).map((result) => result.step.id)).toEqual(["jab"]);
   });
 
   test.each([

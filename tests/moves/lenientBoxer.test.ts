@@ -1,7 +1,8 @@
 // The lenient-strikes PR: the Boxer's four strikes read from a reasonable attempt by a real body, not only from a
 // textbook one. Each move is thrown ideal and sloppy (part extended, aimed 30 degrees off, joints seen at
-// visibility 0.35, hips unseen, small or large in the picture, turned, slow, fast), and must reach 0.75 and be the
-// only Boxer strike the game reads. Idle arms, a desk, a loose guard, a face scratch and fidgets must read nothing.
+// visibility 0.35, hips unseen, small or large in the picture, turned, slow, fast, with either hand), and must
+// reach 0.75 and be the only Boxer strike the game reads, apart from the jab and the cross, which read on either
+// hand and so fire together. Idle arms, a desk, a loose guard, a face scratch and fidgets must read nothing.
 import { describe, expect, test } from "vitest";
 import type { PoseFrame } from "../../src/core/types";
 import { MOVES } from "../../src/moves/registry";
@@ -13,6 +14,8 @@ import type { BodyPose, Step, Vec3 } from "../poseFixture";
 import { READY, STANDING, pose, recording } from "../poseFixture";
 
 const BOXER = ["jab", "cross", "hook", "uppercut"];
+/** What a straight punch with either hand reads as: both, by the owner's ruling. */
+const STRAIGHT = ["cross", "jab"];
 
 /** Everything the game read over the frames, with the baseline taken from the standing frames as at calibration. */
 function readOf(frames: readonly PoseFrame[]): ReturnType<typeof replay> {
@@ -56,6 +59,9 @@ const ACROSS = pose({ leftUpper: [0.3, 0, -1], leftFore: [1, 0, -0.15] }, READY)
 /** A sloppier hook: the elbow dropped 30 degrees and the fist stopping at the middle of the chest. */
 const LOADED_LOW = pose({ leftUpper: [-0.85, 0.5, -0.3], leftFore: [0.1, -0.1, -1] }, READY);
 const ACROSS_SHORT = pose({ leftUpper: [0.1, 0.35, -1], leftFore: [1, -0.1, -0.4] }, READY);
+/** The same hook thrown with the right hand. */
+const RIGHT_LOADED = pose({ rightUpper: [1, 0.15, -0.3], rightFore: [-0.1, -0.1, -1] }, READY);
+const RIGHT_ACROSS = pose({ rightUpper: [-0.3, 0, -1], rightFore: [-1, 0, -0.15] }, READY);
 const hookSteps = (loaded: BodyPose, across: BodyPose, ms = 165): Step[] =>
   [[READY, 300], [loaded, 200], [across, ms], [across, 66], [READY, 200], [READY, 600]];
 
@@ -92,6 +98,7 @@ const ATTEMPTS: Record<string, Variant[]> = {
     ["aimed 30 degrees up", () => recording(punch(LEFT(30)))],
     ["aimed 30 degrees down", () => recording(punch(LEFT(-30)))],
     ["aimed 30 degrees inward", () => recording(punch(arm("left", aim("left", 0, 0.58), aim("left", 0, 0.58))))],
+    ["thrown with the right hand", () => recording(punch(RIGHT(0)))],
   ],
   cross: [
     ...variants((ms) => punch(RIGHT(0), ms), 130),
@@ -99,10 +106,12 @@ const ATTEMPTS: Record<string, Variant[]> = {
     ["aimed 30 degrees up", () => recording(punch(RIGHT(30)))],
     ["aimed 30 degrees down", () => recording(punch(RIGHT(-30)))],
     ["aimed 30 degrees inward", () => recording(punch(arm("right", aim("right", 0, 0.58), aim("right", 0, 0.58))))],
+    ["thrown with the left hand", () => recording(punch(LEFT(0)))],
   ],
   hook: [
     ...variants((ms) => hookSteps(LOADED, ACROSS, ms), 165),
     ["elbow dropped, short swing", () => recording(hookSteps(LOADED_LOW, ACROSS_SHORT))],
+    ["thrown with the right hand", () => recording(hookSteps(RIGHT_LOADED, RIGHT_ACROSS))],
   ],
   uppercut: [
     ...variants((ms) => upperSteps(UP_FIST, ms), 250),
@@ -111,10 +120,10 @@ const ATTEMPTS: Record<string, Variant[]> = {
 };
 
 describe.each(BOXER)("%s", (move) => {
-  test.each(ATTEMPTS[move] ?? [])("%s reaches 0.75 and is the only Boxer strike read", (_name, frames) => {
+  test.each(ATTEMPTS[move] ?? [])("%s reaches 0.75 and is the only Boxer strike read, bar the jab and cross pair", (_name, frames) => {
     const result = readOf(frames());
     expect(result.peaks[move]).toBeGreaterThanOrEqual(0.75);
-    expect(result.strikes.filter((id) => BOXER.includes(id))).toEqual([move]);
+    expect(result.strikes.filter((id) => BOXER.includes(id)).sort()).toEqual(STRAIGHT.includes(move) ? STRAIGHT : [move]);
   });
 });
 
@@ -149,10 +158,11 @@ describe.each(Object.keys(IDLE))("%s", (name) => {
 });
 
 // The owner's own trace (issue in the lenient-strikes brief) is a right hand driven up and forward with the elbow
-// lifted out to the side and the fist ending at the forehead. Made up here in its shape: it reads as the cross,
-// the rear hand, and not as the uppercut, because the elbow came up past 55 degrees.
-test("a right fist driven up to the forehead with the elbow lifted reads as a cross, not an uppercut", () => {
+// lifted out to the side and the fist ending at the forehead. Made up here in its shape: it reads as a straight
+// punch (the cross, and the jab, which read on either hand), and not as the uppercut, because the elbow came up
+// past 55 degrees.
+test("a right fist driven up to the forehead with the elbow lifted reads as a straight punch, not an uppercut", () => {
   const lifted = pose({ rightUpper: [0.45, 0.05, -0.9], rightFore: [-0.4, -0.75, -0.55] }, READY);
   const result = readOf(recording(punch(lifted, 200)));
-  expect(result.strikes.filter((id) => BOXER.includes(id))).toEqual(["cross"]);
+  expect(result.strikes.filter((id) => BOXER.includes(id)).sort()).toEqual(STRAIGHT);
 });

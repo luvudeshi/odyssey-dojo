@@ -346,9 +346,35 @@ export const SWEPT = 0.35;
  * path of a hook, not a punch. The half catches a hook's first frames, while the longer window still holds the
  * elbow being lifted into place.
  */
-export function sweptAcross(history: PoseHistory, side: Side): boolean {
-  return [THROW_MS, THROW_MS / 2].some((ms) => {
+export function sweptAcross(history: PoseHistory, side: Side, windows: readonly number[] = [THROW_MS, THROW_MS / 2]): boolean {
+  return windows.some((ms) => {
     const { across, up } = travel(history, side, ms);
     return across >= SWEPT && across >= up;
   });
+}
+
+/** How long a hook keeps the other hand from reading as a punch: it is coming up as the cover. In ms. */
+export const COVER_MS = 500;
+/** How long a straight punch keeps the same arm from reading as a hook: the fist carried on in after the punch. In ms. */
+export const FOLLOW_MS = 300;
+
+/** The rising strike's bend on each side, which a straight punch on that side must not be: rising palm left, uppercut right. */
+const RISING_BEND: Readonly<Record<Side, number>> = { left: RISING_PALM_BEND, right: UPPERCUT_BEND };
+
+/**
+ * One fist punched straight, as the jab and the cross read it: not with the other arm on its way out too (a
+ * two-handed thrust), not swept across the body (a hook), not risen from low with the elbow down (the rising
+ * strike), and not this hand coming up as the cover just after the other one hooked.
+ */
+export function straightPunch(history: PoseHistory, side: Side): number {
+  const other = otherSide(side);
+  if (otherThrowing(history, side) || sweptAcross(history, side) || sweptAcross(history, other, [THROW_MS, COVER_MS])) return 0;
+  return risingHand(history, side, RISING_BEND[side]) ? 0 : strike(history, side);
+}
+
+/** True when `side` punched straight, at the strength that fires a strike, on any frame of the last FOLLOW_MS. */
+export function punchedJustNow(history: PoseHistory, side: Side): boolean {
+  const now = latest(history)?.t ?? 0;
+  return history.frames.some((old, i) =>
+    now - old.t <= FOLLOW_MS && straightPunch({ ...history, frames: history.frames.slice(0, i + 1) }, side) >= 0.7);
 }
