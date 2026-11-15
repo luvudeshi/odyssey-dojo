@@ -7,6 +7,10 @@
 //   POST /api/facetime/standin    { room }: no phone and no call service; a token for the bridge's seat in that
 //                                 room, for the stand-in page (tools/facetime/standin.html) on this machine
 //   GET  /api/facetime/call/:id   how the call is doing
+//   POST /api/facetime/hangup     { room }: closes a room this server made, which drops the bridge (and so the
+//                                 phone's side) for certain. Leaving the room does not do that.
+// A POST must say Content-Type: application/json, or it is refused (415): a page of another site open in the same
+// browser can send a form or plain text here without asking, but not JSON.
 // The keys are read from the environment on every request, so adding them to .env.local needs only a restart, and
 // they go nowhere but into a signed token (the LiveKit secret) and to the call service (its own key).
 import { randomBytes, randomUUID } from "node:crypto";
@@ -18,6 +22,7 @@ import type { Register } from "../app";
 import { loadEnvFile } from "../lib/envFile";
 import { CHERT_MESSAGES, callState, placeCall } from "../lib/facetimeChert";
 import { NOT_SET_UP, readFaceTimeEnv, readLivekitEnv } from "../lib/facetimeEnv";
+import { deleteRoom } from "../lib/facetimeRooms";
 import { mintToken } from "../lib/facetimeToken";
 
 /** The game's identity in every call room, and the bridge's. */
@@ -26,6 +31,10 @@ export const BRIDGE_IDENTITY = "facetime-bridge";
 /** A trial call lasts five minutes; a token to join is good for ten. */
 export const TOKEN_TTL_S = 600;
 const MAX_SEATS = 50;
+/** A room that was used is remembered this long, so it can be closed: a token's ten minutes, a call's five, and slack. */
+export const ROOM_MEMORY_S = 1800;
+const MAX_USED = 200;
+const HANGUP_FAILED = "The call's room could not be closed. It closes by itself once everyone has left.";
 const ROOM = /^odyssey-dojo-[0-9a-f]{12}$/;
 
 export interface FaceTimeRouteDeps {
@@ -33,13 +42,38 @@ export interface FaceTimeRouteDeps {
   readonly fetch: (url: string, init: RequestInit) => Promise<Response>;
   /** Milliseconds since 1970. */
   readonly now: () => number;
+  /** Waits before the one retry of closing a room. A timer by default. */
+  readonly wait?: (ms: number) => Promise<void>;
 }
 
 export function registerFaceTime(router: Router, deps: FaceTimeRouteDeps): void {
   /** Rooms this server made, and when: a call or a stand-in friend is only let into one of them, once. */
   const seats = new Map<string, number>();
+  /** Rooms a call or a stand-in went into, and when: the only rooms hang up will close. */
+  const used = new Map<string, number>();
+  const remember = (room: string): void => {
+    const now = deps.now();
+    for (const [each, at] of used) if (now - at > ROOM_MEMORY_S * 1000) used.delete(each);
+    // Oldest first: a Map keeps the order things were put in.
+    while (used.size >= MAX_USED) {
+      const oldest = used.keys().next();
+      if (oldest.done === true) break;
+      used.delete(oldest.value);
+    }
+    used.set(room, now);
+  };
+  const wait = deps.wait ?? ((ms: number): Promise<void> => new Promise((done) => { setTimeout(done, ms); }));
   const setup = (): ReturnType<typeof readFaceTimeEnv> => readFaceTimeEnv(deps.env());
   const missing = (): readonly string[] => { const found = setup(); return found.ready ? [] : found.missing; };
+
+  router.use("/api/facetime", (request, response, next) => {
+    const type = (request.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
+    if (request.method === "POST" && type !== "application/json") {
+      response.status(415).json({ error: "service", message: "Send JSON." });
+      return;
+    }
+    next();
+  });
 
   router.get("/api/facetime/status", (_request, response) => {
     // standIn: the room can be joined, so a browser can play the friend. True with or without the call service.
@@ -89,6 +123,7 @@ export function registerFaceTime(router: Router, deps: FaceTimeRouteDeps): void 
     }
     // One call per room: a second press of the button must not ring the phone twice.
     seats.delete(room);
+    remember(room);
     const { config } = found;
     const bridgeToken = mintToken({
       apiKey: config.livekitKey, apiSecret: config.livekitSecret, identity: BRIDGE_IDENTITY, name: "FaceTime",
@@ -120,6 +155,7 @@ export function registerFaceTime(router: Router, deps: FaceTimeRouteDeps): void 
     }
     // The same rule as a call: one friend per room, phone or stand-in, and never both.
     seats.delete(room);
+    remember(room);
     const { config } = found;
     const token = mintToken({
       apiKey: config.livekitKey, apiSecret: config.livekitSecret, identity: BRIDGE_IDENTITY, name: "Stand-in friend",
@@ -128,6 +164,33 @@ export function registerFaceTime(router: Router, deps: FaceTimeRouteDeps): void 
     // Nothing is sent to the call service: deps.fetch is not touched here.
     log("info", "facetime_standin_opened", {});
     response.json({ url: config.livekitUrl, token, room, identity: BRIDGE_IDENTITY });
+  });
+
+  router.post("/api/facetime/hangup", async (request, response) => {
+    const found = readLivekitEnv(deps.env());
+    if (!found.ready) {
+      response.status(503).json({ error: "not_set_up", message: NOT_SET_UP, missing: found.missing });
+      return;
+    }
+    const body: unknown = request.body;
+    const fields = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+    const room = typeof fields.room === "string" ? fields.room : "";
+    const at = ROOM.test(room) ? used.get(room) : undefined;
+    // Only a room a call or a stand-in went into here, and only while it could still be open.
+    if (at === undefined || deps.now() - at > ROOM_MEMORY_S * 1000) {
+      response.status(400).json({ error: "service", message: "That call room is not known." });
+      return;
+    }
+    // The room stays remembered: a second hang up (the page closing just after) is answered the same way.
+    const closed = await deleteRoom({ fetch: deps.fetch, now: deps.now, wait }, found.config, room);
+    if (!closed.ok) {
+      // The status only: nothing LiveKit sent back, and never the token.
+      log("warn", "facetime_room_not_closed", { why: closed.why, status: closed.status });
+      response.status(502).json({ error: closed.why, message: HANGUP_FAILED });
+      return;
+    }
+    log("info", "facetime_room_closed", { room: closed.room, tries: closed.tries });
+    response.json({ room: closed.room });
   });
 
   router.get("/api/facetime/call/:id", async (request, response) => {
