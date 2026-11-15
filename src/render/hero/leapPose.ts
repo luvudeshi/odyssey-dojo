@@ -54,7 +54,7 @@ export interface LeapPose {
   /** Metres a held jump lifts the whole hero; his group adds it. */
   readonly lift: number;
   /** Folds the held defends into the strike's leap, eased by `dt`, then poses the bones. */
-  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number): void;
+  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number, dodgeCrouch?: number): void;
 }
 
 /** The exaggerated defends, eased so a press snaps in and a release snaps out without a pop. */
@@ -155,9 +155,10 @@ class Poser implements LeapPose {
     return this.stance.lift;
   }
 
-  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number): void {
+  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number, dodgeCrouch = 0): void {
     this.stance.ease(held, dt);
     const act = this.stance.act(leap, this.act);
+    act.crouch = Math.max(act.crouch, dodgeCrouch);
     act.kick = kick;
     act.target = target;
     this.undo.restore();
