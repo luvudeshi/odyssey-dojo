@@ -185,25 +185,29 @@ const GRID_HEADERS: readonly Record<string, string>[] = [
   { authorization: `Bearer ${KNOWN_TOKEN}` }, { "x-forwarded-for": "203.0.113.7", "x-real-ip": "198.51.100.77", "x-vercel-forwarded-for": "198.51.100.77" },
 ];
 
+const GRID_METHODS = ["GET", "POST", "PUT"];
+
 test("flag off: the guard answers every caller exactly as before, with PUBLIC_ROOMS on or off", () => {
   let cells = 0;
   for (const path of GRID_PATHS) {
     for (const address of GRID_SOCKETS) {
       for (const headers of GRID_HEADERS) {
         for (const rooms of [false, true]) {
-          cells += 1;
-          const where = `${path} from ${String(address)} with ${JSON.stringify(headers)}`;
-          // Leaving the flag out and passing false are the same thing.
-          expect(mayAnswer(path, address, headers, rooms, false), where).toBe(mayAnswer(path, address, headers, rooms));
-          // The rule as it was before the flag: the account paths and the hall answer a loopback socket and no other.
-          const lower = path.toLowerCase();
-          if (isAccountPath(lower) || isHeroesPath(lower)) expect(mayAnswer(path, address, headers, rooms), where).toBe(isLoopback(address));
+          for (const method of GRID_METHODS) {
+            cells += 1;
+            const where = `${method} ${path} from ${String(address)} with ${JSON.stringify(headers)}`;
+            // Leaving the flag out and passing false are the same thing.
+            expect(mayAnswer(path, address, headers, rooms, method, false), where).toBe(mayAnswer(path, address, headers, rooms, method));
+            // The rule as it was before the flag: the account paths and the hall answer a loopback socket and no other.
+            const lower = path.toLowerCase();
+            if (isAccountPath(lower) || isHeroesPath(lower)) expect(mayAnswer(path, address, headers, rooms, method), where).toBe(isLoopback(address));
+          }
         }
       }
     }
   }
-  expect(cells).toBe(GRID_PATHS.length * GRID_SOCKETS.length * GRID_HEADERS.length * 2);
-  expect(cells).toBeGreaterThan(7_000);
+  expect(cells).toBe(GRID_PATHS.length * GRID_SOCKETS.length * GRID_HEADERS.length * 2 * GRID_METHODS.length);
+  expect(cells).toBeGreaterThan(20_000);
 });
 
 test("flag on: the account paths and the hall also answer a request that was passed on to any socket, and no other cell of the grid changes", () => {
@@ -212,27 +216,29 @@ test("flag on: the account paths and the hall also answer a request that was pas
     for (const address of GRID_SOCKETS) {
       for (const headers of GRID_HEADERS) {
         for (const rooms of [false, true]) {
-          const where = `${path} from ${String(address)} with ${JSON.stringify(headers)}`;
-          const off = mayAnswer(path, address, headers, rooms, false);
-          const on = mayAnswer(path, address, headers, rooms, true);
-          const lower = path.toLowerCase();
-          const opens = (isAccountPath(lower) || isHeroesPath(lower)) && wasRelayed(headers) && !isLoopback(address);
-          if (opens) {
-            opened += 1;
-            expect([off, on], where).toEqual([false, true]);
-          } else expect(on, where).toBe(off);
+          for (const method of GRID_METHODS) {
+            const where = `${method} ${path} from ${String(address)} with ${JSON.stringify(headers)}`;
+            const off = mayAnswer(path, address, headers, rooms, method, false);
+            const on = mayAnswer(path, address, headers, rooms, method, true);
+            const lower = path.toLowerCase();
+            const opens = (isAccountPath(lower) || isHeroesPath(lower)) && wasRelayed(headers) && !isLoopback(address);
+            if (opens) {
+              opened += 1;
+              expect([off, on], where).toEqual([false, true]);
+            } else expect(on, where).toBe(off);
+          }
         }
       }
     }
   }
-  expect(opened).toBeGreaterThan(500);
+  expect(opened).toBeGreaterThan(1_500);
   // Said plainly, for the callers that matter. The proxy's container, with what the proxy adds:
-  for (const path of ACCOUNT_PATHS) expect(mayAnswer(path, PROXY, { "x-forwarded-for": "203.0.113.7" }, false, true), path).toBe(true);
+  for (const path of ACCOUNT_PATHS) expect(mayAnswer(path, PROXY, { "x-forwarded-for": "203.0.113.7" }, false, "POST", true), path).toBe(true);
   // Another device with no proxy header is plain HTTP on the network: still refused, so a password never crosses it in the clear by accident.
-  for (const path of ACCOUNT_PATHS) expect(mayAnswer(path, LAN, {}, false, true), path).toBe(false);
-  for (const path of ACCOUNT_PATHS) expect(mayAnswer(path, PROXY, { authorization: `Bearer ${KNOWN_TOKEN}` }, false, true), path).toBe(false);
+  for (const path of ACCOUNT_PATHS) expect(mayAnswer(path, LAN, {}, false, "POST", true), path).toBe(false);
+  for (const path of ACCOUNT_PATHS) expect(mayAnswer(path, PROXY, { authorization: `Bearer ${KNOWN_TOKEN}` }, false, "POST", true), path).toBe(false);
   // Nothing that spends a key, and nothing beside the named account paths.
-  for (const [, path] of CLOSED) expect(mayAnswer(path, PROXY, { "x-forwarded-for": "203.0.113.7" }, false, true), path).toBe(false);
+  for (const [method, path] of CLOSED) expect(mayAnswer(path, PROXY, { "x-forwarded-for": "203.0.113.7" }, false, method, true), path).toBe(false);
 });
 
 test("flag off, over HTTP: from the proxy's socket every account path and the hall are 403, with the flag unset, empty, 0 or true", async () => {

@@ -176,71 +176,145 @@ Two things would weaken this, so do not do them:
 Everything above is about the laptop. The public copy is different: the game server runs on its own machine behind a
 proxy (`docs/deploy-vultr.md`), so every visitor's request was passed on, and nobody there could make a room. Set
 `PUBLIC_ROOMS=1` in that server's environment and restart it, and a request that was passed on may make a room too.
-The diff is from tagrawal029's agent (issue #33).
+The first diff is from tagrawal029's agent (issue #33). Two reviews then attacked it; "What two reviews found" below
+says what changed because of them.
 
 **Only on a server that every caller reaches through its own proxy. Never on the laptop.** With the flag on, the
 counting key is a header (see below). Where a caller can reach the server with no proxy in between, as on the venue
 Wi-Fi, the caller writes that header itself.
 
 The flag is on only when the value is exactly `1` (spaces around it are fine). Unset, empty, `0`, `true`, `yes`: off,
-and the server behaves exactly as before. It is read on every request, so a `.env` line works as well as a real
-variable.
+and the server behaves exactly as before. A real variable, a line in `.env` and a line in `.env.local` all count
+(the FaceTime routes load `.env.local`), and the real variable wins. The files are read when the server starts, so
+restart it after a change. The laptop keeps settings in `.env.local`: do not put the flag there.
 
 What it changes:
 
-- `POST /api/rooms` answers a request that was passed on. Nothing else opens. `/api/level`, `/api/speech`,
-  `/api/reveal`, `/api/portrait/...`, `/api/replays`, the replay video upload and QR picture, `/api/facetime/...` and
-  `/api/health` still answer 403 `local_only` to it. The account paths and `/api/heroes` answer exactly as with the
-  flag off: this machine and a tunnel on it, and 403 from any other address. Behind a proxy on another address, as
-  on the hosted copy, that means accounts stay off there.
+- `POST /api/rooms` answers a request that was passed on. Nothing else opens, and no other method on that path.
+  `/api/level`, `/api/speech`, `/api/reveal`, `/api/portrait/...`, `/api/replays`, the replay video upload and QR
+  picture, `/api/facetime/...` and `/api/health` still answer 403 `local_only` to it. The account paths and
+  `/api/heroes` answer exactly as with the flag off.
 - A caller is counted by the last entry of `X-Forwarded-For` when that entry is an address. This is for every room
-  limit in `server/lib/roomLimits.ts`: rooms made, wrong codes, polls and open streams. The server's own proxy writes
-  that entry, so a caller cannot choose it. Entries before it are not read. Without the flag all visitors behind the
-  proxy count as one caller, the proxy's address.
-- All callers but this machine also share one budget for making rooms.
+  limit in `server/lib/roomLimits.ts` (rooms made, wrong codes, polls, open streams) and for the join count in
+  `server/lib/localOnly.ts`. The server's own proxy writes that entry, so a caller cannot choose it. Entries before it
+  are not read. `Cf-Connecting-Ip` is not read either: no tunnel runs there, and the proxy passes that header on as
+  the caller wrote it.
+- A request that was passed on and has no address in that header is counted with all the others like it. It is never
+  counted as "this machine", which is not limited.
+- One caller's caps are larger, and all callers but this machine share two caps. See the table.
+- At a cap, a new room takes the place of a room nobody is connected to, once that room has been left alone for
+  20 seconds.
+
+### Who "one caller" is, and what that means behind Vercel
+
+The public page is on Vercel, which passes `/api/` on to the room server. The room server's proxy then sees Vercel's
+address, not the visitor's. **So everybody who comes through the same Vercel address is one caller.** In a hall that
+may be every visitor. How many addresses Vercel uses for one hall was not measured, so plan for one.
+
+What that means, plainly:
+
+- The caps "for one caller" below are shared by the whole hall. That is why they are larger with the flag on: the
+  laptop's own caps (6 rooms a minute, 3 rooms in use) would stop the fourth pair of players.
+- One person in the hall, or a stranger who opens the public page and lands on the same Vercel address, can use up a
+  cap for everybody on that address. The cheapest way is 20 wrong room codes: for the rest of that minute nobody on
+  that address joins a room, and the page says "Too many tries from this network. Wait a minute and try again."
+- So the per-caller caps do not hold a stranger there. The shared caps do: 30 rooms a minute and 40 rooms for all
+  outside callers, and 8 MB a room.
+- The header Vercel puts the visitor's address in cannot be used: anybody who calls the room server's own name can
+  write it.
+- A stranger who calls the room server's own name, not the page, is counted by their own address and uses up only
+  their own caps.
+- Rooms made on the laptop that runs the game share none of this. **Keep the laptop's rooms as the demo path, and the
+  hosted copy as the extra.**
 
 The caps, with the flag on:
 
-| What | Cap | Answer past it |
-| --- | --- | --- |
-| Rooms one caller makes | 6 a minute | 429, `Retry-After` up to 60 |
-| Live rooms one caller holds | 3. A new one takes the place of one of its rooms that nobody is connected to | 429 when somebody is connected to all three, `Retry-After` up to 1800 |
-| Rooms all outside callers make together | 30 a minute | 429, `Retry-After` up to 60 |
-| Live rooms of all outside callers | 40 (50, less 10 kept for the machine that runs the server) | 503 `too_many_rooms` |
-| A room nobody uses | removed after 30 minutes | |
+| What | One caller | All outside callers together | Answer past it |
+| --- | --- | --- | --- |
+| Rooms made | 15 a minute | 30 a minute. Only a room that was made counts | 429, `Retry-After` up to 60 |
+| Live rooms | 20. The next one takes the place of one of its rooms that nobody is connected to | 40 (50, less 10 kept for the machine that runs the server). The next one takes the place of an outside room that nobody is connected to | One caller: 429 when somebody is connected to all 20, `Retry-After` up to 1800. All: 503 `too_many_rooms` when somebody is connected to all 40 |
+| Join attempts, right or wrong | 20 a minute | | 429 `too_many_joins`, `Retry-After` 60 |
+| Wrong codes on a join | 20 a minute. Past it a right code is refused too | | 429 |
+| Wrong codes or tokens on a send, a stream or a poll | 20 a minute | | 429 |
+| Open event streams | 40 | One a seat, so 100 | 429, and the page polls instead |
+| Polls | 5,000 a second | | 429 |
+| Messages kept for a poll | 256 a seat, 16 KB each, kept as text: 8 MB a room | 400 MB for 50 rooms | |
+| A room nobody uses | removed after 30 minutes | | |
 
-Known weak spots:
+One caller gets at most half of each shared cap, so one address alone can neither use up the minute's rooms nor hold
+every room. The join caps stayed at 20 on purpose: a code is four letters, and these caps are all that makes guessing
+slow. With the flag off the caps are the laptop's, unchanged: 6 rooms a minute, 3 live rooms, 8 streams, 250 polls a
+second.
 
-- **Visitors who share an address share a budget.** The public page is on Vercel, which passes `/api/` on to the room
-  server. The room server's proxy then sees Vercel's address, not the visitor's. So visitors who come through the same
-  Vercel address are one caller: 6 rooms a minute between them, and 3 rooms with people in them. The fourth host gets
-  429 until one of the three is left empty. The header Vercel puts the visitor's address in cannot be used: anybody
-  who calls the room server's own name can write it.
-- **The join count did not change.** The guard still counts joins by the socket address (20 a minute, see above). On
-  the hosted copy that address is the proxy's, so all visitors together get 20 join attempts a minute, right ones
-  included, with the flag on or off. One stranger can use them up.
-- **Somebody with 14 addresses can hold all 40 rooms**, 3 each, and keep them by calling each one now and then. It
-  takes two minutes. New hosts get 503 meanwhile.
+### What two reviews found
+
+Two reviewers attacked the first version over HTTP. Fixed here, each with a test in
+`server/tests/publicRooms.test.ts`:
+
+- **One stranger stopped all joining.** The join count used the socket address, which behind the proxy is the same
+  for the whole world. 20 wrong joins a minute from anywhere and nobody joined. It now uses the proxy's own entry.
+- **A stranger could run the server out of memory.** The backlog kept each message as the object it parsed to. 16 KB
+  of `{},{},{}...` took 85 MB a seat. Twelve such rooms stopped a server with a 1 GB heap. The backlog keeps the text
+  now: 8 MB a room whatever is in it. This also holds with the flag off.
+- **`Cf-Connecting-Ip` bought a fresh budget.** From a proxy on the same host the server believed it, and the proxy
+  passes on what the caller wrote. A new value each time gave unlimited rooms a minute and unlimited code guesses.
+  The hosted copy's proxy has been on the same host since PR 371, so this was open there.
+- **A lone `X-Forwarded-Proto` counted as "this machine".** So did `Cf-Ray`, `Cdn-Loop` and an empty
+  `Cf-Connecting-Ip`. This machine is never refused, so such a caller could take all 50 rooms.
+- **A full server answered 429, not 503.** Refused creates spent the shared budget, so people trying again while the
+  rooms were full locked everybody out for the minute. Only a room that was made counts now.
+- **40 rooms could be held without anybody in them.** At the cap a new host now gets the place of a room nobody is
+  connected to.
+- **The guard opened the path for every method.** Harmless then, a hole the day somebody adds `GET /api/rooms`. Only
+  POST opens now.
+
+Still open:
+
+- **The shared address behind Vercel**, as above. The fix is not in the server: either the page calls the room
+  server's own name for rooms, or Vercel sends a secret header so the server may believe the visitor's address it
+  passes on. Both are in PR 351.
+- **Four-letter codes can be guessed.** One address gets 20 wrong joins and 20 wrong sends a minute. Against 40 rooms
+  that is about 3 hours to find one, about 12 minutes with 14 addresses, under 2 minutes with 100. A found code with an
+  empty guest seat lets the stranger take the seat. A longer code needs the lead's screens, so it was left.
+- **Rooms can still be held by staying connected.** Two addresses that keep a poll or a stream open on 20 rooms each
+  hold all 40, and new hosts get 503. A send every 29 minutes keeps a room for ever; there is no oldest age.
+- **Sends are limited per member, not per caller**: 16 KB, 120 a second a seat. Somebody who fills many rooms and
+  reads its own streams makes the server pass a lot of data.
+- **A create needs no JSON content type**, so any web page can make a visitor's browser ask for rooms. They count
+  against that visitor's address and the shared 30.
 - **A server reachable with no proxy in between must not set the flag.** A caller there writes `X-Forwarded-For`
-  itself and gets a fresh budget with every address it makes up, for rooms and for wrong codes. Only the two shared
-  caps still hold.
+  itself and gets a fresh budget with every address it makes up. Only the two shared caps still hold.
+- Somebody with many IPv6 networks has that many counting keys.
 
-Checked over HTTP against the real server on this laptop, with no keys, from a loopback socket and from another
-address (the laptop's own Wi-Fi address, standing in for the proxy):
+### What was checked
 
+Over HTTP against the real server on this laptop, with no keys, from a loopback socket (a proxy on the same host, as
+on the hosted copy since PR 371) and from the laptop's Wi-Fi address (a proxy on another address):
+
+- **Flag off is main.** 94 requests (all 32 routes, 62 path and method tricks) from 8 kinds of caller, 752 answers,
+  compared between `origin/main` and this branch with the flag unset: status, `Retry-After`, `Allow`,
+  `Content-Type`, `Cache-Control`, `Location` and body. 0 differ. The guard and the counting key as functions, over
+  200 paths, 10 addresses and 17 header sets (34,000 cases): 0 differ.
+- **Flag on opens one thing.** The same 752 answers with the flag `1` against the flag unset: 25 differ, all of them a
+  passed-on `POST` to the rooms path (five spellings, five kinds of passed-on caller) going from 403 to 200.
 - Flag unset, empty, `0`, `true`: a passed-on `POST /api/rooms` is 403; a plain one from this machine is 200.
-- Flag `1`: the passed-on create is 200 and a second passed-on caller joins the room (200). The 18 closed paths
-  (AI, speech, reveal, portrait, replays, FaceTime, health, look-alike room paths) are 403 from both sockets. The
-  account paths and `/api/heroes` gave the same answers as with the flag unset, path by path.
-- One caller: 6 creates are 200, the 7th is 429, also with other addresses written in front of its own. Three rooms
-  with the host connected, then a 4th create: 429 with `Retry-After: 1800`.
-- All callers: 30 creates from 30 addresses are 200, the 31st and 32nd are 429, this machine still gets 200. A minute
-  later 10 more are 200, the 41st outside room is 503, this machine still gets 200.
-- 22 joins of a wrong code from 22 visitor addresses through one proxy socket: 20 were 404, 2 were 429
-  `too_many_joins`, and so was a right join after them.
+- One stranger, 22 wrong joins: 20 are 404, 2 are 429. 22 wrong joins from 22 addresses: all 404. A right join from
+  another address after that: 200.
+- One address with a new `Cf-Connecting-Ip` each time: 15 rooms, then 429. 3,000 wrong joins that way: 20 are 404,
+  2,980 are 429.
+- A lone `X-Forwarded-Proto`, `-Host`, `-Port`, `Cf-Ray` or `Cdn-Loop`, 22 creates: 15 are 200, then 429.
+- Twelve rooms from one address with both backlogs full of 16 KB of `{}` (7,424 sends in 66 seconds), on a server
+  with a 1 GB heap: the server's memory went from 172 MB to 259 MB and it kept answering. The first version stopped
+  with "heap out of memory" at this point.
+- 43 rooms made from outside: 40 are there, 3 were replaced at the cap.
+- Every room in use: 35 creates from 35 addresses are all 503, this machine still gets 200. One host leaves, and 21
+  seconds later a new address gets a room (200), so the 35 refusals spent nothing.
+- One full room in memory, measured in the process: 8.0 MB for one long string, for `[]`, for `{}` and for 1,480
+  keys. Before: 8, 106, 170 MB.
 
-`server/tests/publicRooms.test.ts` holds the same rules. Not checked: the real Caddy and the real Vercel, so what
-they write in `X-Forwarded-For` comes from their documentation, and a room made and fought through the public site.
+`server/tests/publicRooms.test.ts` holds the same rules. Not checked: the real Caddy, Docker and Vercel, so what they
+write in `X-Forwarded-For` comes from their documentation, and a room made and fought through the public site. If the
+Caddyfile ever gets `trusted_proxies`, check the last entry again.
 
 ## Known limit: Cloudflare says quick tunnels do not carry event streams
 

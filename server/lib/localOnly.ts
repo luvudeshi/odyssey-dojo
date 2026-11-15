@@ -5,6 +5,7 @@
 // The account paths carry a password, so they answer the tunnel (HTTPS) and this machine only, never another device on plain HTTP.
 // PUBLIC_ACCOUNTS=1 is for a server behind its own HTTPS proxy on another address (the hosted copy): there they also answer a request that was passed on.
 import type { IncomingHttpHeaders } from "node:http";
+import { isIP } from "node:net";
 import type { NextFunction, Request, Response } from "express";
 
 const LOOPBACK: readonly string[] = ["127.0.0.1", "::1", "::ffff:127.0.0.1"];
@@ -98,21 +99,54 @@ function isRoomsRoot(path: string): boolean {
 }
 
 /**
+ * The network an address counts as. One home or phone is given a whole IPv6 /64 and can use any address in it,
+ * so an IPv6 address is cut to its first four groups. An IPv4 address is kept whole.
+ */
+export function network(address: string): string {
+  const plain = (address.split("%")[0] ?? "").toLowerCase();
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(plain);
+  if (mapped !== null) return mapped[1] ?? plain;
+  if (!plain.includes(":")) return plain;
+  const [head = "", tail] = plain.split("::");
+  const groups = head === "" ? [] : head.split(":");
+  const end = tail === undefined || tail === "" ? [] : tail.split(":");
+  if (tail !== undefined) while (groups.length + end.length < 8) groups.push("0");
+  return `${[...groups, ...end].slice(0, 4).map((group) => group.replace(/^0+(?=.)/, "")).join(":")}::/64`;
+}
+
+/**
+ * With PUBLIC_ROOMS=1 the server sits behind its own proxy (Caddy in deploy/vultr), and every request reaches it from
+ * that proxy's one address. The proxy writes the address it took the request from as the last entry of
+ * X-Forwarded-For, so that entry is the counting key: one budget per caller, not one for the whole internet.
+ * Only the last entry is read. The ones before it are whatever the caller sent. Null when it is not an address.
+ * It is only ever a counting key: it never makes a request local. A server that callers reach with no proxy in
+ * between must not set PUBLIC_ROOMS: there a caller writes this header itself, and only the shared caps hold it.
+ * The entry is whoever spoke to the proxy. When that is another proxy (the public page on Vercel passes /api/ on),
+ * everybody who came through it is one caller: see ./roomLimits, "one caller can be a whole venue".
+ */
+export function lastHop(headers: IncomingHttpHeaders): string | null {
+  const value = headers["x-forwarded-for"];
+  const last = (typeof value === "string" ? value : "").split(",").pop()?.trim() ?? "";
+  return last.length <= 64 && isIP(last) !== 0 ? network(last) : null;
+}
+
+/**
  * Whether a request for `path` from `address` carrying `headers` may be answered.
  * Express matches routes without regard to case, so this does too.
  * `roomsArePublic` is what publicRooms() said: with it a request that was passed on may make a room as well.
+ * Making a room is a POST, so with the flag on no other method opens that path: a route added there later stays closed.
  * `accountsArePublic` is what publicAccounts() said: with it a request that was passed on reaches the account paths
  * and the hall of heroes on any socket. One with no proxy header is another device speaking plain HTTP, and stays refused.
  */
 export function mayAnswer(
-  path: string, address: string | undefined, headers: IncomingHttpHeaders = {}, roomsArePublic = false, accountsArePublic = false,
+  path: string, address: string | undefined, headers: IncomingHttpHeaders = {}, roomsArePublic = false, method = "POST", accountsArePublic = false,
 ): boolean {
   const lower = path.toLowerCase();
   if (!lower.startsWith("/api/")) return true;
   // A loopback socket is this machine's own browser or a tunnel that runs here. Another device is refused whatever
   // headers it sends, unless this server was told it sits behind its own proxy (PUBLIC_ACCOUNTS=1) and the request was passed on.
   if (isAccountPath(lower) || isHeroesPath(lower)) return isLoopback(address) || (accountsArePublic && wasRelayed(headers));
-  if (wasRelayed(headers)) return isTunnelPath(lower) || (roomsArePublic && isRoomsRoot(lower));
+  if (wasRelayed(headers)) return isTunnelPath(lower) || (roomsArePublic && isRoomsRoot(lower) && method.toUpperCase() === "POST");
   return isOpenPath(lower) || isLoopback(address);
 }
 
@@ -146,10 +180,13 @@ export function createJoinLimit(limit: number = JOIN_LIMIT, windowMs: number = J
 /**
  * Who a join attempt is counted against. cloudflared runs on this machine and names the visitor in Cf-Connecting-Ip,
  * so that header counts only from a loopback socket. Any other device is counted by its own address, whatever it claims.
+ * With PUBLIC_ROOMS=1 every request comes from the server's own proxy, so the socket address is the same for the whole
+ * world and one stranger would use up everybody's joins. There the proxy's own entry in X-Forwarded-For is the caller,
+ * and Cf-Connecting-Ip is not read at all: that proxy passes it on as the caller wrote it.
  */
-function callerOf(request: Request): string {
-  const address = request.socket.remoteAddress;
-  const visitor = request.headers["cf-connecting-ip"];
+export function joinCaller(address: string | undefined, headers: IncomingHttpHeaders, roomsArePublic = false): string {
+  if (roomsArePublic) return lastHop(headers) ?? address ?? "unknown";
+  const visitor = headers["cf-connecting-ip"];
   if (isLoopback(address) && typeof visitor === "string" && visitor.trim() !== "") return visitor.trim().slice(0, 64);
   return address ?? "unknown";
 }
@@ -165,13 +202,14 @@ export function createGuard(
 ): (request: Request, response: Response, next: NextFunction) => void {
   return (request, response, next) => {
     const address = request.socket.remoteAddress;
-    if (!mayAnswer(request.path, address, request.headers, roomsArePublic(), accountsArePublic())) {
+    const open = roomsArePublic();
+    if (!mayAnswer(request.path, address, request.headers, open, request.method, accountsArePublic())) {
       response.status(403).json({ error: "local_only" });
       return;
     }
     // A browser on this machine is not counted. Everything else is: the tunnel's visitors and the devices on the network.
     const outside = wasRelayed(request.headers) || !isLoopback(address);
-    if (outside && request.method === "POST" && JOIN.test(request.path) && !joinAllowed(callerOf(request))) {
+    if (outside && request.method === "POST" && JOIN.test(request.path) && !joinAllowed(joinCaller(address, request.headers, open))) {
       response.status(429).set("Retry-After", String(JOIN_WINDOW_MS / 1000)).json({ error: "too_many_joins" });
       return;
     }
