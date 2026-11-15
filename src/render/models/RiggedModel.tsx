@@ -26,6 +26,8 @@ export interface RiggedModelProps {
   readonly prepare?: (root: Object3D) => void;
   /** Runs once on this instance's own copy of each material, to recolour or flat-shade a pack that does not match the look. Keep it a stable function. */
   readonly tweakMaterial?: ((material: Material) => void) | undefined;
+  /** Runs every frame right after the mixer wrote the clip pose, to pose bones from something else (the webcam). */
+  readonly afterMixer?: ((root: Object3D, delta: number) => void) | undefined;
 }
 
 // Draco GLBs decode from our own files, never gstatic, so venue wifi cannot break them.
@@ -77,7 +79,7 @@ function hasEmissive(material: Material): material is EmissiveMaterial {
   return "emissive" in material && (material as EmissiveMaterial).emissive instanceof Color;
 }
 
-export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors, prepare, tweakMaterial }: RiggedModelProps) {
+export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors, prepare, tweakMaterial, afterMixer }: RiggedModelProps) {
   const gltf = useGLTF(url);
   const rig = useMemo(() => {
     const root = clone(gltf.scene);
@@ -144,6 +146,7 @@ export function RiggedModel({ url, fit, decide, hitFlash = 0, anchors, prepare, 
       } else action.paused = false;
     }
     mixer.update(delta);
+    afterMixer?.(rig.root, delta);
     for (const { material, base } of rig.flashables) material.emissive.copy(base).lerp(FLASH, hitFlash);
     if (DEBUG) {
       modelDebug.clip = state.name;
