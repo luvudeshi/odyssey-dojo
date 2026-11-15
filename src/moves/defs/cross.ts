@@ -15,7 +15,7 @@ export const move: MoveDef = {
   detect(history) {
     const frame = latest(history);
     // A left arm that is out, or on its way out, makes this a two-handed thrust, not a cross.
-    if (!frame || armOut(frame, "left") || armOpening(history, "left")) return 0;
+    if (!frame || armOut(frame, "left", history.baseline) || armOpening(history, "left")) return 0;
     // A punch goes at the camera: an arm flung out to the side is not one.
     return flungWide(frame, "right") ? 0 : punch(history, "right");
   },
