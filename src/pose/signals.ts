@@ -73,17 +73,31 @@ export function elbowAngle(frame: PoseFrame, side: "left" | "right"): number {
   return lengths === 0 ? 180 : (Math.acos(Math.min(1, Math.max(-1, dot / lengths))) * 180) / Math.PI;
 }
 
-/** True when the arm is straight and the fist is at shoulder height. */
-export function armOut(frame: PoseFrame, side: "left" | "right"): boolean {
-  const [shoulder, , wrist] = arm(frame, side);
-  return elbowAngle(frame, side) > 145 && Math.abs(wrist.y - shoulder.y) < 0.3;
+function between(a: Landmark, b: Landmark): number {
+  return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
-/** True when the arm just went from bent to straight at shoulder height: a punch. */
-export function armThrust(history: PoseHistory, side: "left" | "right"): boolean {
-  const now = latest(history);
-  if (!now || !armOut(now, side)) return false;
-  return recent(history, 450).some((frame) => elbowAngle(frame, side) < 115);
+function middle(a: Landmark, b: Landmark): Landmark {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2, visibility: Math.min(a.visibility, b.visibility) };
+}
+
+/** Shoulder to shoulder on this frame's 3D body, in metres. About 0.4 for an adult. */
+export function shoulderWidth3d(frame: PoseFrame): number {
+  return between(joint(frame.world, JOINT.leftShoulder), joint(frame.world, JOINT.rightShoulder));
+}
+
+/** Middle of the shoulders to middle of the hips on this frame's 3D body, in metres. About 0.5 for an adult. */
+export function torsoLength3d(frame: PoseFrame): number {
+  const shoulders = middle(joint(frame.world, JOINT.leftShoulder), joint(frame.world, JOINT.rightShoulder));
+  const hips = middle(joint(frame.world, JOINT.leftHip), joint(frame.world, JOINT.rightHip));
+  return between(shoulders, hips);
+}
+
+/** The middle value, so one frame the tracker got wrong does not move the ruler. */
+function median(values: readonly number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const half = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1 ? (sorted[half] ?? 0) : ((sorted[half - 1] ?? 0) + (sorted[half] ?? 0)) / 2;
 }
 
 export function baselineOf(frames: readonly PoseFrame[]): Baseline {
@@ -95,7 +109,13 @@ export function baselineOf(frames: readonly PoseFrame[]): Baseline {
     },
     { x: 0, y: 0, w: 0 },
   );
-  return { centerX: sum.x / count, shoulderY: sum.y / count, shoulderWidth: sum.w / count };
+  return {
+    centerX: sum.x / count,
+    shoulderY: sum.y / count,
+    shoulderWidth: sum.w / count,
+    shoulderWidth3d: median(frames.map(shoulderWidth3d)),
+    torsoLength3d: median(frames.map(torsoLength3d)),
+  };
 }
 
 export const EMPTY_HISTORY: PoseHistory = { frames: [], baseline: null };
