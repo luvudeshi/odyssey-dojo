@@ -1,6 +1,7 @@
 // "Together!" for a moment when both players' strikes landed in one frame, and a tag while two people fight.
 import { useEffect, useState } from "react";
 import type { CombatEvent } from "../core/types";
+import { RiftPlate } from "./sky/rift/RiftPlate";
 
 const SHOW_MS = 900;
 const listeners = new Set<() => void>();
@@ -23,8 +24,8 @@ export function TogetherFlash({ two }: { two: boolean }) {
   }, []);
   return (
     <>
-      {two && <div className="hb-duo">You + Friend</div>}
-      {id > 0 && <div className="hb-together" key={id}>Together! x2</div>}
+      {two && <div className="hb-duo"><RiftPlate tone="glass" />You + Friend</div>}
+      {id > 0 && <div className="hb-together" key={id}><RiftPlate tone="lava" />Together! x2</div>}
     </>
   );
 }
