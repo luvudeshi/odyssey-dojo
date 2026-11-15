@@ -68,7 +68,7 @@ export function clientKey(socketAddress: string | undefined, headers: IncomingHt
   return PROXY_HEADERS.some((name) => headers[name] !== undefined) ? RELAYED : THIS_MACHINE;
 }
 
-/** Shortens how long a request may take to arrive. The server's own check runs every 30 s, so a stalled one is closed within a minute. */
+/** Shortens how long a request may take to arrive. The server's own check runs every 30 s, so a stalled one is closed 30 to 60 s after it began. */
 export function limitSlowRequests(server: Server): Server {
   server.requestTimeout = REQUEST_TIMEOUT_MS;
   server.headersTimeout = HEADERS_TIMEOUT_MS;

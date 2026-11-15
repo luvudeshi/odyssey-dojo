@@ -86,7 +86,7 @@ Limits, for when a tunnel puts the relay on the internet. Past any of the counte
 - **Streams.** One for each member: a newer one closes the older and uses the same place. 8 for each caller. A stream whose reader has stopped reading is closed once 1 MB is waiting for it.
 - **Who a caller is.** The address of the connection: an IPv4 address, or the /64 of an IPv6 one. A tunnel runs on this laptop, so for a connection from this laptop the caller is the address in `Cf-Connecting-Ip`, which Cloudflare writes itself. Other proxy headers (`X-Forwarded-For`, `X-Real-Ip`, `Forwarded`, `True-Client-Ip`, `Via`) are not believed: every request from this laptop that carries one and no `Cf-Connecting-Ip` shares one budget. The header is only used for counting.
 - **Idle rooms.** A room is removed, and its streams closed, 30 minutes after its last create, join, stream opening or send. An open stream alone does not keep it: a tab left open would hold a room for ever. So two connected players who send nothing have 30 minutes, and so has a host screen showing its code. To keep a quiet room longer the client has to send something now and then; it does not yet (issue #29).
-- **Stalled requests.** A request has 30 seconds to arrive, its headers 10. Node checks every 30 seconds, so a request that stops half way is closed within a minute.
+- **Stalled requests.** A request has 30 seconds to arrive, its headers 10. Node checks every 30 seconds, so a request that stops half way is closed 30 to 60 seconds after it began.
 
 ## Before you open a PR
 
