@@ -4,7 +4,10 @@ import type { PoseFrame } from "../../src/core/types";
 import { MOVES } from "../../src/moves/registry";
 import { baselineOf } from "../../src/pose/signals";
 import { startTracker } from "../../src/pose/tracker";
+import { createGuided } from "./guided";
+import { download, need } from "./dom";
 import { problems } from "./replay";
+import { parseParams } from "./session";
 import { IDLE, cleanName, loadTrace, storeTrace, traceFileName } from "./trace";
 import type { Trace } from "./trace";
 
@@ -16,11 +19,6 @@ const BONES: readonly (readonly [number, number])[] = [
   [23, 25], [25, 27], [24, 26], [26, 28], [0, 11], [0, 12],
 ];
 
-function need<T>(found: T | null, what: string): T {
-  if (found === null) throw new Error(`the page has no ${what}`);
-  return found;
-}
-
 const video = need(document.querySelector<HTMLVideoElement>("#video"), "video");
 const canvas = need(document.querySelector<HTMLCanvasElement>("#skeleton"), "canvas");
 const count = need(document.getElementById("count"), "countdown");
@@ -29,6 +27,10 @@ const person = need(document.querySelector<HTMLInputElement>("#person"), "person
 const button = need(document.querySelector<HTMLButtonElement>("#record"), "record button");
 const status = need(document.getElementById("status"), "status line");
 const log = need(document.getElementById("log"), "log");
+const guidedButton = need(document.querySelector<HTMLButtonElement>("#guided"), "guided button");
+const params = parseParams(window.location.search, new Set(MOVES.keys()));
+if (params.person !== null) person.value = params.person;
+if (params.dropped.length > 0) note(`Not moves, left out of the session: ${params.dropped.join(", ")}`, false);
 
 for (const id of [IDLE, ...[...MOVES.keys()].sort()]) {
   const option = document.createElement("option");
@@ -74,14 +76,6 @@ function nextNumber(move: string, who: string): number {
     return Math.floor(Date.now() / 1000);
   }
   return last + 1;
-}
-
-function download(name: string, text: string): void {
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-  link.download = name;
-  link.click();
-  URL.revokeObjectURL(link.href);
 }
 
 function note(text: string, good: boolean): void {
@@ -130,11 +124,16 @@ startTracker()
     video.srcObject = tracker.video.srcObject;
     void video.play();
     button.disabled = false;
+    guidedButton.disabled = false;
     status.textContent = "Ready.";
+    const guided = createGuided(params, MOVES, () => cleanName(person.value));
     const tick = (): void => {
       const frame = tracker.read();
       const now = performance.now();
       const current = take;
+      guided.frame(frame, now);
+      if (guided.active()) button.disabled = true;
+      else if (current === null) button.disabled = false;
       if (current) {
         const elapsed = now - current.startedAt;
         if (elapsed < COUNTDOWN_MS) {
@@ -150,7 +149,7 @@ startTracker()
           finish(current);
         }
       }
-      if (frame) draw(frame, current !== null && now - current.startedAt >= COUNTDOWN_MS);
+      if (frame) draw(frame, guided.recording() || (current !== null && now - current.startedAt >= COUNTDOWN_MS));
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
