@@ -1,0 +1,68 @@
+/* The prompt card in the star-chart look. One card at the right edge, never over the hero (left of centre) or the monster. */
+.sky-card { position: absolute; right: 24px; top: 50%; width: 272px; box-sizing: border-box; transform: translateY(-50%); text-align: center; color: var(--sky-bone); pointer-events: none; }
+.sky-card__shape { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sky-card__plate { fill: var(--sky-glaze); fill-opacity: 0.94; stroke: var(--sky-clay); stroke-width: 3; stroke-linejoin: round; }
+.sky-card__dots { fill: none; stroke: var(--sky-clay); stroke-width: 1.2; stroke-dasharray: 1.5 6; stroke-linecap: round; stroke-linejoin: round; }
+.sky-card__trough { fill: none; stroke: var(--sky-bone); stroke-opacity: 0.18; stroke-width: 5; stroke-linecap: round; }
+.sky-card__timer { fill: none; stroke: var(--sky-star); stroke-width: 5; stroke-linecap: round; }
+.sky-card__spark { fill: none; stroke: var(--sky-star); stroke-width: 12; stroke-linecap: round; }
+.sky-card__tip, .sky-card__burst path { fill: var(--sky-star); }
+.sky-card__pulse { fill: none; stroke: var(--sky-star); stroke-width: 2.5; stroke-linejoin: round; animation: sky-pulse 0.9s ease-in-out infinite alternate; }
+
+.sky-card__tag { position: absolute; left: 50%; top: -14px; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; white-space: nowrap; padding: 7px 10px 7px 12px; font: 600 12px/1 var(--sky-label); letter-spacing: 0.32em; background: var(--sky-glaze); color: var(--sky-star); border: 1.5px solid var(--sky-clay); }
+.sky-card__glyph { fill: currentColor; flex: none; }
+.sky-card--strike .sky-card__tag, .sky-card--finish .sky-card__tag { clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 9px 100%, 0 50%); border: 0; padding: 7px 18px 7px 20px; background: var(--sky-glaze); color: var(--sky-star); }
+.sky-card--finish .sky-card__tag { background: var(--sky-star); color: var(--sky-glaze); }
+
+.sky-card__in { position: absolute; inset: 0 18px 0; display: flex; flex-direction: column; align-items: center; padding-top: 26px; }
+.sky-card--defend.sky-card--word .sky-card__in, .sky-card--defend.sky-card--mini .sky-card__in { padding-top: 68px; }
+.sky-card--strike .sky-card__in, .sky-card--finish .sky-card__in { padding-top: 46px; }
+.sky-card--strike:not(.sky-card--full) .sky-card__in, .sky-card--finish:not(.sky-card--full) .sky-card__in { padding-top: 92px; }
+.sky-card .sky-fig { width: 124px; height: 124px; flex: none; fill: none; stroke: var(--sky-bone); overflow: visible; }
+.sky-fig__lines { stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: 0.8; }
+.sky-fig__lines .sky-hot { stroke: var(--sky-star); stroke-opacity: 1; stroke-width: 2.2; }
+.sky-fig__head { stroke-width: 1.5; stroke-opacity: 0.85; }
+.sky-fig__eye { fill: var(--sky-ember); stroke: none; }
+.sky-fig__star { fill: var(--sky-bone); stroke: none; }
+.sky-fig__flare { fill: var(--sky-star); stroke: none; }
+.sky-fig__arrow { stroke: var(--sky-ember); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.sky-card__word { margin-top: 6px; font: 700 40px/0.98 var(--sky-display); letter-spacing: 0.03em; text-shadow: 0 2px 0 var(--sky-glaze); }
+.sky-card--mini .sky-card__word { font-size: 34px; }
+.sky-card__target { margin-top: 12px; font: 600 13px/1.2 var(--sky-label); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky-ember); }
+.sky-card__situation { margin-top: 8px; font: 600 13px/1.25 var(--sky-label); color: var(--sky-bone); text-shadow: 0 0 3px var(--sky-glaze), 0 0 3px var(--sky-glaze); }
+.sky-card__hint { margin-top: 12px; font: 15px/1.4 var(--sky-label); }
+.sky-card__hold { display: inline-block; padding: 5px 7px 5px 9px; margin-right: 6px; font: 700 12px/1 var(--sky-label); letter-spacing: 0.22em; background: var(--sky-ember); color: var(--sky-glaze); vertical-align: 2px; }
+.sky-key { display: inline-block; min-width: 24px; padding: 4px 6px; margin-left: 4px; border: 1.5px solid currentColor; border-radius: 3px; font: 700 14px/1 var(--sky-label); vertical-align: 1px; }
+.sky-key kbd { all: unset; font: inherit; }
+.sky-key[data-arrow] kbd { font-size: 0; }
+.sky-key[data-arrow]::before { content: attr(data-arrow); }
+.sky-card__teach { margin-top: 14px; font: italic 14px/1.3 var(--sky-verse); color: #d9c8a8; }
+
+/* Strike and finish: a red-clay tablet with dark type, so it is told apart from the dark defend stele by shape, tag and fill. */
+.sky-card--strike, .sky-card--finish { color: var(--sky-glaze); }
+.sky-card--strike .sky-card__plate, .sky-card--finish .sky-card__plate { fill: var(--sky-clay); fill-opacity: 1; stroke: var(--sky-glaze); stroke-width: 3.5; }
+.sky-card--strike .sky-card__dots, .sky-card--finish .sky-card__dots { stroke: var(--sky-glaze); }
+.sky-card--strike .sky-card__trough, .sky-card--finish .sky-card__trough { stroke: var(--sky-glaze); stroke-opacity: 0.25; }
+.sky-card--strike .sky-card__timer, .sky-card--finish .sky-card__timer { stroke: var(--sky-glaze); }
+.sky-card--strike .sky-card__tip, .sky-card--finish .sky-card__tip { fill: var(--sky-glaze); }
+.sky-card--strike .sky-card__word, .sky-card--finish .sky-card__word { text-shadow: none; }
+.sky-card--strike .sky-card__target, .sky-card--finish .sky-card__target { color: var(--sky-glaze); opacity: 0.85; }
+.sky-card--strike .sky-card__situation, .sky-card--finish .sky-card__situation { color: var(--sky-glaze); text-shadow: none; }
+.sky-card--strike .sky-card__teach, .sky-card--finish .sky-card__teach { color: #2a1a10; }
+.sky-card--strike .sky-fig, .sky-card--finish .sky-fig { stroke: var(--sky-glaze); }
+.sky-card--strike .sky-fig__lines, .sky-card--finish .sky-fig__lines { stroke-opacity: 0.95; }
+.sky-card--strike .sky-fig__lines .sky-hot, .sky-card--finish .sky-fig__lines .sky-hot { stroke: var(--sky-glaze); stroke-width: 2.8; }
+.sky-card--strike .sky-fig__star, .sky-card--finish .sky-fig__star { fill: var(--sky-glaze); }
+.sky-card--strike .sky-fig__eye, .sky-card--finish .sky-fig__eye { fill: var(--sky-bone); }
+.sky-card--strike .sky-fig__flare, .sky-card--finish .sky-fig__flare { fill: var(--sky-star); stroke: var(--sky-glaze); stroke-width: 0.8; }
+.sky-card--strike .sky-fig__arrow, .sky-card--finish .sky-fig__arrow { stroke: var(--sky-glaze); }
+.sky-card--finish .sky-card__plate { stroke: var(--sky-star); }
+.sky-card--finish .sky-card__burst path { fill: var(--sky-star); stroke: var(--sky-glaze); stroke-width: 1; }
+
+@keyframes sky-pulse { from { stroke-opacity: 0.25; } to { stroke-opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sky-card__pulse { animation: none; } }
+/* Short screens (1280 x 720): scale the whole card down from its right edge. */
+@media (max-height: 760px) {
+  .sky-card { transform: translateY(-50%) scale(0.86); transform-origin: right center; }
+}
