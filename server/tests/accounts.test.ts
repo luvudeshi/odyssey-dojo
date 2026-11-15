@@ -170,9 +170,9 @@ function scripted(answer: (text: string) => unknown[] = () => []): { readonly db
     failing: false,
     asked: 0,
     db: {
-      query: <T>(text: string): Promise<T[]> => {
+      query: (text: string): Promise<never[]> => {
         state.asked += 1;
-        return state.failing ? Promise.reject(new Error("canceling statement due to timeout")) : Promise.resolve(answer(text) as T[]);
+        return state.failing ? Promise.reject(new Error("canceling statement due to timeout")) : Promise.resolve(answer(text) as never[]);
       },
       close: () => Promise.resolve(),
     } satisfies Db,
