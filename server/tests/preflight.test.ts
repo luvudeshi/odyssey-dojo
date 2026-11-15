@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import {
   POSE_MODELS,
   POSE_WASM_DIR,
+  checkAccounts,
   checkClips,
   checkElevenLabs,
   checkGemini,
@@ -13,8 +14,10 @@ import {
   checkPoseFiles,
   checkServer,
   formatLine,
+  skipAccounts,
   summary,
 } from "../lib/preflightChecks";
+import type { DatabaseAnswer } from "../lib/preflightChecks";
 
 let dir = "";
 beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "preflight-")); });
@@ -168,6 +171,66 @@ test("an AI server that started without a key we have here is a warning that say
   expect(one.detail).toContain("started without the ElevenLabs key");
   // With no keys here either, the server is as ready as it can be.
   expect((await checkServer(8787, { gemini: false, elevenLabs: false }, keyless)).level).toBe("PASS");
+});
+
+test("accounts are ON when the database answers, with a warning when its certificate is not checked, and the server is asked too", async () => {
+  const urls: string[] = [];
+  const status = (available: boolean): typeof fetch => (url) => {
+    urls.push(typeof url === "string" ? url : "not a string");
+    return Promise.resolve(Response.json({ available }));
+  };
+  const noServer: typeof fetch = () => Promise.reject(new Error("ECONNREFUSED"));
+  const answered = (checked: boolean) => (): Promise<DatabaseAnswer> => Promise.resolve({ open: true, checked, ms: 412 });
+
+  expect(await checkAccounts(answered(true), 8787, status(true))).toEqual({
+    level: "PASS", name: "accounts", detail: "ON, the database answered in 412 ms, its certificate checked; the server on port 8787 has them on",
+  });
+  expect(urls).toEqual(["http://127.0.0.1:8787/api/account/status"]);
+  // No server to ask is the "ai server" line's to say. The database's answer stands.
+  expect(await checkAccounts(answered(true), 8787, noServer)).toEqual({ level: "PASS", name: "accounts", detail: "ON, the database answered in 412 ms, its certificate checked" });
+
+  const unchecked = await checkAccounts(answered(false), 8787, status(true));
+  expect(unchecked.level).toBe("WARN");
+  expect(unchecked.detail).toMatch(/^ON, the database answered in 412 ms, its certificate NOT checked: set DATABASE_CA_FILE/);
+
+  // A server started before .env was filled in has no accounts, whatever the database says from here.
+  for (const fetcher of [status(false), (() => Promise.resolve(new Response("<html>", { status: 404 }))) as typeof fetch]) {
+    const stale = await checkAccounts(answered(true), 8787, fetcher);
+    expect(stale.level).toBe("WARN");
+    expect(stale.detail).toMatch(/^OFF on the server: the database answers from here, but the server on port 8787 says accounts are off/);
+    expect(stale.detail).toContain("restart it with npm run dev:all");
+    expect(formatLine(stale).endsWith("...")).toBe(false);
+  }
+});
+
+test("accounts that are OFF are a warning with the reason and its code, never a fail, and --offline skips the question", async () => {
+  const never: typeof fetch = () => Promise.reject(new Error("the server is not asked when the database did not open"));
+  const none = await checkAccounts(null, 8787, never);
+  expect(none.level).toBe("WARN");
+  expect(none.detail).toMatch(/^OFF \(no_database_url\): DATABASE_URL is missing in \.env; the game plays as before/);
+
+  const cases: readonly (readonly [string, string | null, string])[] = [
+    ["bad_ca_file", "ENOENT", "OFF (bad_ca_file, ENOENT): the file DATABASE_CA_FILE names cannot be read; "],
+    ["no_answer", "ENOTFOUND", "OFF (no_answer, ENOTFOUND): the database did not answer, or refused this server; "],
+    ["no_answer", "SELF_SIGNED_CERT_IN_CHAIN", "OFF (no_answer, SELF_SIGNED_CERT_IN_CHAIN): the database did not answer, or refused this server; "],
+    ["not_encrypted", null, "OFF (not_encrypted): DATABASE_URL does not end in ?sslmode=require; "],
+    ["bad_url", null, "OFF (bad_url): DATABASE_URL is not a postgres:// address; "],
+    ["something_new", null, "OFF (something_new): the database did not open; "],
+  ];
+  for (const [reason, code, start] of cases) {
+    const line = await checkAccounts(() => Promise.resolve({ open: false, reason, code }), 8787, never);
+    expect(line.level, reason).toBe("WARN");
+    expect(line.detail.startsWith(start), line.detail).toBe(true);
+    expect(line.detail).toContain("nothing is saved to Tiger Data");
+    expect(formatLine(line).endsWith("...")).toBe(false);
+  }
+  // A try that throws is no answer, not a crash of the preflight.
+  expect((await checkAccounts(() => Promise.reject(new Error("boom")), 8787, never)).detail).toMatch(/^OFF \(no_answer\)/);
+  // Accounts off never make the demo "NOT READY".
+  expect(summary([none]).exitCode).toBe(0);
+
+  expect(skipAccounts(true)).toEqual({ level: "SKIP", name: "accounts", detail: "--offline, so the database was not asked (DATABASE_URL is set)" });
+  expect(skipAccounts(false)).toEqual({ level: "SKIP", name: "accounts", detail: "--offline, so the database was not asked; DATABASE_URL is missing in .env, so accounts are off" });
 });
 
 test("the pose files pass when all are there, and one missing or empty file is a fail that names it", () => {

@@ -2,7 +2,7 @@
 
 **Project name:** Odyssey Dojo
 
-**Tagline:** Learn to block, dodge and strike with your own body. A webcam coaches you through the Odyssey, alone or with a friend.
+**Tagline:** Learn the basics of self-defense with your own body, one monster at a time. A webcam coaches you through the Odyssey, alone or with a friend.
 
 **Built with:** typescript, react, vite, three.js, react-three-fiber, mediapipe, elevenlabs, google-gemini, express, node.js, zod, vitest
 
@@ -49,14 +49,14 @@ A 3D mannequin on the card acts out the answer before you try it. Athena calls i
 
 ### Every move teaches one thing
 
-![A strike prompt: CROSS, right fist straight out, fast](docs/devpost/images/strike-card.jpg)
+![A strike prompt: CROSS, power hand: right fist out](docs/devpost/images/strike-card.jpg)
 
 All 26 moves carry one line on what the move is for outside the game. A few of them:
 
 - **Jab:** a fast hand straight out in front holds someone at arm's length so they cannot crowd you.
 - **Dodge:** moving sideways, not straight back, takes you out of an attack's path so you can get away.
 - **Double palm:** a firm push with both open hands opens a gap, and a gap is your chance to leave.
-- **Hammer fist:** the padded bottom of your fist is safer for your hand than knuckles if you must break free.
+- **Duck:** bend your knees, not your waist, to drop under a swing and still see what is coming.
 
 We wrote each line ourselves and checked it against a source: the England Boxing coaching handbook, a self-defense sheet from the Asian American Federation and the Center for Anti-Violence Education, safety guides from three police departments, and karate and Wing Chun schools. Ten sources in all, listed in the repo.
 

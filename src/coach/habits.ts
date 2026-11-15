@@ -39,8 +39,8 @@ const SHORT_DEG = 120;
 const FULL_STEP = 0.6;
 
 const TEXT: Record<HabitId, readonly [label: string, tip: string, trains: Habit["trains"]]> = {
-  dropped_hands: ["Hands drop after a punch", "Bring your fist straight back to your chin after every punch.", "block"],
-  low_guard: ["Low guard", "Keep both fists up by your cheeks, above your shoulders.", "block"],
+  dropped_hands: ["Hands drop after a punch", "Pull your fist back to your chin after each punch to cover your face.", "block"],
+  low_guard: ["Low guard", "Keep both fists up by your cheeks: that is what covers your head.", "block"],
   weak_left: ["Weaker left side", "Step further to your left. Move your whole chest, not only your head.", "dodge_left"],
   weak_right: ["Weaker right side", "Step further to your right. Move your whole chest, not only your head.", "dodge_right"],
   short_punches: ["Short punches", "Straighten your arm all the way on each punch, then pull it back.", "strike"],
