@@ -53,9 +53,9 @@
 @keyframes sky-pulse { from { stroke-opacity: 0.25; } to { stroke-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sky-card__pulse { animation: none; } }
 
-/* A phone held sideways (the touch guest): a narrow card under the monster's bar, above the touch strip. Word, target, key. */
-@media (max-height: 520px) {
-  .sky-card { top: 78px; right: 10px; width: 210px; transform: none; }
+/* A phone (the touch guest): a narrow card under the monster's bar, above the touch strip. Word, target, key. */
+@media (max-height: 520px), (max-width: 760px) {
+  .sky-card { top: 106px; right: 10px; width: 210px; transform: none; }
   .sky-card .sky-fig, .sky-card__situation, .sky-card__how { display: none; }
   .sky-card .sky-card__in, .sky-card--defend:not(.sky-card--full) .sky-card__in { padding: 48px 12px 16px; gap: 6px; }
   .sky-card--strike .sky-card__in, .sky-card--finish .sky-card__in,
@@ -64,3 +64,5 @@
   .sky-card .sky-card__target { font-size: 15px; }
   .sky-card__tag, .sky-card__hold { font-size: 15px; }
 }
+/* Upright, the score and power chips sit under the bars, so the card starts below them. */
+@media (max-width: 760px) { .sky-card { top: 150px; } }
