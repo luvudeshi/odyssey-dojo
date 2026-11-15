@@ -19,6 +19,7 @@ import { SAVE_BODY_BYTES } from "../lib/accountRules";
 import { MAX_SESSIONS, SESSION_MS, createAccounts, tables, tokenHash, verifyPassword } from "../lib/accounts";
 import { APPLICATION, QUERY_MS, STATEMENT_MS, failureCode, openDb, tlsFor } from "../lib/db";
 import type { Db } from "../lib/db";
+import { SIGNUPS_CLOSED_TEXT } from "../routes/account";
 
 const url = (process.env.TEST_DATABASE_URL ?? "").trim();
 const config: Config = {
@@ -371,5 +372,62 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
       expect((await call("POST", "/api/account/signin", { json: { name, password: PASSWORD }, headers: { ...guesser, "Cf-Connecting-Ip": "203.0.113.52" } })).status).toBe(200);
     }
     await signIn(name);
+  }, 30_000);
+
+  test("the hour and the total are counted in the database: past them a stranger is told sign-up is closed, sign-in goes on, and this machine is not held by the hour", async () => {
+    if (db === null) throw new Error("the database is not open");
+    const opened = db;
+    const started = clock;
+    const HOUR_MS = 60 * 60 * 1000;
+    const count = async (since: number | null): Promise<number> => (await sql<{ n: number }>(
+      `select count(*)::int as n from ${t.accounts} where $1::text is null or created_at > $1::timestamptz`, [since === null ? null : new Date(since).toISOString()],
+    ))[0]?.n ?? -1;
+    // A second server on the same tables, as the laptop and the hosted copy are on the same database. It has made
+    // nothing itself, and it lets strangers make two more accounts this hour than the tables already hold.
+    const madeThisHour = await count(started - HOUR_MS);
+    expect(madeThisHour).toBeGreaterThan(0);
+    const strict = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, caps: { perHour: madeThisHour + 2 }, isPublic: () => true });
+    const second = (await createApp({ config, ai: NO_AI, accounts: strict })).listen(0, "127.0.0.1");
+    await once(second, "listening");
+    const secondPort = (second.address() as AddressInfo).port;
+    const post = async (path: string, json: unknown, headers: Record<string, string> = {}): Promise<Answer & { retry: string | null }> => {
+      const response = await fetch(`http://127.0.0.1:${String(secondPort)}${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(json) });
+      const text = await response.text();
+      return { status: response.status, body: text === "" ? null : JSON.parse(text) as unknown, retry: response.headers.get("retry-after") };
+    };
+    const visitor = { "Cf-Connecting-Ip": "203.0.113.60", "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW", "X-Forwarded-For": "203.0.113.60" };
+    try {
+      const first = hero();
+      expect((await post("/api/account/signup", { name: first, password: PASSWORD }, visitor)).status).toBe(201);
+      expect((await post("/api/account/signup", { name: hero(), password: PASSWORD }, visitor)).status).toBe(201);
+      // The third finds the hour used up: by accounts this server never made itself, so its own memory could not have known.
+      const before = await count(null);
+      const refused = hero();
+      const closed = await post("/api/account/signup", { name: refused, password: PASSWORD }, visitor);
+      expect(closed).toEqual({ status: 429, body: { error: "signups_closed", message: SIGNUPS_CLOSED_TEXT }, retry: "600" });
+      // The same for a name that is taken: the answer says nothing about a name.
+      expect((await post("/api/account/signup", { name: first, password: PASSWORD }, visitor)).body).toEqual(closed.body);
+      expect(await count(null)).toBe(before);
+      expect(await sql(`select 1 from ${t.accounts} where name = $1::text`, [refused])).toHaveLength(0);
+      // Sign-in goes on, for the same visitor, and the first server reads the save of an account the second one made.
+      const session = await post("/api/account/signin", { name: first, password: PASSWORD }, visitor);
+      expect(session.status).toBe(200);
+      expect((await call("GET", "/api/account/save", { token: (session.body as Session).token })).status).toBe(200);
+      // This machine is not held by the hour.
+      expect((await post("/api/account/signup", { name: hero(), password: PASSWORD })).status).toBe(201);
+      // An hour on, the accounts of this run are older than an hour, and the visitor makes one again.
+      clock = started + HOUR_MS + 1_000;
+      expect((await post("/api/account/signup", { name: hero(), password: PASSWORD }, visitor)).status).toBe(201);
+
+      // The total: a server whose database holds as many accounts as it may answers 503, in the same words, also to this machine.
+      const brim = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, caps: { total: await count(null), keptForThisMachine: 0 } });
+      expect(await brim.signUp(hero(), PASSWORD)).toBe("full");
+      expect(await brim.signUp(hero(), PASSWORD, true)).toBe("full");
+      expect(await brim.signIn(first, PASSWORD)).toMatchObject({ name: first });
+    } finally {
+      clock = started;
+      second.close();
+      second.closeAllConnections();
+    }
   }, 30_000);
 });

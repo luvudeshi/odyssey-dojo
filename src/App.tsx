@@ -8,11 +8,10 @@ import "./screens/menus.css";
 import "./screens/cursor.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
-import type { GodReveal } from "./ai/revealGod";
 import { CharacterPicker } from "./characters/CharacterPicker";
-import { loadCharacter } from "./characters/characters";
+import { characterById, loadCharacter } from "./characters/characters";
 import type { CharacterId } from "./characters/characters";
-import { characterFromScan, confirmCharacter } from "./characters/godCharacter";
+import { confirmCharacter } from "./characters/godCharacter";
 import { assessmentFrom } from "./coach";
 import { Dojo } from "./coach/ui/Dojo";
 import { log } from "./core/log";
@@ -29,7 +28,6 @@ import { EndPanel } from "./screens/EndScreen";
 import { lessonsFrom } from "./lessons/lessons";
 import { recordDefense } from "./lessons/defenseStore";
 import { enemyFor, flowReducer, openAt, playable } from "./screens/flow";
-import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
 import { narrateIntro } from "./screens/hookups";
 import { MenuOrMuse as MainMenu } from "./ai/ui/museDoor"; // The main menu (screens/MainMenu), or the Muse's fight in its place when the address has ?ai=1.
@@ -42,6 +40,7 @@ import { WebcamGate } from "./screens/WebcamGate";
 import { getSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
+import { Cutscene } from "./screens/cutscene/Cutscene";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 // The one camera of the session: every calibration and fight reads it, and nothing between fights stops it.
@@ -63,11 +62,10 @@ export function App() {
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
+  // The boss cutscene plays over the map after a stop is picked, then the fight starts.
+  const [cut, setCut] = useState<number | null>(null);
 
-  // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
-  const [god, setGod] = useState<GodReveal | null>(null);
-  const [scanned, setScanned] = useState(false);
-  // The character shown in the picker (the scan's, or the stored one), and whether the player has confirmed it.
+  // The character shown in the picker (the stored one at first), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
   const [characterPicked, setCharacterPicked] = useState(false);
   const [confirmed, setConfirmed] = useState<CharacterId | null>(null);
@@ -196,11 +194,7 @@ export function App() {
     </>;
   }
 
-  if (flow.screen === "style" && tracker && !scanned) {
-    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} onBack={() => { dispatch({ type: "toTitle" }); }} />;
-  }
-
-  // After the scan, before the style: the five characters, with the god's one already chosen.
+  // Before the style: the characters, with the stored one already chosen.
   if (flow.screen === "style" && !characterPicked) {
     return (
       <CharacterPicker
@@ -221,19 +215,22 @@ export function App() {
 
   const enemy = tuned;
   if (flow.screen === "map" || !enemy || !flow.style) {
+    const cutBoss = cut === null ? undefined : ENEMIES[cut];
     return (
-      <QuestMap
-        enemies={ENEMIES}
-        cleared={flow.cleared}
-        open={(index) => CAN_PLAY[index] ?? false}
-        onEnter={(index) => {
-          const next = ENEMIES[index];
-          if (next) stopIntro.current = narrateIntro(next.id);
-          dispatch({ type: "enter", index, seed: Date.now() });
-        }}
-        onStyle={() => { dispatch({ type: "changeStyle" }); }}
-        onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
-      />
+      <>
+        <QuestMap
+          enemies={ENEMIES}
+          cleared={flow.cleared}
+          open={(index) => CAN_PLAY[index] ?? false}
+          onEnter={(index) => {
+            const next = ENEMIES[index];
+            if (next) setCut(index);
+          }}
+          onStyle={() => { dispatch({ type: "changeStyle" }); }}
+          onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
+        />
+        {cutBoss && cut !== null ? <Cutscene id={cutBoss.id} name={cutBoss.name} onDone={() => { setCut(null); stopIntro.current = narrateIntro(cutBoss.id); dispatch({ type: "enter", index: cut, seed: Date.now() }); }} /> : null}
+      </>
     );
   }
 
@@ -246,7 +243,6 @@ export function App() {
         tracker={tracker}
         link={flow.hosting ? hostLink : null}
         seed={flow.seed}
-        god={god?.god ?? null}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
         onQuit={() => { stopIntro.current(); hostLink?.stop(); dispatch({ type: "quit" }); }}
         renderEnd={(won, score, mastery, tally, events) => (
@@ -255,7 +251,7 @@ export function App() {
             defense={lessonsFrom(events)}
             enemyId={enemy.id}
             mastery={mastery}
-            card={(close) => <SharePanel god={god} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
+            card={(close) => <SharePanel god={null} hero={characterById(character).name} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
             onShown={() => {
               if (recorded.current !== flow.seed) {
                 recorded.current = flow.seed;

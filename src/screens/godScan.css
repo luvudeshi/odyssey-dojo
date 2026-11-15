@@ -1,2 +1,0 @@
-/* The Skip button on the god scan: always in the same corner, above the scan's own content. The :root:root outranks the storm kit's position: relative on buttons. */
-:root:root .pb-btn.scan-skip { position: fixed; top: 1rem; right: 1rem; z-index: 20; }

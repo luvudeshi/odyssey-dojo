@@ -5,6 +5,8 @@ import type { Save } from "./contracts";
 
 export type AccountFetch = (url: string, init: { method: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{
   readonly status: number;
+  /** The answer's headers, when the fetch has them. Only Retry-After is read (see BUSY_RETRIES). */
+  readonly headers?: { get(name: string): string | null };
   json(): Promise<unknown>;
 }>;
 
@@ -12,10 +14,23 @@ export type AccountFetch = (url: string, init: { method: string; headers?: Recor
 export const REQUEST_TIMEOUT_MS = 8_000;
 
 /**
- * Why a call did not work. The first seven are the server's own answers; "unreachable" is everything else:
- * no network, no answer in time, or an answer that is not the account server's (a page, a proxy error).
+ * A sign-up or sign-in the server had no place for (a 429 whose Retry-After is BUSY_WAIT_MAX_S or less: many people
+ * signing in in the same second) is sent again by itself, BUSY_RETRIES times at most. Each time it waits as long as
+ * the server said and up to BUSY_SPREAD_MS more, so browsers refused together do not come back together.
+ * A longer wait is a budget that is used up: that one is shown at once, as before. Nothing was done for a request
+ * answered 429, so sending it again makes no second account and no second session.
  */
-export type AccountError = "invalid" | "name_taken" | "wrong_name_or_password" | "slow_down" | "unavailable" | "signed_out" | "too_big" | "unreachable";
+export const BUSY_RETRIES = 2;
+export const BUSY_WAIT_MAX_S = 2;
+export const BUSY_SPREAD_MS = 400;
+
+/**
+ * Why a call did not work. All but the last are the server's own answers; "unreachable" is everything else:
+ * no network, no answer in time, or an answer that is not the account server's (a page, a proxy error).
+ * "signups_closed": the server makes no new accounts for now (it has made as many as it may), and sign-in still works.
+ */
+export type AccountError =
+  | "invalid" | "name_taken" | "wrong_name_or_password" | "slow_down" | "signups_closed" | "unavailable" | "signed_out" | "too_big" | "unreachable";
 
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: AccountError; readonly field?: string };
 
@@ -39,19 +54,33 @@ export interface AccountClient {
 interface Answer {
   readonly status: number;
   readonly data: unknown;
+  /** The whole seconds of the answer's Retry-After, or null when it has none. */
+  readonly retryAfterS: number | null;
+}
+
+/** Seconds to wait before sending a refused sign-up or sign-in again, or null when it is not to be sent again. */
+function busyFor(answer: Answer | null): number | null {
+  if (answer === null || answer.status !== 429 || answer.retryAfterS === null) return null;
+  return answer.retryAfterS <= BUSY_WAIT_MAX_S ? answer.retryAfterS : null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise<void>((resolve) => { setTimeout(resolve, ms); });
 }
 
 const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 409: "name_taken", 413: "too_big", 429: "slow_down", 503: "unavailable" };
 
 function failure(answer: Answer | null, on401: AccountError): { ok: false; error: AccountError; field?: string } {
   if (!answer) return { ok: false, error: "unreachable" };
-  const error = answer.status === 401 ? on401 : FAILURES[answer.status] ?? "unreachable";
   const data = answer.data;
+  // The server says this one by name, with a 429 or a 503. Any other body with those statuses reads by its status, as before.
+  const closed = (answer.status === 429 || answer.status === 503) && typeof data === "object" && data !== null && "error" in data && data.error === "signups_closed";
+  const error = closed ? "signups_closed" : answer.status === 401 ? on401 : FAILURES[answer.status] ?? "unreachable";
   const field = typeof data === "object" && data !== null && "field" in data && typeof data.field === "string" ? data.field.slice(0, 40) : null;
   return error === "invalid" && field ? { ok: false, error, field } : { ok: false, error };
 }
 
-export function createAccountClient(fetch: AccountFetch, base = ""): AccountClient {
+export function createAccountClient(fetch: AccountFetch, base = "", pause: (ms: number) => Promise<void> = sleep): AccountClient {
   const call = async (method: string, path: string, options: { token?: string; body?: string } = {}): Promise<Answer | null> => {
     try {
       const headers: Record<string, string> = {};
@@ -64,14 +93,22 @@ export function createAccountClient(fetch: AccountFetch, base = ""): AccountClie
         // A server that takes the request and never answers must not leave the form waiting for ever.
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      return { status: response.status, data: await response.json().catch(() => null) };
+      const after = Number(response.headers?.get("Retry-After") ?? Number.NaN);
+      return { status: response.status, data: await response.json().catch(() => null), retryAfterS: Number.isFinite(after) && after > 0 ? after : null };
     } catch {
       return null;
     }
   };
 
   const enter = async (path: "signup" | "signin", wanted: number, name: string, password: string): Promise<Result<Session>> => {
-    const answer = await call("POST", path, { body: JSON.stringify({ name, password }) });
+    const body = JSON.stringify({ name, password });
+    let answer = await call("POST", path, { body });
+    for (let again = 0; again < BUSY_RETRIES; again += 1) {
+      const wait = busyFor(answer);
+      if (wait === null) break;
+      await pause(wait * 1000 + Math.random() * BUSY_SPREAD_MS);
+      answer = await call("POST", path, { body });
+    }
     const session = answer?.status === wanted ? SessionResponseSchema.safeParse(answer.data) : null;
     return session?.success ? { ok: true, value: session.data } : failure(answer?.status === wanted ? null : answer, "wrong_name_or_password");
   };

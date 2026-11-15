@@ -59,9 +59,11 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
         poseRef.current = frame;
         history = pushFrame(history, frame);
       }
+      const phase = link.view()?.state.phase;
+      const asked = phase?.kind === "strike" ? phase.move : null;
       const taps = touched.current.map((move) => ({ move, quality: 0.7, player: 1 as const }));
       touched.current = [];
-      const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
+      const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history, asked) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
       noteInput(input, now / 1000);
       link.sendInput(input);
       const view = link.view();
