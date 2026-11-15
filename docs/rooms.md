@@ -6,7 +6,7 @@ Two players, one monster. One laptop hosts and runs the fight; a friend joins fr
 
 1. Start the built game and the server in one process: `npm run build && npm run server`. It listens on port 8787 and serves the game.
    In development, `npm run dev:all` works too: the QR code uses this laptop's Wi-Fi address with the port the page was opened on (run `vite --host` so a phone can reach it).
-2. Open `http://localhost:8787`, press **Fight together**, then **Host a room**.
+2. Open `http://localhost:8787`, press **Account** on the main menu, then **Host a room**.
 3. The screen shows a four-letter code and a QR code. The QR holds `http://<laptop's Wi-Fi address>:8787/?room=CODE`.
 4. When the friend joins, the screen says "A friend has joined." Press **Start**, pick a style and a stop as usual.
 5. If the server is not running, the host screen says so in one line and offers **Play alone**.
@@ -15,7 +15,7 @@ Set `PUBLIC_BASE_URL` (for example `PUBLIC_BASE_URL=http://192.168.1.20:8787 npm
 
 ## Guest
 
-Scan the QR code, or open the game and press **Fight together**, **Join a room**, and type the four letters in any case. The join screen says how this device will play:
+Scan the QR code, or open the game and press **Account**, **Join a room**, and type the four letters in any case. The join screen says how this device will play:
 
 | Device | Page | Plays with |
 |---|---|---|
@@ -84,6 +84,8 @@ A run fails, and the script exits 1, on a console error, a page error, a request
 No camera is used: the host's page has none and lands on keyboard controls, and the guest's page is refused the camera and gets the touch buttons, as a phone on plain http does. It needs Chrome and Playwright. Playwright is not a dependency of this repo: if `node_modules` has none, set `FPS_PLAYWRIGHT` to a playwright-core folder. `FPS_CHANNEL` and `FPS_GL` work as in `scripts/smoke.mjs`.
 
 **Where it stands (14 Nov, `f8b1891`):** `fight` and `host-leaves` pass with the guest on the stream and with the guest polling. `rejoin` fails both ways: the guest is let back in after about 20 seconds but its page stays on "You are in. Waiting for the host to start." (#222).
+
+**After the main menu (14 Nov, late, `5f81bdb`):** the script now goes main menu, **Account**, **Host a room** (the guest: **Account**, **Join a room**), and a stop on the map starts the fight with no intro screen. Opening the room and joining it pass in all three runs. Every run then fails at "host sees the guest and starts a fight": after **Start** the host's page, which has no camera, lands on the Account screen and never shows the style screen for good, so no fight begins. The camera fails ("Permission denied"), the game answers a failed camera by going back to the main menu, and since the main menu landed that also applies on the style screen; the Account panel is still open, so that is what shows. Before the main menu the host stayed on the style screen and played on the keyboard. The cause is in `src/App.tsx` and `src/screens/flow.ts`, not in the script. A host whose camera starts was not tried.
 
 What it does not show: two machines, a real phone, a real network or a tunnel, a camera on either side, or sound.
 
