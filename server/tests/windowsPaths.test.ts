@@ -10,6 +10,7 @@ import { ATHENA_LINES } from "../../src/audio/athenaLines";
 import { ALL_STORY_LINES } from "../../src/audio/narrationLines";
 import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
+import { loadConfig } from "../env";
 import type { Config } from "../env";
 import { decodeEnvFile, loadEnvFile } from "../lib/envFile";
 import { checkClips, checkPoseFiles } from "../lib/preflightChecks";
@@ -150,6 +151,8 @@ test("a .env file saved by a Windows editor or by PowerShell is still read", () 
   const want = { GEMINI_API_KEY: "first-value", ELEVENLABS_API_KEY: "second value", AI_SERVER_PORT: "9100" };
   const saved: Readonly<Record<string, Buffer>> = {
     "crlf.env": Buffer.from(text),
+    // No comment line first: the first byte of the file is the first letter of a key.
+    "plain.env": Buffer.from(text.slice(8)),
     // Notepad's "UTF-8 with BOM", and Out-File -Encoding utf8 in Windows PowerShell 5.
     "bom.env": Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text.slice(8))]),
     // What "echo ... > .env" writes in Windows PowerShell 5.
@@ -163,7 +166,11 @@ test("a .env file saved by a Windows editor or by PowerShell is still read", () 
     loadEnvFile(join(dir, name), env);
     expect(env, name).toEqual(want);
   }
+  expect(text.slice(8).startsWith("GEMINI_API_KEY=")).toBe(true);
   expect(decodeEnvFile(Buffer.from([0xef, 0xbb, 0xbf, 0x41, 0x3d, 0x31]))).toBe("A=1");
+  // A file with no mark keeps its first character.
+  expect(decodeEnvFile(Buffer.from("A=1"))).toBe("A=1");
+  expect(decodeEnvFile(Buffer.from([0xff, 0xfe, 0x41, 0x00, 0x3d, 0x00, 0x31, 0x00]))).toBe("A=1");
   expect(decodeEnvFile(Buffer.alloc(0))).toBe("");
 
   // What is already set wins, as with process.loadEnvFile, and a missing file changes nothing and warns about nothing.
@@ -181,12 +188,62 @@ test("a .env file saved by a Windows editor or by PowerShell is still read", () 
   expect(warn).toHaveBeenCalledTimes(1);
 });
 
+test("loadConfig reads the key from a .env at the root that starts with a byte order mark or is UTF-16", () => {
+  const cases: Readonly<Record<string, Buffer>> = {
+    "utf8-bom": Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("GEMINI_API_KEY=from-a-bom-file\r\n")]),
+    "utf16": Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from("GEMINI_API_KEY=from-a-utf16-file\r\n", "utf16le")]),
+    "plain": Buffer.from("GEMINI_API_KEY=from-a-plain-file\n"),
+  };
+  try {
+    for (const [name, bytes] of Object.entries(cases)) {
+      const root = join(scratch, `config-${name}`);
+      mkdirSync(root);
+      writeFileSync(join(root, ".env"), bytes);
+      // The file only fills what the environment does not have, so the key this machine may hold is taken out first.
+      vi.stubEnv("GEMINI_API_KEY", undefined);
+      expect(loadConfig(root).geminiKey, name).toBe(`from-a-${name === "utf8-bom" ? "bom" : name}-file`);
+    }
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+test("a .env that still holds NUL bytes after decoding warns once, names no value, and keeps the lines it can read", () => {
+  const line = "GEMINI_API_KEY=utf16-secret\r\n";
+  const saved: Readonly<Record<string, { bytes: Buffer; want: NodeJS.ProcessEnv }>> = {
+    // A UTF-8 file with a UTF-16 line added after it, which is what ">>" in Windows PowerShell 5 is believed to write.
+    "mixed.env": {
+      bytes: Buffer.concat([Buffer.from("ELEVENLABS_API_KEY=utf8-value\r\n"), Buffer.from(line, "utf16le")]),
+      want: { ELEVENLABS_API_KEY: "utf8-value" },
+    },
+    "utf16-no-mark.env": { bytes: Buffer.from(line, "utf16le"), want: {} },
+    "utf16-big-endian.env": { bytes: Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(line, "utf16le").swap16()]), want: {} },
+  };
+  const dir = join(scratch, "env-nul");
+  mkdirSync(dir);
+  for (const [name, { bytes, want }] of Object.entries(saved)) {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    writeFileSync(join(dir, name), bytes);
+    const env: NodeJS.ProcessEnv = {};
+    loadEnvFile(join(dir, name), env);
+    expect(env, name).toEqual(want);
+    expect(warn, name).toHaveBeenCalledTimes(1);
+    const said = String(warn.mock.calls[0]?.[0]);
+    expect(said, name).toContain("env_file_encoding");
+    expect(said, name).toContain("UTF-8");
+    expect(said, name).toContain(name);
+    expect(said, name).not.toContain("secret");
+    expect(said, name).not.toContain("utf8-value");
+    warn.mockRestore();
+  }
+});
+
 test("the preflight reads a clip index saved on Windows, and tells a Windows user how to get the pose files", () => {
   const audio = join(scratch, "audio");
   for (const [folder, id, index] of [
     // Git checks text files out with CRLF on Windows by default.
     ["athena", "win", '[\r\n  "win"\r\n]\r\n'],
-    ["sfx", "won", '﻿["won"]\r\n'],
+    ["sfx", "won", '\uFEFF["won"]\r\n'],
   ] as const) {
     mkdirSync(join(audio, folder), { recursive: true });
     writeFileSync(join(audio, folder, "index.json"), index);

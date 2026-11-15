@@ -8,7 +8,7 @@ import { log } from "../../src/core/log";
 export function decodeEnvFile(bytes: Buffer): string {
   if (bytes[0] === 0xff && bytes[1] === 0xfe) return bytes.subarray(2).toString("utf16le");
   const text = bytes.toString("utf8");
-  return text.startsWith("﻿") ? text.slice(1) : text;
+  return text.startsWith("\uFEFF") ? text.slice(1) : text;
 }
 
 /**
@@ -24,7 +24,12 @@ export function loadEnvFile(file: string, env: NodeJS.ProcessEnv = process.env):
     if (!missing) log("warn", "env_file_unreadable", error);
     return;
   }
-  for (const [name, value] of Object.entries(parseEnv(decodeEnvFile(bytes)))) {
-    if (value !== undefined) env[name] ??= value;
+  const text = decodeEnvFile(bytes);
+  // A NUL is left when the file, or a line added to it later, is UTF-16 without a mark this reader knows.
+  // Those lines hold no usable key, so say how to fix the file. Only its path is logged.
+  if (text.includes("\0")) log("warn", "env_file_encoding", { file, fix: "save this file as UTF-8" });
+  for (const [name, value] of Object.entries(parseEnv(text))) {
+    if (value === undefined || name.includes("\0") || value.includes("\0")) continue;
+    env[name] ??= value;
   }
 }
