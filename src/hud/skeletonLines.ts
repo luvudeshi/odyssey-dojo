@@ -10,6 +10,8 @@ const BONES: readonly (readonly [number, number])[] = [
   [J.rightShoulder, J.rightHip], [J.leftHip, J.rightHip], [J.leftHip, J.leftKnee],
   [J.leftKnee, J.leftAnkle], [J.rightHip, J.rightKnee], [J.rightKnee, J.rightAnkle],
 ];
+/** BONES from this index on are the four leg bones. */
+const FIRST_LEG_BONE = 8;
 const DOT_JOINTS: readonly number[] = [
   J.nose, J.leftShoulder, J.rightShoulder, J.leftElbow, J.rightElbow, J.leftWrist, J.rightWrist,
   J.leftHip, J.rightHip, J.leftKnee, J.rightKnee, J.leftAnkle, J.rightAnkle,
@@ -31,10 +33,13 @@ export function skeletonLines(image: readonly Landmark[], mirror: boolean, width
     return { x: (mirror ? landmark.x : 1 - landmark.x) * width, y: landmark.y * height, faint: landmark.visibility < FAINT_BELOW };
   };
   const lines: Segment[] = [];
-  for (const [a, b] of BONES) {
+  for (const [i, [a, b]] of BONES.entries()) {
     const from = at(a);
     const to = at(b);
-    if (from && to) lines.push({ from, to, faint: from.faint || to.faint });
+    if (!from || !to) continue;
+    // Legs are often out of frame; a faint guess there reads as noise, so skip the line.
+    if (i >= FIRST_LEG_BONE && (from.faint || to.faint)) continue;
+    lines.push({ from, to, faint: from.faint || to.faint });
   }
   const nose = at(J.nose);
   const left = at(J.leftShoulder);
