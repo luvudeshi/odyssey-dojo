@@ -1,7 +1,7 @@
 // The server listens on the whole network so phones can open replay pages, but the routes that spend API credits
 // only answer this machine. The socket's address decides, and a header can only take that away, never grant it:
 // a request that says it was passed on by a proxy or a tunnel is not local, even from a loopback socket.
-// Such a request gets the room paths a guest needs, the account paths, and nothing else under /api/, and its join attempts are counted.
+// Such a request gets the room paths a guest needs, the account paths, the hall of heroes, and nothing else under /api/, and its join attempts are counted.
 // The account paths carry a password, so they answer the tunnel (HTTPS) and this machine only, never another device on plain HTTP.
 import type { IncomingHttpHeaders } from "node:http";
 import type { NextFunction, Request, Response } from "express";
@@ -27,7 +27,7 @@ export function wasRelayed(headers: IncomingHttpHeaders): boolean {
   });
 }
 
-const ACCOUNT = /^\/api\/account\/(?:status|signup|signin|signout|save)\/?$/;
+const ACCOUNT = /^\/api\/account\/(?:status|signup|signin|signout|save|fights)\/?$/;
 
 /**
  * True for the account paths: a player signs in from any browser, so the tunnel reaches them as well as this machine.
@@ -40,23 +40,35 @@ export function isAccountPath(path: string): boolean {
   return ACCOUNT.test(path);
 }
 
+/**
+ * True for the hall of heroes: the best scores, read by anybody who has the game open, through the tunnel as well as on
+ * this machine. It carries hero names and scores, no password and no token that matters, and routes/heroes.ts answers
+ * it from memory. Another device on the network is still refused, as for the account paths: accounts are off there.
+ */
+export function isHeroesPath(path: string): boolean {
+  return path === "/api/heroes" || path === "/api/heroes/";
+}
+
 /** True for the API paths any device on the network may call: replays, health and the online rooms a second laptop joins. None of them spends a key. */
 export function isOpenPath(path: string): boolean {
   return path.startsWith("/api/replays/") || path === "/api/health" || path === "/api/health/"
     || path === "/api/rooms" || path.startsWith("/api/rooms/");
 }
 
-/** True for the API paths that read a small body of their own, so the app's large JSON parser must leave them alone (../app). */
+/**
+ * True for the API paths that read a small body of their own, so the app's large JSON parser must leave them alone (../app).
+ * The hall of heroes reads no body at all, and a stranger must not be able to make the server hold one for it.
+ */
 export function readsOwnBody(path: string): boolean {
-  return isOpenPath(path) || isAccountPath(path);
+  return isOpenPath(path) || isAccountPath(path) || isHeroesPath(path);
 }
 
 /**
  * True for the only API paths that answer a request that was passed on: what a guest needs inside a room (join, events, send, address)
- * and the account paths. Making a room is not one of them: that is "/api/rooms" itself, with nothing after it.
+ * the account paths and the hall of heroes. Making a room is not one of them: that is "/api/rooms" itself, with nothing after it.
  */
 export function isTunnelPath(path: string): boolean {
-  return /^\/api\/rooms\/[^/]/.test(path) || isAccountPath(path);
+  return /^\/api\/rooms\/[^/]/.test(path) || isAccountPath(path) || isHeroesPath(path);
 }
 
 /**
@@ -67,7 +79,7 @@ export function mayAnswer(path: string, address: string | undefined, headers: In
   const lower = path.toLowerCase();
   if (!lower.startsWith("/api/")) return true;
   // A loopback socket is this machine's own browser or a tunnel that runs here. Another device is refused whatever headers it sends.
-  if (isAccountPath(lower)) return isLoopback(address);
+  if (isAccountPath(lower) || isHeroesPath(lower)) return isLoopback(address);
   if (wasRelayed(headers)) return isTunnelPath(lower);
   return isOpenPath(lower) || isLoopback(address);
 }

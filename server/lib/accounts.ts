@@ -118,6 +118,18 @@ export function schemaSql(prefix = ""): readonly string[] {
   ];
 }
 
+/** One statement through the accounts' own door: the tables are made first, a failure is logged and becomes Unavailable. */
+export type Statement = (text: string, params: readonly unknown[]) => Promise<unknown[]>;
+const doors = new WeakMap<object, Statement>();
+
+/**
+ * The door these accounts run their statements through, for code that keeps tables of its own beside them (./heroes).
+ * Null for accounts that createAccounts did not make, such as a test's stand-in.
+ */
+export function statementsOf(accounts: object): Statement | null {
+  return doors.get(accounts) ?? null;
+}
+
 export interface Signed {
   readonly token: string;
   readonly name: string;
@@ -268,7 +280,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     );
   };
 
-  return {
+  const made: Accounts = {
     available: () => {
       if (now() - checkedAt < STATUS_CACHE_MS) return Promise.resolve(answers);
       checking ??= run("select 1", []).then(() => true, () => false).finally(() => { checking = null; });
@@ -374,4 +386,6 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       await held?.close();
     },
   };
+  doors.set(made, run);
+  return made;
 }

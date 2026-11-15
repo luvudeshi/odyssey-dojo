@@ -8,6 +8,7 @@ import { log } from "../src/core/log";
 import type { AiClients } from "./ai/types";
 import type { Config } from "./env";
 import type { Accounts } from "./lib/accounts";
+import type { Heroes } from "./lib/heroes";
 import { localOnly, readsOwnBody } from "./lib/localOnly";
 
 export interface Deps {
@@ -17,6 +18,8 @@ export interface Deps {
   readonly guard?: (request: Request, response: Response, next: NextFunction) => void;
   /** Replaces the accounts made from config.databaseUrl. Only tests set it, to give the tables a prefix and move the clock. */
   readonly accounts?: Accounts;
+  /** Replaces the hall of heroes made on top of the accounts. Only tests set it, to give its tables the same prefix and clock. */
+  readonly heroes?: Heroes;
 }
 
 export type Register = (router: Router, deps: Deps) => void;
