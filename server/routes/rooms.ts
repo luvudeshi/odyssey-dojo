@@ -4,8 +4,11 @@ import express from "express";
 import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
-import { SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S, clientKey, createRoomLimits } from "../lib/roomLimits";
-import { MAX_MESSAGE_BYTES, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
+import {
+  MAX_ROOMS_PER_CLIENT, MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
+  THIS_MACHINE, clientKey, createRoomLimits,
+} from "../lib/roomLimits";
+import { MAX_MESSAGE_BYTES, MAX_ROOMS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
 import type { Refusal, RelayMessage } from "../lib/rooms";
 
 /** A comment line this often keeps proxies and browsers from closing a quiet stream. */
@@ -27,8 +30,9 @@ function tooLarge(response: Response): void {
 
 /**
  * Reads a JSON body of at most `limit` bytes. The app's own parser skips these routes (see ../app), so nothing
- * larger is ever held: a body that says it is too long is refused before any of it is read, and one that does not
- * say is cut off at the limit and the rest thrown away as it arrives.
+ * larger is ever held. A body that says it is too long is refused before any of it is read. One that does not say
+ * is thrown away as it arrives once it passes the limit, and the 413 is written when it ends; a body that never
+ * ends is closed by the server's request timeout (REQUEST_TIMEOUT_MS).
  */
 function body(limit: number): RequestHandler {
   const parse = express.json({ limit });
@@ -68,13 +72,16 @@ export const register: Register = (router) => {
 
   router.post("/api/rooms", (request, response) => {
     const who = client(request);
-    const wait = limits.create(who, rooms.heldBy(who));
+    let wait = limits.create(who);
+    // A caller at its cap gets the place of a room it left behind: there is no call that closes a room.
+    if (wait === 0 && who !== THIS_MACHINE && rooms.heldBy(who) >= MAX_ROOMS_PER_CLIENT) wait = rooms.freeOne(who);
     if (wait > 0) {
-      log("warn", "room_create_limited", { rooms: rooms.size() });
       slowDown(response, wait);
       return;
     }
-    const room = rooms.create(who);
+    // Other callers stop short of the cap, so they can never take the last rooms from the laptop that runs the server.
+    const kept = who === THIS_MACHINE ? 0 : ROOMS_KEPT_FOR_THIS_MACHINE;
+    const room = rooms.size() - rooms.heldBy(THIS_MACHINE) >= MAX_ROOMS - kept ? null : rooms.create(who);
     if (room === null) {
       log("warn", "rooms_at_cap", { rooms: rooms.size() });
       response.status(503).json({ error: "too_many_rooms" });
@@ -102,18 +109,21 @@ export const register: Register = (router) => {
 
   router.get("/api/rooms/:code/events", (request, response) => {
     const who = client(request);
-    const release = limits.openStream(who);
+    const token = typeof request.query.token === "string" ? request.query.token : "";
+    const release = limits.openStream(who, `${request.params.code.toUpperCase()} ${token}`);
     if (release === null) {
       slowDown(response, STREAMS_RETRY_S);
       return;
     }
-    const token = request.query.token;
     // A stream that has ended is never written to again: that would raise an error nobody handles.
+    // A reader that has stopped reading is cut off, or every message sent to it would be held here until it hung up.
     const write = (text: string): void => {
-      if (!response.writableEnded) response.write(text);
+      if (response.writableEnded || response.destroyed) return;
+      if (response.writableLength > MAX_STREAM_BACKLOG_BYTES) response.destroy();
+      else response.write(text);
     };
     const push = (message: RelayMessage): void => { write(`data: ${JSON.stringify(message)}\n\n`); };
-    const attached = rooms.attach(request.params.code, typeof token === "string" ? token : "", {
+    const attached = rooms.attach(request.params.code, token, {
       message: push,
       end: () => { response.end(); },
     });
