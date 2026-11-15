@@ -36,6 +36,8 @@ import { WebcamGate } from "./screens/WebcamGate";
 import { getSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
+import { Cutscene } from "./screens/cutscene/Cutscene";
+import { LOOK } from "./ui/lookSwitch";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 // The one camera of the session: every calibration and fight reads it, and nothing between fights stops it.
@@ -57,6 +59,8 @@ export function App() {
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
+  // Draft ?look=a: the boss cutscene plays over the map after a stop is picked, then the fight starts.
+  const [cut, setCut] = useState<number | null>(null);
 
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
   const [god, setGod] = useState<GodReveal | null>(null);
@@ -198,19 +202,24 @@ export function App() {
 
   const enemy = tuned;
   if (flow.screen === "map" || !enemy || !flow.style) {
+    const cutBoss = cut === null ? undefined : ENEMIES[cut];
     return (
-      <QuestMap
-        enemies={ENEMIES}
-        cleared={flow.cleared}
-        open={(index) => CAN_PLAY[index] ?? false}
-        onEnter={(index) => {
-          const next = ENEMIES[index];
-          if (next) stopIntro.current = narrateIntro(next.id);
-          dispatch({ type: "enter", index, seed: Date.now() });
-        }}
-        onStyle={() => { dispatch({ type: "changeStyle" }); }}
-        onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
-      />
+      <>
+        <QuestMap
+          enemies={ENEMIES}
+          cleared={flow.cleared}
+          open={(index) => CAN_PLAY[index] ?? false}
+          onEnter={(index) => {
+            const next = ENEMIES[index];
+            if (next) stopIntro.current = narrateIntro(next.id);
+            if (LOOK === "a" && next) setCut(index);
+            else dispatch({ type: "enter", index, seed: Date.now() });
+          }}
+          onStyle={() => { dispatch({ type: "changeStyle" }); }}
+          onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
+        />
+        {cutBoss && cut !== null ? <Cutscene id={cutBoss.id} name={cutBoss.name} onDone={() => { setCut(null); dispatch({ type: "enter", index: cut, seed: Date.now() }); }} /> : null}
+      </>
     );
   }
 
