@@ -73,8 +73,10 @@ describe("the tip names what the body did", () => {
     expect(strikeFeedback("cross", turned(made(pose(HALF_RIGHT, READY)), "right"), 0.85).tip).toBe("Extend your arm fully");
   });
 
-  test("a cross thrown square to the camera: hips", () => {
-    expect(strikeFeedback("cross", made(pose(RIGHT_OUT, READY)), 0.85)).toMatchObject({ grade: "GREAT", tip: "Turn your hips into it" });
+  test("a clean cross thrown square to the camera is EXCELLENT with no tip: a webcam sees almost every cross square-on", () => {
+    expect(strikeFeedback("cross", made(pose(RIGHT_OUT, READY)), 0.85)).toEqual({ grade: "EXCELLENT", points: FEEDBACK_POINTS.EXCELLENT, tip: null });
+    expect(strikeFeedback("cross", made(pose(RIGHT_OUT, READY)), 0.6)).toEqual({ grade: "GREAT", points: FEEDBACK_POINTS.GREAT, tip: null });
+    expect(strikeFeedback("reverse_punch", made(pose(RIGHT_OUT, READY)), 0.85).tip).toBeNull();
   });
 
   test("a clean shape thrown slowly: speed", () => {
