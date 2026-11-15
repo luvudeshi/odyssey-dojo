@@ -4,7 +4,8 @@
 //   node scripts/smoke.mjs [--no-build] [--stops=polyphemus,scylla] [--cap=240] [--no-write]
 //
 // Exits non-zero when any stop has a page error, a console error, a request that failed or answered 4xx/5xx
-// (a 404 fails the run), a page that stopped answering, or a fight that did not end inside the cap.
+// (a 404 fails the run), a page that stopped answering, a fight that did not end inside the cap, or a fight in which
+// the bot never found the prompt card (so it never played).
 // A lost fight does not fail the run, and neither does a stop the map keeps locked ("not playable").
 //
 // Finding Playwright, the build, the preview server on a free port and the way into a stop are the same as in
@@ -166,12 +167,12 @@ function readHud() {
     const buttons = [...overlay.querySelectorAll("button")].map((button) => button.textContent?.trim() ?? "");
     return { over: true, won: !buttons.includes("Fight again"), title: overlay.querySelector("h1")?.textContent?.trim() ?? "", canvas: Boolean(document.querySelector(".fight canvas")) };
   }
-  const prompt = document.querySelector(".fight .prompt");
+  const prompt = document.querySelector(".fight .sky-card");
   if (!prompt) return { over: false, kind: null };
   return {
     over: false,
-    kind: prompt.classList.contains("defend") ? "defend" : "strike",
-    word: prompt.querySelector(".prompt-word")?.textContent?.trim() ?? "",
+    kind: prompt.classList.contains("sky-card--defend") ? "defend" : "strike",
+    word: prompt.querySelector(".sky-card__word")?.textContent?.trim() ?? "",
     label: prompt.querySelector("kbd")?.textContent?.trim() ?? "",
   };
 }
@@ -198,6 +199,8 @@ async function play(page, moveKeys, capMs) {
   const started = Date.now();
   let held = null;
   let lastStrike = 0;
+  // A fight that ends before the bot ever finds a prompt card means its selectors are stale: that fails, never passes.
+  let sawCard = false;
   const unknown = new Set();
   const release = async () => {
     if (held !== null) await page.keyboard.up(held);
@@ -206,14 +209,15 @@ async function play(page, moveKeys, capMs) {
   try {
     for (;;) {
       const elapsed = Date.now() - started;
-      if (elapsed >= capMs) return { result: "never ended", ms: elapsed, unknown };
+      if (elapsed >= capMs) return { result: sawCard ? "never ended" : "no prompt card", ms: elapsed, unknown };
       let hud;
       try {
         hud = await withTimeout(page.evaluate(readHud), POLL_TIMEOUT_MS, "poll timed out");
       } catch (error) {
         return { result: "hung", ms: Date.now() - started, unknown, detail: error instanceof Error ? error.message.split("\n")[0] : String(error) };
       }
-      if (hud.over) return { result: hud.won ? "won" : "lost", ms: Date.now() - started, unknown, title: hud.title, canvas: hud.canvas };
+      if (hud.over) return { result: !sawCard ? "no prompt card" : hud.won ? "won" : "lost", ms: Date.now() - started, unknown, title: hud.title, canvas: hud.canvas };
+      if (hud.kind) sawCard = true;
       const key = hud.kind ? keyFor(hud, moveKeys) : null;
       if (hud.kind && !key) unknown.add(hud.word);
       if (hud.kind === "defend" && key) {
@@ -287,7 +291,7 @@ async function runStop(browser, base, stop, moveKeys, capMs) {
 }
 
 const failed = (row) =>
-  row.result === "never ended" || row.result === "hung" || row.result === "crashed" ||
+  row.result === "never ended" || row.result === "no prompt card" || row.result === "hung" || row.result === "crashed" ||
   row.pageErrors.length > 0 || row.consoleErrors.length > 0 || row.badRequests.length > 0;
 
 const seconds = (row) => (row.seconds === null ? "-" : row.seconds.toFixed(1));
