@@ -42,11 +42,11 @@ export interface Lessons {
   readonly best: DefenceLesson | null;
   /** The defence with the lowest share that worked, of those tried at least twice; null if nothing got through. */
   readonly workOn: DefenceLesson | null;
-  /** Three or four plain sentences for a result screen (one if no attack was seen), each at most 110 characters. */
+  /** Three or four plain sentences for a result screen (one if no attack was seen), each at most 140 characters, so a move's whole teaches line fits. */
   readonly lines: readonly string[];
 }
 
-export const MAX_LINE = 110;
+export const MAX_LINE = 140;
 const MIN_TRIES = 2;
 const NEUTRAL = "No attacks to learn from yet. Step in, watch for the warning, and move.";
 const CLEAN = "Nothing got through. Seeing it early and moving is what gets you home.";
