@@ -36,7 +36,7 @@ About 118 requests for 90 different files, all from localhost, all answered 200 
 | What | When | Files |
 | --- | --- | --- |
 | Page | title | `/`, three scripts and one stylesheet under `/assets`, `/favicon.svg` |
-| Models | title | `/models/polyphemus/giant.glb`, `/models/hero/spartan.glb` |
+| Models | title | `/models/hero/spartan.glb` |
 | Voice | title | `/audio/athena/index.json` and its 58 clips, `/audio/narration/index.json`, `/audio/taunts/index.json` |
 | Sound effects | title | `/audio/sfx/index.json` and 11 clips |
 | Music | title | `/audio/music/index.json`, `menu.mp3`, `fight.mp3`, `win.mp3`, `loss.mp3` |

@@ -317,9 +317,7 @@ What changed since the second report:
 | `public/mediapipe/wasm/vision_wasm_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
 | `public/mediapipe/wasm/vision_wasm_module_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
 | `public/mediapipe/wasm/vision_wasm_module_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
-| `public/models/dev/RobotExpressive.glb` | 464 KB | CC0 | CREDITS.md:30 |
 | `public/models/hero/spartan.glb` | 758 KB | CC0 | CREDITS.md:36 |
-| `public/models/polyphemus/giant.glb` | 246 KB | CC0 | CREDITS.md:44 |
 | `public/models/suitors/suitor.glb` | 2.5 MB | CC0 | CREDITS.md:50 |
 | `public/textures/rock_surface_diff_1k.jpg` | 886 KB | CC0 | CREDITS.md:19 |
 | `public/textures/rock_surface_nor_gl_1k.jpg` | 1.2 MB | CC0 | CREDITS.md:19 |
