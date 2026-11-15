@@ -98,7 +98,7 @@ test("a frame with no shoulders scores 0", () => {
   expect(ghostCloseness(blank, move("jab").diagram, null)).toBe(0);
 });
 
-test("the move ghost switch: on by default, ?ghost=0 and ?ghost=1 override it", async () => {
+test("the move ghost switch: off by default, ?ghost=0 and ?ghost=1 override it", async () => {
   const { moveGhostEnabled, MOVE_GHOST_DEFAULT } = await import("../src/render/ghost/ghostSwitch");
   expect(moveGhostEnabled("")).toBe(MOVE_GHOST_DEFAULT);
   expect(moveGhostEnabled("?debug")).toBe(MOVE_GHOST_DEFAULT);
