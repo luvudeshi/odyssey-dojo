@@ -100,8 +100,9 @@ function readRules() {
   };
 }
 
-/** The reverse of `keyName` in src/coach/ui/Dojo.tsx: what the key hint shows for a move's key. */
-const keyLabel = (key) => (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
+/** As `keyName` in src/coach/ui/keyName.ts: what the key hint shows for a move's key (an arrow key is its glyph). */
+const ARROWS = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" };
+const keyLabel = (key) => ARROWS[key] ?? (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
 
 // ---------- the browser and the server (as in scripts/smoke.mjs) ----------
 
@@ -303,7 +304,10 @@ function readDojo() {
   const side = heading?.closest("section") ?? null;
   fits("the move title", heading, side);
   const guide = main.querySelector('section[aria-label^="How to do "]');
-  const figure = guide?.querySelector("svg") ?? null;
+  // The outline figure: an SVG of lines, or the 3D figure (a canvas inside .mg-3d).
+  const svg = guide?.querySelector("svg") ?? null;
+  const canvas = svg ? null : guide?.querySelector(".mg-3d canvas") ?? null;
+  const figure = svg ?? canvas;
   const figureBox = figure ? boxOf(figure) : null;
   const guideName = guide?.querySelector("h2") ?? null;
   fits("the outline's title", guideName, guide);
@@ -326,11 +330,12 @@ function readDojo() {
     heading: clean(heading), side: clean(side), key: clean(main.querySelector("kbd")),
     guide: guide ? {
       label: guide.getAttribute("aria-label") ?? "", name: clean(guideName),
-      lines: figure ? figure.querySelectorAll("line[data-a]").length : 0,
+      kind: svg ? "svg" : canvas ? "canvas" : "",
+      lines: svg ? svg.querySelectorAll("line[data-a]").length : 0,
       size: figureBox ? [Math.round(figureBox.right - figureBox.left), Math.round(figureBox.bottom - figureBox.top)] : [0, 0],
       onScreen: figureBox ? inside(figureBox, screen) : false,
       // Where the figure's limbs are right now: it changes from look to look while the outline plays.
-      pose: figure ? [...figure.querySelectorAll("line[data-a]")].map((line) => `${line.getAttribute("x2") ?? ""},${line.getAttribute("y2") ?? ""}`).join(" ") : "",
+      pose: svg ? [...svg.querySelectorAll("line[data-a]")].map((line) => `${line.getAttribute("x2") ?? ""},${line.getAttribute("y2") ?? ""}`).join(" ") : "",
       checks: checks.map(clean).filter((text) => text !== ""),
     } : null,
     strip: strip ? { count: clean(strip.querySelector("p")), chips } : null,
@@ -504,7 +509,7 @@ async function main() {
             if (!guide) wrong.outline.push(`${named} has no outline`);
             else {
               if (guide.label !== `How to do ${move.name}`) wrong.outline.push(`${named}: the outline is labelled "${guide.label}"`);
-              if (guide.lines < 8 || guide.size[0] < 100 || guide.size[1] < 100) wrong.outline.push(`${named}: the outline figure is missing or tiny (${String(guide.lines)} limbs, ${guide.size.join("x")} px)`);
+              if ((guide.kind !== "canvas" && guide.lines < 8) || guide.size[0] < 100 || guide.size[1] < 100) wrong.outline.push(`${named}: the outline figure is missing or tiny (${guide.kind === "canvas" ? "3D figure" : `${String(guide.lines)} limbs`}, ${guide.size.join("x")} px)`);
               else if (!guide.onScreen) wrong.outline.push(`${named}: the outline figure is partly off the screen`);
               if (guide.checks.length === 0) wrong.outline.push(`${named}: the checklist is empty`);
             }
@@ -526,11 +531,20 @@ async function main() {
               }
             }
           }
+          // A 3D figure (a canvas) has no limbs to read: two pictures of its box, a moment apart, must differ.
+          let canvasMoved = false;
+          if (rep === 0 && shown.guide?.kind === "canvas" && shown.phase === "show") {
+            const canvas = page.locator('section[aria-label^="How to do "] .mg-3d canvas').first();
+            const first = await canvas.screenshot({ timeout: 5000 }).catch(() => null);
+            await page.waitForTimeout(400);
+            const second = await canvas.screenshot({ timeout: 5000 }).catch(() => null);
+            canvasMoved = first !== null && second !== null && !first.equals(second);
+          }
           const turn = await until(page, (state) => state.open && state.move === id && state.rep === rep && (state.phase === "go" || state.phase === "result"), `${scope}: the turn for ${named}, try ${String(rep + 1)}`, STEP_TIMEOUT_MS, watchOutline);
           if (turn.phase === "go") {
             noteFaults(turn, move.name);
             if (turn.key !== keyLabel(move.key)) wrong.keys.push(`${named}: the key shown is "${turn.key}", the move's key is "${keyLabel(move.key)}"`);
-            if (rep === 0 && shown.guide && shown.phase === "show" && poses.size < 2) wrong.outline.push(`${named}: the outline figure did not move`);
+            if (rep === 0 && shown.guide && shown.phase === "show" && !(shown.guide.kind === "canvas" ? canvasMoved : poses.size >= 2)) wrong.outline.push(`${named}: the outline figure did not move`);
             if (rep === 0 && at === special.shotAt) await shot(page, `${style.id}-training`);
           }
           let want = rules.keyPoints;

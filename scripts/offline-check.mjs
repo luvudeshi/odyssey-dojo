@@ -3,7 +3,10 @@
 // keyboard fight against Polyphemus by reading the prompt card. No AI server is started: the /api proxy is
 // pointed at a closed port, so those calls fail the way they do when the server is down.
 //
-//   node scripts/offline-check.mjs [--no-build] [--no-camera] [--camera-seconds=75] [--max-seconds=240] [--json=<file>]
+//   node scripts/offline-check.mjs [--no-build | --dev] [--no-camera] [--camera-seconds=75] [--max-seconds=240] [--json=<file>]
+//
+// --dev serves the source through vite's dev server instead of building (for a machine where a build is too heavy).
+// The proxy is pointed at the same closed port. The built game is still the last word.
 //
 // Exit codes: 0 pass. 1 a request tried to leave localhost, or the page threw. 2 the check could not do its
 // job (no accepted defend or strike, the fight did not end, the pose tracker did not start, a screen was missing).
@@ -20,7 +23,7 @@ import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build, preview } from "vite";
+import { build, createServer as createViteServer, preview } from "vite";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const VIEWPORT = { width: 1280, height: 720 };
@@ -165,7 +168,9 @@ function readHud() {
 }
 
 /** The label on the card to the `event.key` the game listens for (see keyLabel in src/hud/Hud.tsx). */
-const keyFor = (label) => (label === "Space" ? " " : label.length === 1 ? label.toLowerCase() : label);
+/** The arrow keys are shown as glyphs on the cards (ARROWS in src/hud/sky/SkyPromptCard.tsx and src/coach/ui/keyName.ts). */
+const ARROW_KEYS = { "←": "ArrowLeft", "→": "ArrowRight", "↓": "ArrowDown", "↑": "ArrowUp" };
+const keyFor = (label) => ARROW_KEYS[label] ?? (label === "Space" ? " " : label.length === 1 ? label.toLowerCase() : label);
 
 /** A win's headline: "Polyphemus falls", or for a stop the ship gets past, "Past the Sirens" (src/enemies/wording.ts). */
 function wonHeading(heading) {
@@ -185,6 +190,8 @@ async function playFight(page, log, maxMs) {
   let held = null;
   // The strike whose card is gone and whose hit does not show on the monster's bar yet.
   let flying = null;
+  // The "Finish it" card was answered; whether it landed is known when the fight is over.
+  let finishing = false;
   for (;;) {
     const hud = await page.evaluate(readHud);
     if (flying && hud.enemy < flying.enemy) {
@@ -205,7 +212,9 @@ async function playFight(page, log, maxMs) {
         else if (hud.you < card.you) tally.hitsTaken += 1;
         else tally.unclear += 1;
       } else if (card.finish || card.target === "Finish it") {
-        tally.finisher = hud.ended && wonHeading(hud.heading);
+        // The win panel waits for the last blow to be seen (FightScreen), so it is not up yet when this card goes:
+        // the finisher counts as landed when the fight then ends in a win.
+        finishing = true;
       } else if (hud.enemy < card.enemy) tally.strikes += 1;
       else flying = { enemy: card.enemy, until: Date.now() + LAND_MS };
       card = null;
@@ -214,7 +223,8 @@ async function playFight(page, log, maxMs) {
     if (hud.ended || Date.now() - started > maxMs) {
       if (held !== null) await page.keyboard.up(held);
       if (flying) tally.strikesMissed += 1;
-      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: wonHeading(hud.heading), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
+      const won = wonHeading(hud.heading);
+      return { ...tally, finisher: finishing && hud.ended && won, keys: [...tally.keys], ended: hud.ended, won, heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
     }
     if (!card && id) {
       if (hud.key === null) throw new CheckError("the prompt card shows no key: key hints are off in the saved settings");
@@ -253,11 +263,15 @@ async function keyboardPass(browser, base, log, maxMs) {
     webFontsDeclared: await page.evaluate(() => document.fonts.size),
   };
   await keyboard.click();
+  // The character screen comes between Story mode and the styles: the character already chosen is taken as it is.
+  log.stage = "character";
+  await page.locator("button.character-done").click();
   log.stage = "style";
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
-  const styleButton = page.locator("main.menu button").first();
+  // The first style card. The first button of the screen is "Back" and the last is "Change character".
+  const styleButton = page.locator("main.menu button.flow-style").first();
   // textContent of the name, not innerText: the CSS may show it in upper case.
-  const style = await styleButton.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
+  const style = await styleButton.evaluate((element) => (element.querySelector(".menu-shield__name") ?? element).textContent?.trim() ?? "");
   await styleButton.click();
   log.stage = "map";
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
@@ -300,26 +314,34 @@ async function cameraPass(browser, base, log, ms) {
   await page.goto(base, { waitUntil: "load" });
   // The Story mode card starts the webcam. Its name is the card's own name followed by its line of small print.
   await page.getByRole("navigation", { name: "Main menu" }).getByRole("button", { name: /^Story mode/ }).click();
-  // A tracker that starts leads to the god scan; one that fails leads straight to the style menu with a notice.
+  // The main menu stays up until the camera has started. A tracker that starts leads to the character screen (on a
+  // build that still has the god scan, to the scan first); one that fails stays on the menu, under a card that says why.
   const scan = page.getByRole("button", { name: "Reveal my god" });
+  const character = page.locator("button.character-done");
   const styles = page.getByRole("heading", { name: "Choose your fighting style" });
-  await scan.or(styles).waitFor({ timeout: 90_000 });
-  const started = await scan.isVisible();
+  const problem = page.locator("main .overlay").filter({ has: page.getByRole("button", { name: "Play on the keyboard" }) });
+  await scan.or(character).or(problem).first().waitFor({ timeout: 90_000 });
+  const scanned = await scan.isVisible();
+  const started = scanned || await character.isVisible();
   const startedAt = Date.now();
-  const notice = started ? "" : (await page.locator("main.menu .notice").innerText()).trim();
+  const notice = started ? "" : (await problem.first().locator("p").first().innerText()).trim();
   let god = "";
   let calibration = "";
   let ending = "";
   if (started) {
-    // The scan sends one picture to /api/reveal. No server answers, so the god must be chosen in the browser.
-    await scan.click();
-    const begin = page.getByRole("button", { name: "Begin the journey" });
-    await begin.waitFor({ timeout: 40_000 });
-    // The god's name is laid in pebbles on a canvas: its words are in aria-label (plain text is the fallback).
-    god = (await page.locator("main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
-    await begin.click();
+    if (scanned) {
+      // The scan sends one picture to /api/reveal. No server answers, so the god must be chosen in the browser.
+      await scan.click();
+      const begin = page.getByRole("button", { name: "Begin the journey" });
+      await begin.waitFor({ timeout: 40_000 });
+      // The screen that names the god carries reveal-name on the page itself; before the storm restyle it was on the title.
+      god = (await page.locator("main.reveal.reveal-name h1, main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
+      await begin.click();
+    }
+    // The characters come before the styles; the one already chosen is taken as it is.
+    await character.click();
     await styles.waitFor();
-    await page.locator("main.menu button").first().click();
+    await page.locator("main.menu button.flow-style").first().click();
     await page.locator("button.stop.open").first().filter({ hasText: STOP }).click();
     // Calibration feeds camera pictures to the model. Nobody is in the test pattern, so it only has to keep running.
     calibration = ((await page.locator(".calibration h1, .overlay h1").first().textContent()) ?? "").trim();
@@ -379,7 +401,7 @@ function report(log, fight, camera, crash) {
   log.pageErrors.forEach((entry) => { say(`    [${entry.pass} ${entry.stage}] ${entry.text}`); });
   if (flag("no-camera")) say("\nCamera pass: skipped (--no-camera)");
   else if (camera) {
-    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, god scan chose "${camera.god}", then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s, on screen at the end: ${camera.ending}` : ""}`);
+    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, ${camera.god ? `god scan chose "${camera.god}"` : "no god scan on this build"}, then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s, on screen at the end: ${camera.ending}` : ""}`);
     list("pose files asked for, all from localhost", local.filter((entry) => entry.pass === "camera" && entry.path.startsWith("/mediapipe/")));
     list("calls to the AI server in the camera pass (none is running)", local.filter((entry) => entry.pass === "camera" && isApi(entry)));
   } else say("\nCamera pass: not finished");
@@ -407,24 +429,26 @@ function verdict(log, fight, camera, crash) {
 async function main() {
   const chromium = loadChromium();
   const maxMs = Number(option("max-seconds", "240")) * 1000;
-  if (!flag("no-build")) {
+  const dev = flag("dev");
+  if (!flag("no-build") && !dev) {
     say("Building...");
     await build({ root: ROOT, logLevel: "error" });
   }
-  const missing = POSE_FILES.filter((file) => !existsSync(join(ROOT, "dist", file)));
+  const missing = POSE_FILES.filter((file) => !existsSync(join(ROOT, dev ? "public" : "dist", file)));
   if (!flag("no-camera") && missing.length > 0) throw new CheckError(`the build has no pose files (${missing.join(", ")}): run make setup once with a network connection, or pass --no-camera`);
   const port = await freePort();
   const closed = `http://127.0.0.1:${String(await freePort())}`;
   const base = `http://127.0.0.1:${String(port)}`;
   // `vite preview` takes the dev proxy from vite.config.ts. Pointing it at a closed port keeps a server that
   // happens to be running on this machine out of the test: /api answers 502, as it does with the server down.
-  const server = await preview({ root: ROOT, logLevel: "silent", preview: { host: "127.0.0.1", port, strictPort: true, proxy: { "/api": closed, "/replays": closed } } });
+  const options = { host: "127.0.0.1", port, strictPort: true, proxy: { "/api": closed, "/replays": closed } };
+  const server = dev ? await (await createViteServer({ root: ROOT, logLevel: "silent", server: options })).listen() : await preview({ root: ROOT, logLevel: "silent", preview: options });
   const channel = process.env.FPS_CHANNEL ?? "chrome";
   const log = { t0: Date.now(), stage: "title", fightAt: null, firstPromptAt: null, requests: [], console: [], pageErrors: [] };
   let browser = null;
   try {
     browser = await chromium.launch({ headless: true, args: browserArgs(), ...(channel ? { channel } : {}) });
-    say(`Serving dist at ${base} with no AI server. Browser: ${channel || "chromium"} ${browser.version()}, headless.`);
+    say(`Serving ${dev ? "the source through vite dev" : "dist"} at ${base} with no AI server. Browser: ${channel || "chromium"} ${browser.version()}, headless.`);
     say("Every request that is not localhost or 127.0.0.1 is aborted and listed.");
     let fight = null;
     let camera = null;

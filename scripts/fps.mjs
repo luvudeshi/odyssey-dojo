@@ -1,7 +1,10 @@
 // Frame rate check: builds the game, serves it with `vite preview`, opens every stop in headless Chrome
 // and samples requestAnimationFrame in the fight at each quality level. Prints a table and writes docs/perf.md.
 //
-//   node scripts/fps.mjs [--no-build] [--no-headroom] [--seconds=10] [--stops=polyphemus,scylla] [--no-write]
+//   node scripts/fps.mjs [--no-build | --dev] [--no-headroom] [--seconds=10] [--stops=polyphemus,scylla] [--no-write]
+//
+// --dev serves the source through vite's dev server instead of building: React's development build, so the numbers
+// are a little lower than a player's, and the built game is still the last word.
 //
 // Two passes: one as a player sees it (headless Chrome caps at 60 fps), one with the cap off to show the headroom.
 //
@@ -99,7 +102,7 @@ function build() {
 
 async function waitForServer(url, server) {
   for (let i = 0; i < 100; i += 1) {
-    if (server.exitCode !== null) throw new Error("vite preview stopped before it answered");
+    if (server.exitCode !== null) throw new Error("vite stopped before it answered");
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -107,7 +110,7 @@ async function waitForServer(url, server) {
     }
     await new Promise((next) => setTimeout(next, 200));
   }
-  throw new Error(`vite preview did not answer at ${url}`);
+  throw new Error(`vite did not answer at ${url}`);
 }
 
 function glArgs(uncapped) {
@@ -183,7 +186,7 @@ function countDraws(ms) {
 }
 
 /**
- * Main menu -> Story mode, with the "Play with" setting on Keyboard -> first style -> this stop on the map -> fight. A stop on the map
+ * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the character already chosen -> first style -> this stop on the map -> fight. A stop on the map
  * starts its fight at once. Returns the style picked, or null when the map keeps this stop locked (a stop with no
  * 3D model stays locked, see `playable` in flow.ts).
  */
@@ -192,16 +195,19 @@ async function enterFight(page, base, stop) {
   await page.addInitScript(() => { localStorage.setItem("odyssey-dojo.settings", JSON.stringify({ controls: "keyboard" })); });
   await page.goto(`${base}/?stop=${stop.id}&debug`);
   await page.getByRole("button", { name: /^Story mode/ }).click();
+  // The character screen comes between Story mode and the styles: the character already chosen is taken as it is.
+  await page.locator("button.character-done").click();
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
-  const styleButton = page.locator("main.menu button").first();
+  // The first style card. The first button of the screen is "Back" and the last is "Change character".
+  const styleButton = page.locator("main.menu button.flow-style").first();
   // textContent, not innerText: the CSS shows buttons and headings in upper case, and innerText returns what is shown.
-  const style = await styleButton.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
+  const style = await styleButton.evaluate((element) => (element.querySelector(".menu-shield__name") ?? element).textContent?.trim() ?? "");
   await styleButton.click();
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
   // The map draws one button per enemy in ladder order; only the one for this stop will do.
   const button = page.locator("button.stop").nth(stop.index);
   if (!(await button.evaluate((element) => element.classList.contains("open")))) return null;
-  // The click starts the fight with no screen in between, so the stop's name is checked on the button itself.
+  // The click starts the fight (after the boss cutscene, where the build has one), so the stop's name is checked on the button itself.
   const label = (await button.textContent()) ?? "";
   if (!label.toLowerCase().includes(stop.name.toLowerCase())) throw new Error(`stop ${String(stop.index + 1)} on the map reads "${label.trim()}" instead of "${stop.name}"`);
   await button.click();
@@ -482,13 +488,13 @@ async function main() {
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
   try {
-    if (!flag("no-build")) {
+    if (!flag("no-build") && !flag("dev")) {
       say("Building...");
       await build();
     }
     const port = await freePort();
     const base = `http://127.0.0.1:${String(port)}`;
-    server = vite(["preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
+    server = vite([...(flag("dev") ? [] : ["preview"]), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
     await waitForServer(base, server);
     const capped = await runPass(chromium, base, stops, seconds, false, () => TARGET_FPS);
     // With the cap off a scene cannot be drawn slower than with it on, so a row that is has been disturbed.
