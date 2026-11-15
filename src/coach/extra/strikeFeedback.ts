@@ -109,13 +109,22 @@ const dropOf = (frame: PoseFrame, baseline: Baseline | null): number =>
   baseline && baseline.shoulderWidth > 0 ? (shoulderCenter(frame).y - baseline.shoulderY) / baseline.shoulderWidth : NaN;
 
 // The checks. Thresholds are in the units of the helpers they read: shoulder widths of the picture, or degrees.
+/**
+ * A punching elbow reads as straight from STRAIGHT_FROM degrees and as a full miss at BENT_AT. A fist thrown at the
+ * camera reads 20 to 30 degrees short of straight (handSignals.ts), and the strike detector counts an arm as out
+ * from about 104 degrees, so the tip ("Extend your arm fully") only comes under about 128 degrees.
+ */
+const STRAIGHT_FROM = 135;
+const BENT_AT = 105;
 const extend: Check = {
   tips: ["Extend your arm fully"], measures: "elbow angle of the punching arm at its straightest",
-  miss: ({ top, side }) => (armSeen(top, side) ? off(elbowAngle(top, side), 150, 110) : 0),
+  miss: ({ top, side }) => (armSeen(top, side) ? off(elbowAngle(top, side), STRAIGHT_FROM, BENT_AT) : 0),
 };
 const extendBoth: Check = {
   tips: ["Extend both arms fully"], measures: "the less straight elbow at the end of the push",
-  miss: ({ top }) => (armSeen(top, "left") && armSeen(top, "right") ? off(Math.min(elbowAngle(top, "left"), elbowAngle(top, "right")), 150, 110) : 0),
+  miss: ({ top }) => (armSeen(top, "left") && armSeen(top, "right")
+    ? off(Math.min(elbowAngle(top, "left"), elbowAngle(top, "right")), STRAIGHT_FROM, BENT_AT)
+    : 0),
 };
 const guardHand: Check = {
   tips: ["Guard hand by your chin"], measures: "height of the other wrist against the shoulder line as the strike lands", weight: 0.7,
@@ -125,8 +134,12 @@ const handsUp: Check = {
   tips: ["Keep your hands up"], measures: "height of the lower wrist against the shoulder line", weight: 0.45,
   miss: ({ top }) => (seen(top, JOINT.leftWrist, JOINT.rightWrist) ? off(lowerHand(top), -0.9, -1.7) : 0),
 };
+/**
+ * A webcam sees almost every punch square-on, so the turn alone never costs a grade or gives a tip: its weight
+ * keeps a full miss under TIP_AT. It is kept so the table still names what is measured.
+ */
 const hips: Check = {
-  tips: ["Turn your hips into it"], measures: "how far the striking shoulder has turned in front of the other (the shoulders follow the hips)", weight: 0.45,
+  tips: ["Turn your hips into it"], measures: "how far the striking shoulder has turned in front of the other (the shoulders follow the hips)", weight: 0.2,
   miss: ({ top, side }) => (armSeen(top, side) ? off(turn(top, side), 0.2, -0.05) : 0),
 };
 const snap = (tip: string): Check => ({

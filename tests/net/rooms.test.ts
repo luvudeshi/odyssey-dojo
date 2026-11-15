@@ -261,6 +261,8 @@ test("a relay that cannot be reached is an answer, not an exception", async () =
   expect(await openRoom(down, { code: "KXTR", token: "t" }).send({ type: "end", won: true })).toBe(false);
   const full: NetDeps = { ...down, fetch: () => Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({ error: "too_many_rooms" }) }) };
   expect(await createRoom(full)).toBe("too_many_rooms");
+  const bare: NetDeps = { ...down, fetch: () => Promise.resolve({ ok: false, status: 503, json: () => Promise.reject(new Error("not json")) }) };
+  expect(await createRoom(bare)).toBe("unreachable");
   const odd: NetDeps = { ...down, fetch: () => Promise.resolve({ ok: true, status: 200, json: () => Promise.reject(new Error("not json")) }) };
   expect(await createRoom(odd)).toBe("unreachable");
 });

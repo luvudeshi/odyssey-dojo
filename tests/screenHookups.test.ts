@@ -191,6 +191,9 @@ const WIRED: readonly Wired[] = [
   { feature: "FaceTime card on Multiplayer", file: "screens/Multiplayer.tsx", symbol: "FaceTimeCard", from: "../facetime/ui/FaceTimeCard", uses: ["<FaceTimeCard"] },
   { feature: "a kept seat is taken back on the Join card", file: "screens/RoomJoin.tsx", symbol: "keptRoom", from: "./seatStore", uses: ["keptRoom(store)", "joinRoomAgain("] },
   { feature: "a guest who leaves on purpose gives up the seat", file: "screens/GuestFight.tsx", symbol: "forgetSeat", from: "./seatStore", uses: ["forgetSeat("] },
+  { feature: "waist-up play: are the legs in the picture", file: "screens/FightScreen.tsx", symbol: "legsInView", from: "../moves/waistUp", uses: ["legs = legsInView(history, legs)", "step(current, enemy, style, input, dt, !tracker || keyboardMode || legs)"] },
+  { feature: "waist-up play: never ask for a move the camera cannot see", file: "combat/engine.ts", symbol: "askable", from: "../moves/waistUp", uses: ["askable(picked, legs)"] },
+  { feature: "waist-up play: the move asked for in its place", file: "combat/engine.ts", symbol: "swapFor", from: "../moves/waistUp", uses: ["swapFor(picked, style, spot.item.moves)"] },
 ];
 
 describe("read as text: the screen imports the piece and uses it", () => {
@@ -216,14 +219,7 @@ interface NotWired {
  * BUILT BUT NOT WIRED on main. Nothing outside the feature's own files names the symbol, so no player can reach it.
  * When you mount one, its test fails: delete the row here and add a row to WIRED (or a rendered test above).
  */
-const NOT_WIRED: readonly NotWired[] = [
-  { feature: "two players on one camera: the card on Multiplayer", symbol: "DuoCard", own: ["duo/"], wiredBy: "#28, src/duo/mount.diff (src/screens/Multiplayer.tsx)" },
-  { feature: "two players on one camera: the tracker follows two bodies", symbol: "duoCamera", own: ["duo/"], wiredBy: "#28, src/duo/mount.diff (src/App.tsx, src/hud/CameraView.tsx, src/pose/tracker.ts)" },
-  { feature: "two players on one camera: the second figure in the scene", symbol: "SecondFigure", own: ["duo/"], wiredBy: "#28, src/duo/mount.diff" },
-  { feature: "waist-up play: are the legs in the picture", symbol: "legsInView", own: ["moves/waistUp.ts"], wiredBy: "#239, docs/waist-up.md (the fight)" },
-  { feature: "waist-up play: never ask for a move the camera cannot see", symbol: "askable", own: ["moves/waistUp.ts"], wiredBy: "#239, docs/waist-up.md (the fight)" },
-  { feature: "waist-up play: the move asked for in its place", symbol: "swapFor", own: ["moves/waistUp.ts"], wiredBy: "#239, docs/waist-up.md (the fight)" },
-];
+const NOT_WIRED: readonly NotWired[] = [];
 
 /** Every .ts and .tsx file under src/, as paths from src/ with forward slashes. */
 function sources(): readonly string[] {
