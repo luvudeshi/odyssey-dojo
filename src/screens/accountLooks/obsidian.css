@@ -1,0 +1,41 @@
+/* Look D: obsidian and lava. A wall of black glass shards; won deeds glow molten from inside. */
+.acx--d { background: radial-gradient(ellipse 80% 70% at 50% 50%, #4a0e04, #1a0402 70%, #0a0201); }
+.acx--d .acx__stage { background: radial-gradient(ellipse 60% 60% at 50% 45%, #8a2208, #3a0a03 60%, #1a0402); }
+.acx-d-wall { inset: 0; width: 1440px; height: 800px; pointer-events: none; }
+.acx-d-shard polygon { transition: stroke 120ms ease; }
+.acx-d-shard.is-active polygon:first-child { stroke: #fff2c8; stroke-width: 4; }
+
+.acx-d-deed { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 4px 6px; text-align: left; background: none; border: 0; border-radius: 6px; cursor: pointer; color: #e6ddd6; }
+.acx-d-deed__top { display: flex; align-items: center; gap: 8px; }
+.acx-d-deed__top small { font: 700 13px var(--pb-font-body); letter-spacing: 0.08em; text-transform: uppercase; color: #b4a8a2; }
+.acx-d-deed__icon { width: 34px; height: 34px; stroke: #ff8a3a; stroke-width: 3.4; opacity: 0.8; }
+.acx-d-deed b { font: 700 18px/1.12 var(--pb-font-body); color: #f4ece6; }
+.acx-d-deed__how { font: 500 15px/1.25 var(--pb-font-body); color: #cfc4bd; }
+.acx-d-deed .acx-progress { margin-top: 2px; color: #ff8a3a; }
+.acx-d-deed .acx-progress__bar { width: 64px; background: #ffffff1c; }
+.acx-d-deed .acx-progress__num { font-size: 15px; color: #f4ece6; }
+.acx-d-deed.is-done { color: #fff1d6; }
+.acx-d-deed.is-done .acx-d-deed__top small { color: #ffd27a; }
+.acx-d-deed.is-done .acx-d-deed__icon { stroke: #ffd27a; opacity: 1; filter: drop-shadow(0 0 6px #ff6a00); }
+.acx-d-deed.is-done b { color: #fff4dc; text-shadow: 0 0 10px #ff5a00, 0 1px 2px #2a0602; }
+.acx-d-deed.is-done .acx-d-deed__how { color: #ffe6cc; text-shadow: 0 1px 2px #2a0602; }
+.acx .acx-d-deed:focus-visible { outline: 3px solid #fff2c8; outline-offset: 2px; }
+
+.acx-d-slab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.acx-d-slab h1 { font: 700 14px var(--pb-font-body); letter-spacing: 0.36em; text-transform: uppercase; color: #ff9a4a; }
+.acx-d-slab .acx-name { align-items: center; }
+.acx-d-slab .acx-name__label { color: #d8b8a4; }
+.acx-d-slab .acx-name input { width: 316px; text-align: center; font: 700 46px var(--font-display); color: #ffe2a0;
+  text-shadow: 0 0 4px #ffb347, 0 0 14px #ff6a00, 0 0 34px #d02a00, 0 0 60px #a01a00; }
+.acx-d-slab .acx-name input::placeholder { color: #ff9a4a88; }
+.acx-d-slab .acx-stats { gap: 26px; margin-top: 4px; }
+.acx-d-slab .acx-stats dd { font-size: 30px; color: #ffd27a; text-shadow: 0 0 12px #ff6a00; }
+.acx-d-slab .acx-stats dt { color: #d8b8a4; }
+.acx-d-slab .acx-stats__icon { stroke: #ff8a3a; }
+.acx-d-total { margin: 8px 0 0; font: 600 18px var(--pb-font-body); color: #e6ddd6; }
+.acx-d-total b { font: 700 30px var(--font-display); color: #ffb347; text-shadow: 0 0 14px #ff6a00; }
+.acx-d-slab ul { width: 280px; margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.acx-d-slab li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #ff7a1a33; font: 600 16px var(--pb-font-body); color: #e6ddd6; }
+.acx-d-slab li b { color: #ffb347; }
+.acx-d-foot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.acx-d-foot .pb-btn { width: 240px; }

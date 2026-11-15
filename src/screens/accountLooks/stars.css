@@ -1,0 +1,49 @@
+/* Look B: among the stars. Night sky over the wine-dark sea, a standing stone on the shore. */
+.acx--b { background: linear-gradient(#05071a 0%, #0c0d2c 38%, #241238 66%, #4a1434 73.6%, #12050e 74%, #0e0309 100%); }
+.acx--b .acx__stage { background: radial-gradient(ellipse 70% 40% at 50% 74%, #6a1f4a55, transparent 70%), linear-gradient(#05071a 0%, #0c0d2c 40%, #241238 70%, #3a1236 100%); }
+.acx-b-sky, .acx-b-sea, .acx-b-lines { inset: 0; width: 1440px; height: 800px; pointer-events: none; }
+.acx-b-lines line { stroke: #b8a9d8; stroke-opacity: 0.35; stroke-width: 1.4; stroke-dasharray: 3 6; }
+.acx-b-lines line.is-lit { stroke: #ffd88a; stroke-opacity: 0.9; stroke-width: 2.4; stroke-dasharray: none; filter: drop-shadow(0 0 4px #ffb84a); }
+
+.acx-b-title { transform: translateX(-50%); white-space: nowrap; font: italic 600 15px var(--font-display); letter-spacing: 0.24em; text-transform: uppercase; color: #c9b6ee; text-shadow: 0 0 10px #05071a; }
+.acx-b-title b { margin-left: 6px; color: #ffd88a; font-style: normal; }
+
+.acx-b-star { display: flex; align-items: center; gap: 4px; padding: 0 6px 0 0; background: none; border: 0; border-radius: 8px; cursor: pointer; }
+.acx-b-star__glyph { flex: none; width: 30px; height: 30px; overflow: visible; transition: transform 140ms ease; }
+.acx-b-star__name { font: 600 17px/1.1 var(--pb-font-body); white-space: nowrap; color: #cfc6e6; text-shadow: 0 0 6px #05071a, 0 0 2px #05071a; }
+.acx-b-star.is-done .acx-b-star__name { color: #fff3d6; font-weight: 700; }
+.acx-b-star--r { transform: translate(-15px, -15px); }
+.acx-b-star--l { transform: translate(calc(-100% + 15px), -15px); flex-direction: row-reverse; padding: 0 0 0 6px; }
+.acx-b-star--b { transform: translate(-50%, -15px); flex-direction: column; padding: 0 4px 2px; }
+.acx-b-star--t { transform: translate(-50%, calc(-100% + 15px)); flex-direction: column-reverse; padding: 2px 4px 0; }
+.acx-b-star:is(:hover, .is-active) .acx-b-star__glyph { transform: scale(1.5); }
+.acx-b-star:is(:hover, .is-active) .acx-b-star__name { color: #ffd88a; }
+
+.acx-b-head { left: 44px; top: 40px; width: 330px; }
+.acx-b-head span { font: 700 14px var(--pb-font-body); letter-spacing: 0.3em; text-transform: uppercase; color: #ffd88a; }
+.acx-b-head h1 { margin-top: 6px; font: 700 36px/1.05 var(--font-display); color: #f4ecff; text-shadow: 0 0 22px #8f7ad8; }
+.acx-b-head p { margin: 10px 0 0; font: 600 19px var(--pb-font-body); color: #d9d0f0; }
+.acx-b-head p b { font: 700 30px var(--font-display); color: #ffd88a; }
+
+.acx-b-rock { left: 20px; top: 556px; width: 400px; height: 250px; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 50px 40px 0;
+  clip-path: polygon(0 26%, 10% 12%, 26% 8%, 40% 0, 62% 4%, 80% 10%, 94% 22%, 100% 40%, 100% 100%, 0 100%);
+  background:
+    radial-gradient(ellipse 70% 50% at 40% 10%, #d6d0e260, transparent 70%),
+    repeating-linear-gradient(170deg, #ffffff07 0 2px, transparent 2px 13px),
+    linear-gradient(170deg, #9a93a6 0%, #7b7488 45%, #4e4858 80%, #2c2834 100%); }
+.acx-b-rock .acx-name { align-items: center; }
+.acx-b-rock .acx-name__label { color: #2a2530; text-shadow: 0 1px 0 #d8d2e0; }
+.acx-b-rock .acx-name input { width: 236px; text-align: center; font: 700 32px var(--font-display); color: #231e29; text-shadow: 0 1px 0 #e4dfec, 0 -1px 0 #3a3440; border-bottom: 2px solid #3a344066; border-radius: 0; }
+.acx-b-rock .acx-name input::placeholder { color: #3a3440aa; }
+.acx-b-rock .acx-stats { gap: 20px; }
+.acx-b-rock .acx-stats dd { color: #231e29; text-shadow: 0 1px 0 #e4dfec; }
+.acx-b-rock .acx-stats dt { color: #2a2530; font-size: 12px; }
+.acx-b-rock .acx-stats__icon { stroke: #2a2530; }
+
+.acx-b-detail { left: 460px; top: 628px; width: 400px; gap: 4px; text-shadow: 0 0 8px #0e0309; }
+.acx-b-detail .acx-detail__tag { color: #ffd88a; }
+.acx-b-detail .acx-detail__name { font-size: 30px; color: #fff3d6; }
+.acx-b-detail .acx-detail__how { color: #f1e2ec; }
+.acx-b-detail .acx-progress { margin-top: 4px; color: #ffd88a; }
+.acx-b-detail .acx-progress__num { color: #f6eedc; }
+.acx-b-actions { right: 44px; bottom: 40px; width: 250px; display: grid; gap: 12px; }

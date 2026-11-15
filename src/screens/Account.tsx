@@ -9,6 +9,14 @@ import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
 import { Button, installGround, Panel, PebbleHeading } from "../ui/pebble";
 import "./account.css";
+import { look } from "../ui/lookSwitch";
+import { Hall } from "./accountLooks/Hall";
+import { Obsidian } from "./accountLooks/Obsidian";
+import { Shield } from "./accountLooks/Shield";
+import { Stars } from "./accountLooks/Stars";
+
+// Draft round two: each ?look is a whole scene of its own. Delete the ones not picked.
+const LOOKS = { a: Shield, b: Stars, c: Hall, d: Obsidian } as const;
 
 function Section(props: { icon: IconName; title: string; extra?: string; className?: string; children: React.ReactNode }) {
   return (
@@ -38,6 +46,13 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
   const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => { installGround(); }, []);
   const feats = achievements(profile, props.enemies);
+  if (look) {
+    const Scene = LOOKS[look];
+    return <>
+      <Scene profile={profile} feats={feats} onBack={props.onBack} onSettings={() => { setSettingsOpen(true); }} />
+      {settingsOpen && <SettingsPanel onClose={() => { setSettingsOpen(false); }} />}
+    </>;
+  }
   return (
     <Panel as="main" ornament className="menu menu--account">
       <PebbleHeading as="h1" text="Account" px={48} tone="ochre" />

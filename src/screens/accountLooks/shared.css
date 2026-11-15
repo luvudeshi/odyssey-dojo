@@ -1,0 +1,30 @@
+/* Draft round two of the Account screen: the stage every direction draws on, and the bare parts they restyle. */
+.acx { position: fixed; inset: 0; overflow: hidden; color: var(--pb-text); font-family: var(--pb-font-body); }
+.acx__stage { position: absolute; left: 50%; top: 50%; width: 1440px; height: 800px; transform: translate(-50%, -50%) scale(var(--k, 1)); transform-origin: center; }
+.acx__stage > * { position: absolute; }
+.acx button { font-family: inherit; color: inherit; }
+.acx :is(button, input):focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
+.acx h1 { margin: 0; }
+
+.acx-name { display: flex; flex-direction: column; gap: 2px; }
+.acx-name__label { font: 700 13px var(--pb-font-body); letter-spacing: 0.16em; text-transform: uppercase; }
+.acx-name input { min-width: 0; padding: 4px 8px; font: 700 26px var(--pb-font-body); color: var(--pb-text); background: none; border: 0; border-radius: 6px; }
+
+.acx-stats { display: flex; margin: 0; }
+.acx-stats__one { display: grid; justify-items: center; }
+.acx-stats dd { margin: 0; font: 700 26px/1.05 var(--pb-font-body); }
+.acx-stats dt { font: 600 13px var(--pb-font-body); letter-spacing: 0.1em; text-transform: uppercase; }
+.acx-stats__icon { width: 22px; height: 22px; }
+
+.acx-detail { display: flex; flex-direction: column; }
+.acx-detail__tag { font: 700 14px var(--pb-font-body); letter-spacing: 0.2em; text-transform: uppercase; }
+.acx-detail__name { font: 700 34px/1.1 var(--font-display); }
+.acx-detail__how { font: 500 20px/1.3 var(--pb-font-body); }
+
+.acx-progress { display: flex; align-items: center; gap: 10px; }
+.acx-progress__bar { position: relative; flex: none; width: 160px; height: 8px; border-radius: 4px; background: #ffffff24; overflow: hidden; }
+.acx-progress__bar i { position: absolute; inset: 0 auto 0 0; background: currentColor; }
+.acx-progress__num { font: 700 16px var(--pb-font-body); }
+
+.acx-btn__icon { width: 24px; height: 24px; margin-right: 8px; vertical-align: -6px; stroke: currentColor; }
+.acx .pb-btn { min-height: 48px; padding: 8px 18px; font-size: 18px; white-space: nowrap; }

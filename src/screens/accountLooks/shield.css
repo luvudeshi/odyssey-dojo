@@ -1,0 +1,54 @@
+/* Look A: the shield of the hero. A forge-dark room lit from below, and one bronze shield that fills its height. */
+.acx--a { background: radial-gradient(ellipse 60% 75% at 50% 58%, #5a230b 0%, #2a1208 42%, #0e0705 78%, #070403 100%); }
+.acx-a-embers { inset: 0; pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 78%, #ff9a3a 0 1.6px, transparent 2.4px), radial-gradient(circle at 18% 64%, #ffb45a 0 1.2px, transparent 2px),
+    radial-gradient(circle at 8% 52%, #ff8a2a 0 1px, transparent 1.8px), radial-gradient(circle at 25% 86%, #ffc070 0 1.4px, transparent 2.2px),
+    radial-gradient(circle at 84% 70%, #ff9a3a 0 1.6px, transparent 2.4px), radial-gradient(circle at 91% 58%, #ffb45a 0 1.1px, transparent 2px),
+    radial-gradient(circle at 78% 88%, #ff8a2a 0 1.3px, transparent 2px), radial-gradient(circle at 95% 82%, #ffc070 0 1px, transparent 1.8px),
+    radial-gradient(ellipse 30% 22% at 50% 100%, #ff7a1a55, transparent 70%); }
+.acx-a-shield { left: 320px; top: 0; width: 800px; height: 800px; filter: drop-shadow(0 0 40px #ff8a2a40); }
+.acx-a-arc { font: 700 14px var(--font-display); letter-spacing: 0.22em; text-transform: uppercase; fill: #f6dca0; paint-order: stroke; stroke: #1c0f05; stroke-width: 3px; }
+.acx-a-arc--inner { font-size: 13px; }
+
+.acx-a-medal { display: grid; place-items: center; padding: 0; border-radius: 50%; border: 3px solid #2a1808; cursor: pointer; transition: transform 140ms ease;
+  background: radial-gradient(circle at 36% 30%, #3f4a3e 0%, #232a22 55%, #121610 100%); box-shadow: inset 0 2px 3px #ffffff1c, inset 0 -4px 6px #00000080, 0 3px 6px #00000090; }
+.acx-a-medal__icon { width: 58%; height: 58%; stroke: #7f9a86; stroke-width: 3.4; opacity: 0.75; }
+.acx-a-medal.is-done { border-color: #fff0c0;
+  background: radial-gradient(circle at 36% 30%, #fff1c2 0%, #f0bf62 30%, #b97a2a 70%, #6a3f12 100%);
+  box-shadow: inset 0 -4px 6px #5a300a90, 0 0 0 2px #3a2008, 0 0 22px #ffb84ab0; }
+.acx-a-medal.is-done .acx-a-medal__icon { stroke: #3a1d06; stroke-width: 4; opacity: 1; }
+.acx-a-medal__arc { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); fill: none; stroke: #f0bf62; stroke-width: 4; stroke-linecap: round; }
+.acx-a-medal:is(:hover, .is-active) { transform: scale(1.14); z-index: 2; }
+.acx-a-medal.is-active { box-shadow: 0 0 0 3px #fff3d0, 0 0 26px #ffd27aa0; }
+.acx .acx-a-medal:focus-visible { outline: 3px solid #fff8e6; outline-offset: 5px; }
+
+.acx-a-boss { left: 590px; top: 282px; width: 260px; height: 236px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #2a1606; }
+.acx-a-boss .acx-name { align-items: center; }
+.acx-a-boss .acx-name__label { color: #4a2a0c; }
+.acx-a-boss .acx-name input { width: 228px; text-align: center; font: 700 30px var(--font-display); color: #2a1404; text-shadow: 0 1px 0 #ffeec0; border-bottom: 2px solid #6a3f1288; border-radius: 0; }
+.acx-a-boss .acx-name input::placeholder { color: #6a3f12aa; }
+.acx-a-boss .acx-stats { gap: 18px; }
+.acx-a-boss .acx-stats dd { color: #2a1404; text-shadow: 0 1px 0 #ffeec0; }
+.acx-a-boss .acx-stats dt { color: #4a2a0c; font-size: 12px; }
+.acx-a-boss .acx-stats__icon { stroke: #5a3410; }
+
+.acx-a-head { left: 44px; top: 40px; width: 290px; }
+.acx-a-head span { font: 700 14px var(--pb-font-body); letter-spacing: 0.3em; text-transform: uppercase; color: #e2b25d; }
+.acx-a-head h1 { margin-top: 6px; font: 700 38px/1.05 var(--font-display); color: #fbe6b6; text-shadow: 0 2px 0 #1c0f05, 0 0 24px #ff8a2a55; }
+.acx-a-count { left: 44px; top: 190px; display: flex; align-items: center; gap: 14px; margin: 0; }
+.acx-a-count b { font: 700 84px/1 var(--font-display); color: #f0bf62; text-shadow: 0 0 30px #ff9a3a80; }
+.acx-a-count span { font: 600 19px/1.25 var(--pb-font-body); color: #f6eedc; }
+.acx-a-detail { left: 44px; top: 340px; width: 268px; gap: 8px; padding-top: 18px; border-top: 2px solid #e2b25d66; }
+.acx-a-detail .acx-detail__tag { color: #e2b25d; }
+.acx-a-detail .acx-detail__name { color: #fbe6b6; }
+.acx-a-detail .acx-detail__how { color: #f1e6cf; }
+.acx-a-detail .acx-progress { color: #f0bf62; }
+.acx-a-detail .acx-progress__num { color: #f6eedc; }
+
+.acx-a-legend { right: 44px; top: 70px; width: 260px; margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.acx-a-legend li { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #e2b25d44; }
+.acx-a-legend span { font: 600 19px var(--pb-font-body); color: #f1e6cf; }
+.acx-a-legend b { font: 700 28px var(--font-display); color: #f0bf62; }
+.acx-a-legend small { font-size: 16px; color: #d3c7ad; }
+.acx-a-actions { right: 44px; bottom: 48px; width: 260px; display: grid; gap: 14px; }
