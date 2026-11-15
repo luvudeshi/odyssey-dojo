@@ -9,7 +9,8 @@ import type { Reach } from "./accounts";
 
 /** A name that was just taken from the account by another one, or an account that no longer exists, are not told apart from a missing row. */
 export type Renamed = { readonly name: string } | "name_taken" | "gone";
-export type PasswordChanged = "changed" | "wrong_password" | "gone";
+/** "conflict": the password was right but another change of the same account got in between; nothing was changed by this one. */
+export type PasswordChanged = "changed" | "wrong_password" | "gone" | "conflict";
 
 export interface EditEnv {
   /**
@@ -87,8 +88,12 @@ export function createEdits(env: EditEnv): Edits {
         select id::text as id from changed`,
         [accountId, hash.toString("hex"), salt.toString("hex"), found.pass_hash, keep],
       ));
-      if (changed.length === 0) return "wrong_password";
-      // After the database: a session another request asked about just now cannot come back, it is gone there.
+      if (changed.length === 0) {
+        // Not a wrong password: the one checked above was right. Another change took the row first, or the account is gone.
+        const still = await reach(() => run(`select 1 as here from ${table.accounts} where id = $1::uuid`, [accountId]));
+        return still.length > 0 ? "conflict" : "gone";
+      }
+      // After the database: the epoch it raises keeps a lookup that was already under way from remembering a dead token.
       known.forgetAccount(accountId, keep);
       log("info", "account_password_changed");
       return "changed";

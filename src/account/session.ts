@@ -84,6 +84,8 @@ export const ERROR_TEXT: Readonly<Record<AccountError, string>> = {
 export const RENAME_TAKEN_TEXT = "That name is taken. Pick another.";
 export const MISMATCH_TEXT = "The two new passwords do not match.";
 export const PASSWORD_CHANGED_TEXT = "Password changed. Other devices are signed out.";
+/** A 409 on the password route: another change of the same account was made at the same moment. */
+export const PASSWORD_BUSY_TEXT = "Your password was just changed by another request. Check the page and try again if you still need to.";
 export const renamedText = (name: string): string => `Your sign-in name is now ${name}.`;
 /** What a rename or a password change gave back: the line to show, and whether it worked. */
 export interface ChangeResult {
@@ -386,7 +388,7 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
 
   /** The words for a failed change. A 401 has signed the player out already, so its text is the usual one. */
   const changeText = (error: AccountError, field: string | undefined, kind: "name" | "password"): string => {
-    if (error === "name_taken") return RENAME_TAKEN_TEXT;
+    if (error === "name_taken") return kind === "name" ? RENAME_TAKEN_TEXT : PASSWORD_BUSY_TEXT;
     if (error === "invalid") return field === "current" ? ERROR_TEXT.wrong_password : kind === "name" ? NAME_TEXT : PASSWORD_TEXT;
     return ERROR_TEXT[error];
   };
