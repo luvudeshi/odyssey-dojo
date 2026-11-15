@@ -24,7 +24,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const VITE = join(ROOT, "node_modules", "vite", "bin", "vite.js");
+// Found the way node finds it, so the run also works in a git worktree whose modules are the main checkout's.
+const VITE = join(dirname(createRequire(join(ROOT, "package.json")).resolve("vite/package.json")), "bin", "vite.js");
 /** The two window sizes the card must fit in. */
 const SIZES = [{ width: 1280, height: 720 }, { width: 1600, height: 900 }];
 /** How long a screen may take to come up. The first page of a dev server is slow: it bundles the dependencies. */
@@ -159,6 +160,7 @@ function measureCard(words) {
 async function installStage(places) {
   const { duoCamera } = await import("/src/duo/duoCamera.ts");
   const { secondDrawn } = await import("/src/duo/secondDrawn.ts");
+  const { duoTally } = await import("/src/duo/tally.ts");
   const { GOOD } = await import("/tests/helpers/ghostCopy.ts");
   const { sequence, frameOf, NEUTRAL } = await import("/tests/helpers/poses.ts");
   const { battle } = await import("/src/render/battle.ts");
@@ -188,7 +190,10 @@ async function installStage(places) {
       figureMsAgo: performance.now() - secondDrawn.at, stall: stage.stall, gap: stage.gap, flashes: stage.flashes,
       phase: battle.state?.phase.kind ?? null, enemyHp: battle.state?.enemyHp ?? null, playerHp: battle.state?.playerHp ?? null,
       twoInState: battle.state?.players ?? null, log: stage.log,
-      tag: [...document.querySelectorAll(".fight .hb-duo")].map((one) => one.textContent ?? ""),
+      tag: [...document.querySelectorAll(".fight .hb-duo:not(.duo-tally)")].map((one) => one.textContent ?? ""),
+      // Each player's hits and points: what src/duo counted, the two plates above the camera panel, and the end panel's score line.
+      tally: duoTally.get(), line: [...document.querySelectorAll(".fight .duo-tally > *")].map((one) => one.textContent ?? "").join(" · "),
+      endLine: document.querySelector(".fight > .overlay > h1 + p")?.textContent ?? "", score: battle.state?.score ?? null,
       panelTag: document.querySelector(".fight .camera-tag")?.textContent ?? "",
     }),
   };
@@ -236,19 +241,28 @@ async function installStage(places) {
   window.__duo = stage;
 }
 
-/** Runs in the page: where along the camera panel (0 left, 1 right) the skeleton's stones are, or null when none are drawn. */
-function skeletonAt() {
-  const canvas = document.querySelector(".fight .camera-view canvas");
+/**
+ * Runs in the page: where along the camera panel (0 left, 1 right) a skeleton's stones are, or null when none are
+ * drawn. Player one's is the panel's own canvas; with `second` it is the canvas src/duo lays over it for player two.
+ * `blue` is the share of the stones that are plainly blue: player two's are, player one's (cream, slate, terracotta) are not.
+ */
+function skeletonAt([second, screen] = [false, ".fight"]) {
+  const canvas = document.querySelector(`${screen} ${second ? ".camera-frame canvas.duo-skeleton" : ".camera-view canvas:not(.duo-skeleton)"}`);
   if (!(canvas instanceof HTMLCanvasElement) || canvas.width === 0) return null;
   const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
   let sum = 0;
   let count = 0;
+  let blue = 0;
   for (let y = 0; y < canvas.height; y += 2) {
     for (let x = 0; x < canvas.width; x += 2) {
-      if (data[(y * canvas.width + x) * 4 + 3] > 40) { sum += x; count += 1; }
+      const at = (y * canvas.width + x) * 4;
+      if (data[at + 3] <= 40) continue;
+      sum += x;
+      count += 1;
+      if (data[at + 2] > data[at] + 80) blue += 1;
     }
   }
-  return count < 20 ? null : sum / count / canvas.width;
+  return count < 20 ? null : { at: sum / count / canvas.width, blue: blue / count };
 }
 
 async function main() {
@@ -283,6 +297,8 @@ async function main() {
     page.on("console", (message) => { if (message.type() === "error" && !offServer(`${message.text()} ${message.location().url}`)) errors.push(`console error: ${message.text()}`); });
     page.on("response", (response) => { if (response.status() >= 400 && !offServer(response.url())) errors.push(`${String(response.status())} ${response.url().replace(base, "")}`); });
     const shot = async (name) => { if (shots) await page.screenshot({ path: join(shots, `${name}.png`) }).catch(() => undefined); };
+    /** A picture of one piece of the screen, as large as it is drawn. */
+    const shotOf = async (name, selector) => { if (shots) await page.locator(selector).first().screenshot({ path: join(shots, `${name}.png`) }).catch(() => undefined); };
     const read = () => page.evaluate(() => window.__duo.now());
     const set = (change) => page.evaluate((next) => {
       const stage = window.__duo;
@@ -315,7 +331,7 @@ async function main() {
     // The dev server bundles a dependency the first time a page asks for it, and then reloads the page. So the page
     // asks for everything the run needs once, before the run starts; errors seen here are not the game's.
     await page.goto(base);
-    await page.evaluate(() => Promise.all(["/src/duo/duoCamera.ts", "/src/duo/secondDrawn.ts", "/tests/helpers/ghostCopy.ts", "/tests/helpers/poses.ts", "/src/render/battle.ts"].map((path) => import(path)))).catch(() => undefined);
+    await page.evaluate(() => Promise.all(["/src/duo/duoCamera.ts", "/src/duo/secondDrawn.ts", "/src/duo/tally.ts", "/tests/helpers/ghostCopy.ts", "/tests/helpers/poses.ts", "/src/render/battle.ts"].map((path) => import(path)))).catch(() => undefined);
     await sleep(1500);
     errors.length = 0;
 
@@ -352,6 +368,8 @@ async function main() {
     const fight = page.locator(".fight canvas").first();
     const started = Date.now();
     let step = "the camera";
+    /** Player two's skeleton on the standing-still screen before the fight, once it has been seen there. */
+    let standing = null;
     while (Date.now() - started < FIGHT_TIMEOUT_MS && !(await fight.count())) {
       const skip = page.getByRole("button", { name: /^Skip/ }).first();
       const done = page.locator("main button.character-done").first();
@@ -363,6 +381,7 @@ async function main() {
       else if (await done.count()) { step = "the character choice"; await press(done); }
       else if (style) { step = "the style choice"; await press(page.locator("main button").nth(style.index)); }
       else if (onMap && !onMap.disabled) { step = "the map"; await press(page.locator("main button").nth(onMap.index)); }
+      else if (standing === null && (standing = await page.evaluate(skeletonAt, [true, ".calibration"]).catch(() => null)) !== null) await shot("standing-still");
       await sleep(400);
     }
     const inFight = (await fight.count()) > 0;
@@ -370,6 +389,8 @@ async function main() {
     check(inFight && before.on && before.wanted === 2 && before.frames > 0, "pressing the card starts a fight with two bodies asked for",
       inFight ? `the tracker handed over ${String(before.frames)} pictures on the way in` : `stuck after ${step}`);
     if (!inFight) { await shot("failed"); throw new Error("no fight to play: the rest of the checks were not run"); }
+    check(standing !== null && standing.blue > 0.5, "standing still before the fight, the camera panel already draws the second body in blue",
+      standing === null ? "no second skeleton was seen on that screen" : `at ${standing.at.toFixed(2)} of the panel, ${String(Math.round(standing.blue * 100))}% of its stones blue`);
     const fightStarted = Date.now();
     const timeLeft = () => Math.max(1000, capMs - (Date.now() - fightStarted));
 
@@ -380,7 +401,14 @@ async function main() {
     await sleep(600);
     await shot("fight-two");
     check(two.players === 2 && two.figureMsAgo < 300, "the second body gets its own figure", `players ${String(two.players)}, figure last moved ${Number.isFinite(two.figureMsAgo) ? `${String(Math.round(two.figureMsAgo))} ms ago` : "never"}`);
-    const skeletonFirst = await page.evaluate(skeletonAt);
+    const skeletonFirst = (await page.evaluate(skeletonAt))?.at ?? null;
+    // Each body has a skeleton of its own in the camera panel: player two's is blue and stands to the right.
+    const skeletonSecond = await page.evaluate(skeletonAt, [true, ".fight"]);
+    await shotOf("camera-panel-two", ".fight .camera-view");
+    check(skeletonFirst !== null && skeletonSecond !== null && skeletonSecond.blue > 0.5 && skeletonSecond.at - skeletonFirst > 0.15 && ((await page.evaluate(skeletonAt))?.blue ?? 1) < 0.05,
+      "the camera panel draws the second body's skeleton too, in blue",
+      skeletonSecond === null ? "no second skeleton is drawn" : `the first skeleton is at ${skeletonFirst === null ? "nowhere" : skeletonFirst.toFixed(2)} of the panel, the second at ${skeletonSecond.at.toFixed(2)} with ${String(Math.round(skeletonSecond.blue * 100))}% of its stones blue`);
+    const hitsOf = (now) => `"${now.line}" (counted: player one ${String(now.tally.players[0].hits)}, player two ${String(now.tally.players[1].hits)}, together ${String(now.tally.together)})`;
 
     // 4. The second body alone lands the prompted strike.
     let from = await set({ policy: { defend: "both", strike: "second" } });
@@ -388,6 +416,13 @@ async function main() {
     const aloneFlash = alone !== null && flashed(alone, await read());
     check(alone !== null && alone.enemyHpEnd < alone.enemyHp && !aloneFlash, "the second body alone lands the prompted strike",
       alone ? `${alone.id}: the monster lost ${String(alone.enemyHp - alone.enemyHpEnd)}, ${aloneFlash ? "with a Together flash it should not have" : "no Together flash"}` : "no strike phase came");
+    // That hit is the second body's own: the plates above the camera panel say so.
+    const oneHit = /^P1 0 hits (\d+) · P2 1 hit (\d+)$/;
+    const afterAlone = await waitFor((now) => oneHit.test(now.line), 1500);
+    const alonePoints = oneHit.exec(afterAlone.line);
+    await shot("fight-tally");
+    check(alonePoints !== null && Number(alonePoints[2]) > Number(alonePoints[1]) && afterAlone.tally.players[0].hits === 0 && afterAlone.tally.players[1].hits === 1,
+      "the tally shows one hit for the body that struck, and none for the other", hitsOf(afterAlone));
 
     // 5. Both inside the window: the doubled hit.
     from = await set({ policy: { strike: "both" }, gapMs: 200 });
@@ -396,6 +431,8 @@ async function main() {
     if (pairedFlash) await shot("fight-together");
     check(paired !== null && pairedFlash && paired.enemyHpEnd < paired.enemyHp, `both strike within ${String(TOGETHER_MS)} ms: the doubled hit`,
       paired ? `${paired.id}, 200 ms apart: the monster lost ${String(paired.enemyHp - paired.enemyHpEnd)}${alone ? ` (${alone.id} by one body took ${String(alone.enemyHp - alone.enemyHpEnd)})` : ""}, Together flash ${pairedFlash ? "seen" : "not seen"}` : "no strike phase came");
+    const afterPair = await waitFor((now) => /^P1 1 hit \d+ · P2 2 hits \d+$/.test(now.line), 1500);
+    check(/^P1 1 hit \d+ · P2 2 hits \d+$/.test(afterPair.line) && afterPair.tally.together === 1, "the doubled hit counts for both bodies in the tally", hitsOf(afterPair));
 
     // 6. A defend counts only when both make it.
     from = await set({ policy: { defend: "first", strike: "none" } });
@@ -418,6 +455,9 @@ async function main() {
     const afterSolo = await read();
     check(gone.players === 1 && gone.figureMsAgo > 500 && afterSolo.stall < 500 && soloHit !== null && soloHit.enemyHpEnd < soloHit.enemyHp, "the second body leaves: one hero, no pause",
       `players ${String(gone.players)}, second figure last moved ${String(Math.round(gone.figureMsAgo))} ms ago, ${stood(afterSolo)}, the first body's next strike took ${soloHit ? String(soloHit.enemyHp - soloHit.enemyHpEnd) : "nothing"}`);
+    const skeletonGone = await page.evaluate(skeletonAt, [true, ".fight"]);
+    check(skeletonGone === null && /^P1 \d+ hits? \d+ · P2 2 hits \d+, not seen$/.test(gone.line), "the second body leaves: its skeleton goes, and the tally keeps its hits and says it is not seen",
+      `second skeleton ${skeletonGone === null ? "gone" : "still drawn"}, the plates read "${gone.line}"`);
     if (panelAsksDuo()) check(two.panelTag === "Both seen" && gone.panelTag === "One seen", "the camera panel's tag says whether the second player is in",
       `with two bodies it reads "${two.panelTag}", after the second left "${gone.panelTag}"`);
     if (gone.tag.length > 0) say(`NOTE: the "${gone.tag[0]}" tag is still up with one player left. It is drawn by the HUD from the fight's own state (players ${String(gone.twoInState)}), which src/duo cannot change.`);
@@ -429,7 +469,7 @@ async function main() {
     await set({ first: false, policy: { defend: "second", strike: "second" }, resetStall: true });
     await sleep(1800);
     const promoted = await read();
-    const skeletonPromoted = await page.evaluate(skeletonAt);
+    const skeletonPromoted = (await page.evaluate(skeletonAt))?.at ?? null;
     await shot("fight-promoted");
     from = promoted.log.length;
     const heroHit = await phaseAfter(from, (one) => one.kind === "strike" && one.who === "second", timeLeft());
@@ -441,7 +481,18 @@ async function main() {
     else check(skeletonFirst !== null && skeletonPromoted !== null && Math.abs(skeletonPromoted - skeletonFirst) > 0.15, "after the promotion the camera panel's skeleton is on the promoted player",
       `the skeleton was at ${skeletonFirst === null ? "nowhere" : skeletonFirst.toFixed(2)} of the panel, now at ${skeletonPromoted === null ? "nowhere" : skeletonPromoted.toFixed(2)}`);
 
-    // 9. Nothing went wrong in the page.
+    // 9. The one who stayed fights on to the end: the end panel's score line carries each player's hits and points.
+    await set({ policy: { defend: "second", strike: "second" } });
+    const split = /^Score (\d+) · P1 (\d+) hits? (\d+) · P2 (\d+) hits? (\d+)$/;
+    const ended = await waitFor((now) => split.test(now.endLine), timeLeft());
+    const parts = split.exec(ended.endLine);
+    if (parts) {
+      await shot("fight-end");
+      check(Number(parts[3]) + Number(parts[5]) === Number(parts[1]) && Number(parts[4]) === 2, "when the fight ends the end panel shows each player's hits and points, and the points add up to the score", `"${ended.endLine}"`);
+    } else if (ended.phase === "won" || ended.phase === "lost") check(false, "when the fight ends the end panel shows each player's hits and points", `the fight is ${ended.phase} and the panel's score line reads "${ended.endLine}"`);
+    else say(`NOTE: the fight did not end inside the ${String(capMs / 1000)} s the run allows (the monster has ${String(ended.enemyHp)} health left), so the end panel was not looked at. Run it with a larger --cap.`);
+
+    // 10. Nothing went wrong in the page.
     await sleep(500);
     const unknown = (await read()).log.filter((one) => !one.known).map((one) => one.id);
     if (unknown.length > 0) say(`NOTE: no recording for ${[...new Set(unknown)].join(", ")}; the bodies stood still for it`);
