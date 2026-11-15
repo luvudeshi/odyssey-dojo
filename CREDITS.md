@@ -1,13 +1,23 @@
 # Credits
 
-All downloaded assets are CC0 (public domain) from Poly Haven, https://polyhaven.com.
+Every file in the game's `public` folder has a row here. There are three kinds:
+
+- Art we downloaded: skies, textures and models. All of it is CC0 (public domain).
+- Things the team made: the voices, sounds and music (generated with ElevenLabs) and the icons (drawn in code).
+- Bundled software: the pose tracker and the mesh decoder, which Google publishes under the Apache License 2.0. They are at the end of this file.
+
+`make credits` checks that no file is missing. `docs/licences.md` has the full list and says which sources were opened to check each licence.
+
+## Skies and textures
+
+CC0 (public domain) from Poly Haven, https://polyhaven.com. The authors are the ones each asset's page names.
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Small Cave (1K HDRI) | Cave reflections and ambient light, `public/hdri/small_cave_1k.hdr` | https://polyhaven.com/a/small_cave | CC0 |
-| Qwantani Dusk 2 Puresky (1K HDRI) | Sunset sky seen through the cave mouth and soft dusk light, `public/hdri/qwantani_dusk_2_puresky_1k.hdr` | https://polyhaven.com/a/qwantani_dusk_2_puresky | CC0 |
-| Rock Surface (1K diffuse, normal GL, roughness) | Cave walls, `public/textures/rock_surface_*` | https://polyhaven.com/a/rock_surface | CC0 |
-| Rocky Trail (1K diffuse, normal GL, roughness) | Cave floor, `public/textures/rocky_trail_*` | https://polyhaven.com/a/rocky_trail | CC0 |
+| Small Cave (1K HDRI), by Andreas Mischok | Cave reflections and ambient light, `public/hdri/small_cave_1k.hdr` | https://polyhaven.com/a/small_cave | CC0 |
+| Qwantani Dusk 2 Puresky (1K HDRI), by Greg Zaal (photography) and Jarod Guest (processing) | Sunset sky seen through the cave mouth and soft dusk light, `public/hdri/qwantani_dusk_2_puresky_1k.hdr` | https://polyhaven.com/a/qwantani_dusk_2_puresky | CC0 |
+| Rock Surface (1K diffuse, normal GL, roughness), by Amal Kumar | Cave walls, `public/textures/rock_surface_*` | https://polyhaven.com/a/rock_surface | CC0 |
+| Rocky Trail (1K diffuse, normal GL, roughness), by Amal Kumar | Cave floor, `public/textures/rocky_trail_*` | https://polyhaven.com/a/rocky_trail | CC0 |
 
 The cave arena and hit effects start from work by tagrawal029 (branch `feat/arena-effects-screens`).
 
@@ -17,19 +27,36 @@ The cave mouth at dusk (`src/render/arena/cave/`) is built in code: no other fil
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| RobotExpressive.glb (Tomas Laule, Quaternius, via the three.js examples) | Development test model only, `public/models/dev/RobotExpressive.glb`, shown with `?model=dev` to test the GLB pipeline. Not game art | https://github.com/mrdoob/three.js/tree/r187/examples/models/gltf/RobotExpressive | CC0 |
+| RobotExpressive.glb, by Tomás Laulhé (Quaternius), with changes by Don McCurdy, via the three.js examples | Development test model only, `public/models/dev/RobotExpressive.glb`, shown with `?model=dev` to test the GLB pipeline. Not game art | https://github.com/mrdoob/three.js/tree/r187/examples/models/gltf/RobotExpressive | CC0 |
 
 ## Hero
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Universal Animation Library 1 and 2 mannequin and clips (Quaternius), trimmed, with authored stand-in poses | `public/models/hero/spartan.glb`, the player's hero | https://quaternius.com/animviewer.html | CC0 |
+| Universal Animation Library 1 and 2 mannequin and clips, by Quaternius, trimmed, with authored stand-in poses | `public/models/hero/spartan.glb`, the player's hero | https://quaternius.com/packs/universalanimationlibrary.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-animation-library and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0). Viewer: https://quaternius.com/animviewer.html | CC0 |
 
-## Polyphemus candidates
+His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`src/render/hero/gear/`): no other files ship with him.
+
+## Polyphemus
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Giant (Quaternius, via Poly Pizza) | `public/models/polyphemus/giant.glb`, the `?model=giant` Polyphemus candidate | https://poly.pizza/m/BldaiPtyJa | CC0 |
+| Giant, by Quaternius, via Poly Pizza | `public/models/polyphemus/giant.glb`, Polyphemus | https://poly.pizza/m/BldaiPtyJa | CC0 |
+
+## The Suitors
+
+| Asset | Used for | URL | Licence |
+|---|---|---|---|
+| Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.com/packs/universalbasecharacters.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0) | CC0 |
+
+Their gear, the hall and its props are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens, Scylla and Charybdis are built in code too and ship no model file. Their logs are in `docs/models/`.
+
+## Icons
+
+| Asset | File | Source | Licence |
+|---|---|---|---|
+| Ship, owl, palmette and laurel ornaments of the pottery look | `public/ui/ship.svg`, `public/ui/owl.svg`, `public/ui/palmette.svg`, `public/ui/laurel.svg` | SVG shapes written in code for PR #134 | Drawn by the team |
+| Eye icon in the browser tab | `public/favicon.svg` | Four plain SVG shapes, added by the lead in PR #105 | Drawn by the team |
 
 ## Voices and sound effects
 
@@ -107,3 +134,24 @@ The five ambience clips were asked for with `loop: true` as 30 seconds of MP3 at
 | Suitors: struck | `public/audio/stops/suitors/hurt.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
 
 As with the music, these terms cover our own use in this game. The clips are generated, not CC0 and not CC BY.
+
+## Bundled software and model files
+
+These files are not art. They are code and one machine-learning model, published by Google under the Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0). They are copied in unchanged so the game runs with no network.
+
+Each file is named here. A new file in one of these two folders needs its own row: the check does not take a folder as a credit for software.
+
+| Software | Files | Source | Licence |
+|---|---|---|---|
+| Draco mesh decoder by Google (the glTF build, as shipped in `three` 0.187.0 under `examples/jsm/libs/draco/gltf/`). It unpacks compressed models | `public/draco/draco_decoder.js`, `public/draco/draco_decoder.wasm`, `public/draco/draco_wasm_wrapper.js` | https://github.com/google/draco | Apache-2.0 |
+| MediaPipe Tasks Vision 1.2.3 runtime by Google (the `wasm` folder of the npm package `@mediapipe/tasks-vision`). It runs the pose tracker in the browser | `public/mediapipe/wasm/vision_wasm_internal.js`, `public/mediapipe/wasm/vision_wasm_internal.wasm`, `public/mediapipe/wasm/vision_wasm_module_internal.js`, `public/mediapipe/wasm/vision_wasm_module_internal.wasm` | https://github.com/google-ai-edge/mediapipe | Apache-2.0 |
+| Pose Landmarker (lite) model by Google (BlazePose GHUM 3D; model card authors Valentin Bazarevsky, Ivan Grishchenko and Eduard Gabriel Bazavan). It finds the player's body in the camera picture | `public/mediapipe/pose_landmarker_lite.task` | https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task and its model card, https://storage.googleapis.com/mediapipe-assets/Model%20Card%20BlazePose%20GHUM%203D.pdf | Apache-2.0 |
+
+What was checked on 2026-11-14:
+
+- The three Draco files have the same SHA-256 as the files in `node_modules/three/examples/jsm/libs/draco/gltf/`. The README in the folder above them says "Apache License 2.0" and links to Google's repository, whose `LICENSE` file is the Apache License 2.0.
+- The four runtime files have the same SHA-256 as the `wasm` folder of `@mediapipe/tasks-vision` 1.2.3. That package's `package.json` says `"license": "Apache-2.0"`. The package has no licence file of its own. The `LICENSE` file of Google's MediaPipe repository is the Apache License 2.0.
+- The model file has the MD5 that Google's server reports for the address above. The model card says "Licensed under Apache License, Version 2.0".
+- The `mediapipe` folder is not in git. `make setup` fills it (`scripts/vendor-pose.sh`), and it ships with the built game.
+
+The npm packages the game is built from (three.js, React and the rest) are compiled into its JavaScript. They are not files under `public`, and this file does not list them.
