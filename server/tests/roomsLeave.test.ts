@@ -136,11 +136,13 @@ test("a wrong token or code changes nothing, a member that was never connected l
   expect(hostEar.heard).toEqual([]);
   expect(hostEar.ended).toBe(0);
 
-  // The room was last used when the host's stream opened. A guest's leave just before it expires does not keep it.
   // The host was never told this guest was here, so it is not told it went.
-  now += IDLE_MS - 1;
+  now += 1_000;
   expect(store.leave(code, guest)).toBe("left");
   expect(hostEar.heard).toEqual([]);
+  // The room was last used when the host's stream opened, a second before the guest left. The leave did not move that.
+  now += IDLE_MS - 1_001;
+  expect(store.size()).toBe(1);
   now += 1;
   expect(store.leave(code, host)).toBe("unknown");
   expect(store.size()).toBe(0);
