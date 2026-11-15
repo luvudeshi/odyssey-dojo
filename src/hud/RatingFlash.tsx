@@ -2,12 +2,14 @@
 import { useEffect, useState } from "react";
 import type { CombatEvent } from "../core/types";
 import { rating } from "../pose/quality";
+import { noteTogether } from "./TogetherFlash";
 
 const SHOW_MS = 700;
 const listeners = new Set<(word: string) => void>();
 
 export function noteHit(event: CombatEvent): void {
   if (event.type !== "enemyHit") return;
+  noteTogether(event);
   const word = rating(event.quality);
   if (word) listeners.forEach((listen) => { listen(word); });
 }
