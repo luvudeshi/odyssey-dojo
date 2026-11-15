@@ -51,24 +51,20 @@ export function columns(): Column[] {
 export interface Table {
   readonly x: number;
   readonly z: number;
+  /** Turn about the vertical axis; the feast table's long side runs along z at 0. */
   readonly yaw: number;
-  /** Rotation about the table's long axis: 0 upright, pi/2 on its edge, pi upside down. */
-  readonly roll: number;
 }
 
-/** Feast tables knocked over by the fight, kept out to the sides and behind the hearth. */
+/** Upright feast tables along the left aisle and behind the hearth, kept out of the fight zone and the camera's way. */
 export const TABLES: readonly Table[] = [
-  { x: -6.4, z: -0.6, yaw: 0.35, roll: 1.9 },
-  { x: -6.0, z: -10.8, yaw: -0.4, roll: Math.PI },
-  { x: 7.1, z: -3.6, yaw: -0.25, roll: 1.4 },
-  { x: 6.3, z: -9.2, yaw: 0.3, roll: 0.2 },
+  { x: -6.4, z: -3.4, yaw: 0 },
+  { x: -6.4, z: -8.4, yaw: 0 },
+  { x: -2.4, z: -15.6, yaw: Math.PI / 2 },
 ];
 
-export const BENCHES: readonly Table[] = [
-  { x: -7.4, z: -3.2, yaw: 1.2, roll: 0 },
-  { x: 7.4, z: 0.4, yaw: 0.6, roll: Math.PI / 2 },
-  { x: 2.6, z: -14.6, yaw: 0.1, roll: 0 },
-];
+/** Stools drawn up to the left aisle tables and chairs at their far ends. */
+export const STOOLS: readonly { readonly x: number; readonly z: number }[] = [-2.4, -4.4, -6.4, -8.4, -10.4].map((z) => ({ x: -5.2, z }));
+export const CHAIRS: readonly { readonly x: number; readonly z: number }[] = [-3.4, -8.4].map((z) => ({ x: -7.8, z }));
 
 /** Twelve axes stuck in the floor, helves up and rings aligned, down the right side. */
 export function axes(): Vec3[] {
@@ -125,7 +121,8 @@ export function solidFootprints(): { x: number; z: number; r: number }[] {
   return [
     ...columns().map((c) => ({ x: c.x, z: c.z, r: c.radius })),
     ...TABLES.map((t) => ({ x: t.x, z: t.z, r: 1.3 })),
-    ...BENCHES.map((t) => ({ x: t.x, z: t.z, r: 1.0 })),
+    ...STOOLS.map((t) => ({ x: t.x, z: t.z, r: 0.4 })),
+    ...CHAIRS.map((t) => ({ x: t.x, z: t.z, r: 0.4 })),
     ...axes().map(([x, , z]) => ({ x, z, r: 0.4 })),
     { x: HEARTH.x, z: HEARTH.z, r: HEARTH.radius },
     { x: BOW.x, z: BOW.z, r: 0.6 },
