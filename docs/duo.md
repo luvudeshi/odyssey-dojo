@@ -2,7 +2,7 @@
 
 Two people stand side by side in front of one computer. The game follows both bodies, each gets a hero of their own, and they fight one monster together. Issue #28.
 
-The code is in `src/duo/`. It is merged but **not mounted**: four small changes in lead-owned files turn it on (see "What the lead applies").
+The code is in `src/duo/`. It is merged but **not mounted**: one diff to lead-owned files turns it on (see "What the lead applies").
 
 ## How it works
 
@@ -36,24 +36,63 @@ The code is in `src/duo/`. It is merged but **not mounted**: four small changes 
 
 ## What the lead applies
 
-One diff (posted on issue #179), four files:
+One diff, five files: `src/duo/mount.diff`. From the repo's top folder:
+
+```
+git apply src/duo/mount.diff
+node scripts/duo-smoke.mjs
+```
+
+It was cut against main after the storm and bronze restyle (the first diff, on issue #179, no longer applies to `src/App.tsx`). The card uses the Multiplayer screen's own card classes, so it takes the look of the other cards.
 
 - `src/pose/tracker.ts`: ask the model for `duoCamera.wanted()` bodies (it changes on the running model with `setOptions`), and while duo is on hand every body to `duoCamera.take`, which gives back player one's frame.
 - `src/screens/Multiplayer.tsx`: `<DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />` in the row of cards.
 - `src/render/Scene.tsx`: `<SecondFigure />` next to `<Hero>`.
 - `src/App.tsx`: one effect that turns duo off when the player leaves that way of playing.
+- `src/hud/CameraView.tsx`: the skeleton is drawn from `duoCamera.seen(frame)`. After player two takes over as the hero, the fight's frame is moved to where the first hero stood; this draws the skeleton on the player in the picture instead. This file can be left out: the game plays the same, and only the skeleton is in the wrong place after a take-over.
 
-With the choice off nothing changes: the model is built with one body and the old code path returns the frame.
+With the choice off nothing changes: the model is built with one body, the old code path returns the frame, and `duoCamera.seen` gives back the frame it was given.
+
+## The smoke script
+
+```
+node scripts/duo-smoke.mjs
+node scripts/duo-smoke.mjs --shots=shots/duo
+```
+
+It starts the dev server on a free port, opens the game in headless Chrome and prints one PASS or FAIL line per check; the exit code is 1 when a check fails. `--shots=<folder>` saves six pictures (the Multiplayer screen at both sizes, and the fight with two heroes, at the doubled hit, after player two left and after the take-over). It needs Chrome and Playwright, found the same way as in `scripts/smoke.mjs` (`FPS_PLAYWRIGHT`, `FPS_CHANNEL`, `FPS_GL`). One run takes about 45 seconds.
+
+When the Multiplayer screen has no two-player card, it prints `SKIP: the Multiplayer screen has no two-player card yet` and exits 0. That is what it does on main today.
+
+With the diff applied, it plays a fight with the pose path on. Chrome's fake camera runs the real tracker; the bodies the tracker hands to `duoCamera.take` are swapped for two made-up ones, built from the same frames the unit tests use. Player one calibrates and fights from a made-up body too, so the "step back" pause is live and a pause would be seen. It checks:
+
+- the card is on the Multiplayer screen, and fits at 1280x720 and 1600x900 (inside the window once scrolled to, nothing spilling out, not over another card);
+- pressing it starts a fight, with two bodies asked for;
+- the second body gets a figure of its own;
+- the second body alone lands the prompted strike, with no "Together" flash;
+- both bodies striking 200 ms apart give the doubled hit, with the flash;
+- a defend made by only the first body, and one made by only the second, both cost health; one made by both costs nothing;
+- the second body leaves: one hero, the fight never stands still, the first body's next strike lands;
+- the second body comes back, then the first leaves: the one who stayed is the hero, drawn where the first hero stood, the fight never stands still, and their next strike lands;
+- the camera panel's skeleton is on the promoted player (skipped with a line when `CameraView.tsx` was left out of the mount);
+- no console error. Requests to `/api` are left out of this: the dev server has no game server behind it.
+
+"Never stands still" is measured: the longest time the fight's state did not change must stay under half a second (the pause for a lost body lasts at least a second). On a busy machine the tracker itself can stop handing over pictures for a while; the fight then pauses whoever is in the picture, the check fails, and the line says so. Run it again.
 
 ## What was tested
 
-- `npx vitest run tests/duoAssign.test.ts tests/duoLink.test.ts`: 19 tests with made-up landmark frames. Seats through a crossing and through lost frames; joining and leaving; player one leaving; bodies that are dropped; two bodies giving two inputs; player two's strike reaching the real engine through the link; both striking for double damage; each defending for themself; the fight carrying on at once when player two leaves.
-- With the diff applied, in a headless browser on the dev server: the Multiplayer screen shows the new card; pressing it starts the real tracker with two bodies asked for (on Chrome's fake camera, which shows nobody) with no errors; then, in a fight against Polyphemus with two made-up bodies fed to `duoCamera`, the body on the right threw the prompted strike and the monster lost 16 health; the next strike was thrown by both and took 37 with the "Together! x2" flash; the blue hero was drawn beside the bronze one; with the second body gone the blue hero went away, the fight did not pause, and player one's next strike landed.
+- `npx vitest run tests/duoAssign.test.ts tests/duoLink.test.ts`: 20 tests with made-up landmark frames. Seats through a crossing and through lost frames; joining and leaving; player one leaving; where the promoted player is drawn in the camera panel; bodies that are dropped; two bodies giving two inputs; player two's strike reaching the real engine through the link; both striking for double damage; each defending for themself; the fight carrying on at once when player two leaves.
+- `node scripts/duo-smoke.mjs` with the diff applied: the last two full runs passed every check (one with all five files, one without `CameraView.tsx`). Two earlier runs, made while the script was being written, went wrong in ways that are not the two-player code as far as could be told: in one the fight stood still for 23 seconds after the first body left, on a laptop that was running other browsers at the time (that run is why the script now measures the gap between the tracker's pictures; it did not happen again in four more runs); in one the dev server reloaded the page and the card could not be pressed (the script now loads everything once before it starts). A single-body strike took 14 to 18 health and a doubled one 30 to 40.
 
 ## What was not tested
 
-- **No real camera with two real people.** Everything above uses made-up frames. How well MediaPipe's lite model holds two real bodies side by side, at what distance, and in what light is not known.
-- **The cost of two bodies was not measured.** With two bodies asked for and nobody in the picture a detect took about 11 ms in the headless browser, which says nothing about two real people. Expect the body model to run once per person, so roughly twice the time of one player; measure on the demo laptop before showing it.
-- Player one's fight was played on the keyboard in the browser run (the fake camera shows no body), so calibration with two people in the picture, and the camera panel's skeleton after player two takes over as the hero (it is drawn where the first hero stood), were not seen.
-- The "YOU + FRIEND" tag stays up for the rest of a fight after player two leaves: the fight was started for two.
-- At a 1280 px wide window the Multiplayer row fits two cards, so the new card is on the second row; at 1600 px all three are in one row.
+- **No real camera with two real people.** Everything above uses made-up frames. How well MediaPipe's lite model holds two real bodies side by side, at what distance, and in what light is not known. The made-up bodies never overlap, never turn sideways, and are always fully in the picture.
+- **The cost of two bodies was not measured.** In the smoke run the model is asked for two bodies but the fake camera shows nobody, so its time says nothing about two real people. Expect the body model to run once per person, so roughly twice the time of one player; measure with `?debug` (`window.__trackerStats.detectMs`) on the demo laptop, with two people, before showing it.
+- Calibration with two real people in the picture. In the smoke run the made-up player one stands at 0.38 of the picture and player two at 0.70.
+- A second player who is moving while they walk in. Their place in the picture is the average of their first 15 frames, so someone who dodges in those frames would be drawn a little off after a take-over.
+- Edge, and software GL. The runs were in Chrome on the laptop's own GPU.
+
+## Known rough edges
+
+- The "You + Friend" tag stays up for the rest of a fight after player two leaves, and after a take-over. It is drawn by the HUD (`src/hud/TogetherFlash.tsx`) from the fight's own state, which was started for two; nothing in `src/duo` can change it. The link knows the truth: `link.guestHere()` is false once player two has left. The smoke script prints a NOTE line while this is so.
+- At a 1280 px wide window the Multiplayer row fits two cards, so the new card is on the second row and the page must be scrolled to reach it; at 1600 px all three are in one row.
