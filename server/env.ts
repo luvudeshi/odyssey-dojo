@@ -27,7 +27,8 @@ export interface Config {
   readonly databaseUrl?: string | null;
   /**
    * A file of CA certificates the database's certificate must chain to, from DATABASE_CA_FILE. Null or left out:
-   * `sslmode=require` encrypts without checking the certificate, as a free Tiger Data service needs (lib/db.ts).
+   * `sslmode=require` encrypts without checking the certificate. Tiger Data signs with a CA of its own: with that CA
+   * in this file the service is checked in full (lib/db.ts; docs/accounts.md, set-up step 3).
    */
   readonly databaseCaFile?: string | null;
   readonly timeouts: {
