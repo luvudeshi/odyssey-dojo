@@ -123,6 +123,14 @@ A host with no camera still cannot start a shared fight. With `--no-host-camera`
 
 What it does not show: two machines, a real phone, a real network or a tunnel, a camera on either side, or sound.
 
+## On the hosted copy
+
+The game is live at `https://odysseydojo.club`: the page is on Vercel and the room server is a Vultr instance behind it. A visitor can open a room there as well as join one (`PUBLIC_ROOMS=1` on the instance, PR 373; see docs/rooms-tunnel.md). That page's build never opens the event stream and long-polls from the start (`VITE_ROOMS_POLL=1`, PR 382), because Vercel's proxy does not tell the server when a browser has gone. The page is https, so a guest's laptop or phone may use its camera there.
+
+**Checked (15 Nov)** with `node scripts/rooms-smoke.mjs --url=https://odysseydojo.club`, which plays against the running site with no build and no server of its own: a fight plays to the same result on both pages, a guest who dropped is let back in after about 18 seconds, and a guest hears that the host left after about 38 seconds. The server side of a leave call that would shorten those waits is on main (`POST /api/rooms/:code/leave`, PR 388); the page does not send it yet (PR 390, open).
+
+Not checked there: two real machines, a real phone, a camera on either side. The Vercel config itself is not on main yet (PR 351, open).
+
 ## Not covered
 
 No names (the host sees "a friend"), no guest defends. A stream that drops and reconnects by itself loses what was sent meanwhile; only a link that has moved to polling catches up.
