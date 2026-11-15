@@ -28,8 +28,8 @@
 .power-circle__fill { fill: none; stroke: #ff8a1a; stroke-width: 2.6; transition: stroke-dashoffset 0.35s ease-out; }
 .power-circle__gem { fill: #07060a; stroke: #d6c8ff; stroke-opacity: 0.7; stroke-width: 1; }
 .power-circle__text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; text-shadow: 0 1px 2px #000; }
-.power-circle__text strong { font-size: calc(var(--pc-size) * 0.19); font-weight: 700; letter-spacing: 0.02em; }
-.power-circle__text span { margin-top: 0.25em; font-size: calc(var(--pc-size) * 0.075); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #d6c8ff; }
+.power-circle__text strong { font-size: max(18px, calc(var(--pc-size) * 0.19)); font-weight: 700; letter-spacing: 0.02em; }
+.power-circle__text span { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); margin-bottom: 4px; font-size: 18px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; color: #f6eeff; text-shadow: 0 2px 3px #000, 0 0 6px #000; }
 
 /* Full: every shard burns, the spikes grow and carry lava, the disc glows in the god's colour, beats, and throws a ring outward once a second. */
 .power-circle.is-full { animation: power-circle-pulse 1s ease-in-out infinite; }
@@ -39,7 +39,7 @@
 .power-circle.is-full .power-circle__vein { opacity: 1; }
 .power-circle.is-full .power-circle__gem { fill: #ffd860; stroke: #fff6d0; }
 .power-circle.is-full .power-circle__text { color: #2a0a02; text-shadow: none; }
-.power-circle.is-full .power-circle__text span { color: #5a1804; }
+
 .power-circle.is-full::after {
   content: ""; position: absolute; inset: 0; border: 3px solid var(--pc-accent); border-radius: 50%;
   animation: power-circle-ring 1s ease-out infinite;

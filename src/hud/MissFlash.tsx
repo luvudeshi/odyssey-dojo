@@ -1,5 +1,6 @@
 // The MISS word: the same flash as GOOD / GREAT / PERFECT (it wears the same class for size and place), in a cold red.
 import { useEffect, useState } from "react";
+import { RiftPlate } from "./sky/rift/RiftPlate";
 import "./missFlash.css";
 
 const SHOW_MS = 700;
@@ -23,5 +24,5 @@ export function MissFlash() {
     listeners.add(listen);
     return () => { listeners.delete(listen); window.clearTimeout(timer); };
   }, []);
-  return id > 0 ? <div className="hb-rating hb-miss" key={id}>MISS</div> : null;
+  return id > 0 ? <div className="hb-rating hb-miss" key={id}><RiftPlate tone="glass" />MISS</div> : null;
 }
