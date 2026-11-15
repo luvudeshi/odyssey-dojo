@@ -51,7 +51,7 @@ const SCREEN_TIMEOUT_MS = 15_000;
 /** With --shots: the picture is taken on this prompt card of the fight, once it has been up this long. */
 const SHOT_CARD = 5;
 const SHOT_AFTER_MS = 500;
-/** The main menu's way in without a webcam: the name of the link under the three cards (src/screens/MainMenu.tsx). */
+/** The main menu's way in without a webcam: the name of the link under the four cards (src/screens/MainMenu.tsx). */
 const KEYBOARD_LINK = "Play on the keyboard instead";
 
 const args = process.argv.slice(2);
@@ -194,7 +194,7 @@ async function waitForButton(page, texts, what) {
  */
 async function enterFight(page, base, stop, style, styles, query) {
   await page.goto(`${base}/?stop=${stop.id}${query ? `&${query}` : ""}`);
-  // The main menu: the small link under the three cards. The cards start the webcam, so there is no fallback.
+  // The main menu: the small link under the four cards. The cards start the webcam, so there is no fallback.
   const keyboard = page.getByRole("button", { name: KEYBOARD_LINK, exact: true });
   await keyboard.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the main menu has no "${KEYBOARD_LINK}" button`); });
   await keyboard.click();

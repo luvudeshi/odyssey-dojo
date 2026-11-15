@@ -6,7 +6,7 @@ Two players, one monster. One laptop hosts and runs the fight; a friend joins fr
 
 1. Start the built game and the server in one process: `npm run build && npm run server`. It listens on port 8787 and serves the game.
    In development, `npm run dev:all` works too: the QR code uses this laptop's Wi-Fi address with the port the page was opened on (run `vite --host` so a phone can reach it).
-2. Open `http://localhost:8787`, press **Account** on the main menu, then **Host a room**.
+2. Open `http://localhost:8787`, press **Multiplayer** on the main menu, then **Open a room** on the host card.
 3. The screen shows a four-letter code and a QR code. The QR holds `http://<laptop's Wi-Fi address>:8787/?room=CODE`.
 4. When the friend joins, the screen says "A friend has joined." Press **Start**, pick a style and a stop as usual.
 5. If the server is not running, the host screen says so in one line and offers **Play alone**.
@@ -15,7 +15,7 @@ Set `PUBLIC_BASE_URL` (for example `PUBLIC_BASE_URL=http://192.168.1.20:8787 npm
 
 ## Guest
 
-Scan the QR code, or open the game and press **Account**, **Join a room**, and type the four letters in any case. The join screen says how this device will play:
+Scan the QR code, or open the game, press **Multiplayer**, and type the four letters in any case into the join card. The join card says how this device will play:
 
 | Device | Page | Plays with |
 |---|---|---|
@@ -79,13 +79,17 @@ It builds the game, starts the server on a free port (the same process as `npm r
 
 A run fails, and the script exits 1, on a console error, a page error, a request that failed or answered 4xx or 5xx, a guest who never sees the fight, or health, score or result that differ between the two pages. One answer is expected and not counted: the 409 "room full" a returning guest gets while the relay still holds its old seat (20 seconds, see above); the line for that step says how many times it was refused. When a run fails the server's warnings are printed too.
 
-`--poll` keeps the guest's event stream silent, which is what a guest behind a Cloudflare quick tunnel gets, so the guest's link moves to long polling after 3 seconds. Run it both ways. `--runs=` picks runs, `--cap=` is the longest a fight may take in seconds (default 240), `--no-build` uses the `dist/` that is there.
+`--poll` keeps the guest's event stream silent, which is what a guest behind a Cloudflare quick tunnel gets, so the guest's link moves to long polling after 3 seconds. Run it both ways. `--runs=` picks runs, `--cap=` is the longest a fight may take in seconds (default 240), `--no-build` uses the `dist/` that is there, `--port=` puts the server on that port (a free one is picked otherwise).
 
-No camera is used: the host's page has none and lands on keyboard controls, and the guest's page is refused the camera and gets the touch buttons, as a phone on plain http does. It needs Chrome and Playwright. Playwright is not a dependency of this repo: if `node_modules` has none, set `FPS_PLAYWRIGHT` to a playwright-core folder. `FPS_CHANNEL` and `FPS_GL` work as in `scripts/smoke.mjs`.
+No real camera is used. **Start** on the host card starts the host's webcam, so the host's page is given Chrome's fake camera (a moving test pattern with nobody in it): the host skips the god scan and takes **Use keyboard instead** at calibration, so it plays on the keyboard. The guest's page is refused the camera and gets the touch buttons, as a phone on plain http does. `--no-host-camera` refuses the host the camera too, as on a laptop with no webcam. It needs Chrome and Playwright. Playwright is not a dependency of this repo: if `node_modules` has none, set `FPS_PLAYWRIGHT` to a playwright-core folder. `FPS_CHANNEL` and `FPS_GL` work as in `scripts/smoke.mjs`.
 
 **Where it stands (14 Nov, `f8b1891`):** `fight` and `host-leaves` pass with the guest on the stream and with the guest polling. `rejoin` fails both ways: the guest is let back in after about 20 seconds but its page stays on "You are in. Waiting for the host to start." (#222).
 
 **After the main menu (14 Nov, late, `5f81bdb` and again at `c865fa8`):** the script now goes main menu, **Account**, **Host a room** (the guest: **Account**, **Join a room**), and a stop on the map starts the fight with no intro screen. Opening the room and joining it pass in all three runs. Every run then fails at "host sees the guest and starts a fight": after **Start** the host's page, which has no camera, lands on the Account screen and never shows the style screen for good, so no fight begins. The camera fails ("Permission denied"), the game answers a failed camera by going back to the main menu, and since the main menu landed that also applies on the style screen; the Account panel is still open, so that is what shows. Before the main menu the host stayed on the style screen and played on the keyboard. The cause is in `src/App.tsx` and `src/screens/flow.ts`, not in the script. A host whose camera starts was not tried.
+
+**After the Multiplayer screen (15 Nov, `@@HASH@@`):** rooms moved out of Account (PR 296). The script now goes main menu, **Multiplayer**, **Open a room** on the host card; the guest goes main menu, **Multiplayer** and types the code into the join card. The host's page gets Chrome's fake camera. All three runs pass with the guest on the stream: `fight` (won, both pages 100% and 0%, the same score), `rejoin` (refused 9 times with the 409, let back in after 19.4 seconds, sees the fight again, same result at the end) and `host-leaves` (the guest is told "The host left the room." and lands on the Multiplayer screen). `--poll` was not run again.
+
+A host with no camera still cannot start a shared fight. With `--no-host-camera` the `fight` run fails at "host sees the guest and starts a fight": 0.4 seconds after **Start** the host's page is back on the Multiplayer screen with no room open, and the guest stays on "Waiting for the host to start". **Start** moves to the style screen and starts the camera (`src/App.tsx:138`); the camera fails and the game goes back to the main menu (`src/App.tsx:105`), which from the style screen also drops the room (`src/screens/flow.ts:64`). The Multiplayer panel is still open, so that is the screen that shows. The cause is in the game, not in the script.
 
 What it does not show: two machines, a real phone, a real network or a tunnel, a camera on either side, or sound.
 

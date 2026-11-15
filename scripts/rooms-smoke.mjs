@@ -2,7 +2,8 @@
 // and plays an online room in two pages of headless Chrome: a host at laptop size on the keyboard and a guest at
 // phone size with touch. Prints one line per step.
 //
-//   node scripts/rooms-smoke.mjs [--no-build] [--runs=fight,rejoin,host-leaves] [--poll] [--cap=240]
+//   node scripts/rooms-smoke.mjs [--no-build] [--runs=fight,rejoin,host-leaves] [--poll] [--cap=240] [--port=6040]
+//                                [--no-host-camera]
 //
 // The three runs:
 //   fight        the host makes a room, the guest types its code, they play one whole fight
@@ -18,8 +19,15 @@
 // One answer is expected and not counted: 409 "room full" while a guest who dropped waits for the old seat to be
 // given back (the relay holds a seat for 20 seconds, see docs/rooms.md). The line for that step says how often.
 //
-// No camera is used. The host's page has none, so it lands on keyboard controls; the guest's page is refused
-// the camera, so it gets the touch buttons a phone on plain http gets.
+// Both pages go through the Multiplayer card of the main menu: the host presses "Open a room" on its host card, the
+// guest types the code into its join card.
+//
+// No real camera is used. "Start" on the host card starts the host's webcam, so the host's page is given Chrome's
+// fake camera (a moving test pattern, nobody in it): the host skips the god scan, and at calibration takes "Use
+// keyboard instead", so it plays on the keyboard. The guest's page is refused the camera, so it gets the touch
+// buttons a phone on plain http gets.
+// --no-host-camera  refuses the host the camera too, as on a laptop with no webcam. The run then shows what the game
+//                   does with such a host after "Start" (see docs/rooms.md).
 //
 // Finding Playwright and the way the fight is played are the same as in scripts/smoke.mjs. That file exports
 // nothing and runs on import, so those small parts are copied here.
@@ -54,6 +62,8 @@ const TAP_EVERY_MS = 100;
 const POLL_TIMEOUT_MS = 10_000;
 /** How long a screen may take to come up. */
 const SCREEN_MS = 15_000;
+/** How long the host's camera and pose tracker may take to start after "Start". */
+const CAMERA_MS = 90_000;
 /** How long the guest may take to show what the host shows. */
 const FOLLOW_MS = 8_000;
 /** How long the fight may take to its first hit, on either side. */
@@ -162,6 +172,9 @@ function glArgs() {
     "--disable-renderer-backgrounding", "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows",
   ];
   if (backend) list.push(`--use-angle=${backend}`);
+  // The camera a page gets, when it is allowed one, is Chrome's test pattern and never a real camera. Only the
+  // host's page is allowed one (its context's permission); without the permission headless Chrome refuses.
+  list.push("--use-fake-device-for-media-stream", "--mute-audio");
   return list;
 }
 
@@ -247,9 +260,9 @@ function readWhere() {
 
 /**
  * Runs in the page: what the HUD shows right now, on the host's page or the guest's. `over` is the result overlay
- * (the only overlay with buttons that is not the pause menu). Every selector names the pebble HUD (hb-, pb-) and
- * the star-chart HUD (sky-, sk-) side by side. The two health bars are read from their meter role, which both
- * have: whole percentages, null until the bar is drawn.
+ * (the only overlay with buttons that is not the pause menu). Every selector names the pebble HUD (hb-, pb-), the
+ * star-chart HUD (sky-, sk-) and the forge bars (fg-) side by side. The two health bars are read from their meter
+ * role, which all of them have: whole percentages, null until the bar is drawn.
  */
 function readHud() {
   const fight = document.querySelector(".fight");
@@ -260,7 +273,7 @@ function readHud() {
     const now = Number.parseFloat(bar?.getAttribute("aria-valuenow") ?? "");
     return Number.isFinite(now) ? now : null;
   };
-  const hud = { fight: true, you: percent(bars.find(mine)), monster: percent(bars.find((bar) => !mine(bar))), score: fight.querySelector(".hb-score, .sk-score__num")?.textContent?.trim() ?? null };
+  const hud = { fight: true, you: percent(bars.find(mine)), monster: percent(bars.find((bar) => !mine(bar))), score: fight.querySelector(".hb-score, .sk-score__num, .fg-score__num")?.textContent?.trim() ?? null };
   const overlay = fight.querySelector(".overlay");
   if (overlay?.querySelector("button")) return { ...hud, over: true, title: overlay.querySelector("h1")?.textContent?.trim() ?? "" };
   const prompt = fight.querySelector(".hb-card, .sky-card");
@@ -399,18 +412,21 @@ function newRun(id) {
   };
 }
 
-/** The main menu's Account card: its name is the card's own name followed by its line of small print (MainMenu.tsx). */
-const ACCOUNT_CARD = { selector: 'nav[aria-label="Main menu"] button:has-text("Account")', name: /^Account/ };
+/** The main menu's Multiplayer card: its name is the card's own name followed by its line of small print (MainMenu.tsx). */
+const MULTIPLAYER_CARD = { selector: 'nav[aria-label="Main menu"] button:has-text("Multiplayer")', name: /^Multiplayer/ };
 
-/** Main menu -> Account -> "Host a room". Returns the room code, read from the join link the QR code holds. */
+/**
+ * Main menu -> Multiplayer -> "Open a room" on the host card. Returns the room code, read from the join link the QR
+ * code holds. The join card on the same screen has an alert line of its own, empty unless a join failed.
+ */
 async function hostOpensRoom(page, base) {
   await page.goto(base);
-  await press(page, "open the account", ACCOUNT_CARD);
-  await press(page, "host a room", { name: "Host a room" });
+  await press(page, "open Multiplayer", MULTIPLAYER_CARD);
+  await press(page, "open a room", { name: "Open a room" });
   const ready = await until(page, () => {
     const link = document.querySelector("img[data-join-url]")?.getAttribute("data-join-url");
     const label = document.querySelector('[aria-label^="Room code"]')?.textContent?.trim();
-    const alert = document.querySelector('main [role="alert"]')?.textContent?.trim();
+    const alert = [...document.querySelectorAll('main [role="alert"]')].map((node) => node.textContent?.trim() ?? "").find((line) => line !== "");
     return { link: link ?? null, label: label ?? null, alert: alert ?? "" };
   }, (found) => found.link !== null || found.label !== null || found.alert !== "", SCREEN_MS);
   if (!ready) throw new Error(`the room never opened, the page shows ${await page.evaluate(readWhere)}`);
@@ -431,18 +447,17 @@ async function sendCode(page) {
   await input.press("Enter");
   const answer = await until(page, () => {
     const typing = Boolean(document.querySelector("main input"));
-    const alert = document.querySelector('main [role="alert"]')?.textContent?.trim() ?? "";
+    const alert = [...document.querySelectorAll('main [role="alert"]')].map((node) => node.textContent?.trim() ?? "").find((line) => line !== "") ?? "";
     return { typing, alert };
   }, (found) => !found.typing || found.alert !== "", SCREEN_MS);
   if (!answer) throw new Error(`the join was never answered, the page shows ${await page.evaluate(readWhere)}`);
   return answer.typing ? { refused: answer.alert } : { refused: null };
 }
 
-/** Main menu -> Account -> "Join a room" -> the four letters, typed. */
+/** Main menu -> Multiplayer -> the four letters, typed into the join card. */
 async function guestTypesCode(page, base, code) {
   await page.goto(base);
-  await press(page, "open the account", ACCOUNT_CARD);
-  await press(page, "join a room", { name: "Join a room" });
+  await press(page, "open Multiplayer", MULTIPLAYER_CARD);
   const input = page.locator('main input[maxlength="4"], main input').first();
   await input.waitFor({ timeout: SCREEN_MS });
   await input.fill(code.toLowerCase());
@@ -452,10 +467,30 @@ async function guestTypesCode(page, base, code) {
   if (answer.refused !== null) throw new Error(`refused: "${answer.refused}"`);
 }
 
+/** Runs in the page: which screen the host is on after "Start". */
+function readHostScreen() {
+  const has = (selector) => Boolean(document.querySelector(selector));
+  const text = (selector) => document.querySelector(selector)?.textContent?.trim() ?? "";
+  if (has(".fight canvas")) return { at: "fight" };
+  if (has("button.scan-skip") || has("main.reveal")) return { at: "scan" };
+  if (has(".calibration")) return { at: "calibration" };
+  if (has("button.stop")) return { at: "map" };
+  if (has("main .styles button")) return { at: "style" };
+  if (has('nav[aria-label="Main menu"]')) return { at: "menu", problem: text("main .overlay p") };
+  if (has("main .rooms")) return { at: "multiplayer" };
+  return { at: "other" };
+}
+
 /**
- * The host's "Start" (live once the friend is in), the first style, the first open stop, the fight. The click on
- * the stop starts the fight.
- * "Start" is the button right after the room's status line; "Back" is live all the time and must not be taken for it.
+ * The host's "Start" (live once the friend is in), then the way to the fight: the god scan (skipped), the first
+ * style, the first open stop, calibration ("Use keyboard instead": nobody stands in the test pattern), the fight.
+ * "Start" is the button right after the room's status line; "Close the room" is live all the time and must not be
+ * taken for it.
+ *
+ * "Start" starts the host's webcam. The style screen shows at once, and the god scan takes its place when the
+ * camera is up. A style picked before that would leave the camera to come up in the middle of the fight, so the
+ * script waits for the scan. If the camera fails instead, the game leaves the style screen: the step then says
+ * where the page went.
  */
 async function hostStartsFight(page) {
   const friend = await until(page, () => {
@@ -465,12 +500,20 @@ async function hostStartsFight(page) {
   if (!friend) throw new Error(`the host never saw the guest, the page shows ${await page.evaluate(readWhere)}`);
   await press(page, "start", { selector: 'main:has(img[data-join-url]) [role="status"] + button:enabled', name: /^start/i });
   await page.locator("img[data-join-url]").waitFor({ state: "detached", timeout: SCREEN_MS });
+  const camera = await until(page, readHostScreen, (screen) => screen.at !== "style" && screen.at !== "other", CAMERA_MS);
+  if (camera?.at !== "scan") {
+    const where = camera === null ? `still shows ${await page.evaluate(readWhere).catch(() => "nothing")} after ${String(CAMERA_MS / 1000)} s`
+      : camera.at === "menu" ? `is back on the main menu${camera.problem ? `, which says "${camera.problem}"` : ""}`
+      : camera.at === "multiplayer" ? "is back on the Multiplayer screen with no room open"
+      : `is on the ${camera.at} screen`;
+    throw new Error(`after "Start" the host's camera did not come up: its page ${where}`);
+  }
   // A style button is the one with a line of small print under its name (the main menu's cards have one too, but
-  // they sit in a nav). The host has no camera: if the game leaves the style screen on its own, the step says where
-  // the page went instead of only timing out.
+  // they sit in a nav).
   let styleName = "";
   let enemy = "";
   try {
+    await press(page, "skip the god scan", { selector: "button.scan-skip", name: /^skip/i });
     const style = page.locator("main button:has(small):not(nav button)").first();
     await style.waitFor({ timeout: SCREEN_MS });
     styleName = await style.evaluate((element) => element.firstChild?.textContent?.trim() ?? "", null, { timeout: SCREEN_MS });
@@ -479,14 +522,15 @@ async function hostStartsFight(page) {
     await stop.waitFor({ timeout: SCREEN_MS });
     // The monster's name is the first text of the stop's label; the small print after it is the book.
     enemy = await stop.evaluate((element) => (element.querySelector(".lbl")?.firstChild?.textContent ?? element.textContent ?? "").trim(), null, { timeout: SCREEN_MS });
-    // The click on the stop starts the fight: there is no screen in between.
+    // The click on the stop starts the fight; with the camera on, calibration comes first.
     await stop.click({ timeout: SCREEN_MS });
+    await press(page, "play on the keyboard at calibration", { selector: ".calibration button", name: "Use keyboard instead" });
     // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
     await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
   } catch (error) {
-    throw new Error(`after "Start" the host did not get from the style screen to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
+    throw new Error(`after "Start" the host did not get from the god scan to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
   }
-  return `"${friend.notice}", style ${styleName}, against ${enemy}`;
+  return `"${friend.notice}", fake camera up, god scan skipped, style ${styleName}, against ${enemy}, keyboard taken at calibration`;
 }
 
 /**
@@ -508,9 +552,9 @@ async function sameHealth(host, guest, ms) {
 }
 
 /** One run in two fresh browser contexts, so saved settings and errors never leak from one run into the next. */
-async function runOne(browser, base, kind, index, moveKeys, capMs, poll) {
+async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCamera) {
   const run = newRun(`run ${String(index + 1)} ${kind}`);
-  const hostContext = await browser.newContext(HOST_VIEW);
+  const hostContext = await browser.newContext({ ...HOST_VIEW, permissions: hostCamera ? ["camera"] : [] });
   const guestContext = await browser.newContext(GUEST_VIEW);
   // The stream answers and then says nothing, which is what a guest behind a quick tunnel gets.
   if (poll) await guestContext.route("**/api/rooms/*/events*", (route) => route.fulfill({ status: 200, contentType: "text/event-stream", body: "" }));
@@ -684,6 +728,7 @@ async function main() {
   const unknown = kinds.filter((kind) => !(kind in RUNS));
   if (kinds.length === 0 || unknown.length > 0) throw new Error(`--runs takes ${Object.keys(RUNS).join(", ")}${unknown.length > 0 ? `; not ${unknown.join(", ")}` : ""}`);
   const poll = flag("poll");
+  const hostCamera = !flag("no-host-camera");
   const moveKeys = readMoveKeys();
   const chromium = loadChromium();
   let server = null;
@@ -698,11 +743,11 @@ async function main() {
       await build();
     }
     if (!existsSync(join(ROOT, "dist", "index.html"))) throw new Error("dist/ has no build: run without --no-build");
-    const port = await freePort();
+    const port = option("port", "") ? Number(option("port", "")) : await freePort();
     const base = `http://127.0.0.1:${String(port)}`;
     server = startServer(port);
     await waitForServer(base, server);
-    say(`Server and built game at ${base}; the guest's link uses ${poll ? "long polling (its event stream is kept silent)" : "the event stream"}`);
+    say(`Server and built game at ${base}; the guest's link uses ${poll ? "long polling (its event stream is kept silent)" : "the event stream"}; the host ${hostCamera ? "has Chrome's fake camera" : "is refused the camera"}`);
     const channel = process.env.FPS_CHANNEL ?? "chrome";
     browser = await chromium.launch({ headless: true, args: glArgs(), ...(channel ? { channel } : {}) });
     // One page first, as scripts/smoke.mjs does: it names the GPU, and the browser's first page load is not timed inside a run.
@@ -713,7 +758,7 @@ async function main() {
     const rows = [];
     for (const [index, kind] of kinds.entries()) {
       say(`\n${`run ${String(index + 1)} ${kind}`}: ${RUNS[kind]}`);
-      const row = await runOne(browser, base, kind, index, moveKeys, capSeconds * 1000, poll);
+      const row = await runOne(browser, base, kind, index, moveKeys, capSeconds * 1000, poll, hostCamera);
       rows.push(row);
       for (const line of details(row)) say(line);
       say(summary(row));
