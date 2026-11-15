@@ -8,6 +8,7 @@ import { BronzeDefs, GALLEY } from "./menuShields";
 import { HARBOUR_AT, PlaceArt, STOP_SLOTS, TROY, TROY_AT } from "./questPlaces";
 import { Sea, SeaDefs } from "./questSea";
 import { QuestLook } from "./QuestLook";
+import { QuestVoyage } from "./QuestVoyage";
 import { LOOK_ROUTE, type Look } from "./questLookData";
 import { LOOK } from "../ui/lookSwitch";
 import "./menuScene.css";
@@ -65,6 +66,7 @@ export function QuestMap(props: {
   onStyle: () => void;
   onMenu: () => void;
 }) {
+  if (LOOK === "d") return <QuestVoyage {...props} />;
   if (LOOK) return <QuestLook look={LOOK} {...props} />;
   const { enemies, cleared } = props;
   // Every stop won: the journey is done and Ithaca is lit.
