@@ -123,7 +123,7 @@ test("a host that leaves is gone for the guest at once, keeps its seat and token
   expect(guestEar.heard).toEqual([GONE, HERE]);
 });
 
-test("a wrong token or code changes nothing, a member that was never connected leaves without a word, and leaving is not use of the room", () => {
+test("a wrong token or code changes nothing, a member that was never connected leaves without a word, and a guest's leave is not use of the room", () => {
   let now = 1_000;
   const store = createRoomStore(() => now);
   const { code, host, guest } = open(store);
@@ -136,15 +136,35 @@ test("a wrong token or code changes nothing, a member that was never connected l
   expect(hostEar.heard).toEqual([]);
   expect(hostEar.ended).toBe(0);
 
+  // The room was last used when the host's stream opened. A guest's leave just before it expires does not keep it.
   // The host was never told this guest was here, so it is not told it went.
+  now += IDLE_MS - 1;
   expect(store.leave(code, guest)).toBe("left");
   expect(hostEar.heard).toEqual([]);
-
-  // The room was last used when the host's stream opened. A leave just before it expires does not keep it.
-  now += IDLE_MS - 1;
-  expect(store.leave(code, host)).toBe("left");
   now += 1;
   expect(store.leave(code, host)).toBe("unknown");
+  expect(store.size()).toBe(0);
+});
+
+test("a host's leave is use of the room: where a grace is given, the room it just left is kept for a reload, then goes", () => {
+  let now = 1_000;
+  const store = createRoomStore(() => now);
+  const { code, host } = open(store);
+  store.attach(code, host, ear().listener);
+  // Long after the room was last used, with the host still connected, the host's page goes.
+  now += 2 * AWAY_MS;
+  expect(store.leave(code, host)).toBe("left");
+  // PUBLIC_ROOMS=1 gives AWAY_MS of grace: neither the owner's next create nor a stranger's takes the room yet.
+  now += AWAY_MS - 1;
+  expect(store.freeOne("owner", AWAY_MS)).toBeGreaterThan(0);
+  expect(store.freeOther("stranger", AWAY_MS)).toBe(false);
+  expect(store.size()).toBe(1);
+  // The host comes back inside the grace and is here again with the same token.
+  expect(poll(store, code, host, 0)).toHaveLength(0);
+  expect(store.leave(code, host)).toBe("left");
+  // Once the grace is over the room can go.
+  now += AWAY_MS;
+  expect(store.freeOne("owner", AWAY_MS)).toBe(0);
   expect(store.size()).toBe(0);
 });
 

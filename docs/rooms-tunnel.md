@@ -323,6 +323,7 @@ member can say it is going: body `{"token":"<its token>"}`, sent with `navigator
 is read as JSON whatever its label (a beacon sends a string as `text/plain`), up to 1 KB. The answer is
 `200 {"left":true}`. The other member hears `{"type":"peer","joined":false}` at once, as when a stream closes. A guest's
 seat is free at once and its token stops working; the host keeps its seat and token and is back with its next poll.
+A host's leave counts as use of the room, so with `PUBLIC_ROOMS=1` the room it left is kept for 20 seconds for a reload.
 Every leave that names no seat (wrong code, room gone, wrong token, a guest leaving twice) gets `404 {"error":"not_in_room"}`.
 Those count with wrong sends and streams (20 a minute for one address, then 429), and every leave counts as a poll.
 It is a room path, so the guard lets it through the tunnel and, with `PUBLIC_ROOMS=1`, through the proxy.
