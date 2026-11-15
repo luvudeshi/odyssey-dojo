@@ -153,7 +153,8 @@ test("camera: pulls back and lower on a windup, pushes in on a strike window, or
   expect(defend.pz).toBeGreaterThan(rest.pz);
   expect(defend.py).toBeLessThan(rest.py);
   const strike = cameraShot(makeShot(), inPhase("strike"), 0, true);
-  expect(strike.pz).toBeLessThan(rest.pz);
+  // It narrows the lens rather than moving in: the hero's feet must stay in frame (tests/hero-framing.test.ts).
+  expect(strike.fov).toBeLessThan(rest.fov);
   // Looking mostly at the weak spot [1, 2, 3] in the monster's space, which sits at z=-4, so z=-1.
   expect(strike.lz).toBeGreaterThan(rest.lz);
   expect(strike.lz).toBeLessThan(-1);
