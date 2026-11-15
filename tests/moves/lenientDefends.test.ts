@@ -5,28 +5,15 @@
 import { describe, expect, test } from "vitest";
 import type { PoseFrame } from "../../src/core/types";
 import { JOINT } from "../../src/pose/signals";
-import { body, frameOn, shouldersAt } from "../helpers/anyBody";
 import { DEFENDS, GOD_GESTURES, firedIn } from "../helpers/crossFire";
 import type { Arm, Key, Pose } from "../helpers/poses";
 import { DOWN, GUARD, frameOf, pose, sequence, standing } from "../helpers/poses";
+import { CAMERAS, partWay } from "../helpers/roughCamera";
 
 const J = JOINT;
-const ARM_JOINTS = [J.leftElbow, J.rightElbow, J.leftWrist, J.rightWrist];
-const LOWER_JOINTS = [J.leftHip, J.rightHip, J.leftKnee, J.rightKnee, J.leftAnkle, J.rightAnkle];
 const NOT_A_DEFEND = new Set(["stake_thrust", ...GOD_GESTURES]);
 
 const keys = (...pairs: [number, Pose][]): Key[] => pairs.map(([t, p]) => ({ t, pose: p }));
-const lerp = (a: number, b: number, k: number): number => a + (b - a) * k;
-
-/** Part of the way from one arm to another, in the picture and in the world. */
-function partWay(from: Arm, to: Arm, k: number): Arm {
-  const two = (a: Arm["elbow"], b: Arm["elbow"]) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k)] as const;
-  const three = (a: Arm["elbow3"], b: Arm["elbow3"]) => [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)] as const;
-  return {
-    elbow: two(from.elbow, to.elbow), wrist: two(from.wrist, to.wrist),
-    elbow3: three(from.elbow3, to.elbow3), wrist3: three(from.wrist3, to.wrist3),
-  };
-}
 
 /** The forearm turned about the elbow in the picture, outward for the left arm (and so for the mirrored right). */
 function turned(arm: Arm, degrees: number): Arm {
@@ -85,26 +72,6 @@ const MOVE_FRAMES: Record<string, Variant[]> = {
     { name: "seated lean, head further", frames: headLean(sequence(hold(pose(DOWN, DOWN, 0.03, 0))), { dx: 0.07, dy: 0 }) },
   ],
 };
-
-/** The same frames as a weak camera sees them: arm joints at 0.35, and nothing below the waist. */
-function waistUp(frames: readonly PoseFrame[]): PoseFrame[] {
-  const seen = (index: number, visibility: number): number => {
-    if (ARM_JOINTS.includes(index)) return 0.35;
-    if (LOWER_JOINTS.includes(index)) return 0;
-    return visibility;
-  };
-  return frames.map((frame) => ({
-    ...frame,
-    image: frame.image.map((point, index) => ({ ...point, visibility: seen(index, point.visibility) })),
-    world: frame.world.map((point, index) => ({ ...point, visibility: seen(index, point.visibility) })),
-  }));
-}
-
-const CAMERAS = [
-  { name: "clear, shoulders 0.16 of the frame", see: (frames: readonly PoseFrame[]) => [...frames] },
-  { name: "waist-up, shoulders 0.15", see: (frames: readonly PoseFrame[]) => waistUp(frames).map((f) => frameOn(body("far", { zoom: shouldersAt(0.15) }), f)) },
-  { name: "waist-up, shoulders 0.6", see: (frames: readonly PoseFrame[]) => waistUp(frames).map((f) => frameOn(body("near", { zoom: shouldersAt(0.6) }), f)) },
-];
 
 describe("every defend counts when done roughly, and sets off nothing it should not", () => {
   const cases = Object.entries(MOVE_FRAMES).flatMap(([move, variants]) =>
