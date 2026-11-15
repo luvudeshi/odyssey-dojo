@@ -136,6 +136,9 @@ test("unknown rooms, full rooms, wrong tokens, oversize and non-object messages 
   expect(await status("/api/rooms", {})).toBe(503);
 });
 
+/** The heartbeat as a page reads it: a data line, so the page can tell its stream is alive. */
+const BEAT = { type: "beat" };
+
 test("an open stream gets a heartbeat, and an idle room expires: its streams end and its code stops working", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
   const call = await serve();
@@ -143,13 +146,13 @@ test("an open stream gets a heartbeat, and an idle room expires: its streams end
   const hostNext = await listen(call, code, host);
   const guestNext = await listen(call, code, guest);
   vi.advanceTimersByTime(HEARTBEAT_MS);
-  expect([await hostNext(), await hostNext(), await hostNext()]).toEqual([{ type: "peer", joined: false }, { type: "peer", joined: true }, ": keep"]);
-  expect([await guestNext(), await guestNext()]).toEqual([{ type: "peer", joined: true }, ": keep"]);
+  expect([await hostNext(), await hostNext(), await hostNext()]).toEqual([{ type: "peer", joined: false }, { type: "peer", joined: true }, BEAT]);
+  expect([await guestNext(), await guestNext()]).toEqual([{ type: "peer", joined: true }, BEAT]);
 
   vi.advanceTimersByTime(IDLE_MS);
   for (const next of [hostNext, guestNext]) {
     let frame = await next();
-    while (frame === ": keep") frame = await next();
+    while (JSON.stringify(frame) === JSON.stringify(BEAT)) frame = await next();
     expect(frame).toBeNull();
   }
   expect((await call(`/api/rooms/${code}/send`, { token: host, message: {} })).status).toBe(404);

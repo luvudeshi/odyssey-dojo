@@ -31,10 +31,18 @@ export interface NetDeps {
   readonly openStream: (url: string) => EventStream;
   /** How long a new stream has to deliver its first message before the link polls instead. Default STREAM_PROOF_MS. */
   readonly streamProofMs?: number;
+  /** How long a stream that has sent a beat may then say nothing before the link polls instead. Default STREAM_QUIET_MS. */
+  readonly streamQuietMs?: number;
 }
 
 /** The relay writes a line the moment a stream opens, so a stream that has said nothing after this long is not getting through. */
 export const STREAM_PROOF_MS = 3_000;
+/**
+ * The relay puts a "beat" on every open stream each few seconds (HEARTBEAT_MS in server/routes/rooms.ts). A stream
+ * that has sent one and then says nothing for this long has died without telling the page (a phone that left the
+ * Wi-Fi, a laptop that slept), so the link polls instead. A relay that sends no beats is never judged this way.
+ */
+export const STREAM_QUIET_MS = 12_000;
 /** The longest a POST to the relay may take. After it the request is given up and counts as unreachable. */
 export const POST_TIMEOUT_MS = 8_000;
 /** The wait after a poll fails before the next one. */
@@ -87,7 +95,7 @@ export async function joinRoom(deps: NetDeps, code: string, base = ""): Promise<
   if (answer.status === 404) return "unknown_room";
   if (answer.status === 409) return "room_full";
   const token = field(answer.data, "token");
-  return answer.status === 200 && token ? { code: cleaned, token } : "unreachable";
+  return answer.status === 200 && token ? guestSeat({ code: cleaned, token }, null) : "unreachable";
 }
 
 /** The part of sessionStorage used to keep a guest's seat for the tab. A private window may throw on any call. */
@@ -98,6 +106,26 @@ export interface SeatStore {
 }
 
 const SEAT_KEY = "odyssey.room.seat";
+
+/**
+ * The rooms joinRoom and joinRoomAgain handed out, each with the place its seat is kept (null: nowhere). openRoom
+ * looks its room up here: only a guest's link may take a seat again after the relay gave the first one away, and
+ * the new seat is kept in the same place. A host's room (from createRoom) is never in here.
+ */
+const guestSeats = new WeakMap<object, SeatStore | null>();
+
+function guestSeat(room: { code: string; token: string }, store: SeatStore | null): { code: string; token: string } {
+  guestSeats.set(room, store);
+  return room;
+}
+
+function keepSeat(store: SeatStore | null, room: { code: string; token: string }): void {
+  try {
+    store?.setItem(SEAT_KEY, JSON.stringify({ code: room.code, token: room.token }));
+  } catch {
+    // No storage: this page joins as new next time.
+  }
+}
 
 function keptSeat(store: SeatStore, code: string): string | null {
   try {
@@ -121,7 +149,7 @@ export async function joinRoomAgain(deps: NetDeps, code: string, store: SeatStor
   if (token !== null) {
     const answer = await post(deps, `${base}/api/rooms/${cleaned}/send`, { token, message: { type: "ask" } });
     if (!answer) return "unreachable";
-    if (answer.status === 200) return { code: cleaned, token };
+    if (answer.status === 200) return guestSeat({ code: cleaned, token }, store);
     if (answer.status === 429) return "slow_down";
     try {
       store?.removeItem(SEAT_KEY);
@@ -130,25 +158,31 @@ export async function joinRoomAgain(deps: NetDeps, code: string, store: SeatStor
     }
   }
   const room = await joinRoom(deps, cleaned, base);
-  if (typeof room !== "string") {
-    try {
-      store?.setItem(SEAT_KEY, JSON.stringify(room));
-    } catch {
-      // No storage: this page joins as new next time.
-    }
-  }
-  return room;
+  if (typeof room === "string") return room;
+  keepSeat(store, room);
+  return guestSeat(room, store);
 }
 
 /**
  * Opens the member's line to the other member. The event stream is tried first. When it says nothing for
  * deps.streamProofMs, or reports an error, the link switches to long polling for good: the next poll asks for
  * everything after the newest message number heard, so nothing is lost and nothing is heard twice.
+ *
+ * A guest's link (a room from joinRoom or joinRoomAgain) also gets back in after it was away for longer than the
+ * relay holds a seat (AWAY_MS in server/lib/rooms.ts): when the relay no longer takes its token, it joins the room
+ * again, keeps the new seat where the old one was kept, and carries on. The host is told the guest is here, which
+ * makes it say again which fight is on. If the room is gone or the seat went to somebody else, the listeners hear
+ * "peer: false" once, so the guest's screen says the host left and does not stand on a frozen frame.
  */
 export function openRoom(deps: NetDeps, room: { code: string; token: string }, base = ""): RoomTransport {
   const listeners: ((message: NetMessage) => void)[] = [];
-  const path = `${base}/api/rooms/${cleanCode(room.code)}`;
-  const query = `token=${encodeURIComponent(room.token)}`;
+  const code = cleanCode(room.code);
+  const path = `${base}/api/rooms/${code}`;
+  const isGuest = guestSeats.has(room);
+  const seatStore = guestSeats.get(room) ?? null;
+  /** A guest's token changes when it takes a seat again. */
+  let token = room.token;
+  const query = (): string => `token=${encodeURIComponent(token)}`;
   /** The newest message number heard; the relay numbers each member's messages 1, 2, 3 and so on. */
   let last = 0;
   let peer: boolean | null = null;
@@ -178,14 +212,51 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     return true;
   };
 
+  /** Tells the listeners the host is not here, once: the room is gone, or this guest's seat went to somebody else. */
+  const hostLost = (): void => {
+    if (!isClosed() && peer !== false) hear({ type: "peer", joined: false });
+  };
+
+  /**
+   * The relay gave this guest's seat away: joins the room again. True when the link has a seat and can go on. False
+   * when the room is gone or full (the listeners are told the host is not here), or the link was closed meanwhile.
+   */
+  const sitAgain = async (): Promise<boolean> => {
+    while (!isClosed()) {
+      const seat = await joinRoom(deps, code, base);
+      if (isClosed()) return false;
+      if (typeof seat !== "string") {
+        token = seat.token;
+        // A new seat's messages are numbered from 1 again, and where the host stands is not known yet.
+        last = 0;
+        peer = null;
+        keepSeat(seatStore, seat);
+        return true;
+      }
+      if (seat === "unknown_room" || seat === "room_full") break;
+      await new Promise((resolve) => setTimeout(resolve, POLL_RETRY_MS));
+    }
+    hostLost();
+    return false;
+  };
+
   const pollLoop = async (): Promise<void> => {
     while (!isClosed()) {
       const ask = new AbortController();
       inFlight = ask;
       let again = false;
       try {
-        const response = await deps.fetch(`${path}/poll?${query}&after=${String(last)}`, { method: "GET", signal: ask.signal });
-        if (isClosed() || response.status === 404 || response.status === 401) return;
+        const response = await deps.fetch(`${path}/poll?${query()}&after=${String(last)}`, { method: "GET", signal: ask.signal });
+        if (isClosed()) return;
+        if (response.status === 404 || response.status === 401) {
+          if (!isGuest) return;
+          if (response.status === 404) {
+            hostLost();
+            return;
+          }
+          if (!(await sitAgain())) return;
+          continue;
+        }
         const data = response.ok ? await response.json() : null;
         if (isClosed()) return;
         again = !takePoll(data);
@@ -196,11 +267,15 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     }
   };
 
-  const stream = deps.openStream(`${path}/events?${query}`);
+  const stream = deps.openStream(`${path}/events?${query()}`);
+  /** Set once the relay has sent a beat on this stream; from then on a long silence means the stream is dead. */
+  let beating = false;
+  let quiet: ReturnType<typeof setTimeout> | undefined;
   const usePolling = (): void => {
     if (state.closed || state.polling) return;
     state.polling = true;
     clearTimeout(proof);
+    clearTimeout(quiet);
     stream.onmessage = null;
     stream.onerror = null;
     // The poll is on its way before the stream is cut, so the relay never sees the member leave.
@@ -212,20 +287,33 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
   stream.onmessage = (event) => {
     clearTimeout(proof);
     if (typeof event.data !== "string") return;
+    let said: unknown;
+    try {
+      said = JSON.parse(event.data);
+    } catch {
+      // Not JSON: not ours.
+      return;
+    }
+    const beat = field(said, "type") === "beat";
+    if (beat) beating = true;
+    if (beating) {
+      clearTimeout(quiet);
+      quiet = setTimeout(usePolling, deps.streamQuietMs ?? STREAM_QUIET_MS);
+    }
+    // The beat is the relay's own and carries no number: nothing for the listeners.
+    if (beat) return;
     if (event.lastEventId !== undefined && /^\d+$/.test(event.lastEventId)) {
       const id = Number(event.lastEventId);
       if (id <= last) return;
       last = id;
     }
-    try {
-      hear(JSON.parse(event.data));
-    } catch {
-      // Not JSON: not ours.
-    }
+    hear(said);
   };
   return {
     async send(message) {
-      const answer = await post(deps, `${path}/send`, { token: room.token, message });
+      const answer = await post(deps, `${path}/send`, { token, message });
+      // The relay no longer takes this guest's token: the poll loop finds that out too, and takes a seat again.
+      if (answer?.status === 401 && isGuest) usePolling();
       return answer?.status === 200 && typeof answer.data === "object" && answer.data !== null && "delivered" in answer.data
         ? answer.data.delivered === true
         : false;
@@ -236,6 +324,7 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     close() {
       state.closed = true;
       clearTimeout(proof);
+      clearTimeout(quiet);
       stream.onmessage = null;
       stream.onerror = null;
       stream.close();

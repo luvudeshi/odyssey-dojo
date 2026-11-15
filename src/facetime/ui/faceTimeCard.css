@@ -1,22 +1,20 @@
 /* The FaceTime card on the Multiplayer screen (FaceTimeCard.tsx) and the host's plate during a call (browserSession.ts).
-   The card is an .acc-card.rooms__card like its two neighbours; only what they do not have is here. */
+   The card sits in a kit panel (Multiplayer.tsx); screens-mp.css styles its text and buttons. Only what is special to it is here. */
 .ft-card .acc-icon { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .ft-card .ft-form { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: auto; }
-.ft-card .ft-label { align-self: stretch; font: 700 16px var(--pb-font-body); color: var(--pb-text); }
-.ft-card .ft-input { box-sizing: border-box; width: 100%; padding: 8px 12px; font: 700 24px var(--pb-font-body); letter-spacing: 0.04em; text-align: center; color: var(--pb-text); background: var(--pb-ground-deep); border: var(--bw-line, 2px) solid var(--pb-lead); border-radius: var(--pb-radius); }
-.ft-card .ft-input::placeholder { color: var(--pb-text-dim); opacity: 0.7; }
-.ft-card .ft-input:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
-.ft-card .ft-input[aria-invalid="true"] { border-color: var(--pb-ochre); }
+.ft-card .ft-label { align-self: stretch; font: 700 18px var(--st-body); color: var(--st-ink); }
+.ft-card .ft-input { box-sizing: border-box; width: 100%; padding: 8px 12px; font: 700 24px var(--st-body); letter-spacing: 0.04em; text-align: center; color: var(--st-ink); background: rgba(2, 12, 14, 0.8); border: 2px solid var(--st-bronze); border-radius: 8px; box-shadow: inset 0 2px 8px #000; }
+.ft-card .ft-input::placeholder { color: var(--st-dim); opacity: 0.7; }
+.ft-card .ft-input:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; }
+.ft-card .ft-input[aria-invalid="true"] { border-color: #ff9a6a; }
 .ft-card .ft-form small { align-self: stretch; min-height: 2.6em; }
 .ft-card .room small { max-width: 26rem; }
 .ft-card .ft-standin { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; }
 .ft-card .ft-standin__link a { color: inherit; font-weight: 700; text-decoration: underline; }
-.ft-card .ft-standin__link a:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
-/* With three cards the row gets a third column on a wide screen; the two-card rule in multiplayer.css still holds below it. */
-@media (min-width: 1100px) { .rooms:has(.ft-card) { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(84rem, 100%); } }
+.ft-card .ft-standin__link a:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; }
 
 /* Bottom right: the top left is beside the monster's health percent, and the bottom left is the host's own camera box. */
-.ft-plate { position: fixed; right: 12px; bottom: 10px; max-width: calc(100vw - 24px); box-sizing: border-box; z-index: 40; display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 14px; border: 2px solid #c8612f; border-radius: 999px; background: #17110dee; color: #f2e4c8; font: 700 16px/1 "Gill Sans", "Gill Sans MT", "Trebuchet MS", sans-serif; letter-spacing: 0.04em; }
+.ft-plate { position: fixed; right: 12px; bottom: 10px; max-width: calc(100vw - 24px); box-sizing: border-box; z-index: 40; display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 14px; border: 2px solid #a86424; border-radius: 999px; background: #061a1dee; color: #f2e4c8; font: 700 18px/1 Optima, "Gill Sans", Candara, sans-serif; letter-spacing: 0.04em; }
 .ft-plate__time { font-variant-numeric: tabular-nums; color: #ffd9a0; }
 .ft-plate--late { border-color: #ffd9a0; }
 .ft-plate--late .ft-plate__time { color: #ff9d7a; }

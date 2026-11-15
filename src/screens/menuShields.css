@@ -1,7 +1,7 @@
 /* The main menu's cards as hoplite shields (menuShields.tsx). Hover tilts the shield toward you and runs a glint across it;
    keyboard focus does the same and rings the card. With reduced motion the tilt and glint hold still. */
 .bronze-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
-.menu-cards { --shield: clamp(145px, min(13.2vw, 24.6vh), 255px); display: flex; justify-content: center; align-items: flex-start; gap: clamp(14px, 2.4vw, 46px); width: min(84rem, 100%); margin: 0.9rem 0 0.4rem; }
+.menu-cards { --shield: clamp(128px, min(11.6vw, 21.6vh), 224px); display: flex; justify-content: center; align-items: flex-start; gap: clamp(14px, 2.4vw, 46px); width: min(84rem, 100%); margin: 0.9rem 0 0.4rem; }
 
 .menu .menu-shield {
   position: relative; display: flex; flex-direction: column; align-items: center; flex: 0 1 calc(var(--shield) + 72px); min-width: 0; margin: 0; padding: 6px 4px 8px;

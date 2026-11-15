@@ -25,6 +25,10 @@ export interface MoveGuideProps {
    * instruction and three checks, and no name (the card has its own). "medium" and "large" are for a screen of their own.
    */
   size?: "card" | "medium" | "large";
+  /** The figure to draw, for a move `guideFor` has none for (the dojo's extra moves). Left out: `guideFor(move)`. */
+  guide?: Guide | null;
+  /** The conditions the checklist reads, for a move that is not in src/moves/measures.ts. Left out: that table. */
+  table?: Parameters<typeof liveChecks>[4];
   /** True (the default): the player's left is at the left of the picture, like the camera view, so it is copied like a mirror. */
   mirrored?: boolean;
 }
@@ -121,9 +125,9 @@ function useReducedMotion(): boolean {
 }
 
 export function MoveGuide(props: MoveGuideProps) {
-  const { move, history, baseline, msLeft, msTotal, size = "card", mirrored = true } = props;
+  const { move, history, baseline, msLeft, msTotal, size = "card", mirrored = true, guide: given, table } = props;
   const rowCount = size === "card" ? 3 : 4;
-  const guide = useMemo(() => guideFor(move), [move]);
+  const guide = useMemo(() => (given === undefined ? guideFor(move) : given), [move, given]);
   const still = useReducedMotion();
   // The card shows a 3D figure on the one shared canvas; the flat SVG is the fallback (no WebGL, lost context, reduced motion, tests).
   const [lost, setLost] = useState(false);
@@ -150,7 +154,7 @@ export function MoveGuide(props: MoveGuideProps) {
       }
       const { history: read, baseline: standing, msLeft: left, msTotal: total } = latest.current;
       const frames = read();
-      const live = liveChecks(move, frames, standing === undefined ? frames?.baseline : standing, rowCount);
+      const live = liveChecks(move, frames, standing === undefined ? frames?.baseline : standing, rowCount, table);
       if (live.matched) matchedAt = now;
       const matched = now - matchedAt < MATCH_SHOWN_MS;
       rows.forEach((row, index) => {
@@ -174,10 +178,10 @@ export function MoveGuide(props: MoveGuideProps) {
     };
     handle = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(handle); };
-  }, [move, guide, still, solid, mirrored, rowCount]);
+  }, [move, guide, still, solid, mirrored, rowCount, table]);
 
   const first = guide?.keyframes[0];
-  const checks = liveChecks(move, null, null, rowCount).checks;
+  const checks = liveChecks(move, null, null, rowCount, table).checks;
   const view = guide && size === "card" ? fitView(guide, mirrored) : `0 ${String(VIEW.top)} ${String(VIEW.width)} ${String(VIEW.height)}`;
   // Without motion: every different pose of the loop side by side, in order.
   const steps = (guide?.keyframes ?? []).filter((key, index, all) => JSON.stringify(key.pose) !== JSON.stringify(all[index - 1]?.pose));
