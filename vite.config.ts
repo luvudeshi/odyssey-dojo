@@ -1,7 +1,8 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-const API = "http://localhost:8787";
+// API_URL lets a second copy of the game (another worktree, a two-player check) talk to its own server.
+const API = process.env.API_URL ?? "http://localhost:8787";
 
 export default defineConfig({
   plugins: [react()],
