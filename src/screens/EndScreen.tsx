@@ -107,7 +107,7 @@ export function EndPanel(props: {
             <p className="end-line">{won ? ending.win : ending.loss}</p>
             <p className="end-lesson">{ending.lesson}</p>
           </div>
-          <p className="end-result">{hero ? `${hero}: ` : ""}{won ? "The way onward is open." : "The gods turn their faces away. Rise and try again."}</p>
+          <p className="end-result">{hero ? `${hero}: ` : ""}{!won ? "The gods turn their faces away. Rise and try again." : last ? "The last stop is behind you. Ithaca waits." : "The way onward is open."}</p>
           <div className="learned end-learned">
             <h2>Moves learned</h2>
             {learned.length === 0 ? <p>None yet.</p> : (
