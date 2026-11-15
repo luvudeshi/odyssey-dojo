@@ -2,7 +2,7 @@
 
 Two people stand side by side in front of one computer. The game follows both bodies, each gets a hero of their own, and they fight one monster together. Issue #28.
 
-The code is in `src/duo/`. It is merged but **not mounted**: one diff to lead-owned files turns it on (see "What the lead applies").
+The code is in `src/duo/`. It is merged but **not mounted**: one diff to lead-owned files turns it on (see "What the lead applies"). Until then no screen offers it, on a laptop or on the hosted copy at `https://odysseydojo.club`.
 
 ## How it works
 
