@@ -4,13 +4,14 @@ A player can make an account with a hero name and a password. Their progress, ac
 
 The database is Tiger Data, the sponsor's hosted Postgres with TimescaleDB. The server reaches it with one connection string, `DATABASE_URL`.
 
-In a hurry: "Set it up on the demo laptop" is next. A sponsor judge wants "What Tiger Data does for the game".
+In a hurry: "Set it up on the demo laptop" is next. For the hosted copy see "On a public server". A sponsor judge wants "What Tiger Data does for the game".
 
 ## Where this stands
 
 - Built: the six account routes and the two of the hall, the rules, the limits, the database code, the browser's sync and merge, the sign-in dialog and the board of the hall.
-- **It runs against the real Tiger Data service** (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0). The driver is `pg` 8.23.1, pinned in `package.json` with the lockfile. The 27 database tests pass there, with the database's certificate checked, and the two-browser run under "What was run against the real database" was done on it.
+- **It runs against the real Tiger Data service** (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0). The driver is `pg` 8.23.1, pinned in `package.json` with the lockfile. The 28 database tests pass there, with the database's certificate checked, and the two-browser run under "What was run against the real database" was done on it.
 - **Neither the sign-in nor the hall is on the Account page until the lead adds four lines** to `src/screens/Account.tsx` (his file; the lines are in the PR). Until then nothing imports the sync or the hall, so the game makes no account request at all and sends no fight.
+- **On the public site** the account paths answer once that server has `PUBLIC_ACCOUNTS=1` and the database string: see "On a public server". The limits were made over for the open internet at the same time; the numbers below are the new ones.
 - The service luvudeshi made already holds the five real objects: `accounts`, `sessions`, `saves`, the hypertable `fights` and the continuous aggregate `fights_hourly`. They are empty.
 
 ## Set it up on the demo laptop
@@ -236,7 +237,7 @@ Two routes (`server/routes/heroes.ts`):
 
 - A row of `tonight` and `allTime` is `{ hero, score, stop, style, god, you }`. There is no id of any account in the answer.
 - `activity` is `{ minutes: 10, until, fights: [36 numbers] }`, oldest first. `stops` is `{ stop, fights, wins }` for the last 24 hours.
-- Both paths answer the tunnel and the laptop only, like the account paths (`server/lib/localOnly.ts`).
+- Both paths answer the tunnel and the laptop only, like the account paths (`server/lib/localOnly.ts`), and a public server's visitors with `PUBLIC_ACCOUNTS=1`.
 
 **Scores are the browser's own word.** The fight runs in the browser, so the server cannot check a score. It is a game, not a bank. What bounds a made-up one:
 
@@ -246,9 +247,10 @@ Two routes (`server/routes/heroes.ts`):
 | Write a fight as another player | The account comes from the session and nowhere else. A body cannot name one. |
 | Show another hero's name | They can: the hero name is what the player calls the hero, cleaned like an account name (3 to 20 characters, nothing unseen). Two rows may show the same name. |
 | Fill the table with fights | 4 a minute and 90 an hour an account, whoever sends them. 120 a minute for all strangers together, counting only fights that were written: 172,800 rows a day at the very most. A body is 1 KB at most and is not read before the session is known. |
-| Keep the database busy by reading the hall | The hall is answered from memory. The database is asked once in 5 seconds, by one statement, which takes one of the two places strangers have. A reading that failed is remembered for those 5 seconds too. 300 reads a minute an address. |
+| Use up everybody's fights for the minute | The 120 are two counts. An account's first fight of its minute has 90 places, and an account takes one of them a minute and no more. Its second to fourth fights share 30. Thirty accounts sending four a minute used to take all 120; now they take 30 of the first count and all of the second, and 60 players still record the fight they just finished. Taking the first count takes ninety accounts, and accounts are capped. |
+| Keep the database busy by reading the hall | The hall is answered from memory. The database is asked once in 5 seconds, by one statement, which takes one of the two places strangers have. A reading that failed is remembered for those 5 seconds too. 1,200 reads a minute an address (200 open boards behind one address). |
 | Turn sign-in off by reading a hall that fails | They cannot. A statement of the hall that fails is not one of the "three in a row" that turn accounts off: sign-in, saves and fights go on, and only the hall answers 503. |
-| Keep it busy with made-up sessions | 30 unknown sessions a minute an address are looked up, counted together with the account routes (one count, not one each); past that the hall is given without a mark and a fight is refused. |
+| Keep it busy with made-up sessions | 120 unknown sessions a minute an address are looked up, counted together with the account routes (one count, not one each); past that the hall is given without a mark and a fight is refused. |
 | Learn who is who | Hero names and scores only. No id, no time of a single fight, no account name beside the hero name. |
 
 **Taking a row off the hall.** The name on a row is the hero name the browser sent with the fight. It need not be the name of any account, and two accounts can show the same one. So `delete from accounts where name_key = lower('The Name On The Row')` can delete nothing, or the wrong account. Find the account through the fights table, then delete it by its id:
@@ -294,7 +296,7 @@ Not checked for the hall:
 | Route | Answers |
 | --- | --- |
 | `GET /api/account/status` | 200 `{ available }`. Never fails, and answers within 4 seconds. |
-| `POST /api/account/signup` `{ name, password }` | 201 `{ token, name }`, 400 `{ error: "invalid", field }`, 409 `name_taken`, 429 `slow_down`, 503 `unavailable` |
+| `POST /api/account/signup` `{ name, password }` | 201 `{ token, name }`, 400 `{ error: "invalid", field }`, 409 `name_taken`, 429 `slow_down`, 429 or 503 `{ error: "signups_closed", message }`, 503 `unavailable` |
 | `POST /api/account/signin` `{ name, password }` | 200 `{ token, name }`, 401 `wrong_name_or_password`, 429, 503 |
 | `POST /api/account/signout` (Bearer) | 204, also for a token nobody has and for no token. 429 or 503 when the session could not be ended. |
 | `GET /api/account/save` (Bearer) | 200 `{ save, updatedAt }` (both null before the first save), 401 `signed_out`, 429, 503 |
@@ -307,40 +309,154 @@ Details that are easy to miss:
 - A sign-in that fails gets one answer whatever the reason: an unknown name, a wrong password, a body that is not a name and a password. An unknown name costs the server the same password hash as a wrong password.
 - With accounts off, every route but status answers 503 before it reads a body.
 - A 429 or 503 on sign-out means the session is still in the database. The browser forgets its token anyway.
+- `signups_closed` means strangers have made as many accounts as they may for now (429, with `Retry-After`), or the database holds as many as it may (503). It is the same answer for a name that is taken as for a new one. Sign-in is not closed by it. The browser says "No new accounts can be made right now. If you have one, sign in. Your progress is kept in this browser."
 
 ## What a stranger can do, and what bounds it
 
-The public tunnel reaches `/api`. `server/lib/localOnly.ts` opens exactly these five paths to it, the two of the hall (`POST /api/account/fights`, `GET /api/heroes`), and nothing else under `/api/account/`. **Another device on the Wi-Fi is refused (403)**: the server speaks plain HTTP there, and a password must not cross the venue's network in the clear. Through the tunnel it travels inside HTTPS. The numbers are in `server/lib/accountLimits.ts` and `server/lib/accounts.ts`.
+The public tunnel reaches `/api`. `server/lib/localOnly.ts` opens exactly these five paths to it, the two of the hall (`POST /api/account/fights`, `GET /api/heroes`), and nothing else under `/api/account/`. **Another device on the Wi-Fi is refused (403)**: the server speaks plain HTTP there, and a password must not cross the venue's network in the clear. Through the tunnel it travels inside HTTPS. A public server's visitors reach the same paths with `PUBLIC_ACCOUNTS=1` ("On a public server"). The numbers are in `server/lib/accountLimits.ts`, `server/lib/heroLimits.ts` and `server/lib/accounts.ts`, and they are the same for the tunnel and for a public server.
 
-Two rules keep one stranger from locking the others out:
+Three rules keep one stranger from locking the others out:
 
-- **A budget is only spent by a request that costs something.** An empty or malformed request is refused on a cheap count of its own (60 sign-up and sign-in requests a minute an address). A typo, a taken name or a request with no token uses up nobody's budget.
-- **Nothing is shared by all strangers except the count of accounts really made.** What many addresses can do at once is held by two gates, not by a count: one password hash at a time, and two strangers' database calls at a time.
+- **A budget is only spent by a request that costs something.** An empty or malformed request is refused on a cheap count of its own (240 sign-up requests a minute an address, and 240 sign-in requests, counted apart). A typo, a taken name or a request with no token uses up nobody's budget.
+- **Nothing is shared by all strangers except the count of accounts really made** and of fights really written. What many addresses can do at once is held by two gates, not by a count: one password hash at a time, and two strangers' database calls at a time.
+- **A count never forgets what it counted often to make room for what it counted once.** Each count holds 10,000 keys. One more drops the keys counted least, the oldest first. Before, a full count forgot everything, so made-up names could wipe the wrong passwords held against a real one.
 
 | A stranger tries to | Bound |
 | --- | --- |
-| Find out which names exist | Sign-in never says. Sign-up does say when a name is taken (it has to). A name is a hero name, not a person. |
-| Guess a password | 30 sign-ins a minute an address. On one name: 10 wrong passwords in 10 minutes from one address, 100 from all addresses together (14,400 a day at most). A right password is not counted. |
-| Lock a player out of their name | Ten wrong tries hold only the address they came from. Holding a name for everybody takes 100 wrong tries every 10 minutes from ten addresses or more. The laptop is never held. |
+| Find out which names exist | Sign-in never says. Sign-up does say when a name is taken (it has to), but not while sign-up is closed: then a taken name and a new one get the same answer. A name is a hero name, not a person. |
+| Guess a password | 60 sign-ins a minute an address. On one name: 5 wrong passwords a minute from one address, 20 from all addresses together (28,800 a day at most, 7,200 from one address). A right password is not counted. |
+| Lock a player out of their name | Five wrong tries hold only the address they came from, and for a minute at most: the hold ends a minute after its first wrong try, whatever is sent meanwhile. Holding a name for everybody takes 20 wrong tries every minute from four addresses or more, and ends the same way. Whoever wants to keep an owner out has to keep sending. A browser that is already signed in is never touched: its session does not pass through sign-in. The laptop is never held. On a public server "an address" can be everybody: see there. |
 | Burn the CPU with password hashes | One hash at a time, at most 8 waiting, the rest get 429. So one core at most. A hash is about 0.2 s and needs 128 MB while it runs. |
-| Fill the database with accounts | Only an account that was made is counted: 40 in 10 minutes an address, 120 for all strangers, 1,900 at most. The last 100 places are kept for the laptop. Past that sign-up answers 503. |
-| Fill it with saves | One save per account, 32 KB at most as sent, so 64 MB at the very most. |
+| Hold the database with slow sign-ins | A sign-up or a sign-in takes one of the strangers' two places for each statement and gives it back while its password is hashed. Before, the hash ran inside the place, so two sign-ins waiting for their hash held both. |
+| Fill the database with accounts | Only an account that was made is counted. One address: 60 in 10 minutes. All strangers together: 120 in 10 minutes, 200 in an hour, 600 in a day, 1,900 in all. The last 100 places are kept for the laptop. The hour, the day and the total are asked of the database before each sign-up, so a restart, or a second server on the same database, does not start them again. Past the ten minutes, the hour or the day sign-up answers 429 `signups_closed`; with the database full, 503 `signups_closed`. Sign-in goes on. |
+| Fill it with saves | One save per account, 32 KB at most as sent, so 64 MB at the very most, and under 20 MB for the accounts of one day. |
 | Fill it with sessions | 5 per account. Sessions that ran out are removed at the next sign-in. |
-| Keep the database busy | Strangers' database calls run two at a time, 16 may wait, the rest get 429. A token is counted before the database is asked: 30 unknown tokens a minute an address, the hall's two routes included. A known token is remembered for 5 minutes and counted for its account: 120 requests and 60 writes a minute. Status asks the database at most once in 5 seconds. |
+| Keep the database busy | Strangers' database calls run two at a time, 16 may wait, the rest get 429. A token is counted before the database is asked: 120 unknown tokens a minute an address, the hall's two routes included. A known token is remembered for 5 minutes and counted for its account: 120 requests and 60 writes a minute. Status asks the database at most once in 5 seconds. |
 | Turn accounts off for everybody | One failed or slow query does not. Three in a row with none working between them do, for 5 seconds. A statement of the hall, which anybody may cause, is never one of the three. The pool has 4 connections and strangers use 2, so the laptop always finds one free. A statement cannot run longer than 2 s: the database stops it. |
 | Send a huge body | Sign-up and sign-in read 2 KB, a save 32 KB. A body that says it is longer is refused unread. A save body is not read at all before the token is known. |
 | Use another player's save | No route takes an account id. A request reaches the row of the session it carries and no other. |
 | Run SQL | Every value goes to the database apart from the statement text. |
 | Use a signed-in browser from another site | There is no cookie to ride on. The token is a header that only this game's page sends. |
-| Read a password off the Wi-Fi | The account paths answer the tunnel (HTTPS) and the laptop itself only. |
+| Read a password off the Wi-Fi | The account paths answer the tunnel (HTTPS), a public server's own proxy (HTTPS) and the laptop itself only. |
+
+Why these numbers:
+
+- **200 accounts an hour** is a judge and a full room signing up in the same hour, with room to spare. 120 in ten minutes lets the room do it all at once.
+- **600 a day** means the 1,900 places last more than three days of somebody doing nothing else, and a day of new accounts is under 20 MB of saves. The owner has time to see it and delete them.
+- **60 in ten minutes for one address** lets a room behind one address in, and keeps one address from taking a whole ten minutes for itself.
+- **240 requests, 60 sign-ins, 120 unknown sessions a minute for one address** have room for a hall behind one address. Past each the answer is 429 for a minute at most. None of them protects the database; the gates and the caps for all callers do.
+- **One minute for wrong passwords** in place of ten: the daily number of guesses at one name is 28,800 (it was 14,400), and no hold outlasts the wrong tries by more than a minute (it was ten).
+- **90 and 30 fights a minute**: a player finishes one fight a minute at most, nearly always. 120 together, as before.
+- **1 hash at a time and 8 waiting**: nine hashes are under two seconds on the demo laptop and under five on a slow shared core, inside the 8 seconds the browser waits.
 
 Things to know about these limits:
 
-- **The laptop that runs the server is never counted or refused** (but for the 60 writes a minute to one account). A request that carries any proxy or tunnel header is never taken for the laptop.
+- **The laptop that runs the server is never counted or refused** (but for the 60 writes a minute to one account), and it is not held by the hour or the day of sign-ups. A request that carries any proxy or tunnel header is never taken for the laptop.
 - **A venue's Wi-Fi is one address through the tunnel.** Everybody behind it shares the per-address numbers. They are set with a hall in mind.
-- **Somebody with many addresses can still stop strangers from signing up**, by making 120 real accounts every 10 minutes until the 1,900 are used. Nothing without an email or a captcha stops that. The laptop keeps its 100 places, so make the demo accounts there.
+- **Somebody can still stop strangers from signing up**, by making 200 real accounts in an hour, or 600 in a day. One address is enough for that. Sign-up is then closed until the hour or the day is over, and sign-in goes on. Nothing without an email or a captcha stops that. The laptop keeps its 100 places, so make the demo accounts there.
+- **The hour and the day count every account in the database**, the laptop's own and another server's too. The count in memory is exact for one server; the count in the database is asked before the hash, so sign-ups that are under way at the same moment can pass it together: nine too many at the very most (the nine that can be at the hash at once), and only when the database holds accounts this server did not count itself (after a restart, or made by another server).
+- **The counts in memory are each server's own.** A laptop and a public server on one database each have their ten minutes, their per-address and their per-name counts. A restart empties them.
 - **A session that ran out, or was ended to make room for a sixth, can stay good for 5 minutes more** on a token the server has just seen. Signing out ends it at once.
 - **Do not start Vite with `--host` while accounts are on.** In `npm run dev:all` a request through Vite's proxy looks like the laptop's own: it would skip every limit and carry the password over plain HTTP. The tunnel goes straight to the server, so its visitors are counted.
+
+## On a public server
+
+This is for the hosted copy (`docs/deploy-vultr.md`): the page on one host, `/api` passed on to the game server, and the game server behind its own HTTPS proxy. The owner of the database decided accounts should work there too, and accepts that the connection string then sits in that server's `.env`.
+
+**Three lines in the game server's `.env`** (on the Vultr instance: `deploy/vultr/.env`), then restart it (`docker compose up -d` in `deploy/vultr`):
+
+```
+PUBLIC_ACCOUNTS=1
+DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require
+DATABASE_CA_FILE=<where the CA file is inside the server's container>
+```
+
+- **The string goes to the server's operator privately**, from luvudeshi, and from there by hand over SSH into the file. Never through GitHub: not in an issue, a PR, a comment, a commit, a workflow log. Not in a group chat either. Whoever can log in to the instance can read it, and it is the owner role of the whole database.
+- **The CA file is not a secret.** Copy the laptop's `server/data/tiger-ca.pem` up, or fetch it with this one command wherever the string is in the environment. It needs only Node, so it also runs inside the server's container, which has no `openssl`. It writes the certificate to standard output and says `1 CA certificate(s) written`:
+  ```
+  node -e "const net=require('node:net'),tls=require('node:tls');const u=new URL(process.env.DATABASE_URL);const s=net.connect(Number(u.port||5432),u.hostname,()=>s.write(Buffer.from([0,0,0,8,4,210,22,47])));s.once('data',(d)=>{if(d[0]-83){console.error('the database did not offer TLS');process.exit(1)}const t=tls.connect({socket:s,servername:u.hostname,rejectUnauthorized:false},()=>{const out=[];const seen=new Set();let c=t.getPeerCertificate(true).issuerCertificate;while(c&&seen.has(c.fingerprint256)===false){seen.add(c.fingerprint256);out.push('-----BEGIN CERTIFICATE-----\n'+c.raw.toString('base64').match(/.{1,64}/g).join('\n')+'\n-----END CERTIFICATE-----\n');c=c.issuerCertificate}process.stdout.write(out.join(''));console.error(out.length,'CA certificate(s) written');t.end()})});s.on('error',(e)=>{console.error('no answer:',e.code);process.exit(1)})"
+  ```
+  On the laptop: `node --env-file=.env -e "..." > server/data/tiger-ca.pem`. On the instance, once the first two lines are in `.env` and the server was restarted: `docker compose exec -T game node -e "..." > tiger-ca.pem`, then put the file where the compose file mounts it (`docs/deploy-vultr.md` says where) and add the third line. Run from the laptop against the real service, the command wrote the same certificate as the `openssl` command of the laptop set-up. It was not run on the instance. Fetching the file this way trusts the network it is fetched over, once.
+- Without the third line the connection is encrypted but the database's certificate is not checked ("Encryption to the database"). A file that cannot be read leaves accounts off (`bad_ca_file`); the server tries again every 15 seconds, so they come on by themselves once the file is there.
+- **Check:** `https://<the page>/api/account/status` answers `{"available":true}`, and `https://<the page>/api/level` still answers `{"error":"local_only"}`.
+
+The setting is on only when the value is exactly `1`. Unset, empty, `0`, `true`: off. Like `PUBLIC_ROOMS` it is read from the real environment, `.env` and `.env.local`, at start, so a change needs a restart. **Never set it on the laptop**: where a caller can reach the server with no proxy in between, the caller writes the header it counts by.
+
+### What it changes
+
+1. **Who is answered.** The account paths and `/api/heroes` also answer a request that was passed on by a proxy to a socket that is not this machine's. That is the hosted copy with its proxy in a container of its own. Nothing else opens: `/api/level`, `/api/speech`, `/api/reveal`, `/api/portrait/...`, `/api/replays`, FaceTime, `/api/health` and making a room (that one is `PUBLIC_ROOMS`) answer 403 as before, and so does a request with no proxy header from another address (plain HTTP).
+2. **Who is counted.** A caller is the last entry of `X-Forwarded-For`, which the server's own proxy wrote. Entries in front of it and `Cf-Connecting-Ip` are not read: a caller writes those. `PUBLIC_ROOMS=1` alone has the same effect on the account counts, because both settings say the server stands behind its own proxy.
+
+The second point matters whichever way the proxy reaches the game. When the proxy shares the game's network (PR 371 does that, and it is live), the game sees it at `127.0.0.1`, as it sees a tunnel on the laptop. The account paths then answer with or without the setting. But without it the server takes the proxy for a tunnel: every visitor is one caller, and a visitor who sends `Cf-Connecting-Ip` is counted as whoever that header says, a new caller with every made-up value. **So set it on the hosted copy in either layout.**
+
+With the setting off nothing about who is answered or how a caller is named changed. The request table under "What was checked" below is the proof.
+
+### Who "one caller" is behind Vercel and Caddy
+
+| How the request comes | The caller the server counts | Can a stranger choose it? |
+| --- | --- | --- |
+| Browser, the page on Vercel, Vercel passes `/api` on, Caddy, game | Vercel's address | No. But everybody who uses the page is that caller too |
+| Stranger calls the game server's own name, Caddy, game | The stranger's own address | Only by having many addresses |
+
+- Caddy puts the address it took the request from in `X-Forwarded-For` and drops what the caller wrote there (its documented default with no `trusted_proxies`; not run here).
+- Vercel also sends the visitor's address, in `X-Real-Ip` and `X-Vercel-Forwarded-For`. The server does not read them: anybody who calls the game server's own name can write them.
+- **So the visitors of the page share a handful of callers, perhaps one, and a stranger who wants a caller of their own has one.** How many addresses Vercel uses for one hall was not measured. Plan for one.
+
+That is why no per-address number is tight, and why nothing that protects the database rests on an address.
+
+### The caps, and what a visitor sees
+
+| Cap | Number | Answer past it | What the visitor sees |
+| --- | --- | --- | --- |
+| Accounts made by all visitors together | 120 in ten minutes, 200 in an hour, 600 in a day | 429 `signups_closed`, `Retry-After` until the ten minutes, the hour or the day is over | "No new accounts can be made right now. If you have one, sign in. Your progress is kept in this browser." Signing in works. |
+| Accounts in the database | 1,900 for visitors (2,000 less 100 kept for the laptop) | 503 `signups_closed` | The same words. |
+| Accounts made through one address | 60 in ten minutes | 429 `slow_down` | "Too many tries. Wait a minute, then try again." |
+| Sign-up requests, and sign-in requests, from one address | 240 a minute each, counted apart | 429 `slow_down` | The same. Sign-ups never use up sign-ins. |
+| Sign-ins with a name and a password from one address | 60 a minute | 429 `slow_down` | The same. |
+| Wrong passwords on one name | 5 a minute from one address, 20 a minute from all | 429 `slow_down`, `Retry-After` 60 at most | The same, also for the right password, until a minute after the first wrong one. A browser that is already signed in notices nothing. |
+| Password hashes | one at a time, 8 waiting | 429 `slow_down`, `Retry-After` 1 | The same words; the next try works. |
+| Database calls for visitors | two at a time, 16 waiting | 429 `slow_down`, `Retry-After` 1 | Signing in: the same words. A save: "Not sent yet. Kept in this browser.", and it is sent again later. |
+| Sessions the database does not know, from one address | 120 a minute | 429 `slow_down` | A signed-in browser the server saw in the last five minutes notices nothing. Another one reads "Not sent yet. Kept in this browser." |
+| Requests and saves of one account | 120 and 60 a minute | 429 `slow_down` | "Not sent yet. Kept in this browser." |
+| Fights written by all visitors | 90 a minute for an account's first of its minute, 30 for its further ones | 429 `slow_down` | Nothing. The fight is not in the hall. |
+| Readings of the hall from one address | 1,200 a minute | 429 `slow_down` | The board keeps what it showed. |
+
+A page built before this change does not know `signups_closed`: it shows "Too many tries. Wait a minute, then try again." for the 429 and "Accounts are not available right now. Your progress is kept in this browser." for the 503.
+
+### Turning it off
+
+- **Accounts off altogether:** take the `DATABASE_URL` line out of the server's `.env` and restart. Status answers `{"available":false}`, every other account route 503, and the page plays from the browser as before. Nothing in the database is touched. This works in every layout.
+- **Only the setting:** take `PUBLIC_ACCOUNTS=1` out and restart. With the proxy in a container of its own the account paths answer 403 again. With the proxy inside the game's network they still answer, as for a tunnel, and callers are counted the weaker way described above. There, take the database line out.
+- To clear accounts somebody made in bulk, delete them by hand as "What is stored" says. The accounts of the last day, newest first: `select name, created_at from accounts where created_at > now() - interval '1 day' order by created_at desc;`
+
+### What is not protected
+
+- **Visitors of the page share one caller, and one of them can use up what that caller may do.** 240 sign-up requests, 240 sign-in requests, 60 sign-ins or 120 unknown sessions a minute, and everybody else who comes through the page waits for the rest of that minute. Five wrong passwords a minute on one name through the page keep that name from signing in on a new browser for as long as somebody keeps sending them, and for a minute at most after they stop. The fix is not in the server: either the page calls the game server's own name, or Vercel sends a secret header so the server may believe the visitor's address it passes on (both are described in PR 351, `docs/deploy-vercel.md`, "If rooms get busy"). Neither is built.
+- **Sign-up can be closed by anybody** who makes 200 accounts in an hour or 600 in a day. No email, no captcha. Sign-in goes on, and the laptop's server is not held by the hour or the day.
+- **A weak password can be guessed**: 28,800 guesses a day at one name at most. There is no reset and no way to change a password.
+- **One core can be kept busy hashing.** One hash runs at a time, so it is one core at most. On an instance with one core the room relay shares it. Not measured there.
+- **Saves can be rewritten** 60 times a minute an account, at most two at a time for all visitors. That is churn the database has to clean up, not growth.
+- **Scores are the browser's word**, as on the laptop ("The hall of heroes").
+- **The string sits in the server's `.env`**, and the server connects as the owner role ("Not done, not checked").
+- **Each server counts for itself.** The laptop and the hosted copy share the database, the hour, the day and the total, and nothing else. A restart empties a server's counts.
+- **A server reachable with no proxy in between must not set the flag**: a caller there writes `X-Forwarded-For` itself and is a new caller with every address it makes up. The caps for all callers together, the count per name and the gates still hold.
+- The other weak spots of the hosted copy are in `docs/rooms-tunnel.md`, "The hosted copy".
+
+### What was checked
+
+On the laptop, against the real server from this branch on port 8801. "Another address" is the laptop's own Wi-Fi address, standing in for a proxy's socket; the proxy chain is stood in for by its headers (`X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Real-Ip`, `X-Vercel-Forwarded-For`, `X-Vercel-Id`).
+
+- **The setting off is the code as it was.** 122 requests (the 32 registered routes and 90 path and method tricks) from 12 kinds of caller, 1,464 answers, compared between the branch this one started from (PR 373, which was itself compared with `main`) and this one: 0 differ with neither setting, and 0 differ with `PUBLIC_ROOMS=1` on both (status, the headers that matter, the body). No database in these runs.
+- **The setting on changes 84 of the 1,464**, every one an account path or `/api/heroes` (in any spelling), from another address, with a proxy header: 403 before, the route's own answer after. Nothing from a loopback socket changed, nothing without a proxy header, and no other path. The same 84 with `PUBLIC_ROOMS=1` beside it.
+- **With the real database and the setting off:** from another address with the chain's headers, status, the hall and sign-up answer 403 `local_only`.
+- **With the real database and the setting on, as a visitor:** status 200 `{"available":true}`; sign up 201; sign in with the name in capitals 200; save 200; the save read back 200 and equal to what was sent; a fight 201; the hall 200 with the hero's row marked "You", and unmarked with no session; sign out 204, and that session then 401.
+- **Closed, same caller:** `/api/level`, `/api/speech`, `/api/reveal`, `/api/portrait/x`, `/api/replays`, `/api/facetime/status`, `/api/facetime/waiting`, `/api/health`, `POST /api/rooms`, `/api/account/other`: all 403. Status and the hall from another address with no proxy header: 403.
+- **Caps:** five wrong passwords from one caller 401, the sixth 429 with `Retry-After: 59`, the same with other addresses written in front and in `Cf-Connecting-Ip`; the owner through another address 200; a browser already signed in read its save through the held address, 200. 250 empty sign-ups from one caller: 240 x 400 and 10 x 429, and a sign-in from that caller right after was answered. Forty sign-ins in one instant from forty callers: 11 x 401, 29 x 429, the slowest 2.2 s, and the owner signed in right after.
+- **The proxy on a loopback socket** (the live layout since PR 371), the setting on, the real database: seven wrong passwords on one name with a new `Cf-Connecting-Ip` each time and one `X-Forwarded-For`: 5 x 401, then 2 x 429. Status 200, `/api/level` 403.
+- **The 28 database tests** (`accountsDb` 16, `heroesDb` 12): pass, once, in 24.5 s, the connection checked against the CA file. No test table was left.
+- The two accounts the run made (names starting `Zztest`), their sessions, saves and the one fight were deleted by name afterwards. None is left, and the real tables are empty.
+
+Not run for real: Caddy, Docker and Vercel, so what they put in `X-Forwarded-For` is from their documentation. The caps on accounts made (ten minutes, hour, day, total) were not reached on the real tables: that would take 120 real accounts. They are held by `server/tests/accountLimits.test.ts` and `server/tests/accountRoute.test.ts` on a clock the test moves, and by `server/tests/accountsDb.test.ts` on the real service in tables of its own. A browser on the public site: the sign-in is not on the Account page yet.
 
 ## When the database is down
 
@@ -357,7 +473,7 @@ Things to know about these limits:
 No database is needed for these:
 
 ```
-npx vitest run server/tests/accountRules.test.ts server/tests/accounts.test.ts server/tests/accountLimits.test.ts server/tests/db.test.ts server/tests/accountRoute.test.ts server/tests/localOnly.test.ts tests/accountName.test.ts tests/accountContract.test.ts tests/accountClient.test.ts tests/accountMerge.test.ts tests/accountSave.test.ts tests/accountSync.test.ts
+npx vitest run server/tests/accountRules.test.ts server/tests/accounts.test.ts server/tests/accountLimits.test.ts server/tests/db.test.ts server/tests/accountRoute.test.ts server/tests/localOnly.test.ts server/tests/publicAccounts.test.ts tests/accountName.test.ts tests/accountContract.test.ts tests/accountClient.test.ts tests/accountMerge.test.ts tests/accountSave.test.ts tests/accountSync.test.ts
 ```
 
 They cover the name, password and save rules, the hashing and the tokens, every limit and what is given back, every way the database can fail to open, the routes with accounts off, the order in which the routes count and ask, who may reach the routes, the merge, the sync and the client.
@@ -369,7 +485,21 @@ What stands in for what, so nobody takes it for the real thing:
 - `server/tests/accountRoute.test.ts` uses an `Accounts` object with fixed answers, to check the order in which the routes count, refuse and ask. It stores no account and no save.
 - The browser tests (`tests/account*.test.ts`) use a made-up `fetch` that answers the six routes from memory (`tests/helpers/accountKit.ts`). It checks nothing a real server would.
 
+- `server/tests/publicAccounts.test.ts` runs the real app with its real guard over HTTP. A test cannot open a connection from another machine, so the one thing it stands in for is the socket's address: a request can be given the address of a proxy's container or of another device. It holds the setting: the grid of callers with it off and on, the walk of a visitor through the proxy, what stays closed, and who is counted.
+
 None of these is a database, and none proves a statement.
+
+Where each limit of "What a stranger can do" is held:
+
+| Limit | Test |
+| --- | --- |
+| The hash holds no place at the database | `accounts.test.ts` ("a password hash holds no place"), `accountRoute.test.ts` ("sign-ins that wait for their password hash") |
+| A flood of sign-ins or sign-ups: two places, one hash, two short lines, the rest 429 | `accountRoute.test.ts` ("a flood of sign-ins") |
+| A full count drops what it counted least | `accountLimits.test.ts` ("made-up names cannot wipe") |
+| One stranger cannot use up everybody's fights | `heroes.test.ts` ("one stranger with thirty accounts") |
+| Accounts in ten minutes, an hour, a day, in all | `accountLimits.test.ts`, `accountRoute.test.ts` ("when strangers have made their accounts"), `accounts.test.ts` ("the database says how many"), and `accountsDb.test.ts` on a real database |
+| Wrong passwords hold a name for a minute at most | `accountLimits.test.ts` ("five wrong passwords", "twenty wrong passwords"), `publicAccounts.test.ts` ("a caller is the address the proxy took the request from") |
+| Who a caller is behind a proxy | `accountLimits.test.ts` ("who is counted"), `publicAccounts.test.ts` |
 
 The hall of heroes has two files of the same kind:
 
@@ -382,7 +512,7 @@ npx vitest run server/tests/heroes.test.ts tests/accountHeroes.test.ts
 
 ### The database tests
 
-**These talk to a real database:** `server/tests/accountsDb.test.ts` (15 tests) and `server/tests/heroesDb.test.ts` (12 tests).
+**These talk to a real database:** `server/tests/accountsDb.test.ts` (16 tests) and `server/tests/heroesDb.test.ts` (12 tests).
 
 ```
 TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.ts server/tests/heroesDb.test.ts
@@ -395,7 +525,7 @@ TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.t
 - `accountsDb` runs on a Tiger Data string or on a Postgres on this machine (`postgres://USER@localhost:5432/DBNAME`; a local address needs no `sslmode`). `heroesDb` needs TimescaleDB, so a plain local Postgres will not do for it.
 - Each run makes its own tables (and its own hypertable and continuous aggregate) under a random prefix, `t` and ten hex digits, and drops them at the end. So a run can share the database with the game and with another run. The tests check that nothing with their prefix is left. The real tables are not touched.
 - Both files together take about 20 s against Tiger Data from here. Most of the time is password hashes.
-- **Without `TEST_DATABASE_URL` these 27 tests are skipped**, as the owner allowed.
+- **Without `TEST_DATABASE_URL` these 28 tests are skipped**, as the owner allowed.
 - What the 12 of the hall cover: the hypertable, the aggregate and its policy as the service lists them; the columnstore setting, and a table still grouped by account set right by a server that starts on it; a fight written with the session's account; nobody writing as somebody else; the ten best in order with a tie; tonight against all time, before and after a refresh of the aggregate; the 36 buckets of the activity line; the limit of four a minute; an account deleted; a row under a name no account has, traced to its account and taken off.
 
 ## What was run against the real database
@@ -407,7 +537,7 @@ All of it on the Tiger Data service (free plan, PostgreSQL 18.6, TimescaleDB 2.3
   - In the first: create an account, move the music volume from 70 to 35, win a fight at Polyphemus (score 2190). The win sent one `POST /api/account/fights` (201) and the save. The Account page said "Saved to your account.", and the Hall of heroes showed the hero with 2,190 at Polyphemus, marked "You", under Tonight and under All time. Sign out: the progress stayed.
   - In the second, with nothing stored: the hall, signed out, showed the same hero and score with nobody marked. Sign in with the name in capitals: the hero name, 1 fight, 1 win, the best score, the same 5 of 23 trophies, the cleared stop (ticked on the map) and the volume 35 were there, and that browser kept its own "Play with: Keyboard". The hall now marked the row "You". A second win there, then sign-in again on the first: 2 fights and 2 wins on both, one row for the hero in the hall, and the hall's count of fights this hour two higher.
   - Both signed out at the end. No page error and no console error other than the refused sign-ins. The server logged `server_listening`, `accounts_ready`, `heroes_ready` and nothing else.
-- **Refusals, as the player reads them:** a wrong password ("Wrong name or password."), a taken name ("That hero name is taken. Pick another, or sign in."), and from a visitor through the tunnel ten wrong tries answered 401 and the eleventh 429 ("Too many tries. Wait a minute, then try again."). The right password from that address then waited too; the laptop's own browser still got in.
+- **Refusals, as the player reads them:** a wrong password ("Wrong name or password."), a taken name ("That hero name is taken. Pick another, or sign in."), and from a visitor through the tunnel ten wrong tries answered 401 and the eleventh 429 ("Too many tries. Wait a minute, then try again."; the limit was ten in ten minutes then, and is five in a minute now). The right password from that address then waited too; the laptop's own browser still got in.
 - **Through the tunnel's headers** (`Cf-Connecting-Ip`, `Cf-Ray`, `X-Forwarded-For` on every request): sign-in works and is counted as a stranger, and the hall is read with the "You" mark.
 - **No request to `/api/account` or `/api/heroes` before the Account page is opened**, signed out, with the database on, off and silent. A whole fight sends none either. With the database off or silent the Account page asks the status once and never the hall.
 - **The off states:** no `DATABASE_URL`: "Accounts are not available here." after 64 ms. A database port that takes the connection and says nothing: the same after 2.8 s (the limit is 4 s). A port nothing listens on: status `false` in 8 ms, sign-up and the two hall paths 503 in 1 ms. In all three the fight was played, won and kept in the browser.
@@ -459,3 +589,4 @@ Two lines in `src/App.tsx` (the lead's file, in the PR, tried here and not commi
 - `make check`, `make ready`, eslint and the full test suite were not run for this branch (the owner's load rule for the night). The account and hall test files were, and both typechecks. After the review fixes only the server's typecheck was run again; the one browser file changed then (`src/account/ui/HallOfHeroes.tsx`) was run in Chrome, not typechecked.
 - The scrypt settings are not stored with the hash. Changing them later needs a column.
 - There is no way to change a password or to end all sessions of an account.
+- For the public server ("On a public server"): Caddy, Docker and Vercel were not run, the caps on accounts made were not reached on the real tables, and nobody signed in from a browser on the public site. `make check`, `make ready`, eslint, the full test suite and the browser's typecheck were not run for that change either (the load rule again); the account, hall and guard test files were, and the server's typecheck once.

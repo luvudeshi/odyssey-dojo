@@ -93,6 +93,16 @@ export function publicAccounts(env: Readonly<Record<string, string | undefined>>
   return env.PUBLIC_ACCOUNTS?.trim() === "1";
 }
 
+/**
+ * True when either setting is on. Both say the same thing about where this server stands: behind its own proxy, with
+ * no tunnel on it. The account routes and the hall then count a caller by that proxy's own X-Forwarded-For entry
+ * (lastHop below) and do not read Cf-Connecting-Ip, which such a proxy passes on as the caller wrote it. That matters
+ * most when the proxy shares the server's network and so arrives on a loopback socket, as a tunnel does.
+ */
+export function behindOwnProxy(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return publicRooms(env) || publicAccounts(env);
+}
+
 /** Making a room: "/api/rooms" itself, with or without one closing slash, and nothing after it. */
 function isRoomsRoot(path: string): boolean {
   return path === "/api/rooms" || path === "/api/rooms/";

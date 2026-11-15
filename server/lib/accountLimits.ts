@@ -89,10 +89,11 @@ export const COUNTER_KEYS_MAX = 10_000;
 const DROP_AT_ONCE = 1_000;
 
 /**
- * Who an account or hall request is counted against. `behindProxy` is what publicAccounts() said (./localOnly): the
+ * Who an account or hall request is counted against. `behindProxy` is what behindOwnProxy() said (./localOnly): the
  * server then sits behind its own proxy, and the key is the last X-Forwarded-For entry, which that proxy wrote
- * (clientKey in ./roomLimits). Only a request the guard also calls local is this machine: clientKey knows fewer proxy
- * headers than the guard does, and a request that was passed on must never get the laptop's free pass.
+ * (clientKey in ./roomLimits); Cf-Connecting-Ip is not read. Only a request the guard also calls local is this
+ * machine: clientKey knows fewer proxy headers than the guard does, and a request that was passed on must never get
+ * the laptop's free pass.
  */
 export function callerOf(socketAddress: string | undefined, headers: IncomingHttpHeaders, behindProxy = false): string {
   const who = clientKey(socketAddress, headers, behindProxy);

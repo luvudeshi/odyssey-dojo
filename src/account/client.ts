@@ -48,7 +48,7 @@ const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 409: 
 function failure(answer: Answer | null, on401: AccountError): { ok: false; error: AccountError; field?: string } {
   if (!answer) return { ok: false, error: "unreachable" };
   const data = answer.data;
-  // Said by name, with a 429 or a 503: a server from before this answer never says it, and the status alone still reads as before.
+  // The server says this one by name, with a 429 or a 503. Any other body with those statuses reads by its status, as before.
   const closed = (answer.status === 429 || answer.status === 503) && typeof data === "object" && data !== null && "error" in data && data.error === "signups_closed";
   const error = closed ? "signups_closed" : answer.status === 401 ? on401 : FAILURES[answer.status] ?? "unreachable";
   const field = typeof data === "object" && data !== null && "field" in data && typeof data.field === "string" ? data.field.slice(0, 40) : null;

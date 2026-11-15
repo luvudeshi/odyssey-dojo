@@ -10,11 +10,11 @@ import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Deps } from "../app";
 import type { Config } from "../env";
-import { SIGNINS_PER_NAME_AND_ADDRESS } from "../lib/accountLimits";
+import { SIGNINS_PER_NAME, SIGNINS_PER_NAME_AND_ADDRESS } from "../lib/accountLimits";
 import { makeToken } from "../lib/accounts";
 import type { Accounts } from "../lib/accounts";
 import type { Hall, Heroes } from "../lib/heroes";
-import { isAccountPath, isHeroesPath, isLoopback, mayAnswer, publicAccounts, wasRelayed } from "../lib/localOnly";
+import { behindOwnProxy, isAccountPath, isHeroesPath, isLoopback, mayAnswer, publicAccounts, wasRelayed } from "../lib/localOnly";
 import { MINUTE_MS } from "../lib/roomLimits";
 
 const config: Config = {
@@ -171,6 +171,8 @@ test("the flag is on only when PUBLIC_ACCOUNTS is exactly 1", () => {
   expect(publicAccounts({})).toBe(false);
   // The other flag is another flag: neither turns the other on.
   expect(publicAccounts({ PUBLIC_ROOMS: "1" })).toBe(false);
+  // Either one says the server stands behind its own proxy, which is what decides how a caller is counted.
+  expect([behindOwnProxy({}), behindOwnProxy({ PUBLIC_ROOMS: "1" }), behindOwnProxy({ PUBLIC_ACCOUNTS: "1" }), behindOwnProxy({ PUBLIC_ACCOUNTS: "true", PUBLIC_ROOMS: "0" })]).toEqual([false, true, true, false]);
 });
 
 /** Paths, sockets and header sets for the grid below: every kind of caller against every kind of path. */
@@ -347,4 +349,29 @@ test("flag on: a caller is the address the proxy took the request from, so one c
   // A minute after the wrong passwords began the name is free again, whatever was sent meanwhile.
   vi.setSystemTime(Date.now() + MINUTE_MS);
   expect((await signIn("203.0.113.7", RIGHT_PASSWORD, "Penelope")).status).toBe(200);
+});
+
+test("with the proxy inside the server's own network (a loopback socket): either setting makes the proxy's own entry the caller, and a made-up Cf-Connecting-Ip buys nothing", async () => {
+  // Caddy with network_mode "service:game" reaches the game at 127.0.0.1, as a tunnel on a laptop does. The account
+  // paths then answer with or without the flag. What the flag changes there is who is counted.
+  const guess = (call: Call, index: number): Promise<Answer> => call("POST", "/api/account/signin", {
+    headers: { ...relayedFrom("203.0.113.66"), "Cf-Connecting-Ip": `192.0.2.${String(index)}` }, json: { name: "Odysseus", password: "a wrong password" },
+  });
+  for (const [accounts, rooms] of [["1", undefined], [undefined, "1"], ["1", "1"]] as const) {
+    const call = await serve(accounts, standIns());
+    if (rooms !== undefined) process.env.PUBLIC_ROOMS = rooms;
+    for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS; index += 1) expect((await guess(call, index)).status, `${String(accounts)} ${String(rooms)} ${String(index)}`).toBe(401);
+    expect((await guess(call, 99)).status, `${String(accounts)} ${String(rooms)}`).toBe(429);
+    // The spending routes are closed from there as from anywhere, and this machine's own requests carry no proxy header.
+    expect((await call("POST", "/api/level", { headers: relayedFrom("203.0.113.66"), json: {} })).status).toBe(403);
+    expect((await call("GET", "/api/health")).status).toBe(200);
+    for (const close of closers.splice(0)) close();
+  }
+  // With neither setting the server takes that proxy for a tunnel and believes the header: every made-up value is a new caller.
+  // Only the count for the name over all callers still stops the guesses. This is why a public server sets the flag.
+  const call = await serve(undefined, standIns());
+  const answers: number[] = [];
+  for (let index = 0; index < SIGNINS_PER_NAME + 2; index += 1) answers.push((await guess(call, index)).status);
+  expect(answers.filter((status) => status === 401)).toHaveLength(SIGNINS_PER_NAME);
+  expect(answers.slice(SIGNINS_PER_NAME)).toEqual([429, 429]);
 });

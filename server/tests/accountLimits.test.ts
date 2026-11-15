@@ -65,13 +65,16 @@ test("all strangers together make 200 accounts in an hour and 600 in a day; past
   const limits = createAccountLimits(() => now);
   // A new address for every account, so no per-address count is in the way.
   let address = 0;
-  const make = (times: number): number => passed(() => limits.signUp(`address ${String(address++)}`), times);
+  const make = (times: number): number => passed(() => {
+    address += 1;
+    return limits.signUp(`address ${String(address)}`);
+  }, times);
 
   expect(limits.signUpsClosed("anybody")).toBe(0);
   // Ten minutes: 120. A place given back opens it again.
   expect(make(SIGNUPS_OVERALL + 10)).toBe(SIGNUPS_OVERALL);
   expect(limits.signUpsClosed("never seen before")).toBe(SIGNUP_WINDOW_MS / 1000);
-  limits.signUpNotMade("address 0");
+  limits.signUpNotMade("address 1");
   expect(limits.signUpsClosed("never seen before")).toBe(0);
   expect(make(5)).toBe(1);
 

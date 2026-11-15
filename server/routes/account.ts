@@ -18,7 +18,7 @@ import { Unavailable, bearerToken, createAccounts } from "../lib/accounts";
 import type { Reach } from "../lib/accounts";
 import { shareAccounts } from "../lib/accountsShared";
 import { dbRedactor, openDb } from "../lib/db";
-import { publicAccounts } from "../lib/localOnly";
+import { behindOwnProxy } from "../lib/localOnly";
 import { THIS_MACHINE } from "../lib/roomLimits";
 import { withTimeout } from "../lib/timeout";
 
@@ -88,7 +88,7 @@ export const register: Register = (router, deps) => {
   shareAccounts(deps, { accounts, strangers, limits });
 
   /** Who a request is counted against (callerOf). Asked on every request: the server reads its .env after this file is loaded. */
-  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, publicAccounts());
+  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, behindOwnProxy());
 
   /** Database work. A stranger's waits at the gate, so however many arrive at once the laptop still finds a free connection. */
   const reach = <T>(who: string, work: () => Promise<T>): Promise<T> => (who === THIS_MACHINE ? work() : strangers(work));
