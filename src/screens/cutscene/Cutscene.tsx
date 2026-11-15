@@ -69,7 +69,7 @@ export function Cutscene({ enemy, onDone }: { enemy: EnemySpec; onDone: () => vo
         </div>
         <div className="cut-words" style={{ transform: `translateY(${String((1 - plate) * 16)}px)` }}>
           <p className="cut-book">{bookLine(enemy.book)}</p>
-          <h2 className="cut-name">{enemy.name}</h2>
+          <h2 className={`cut-name${enemy.name.length > 10 ? " cut-name--long" : ""}`}>{enemy.name}</h2>
           <p className="cut-epithet">{EPITHETS[enemy.id] ?? enemy.title}</p>
         </div>
       </div>

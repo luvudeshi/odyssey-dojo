@@ -19,6 +19,7 @@
 .cut-words { position: relative; display: flex; flex-direction: column; align-items: center; gap: clamp(4px, 1vh, 10px); }
 .cut-book { margin: 0; font: 700 22px/1.1 var(--font-display, sans-serif); letter-spacing: 0.3em; text-transform: uppercase; color: #8fd0ff; }
 .cut-name { margin: 0; font: 700 clamp(60px, 9.6vw, 168px)/0.98 var(--font-display, sans-serif); letter-spacing: 0.1em; text-transform: uppercase; color: #f6efe2; text-shadow: 0 3px 0 #5a2410, 0 0 38px rgba(255, 110, 30, 0.55); }
+.cut-name--long { font-size: clamp(48px, 7.6vw, 134px); white-space: nowrap; }
 .cut-epithet { margin: 0; font: 700 clamp(26px, 2.6vw, 44px)/1.1 var(--font-display, sans-serif); letter-spacing: 0.2em; text-transform: uppercase; color: #ffb066; }
 .cut-flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255, 200, 120, 0.85), rgba(255, 90, 20, 0.25) 60%, transparent 80%); }
 
