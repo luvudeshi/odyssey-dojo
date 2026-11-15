@@ -250,7 +250,7 @@ describe("what is printed", () => {
 
 describe("the script, run from the command line", () => {
   const envFile = join(folder("env", { ".env": `${GEMINI_NAME}=${GOOGLE_KEY}\n${ELEVEN_NAME}=${ELEVEN_KEY}\nAI_SERVER_PORT=8787\n` }), ".env");
-  const clean = { "index.html": "<!doctype html><title>Odyssey Fighter</title>", "assets/app.js": "render(scene);start()", "models/hero.glb": Buffer.from([0, 1, 2, 3, 255]) };
+  const clean = { "index.html": "<!doctype html><title>Odyssey Dojo</title>", "assets/app.js": "render(scene);start()", "models/hero.glb": Buffer.from([0, 1, 2, 3, 255]) };
 
   it("exits 0 on a clean folder", () => {
     const { code, output } = run([`--dist=${folder("clean", clean)}`, `--env=${envFile}`]);

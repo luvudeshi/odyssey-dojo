@@ -2,13 +2,15 @@
 // It names the god, the move and how to throw it, and has Athena call the move aloud when the meter fills.
 // While the meter is filling it is a small still plate beside the power ring, "Champion of Poseidon", so the god the
 // scan found stays on screen through the fight. Mount it once inside the fight screen's root; it never takes a click.
-import { useEffect, useRef } from "react";
+// Between cards the engine drops a power move, so there the banner dims and says "On the next card", and a press of the
+// power key is kept and sent again when the next card comes up.
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { holdPowerSound } from "../../audio/powerSound";
 import { speakPowerReady } from "../../audio/voice";
 import { log } from "../../core/log";
 import type { GodId } from "../gods/gods";
-import { READY_START, champion, missed, nextCheckIn, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
+import { READY_START, champion, isPowerKey, missed, nextCheckIn, powerLive, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
 import type { PowerPrompt } from "./powerPrompt";
 import "./powerReady.css";
 
@@ -74,6 +76,36 @@ export function PowerReady(props: PowerReadyProps) {
     return () => { window.clearTimeout(timer); };
   }, [moveId, paused, announce]);
 
+  // Full, but no card is up: the engine would drop the move, so the banner waits, and so does a press of its key.
+  const waiting = prompt !== null && !powerLive(phase);
+  const powerKey = prompt?.key ?? null;
+  const kept = useRef<string | null>(null);
+  const [queued, setQueued] = useState(false);
+  if (queued && !waiting) setQueued(false);
+
+  useEffect(() => {
+    if (powerKey === null || !waiting) {
+      // The card is up: press the kept key again for the player. The keyboard input (src/input/keyboard.ts) listens
+      // on window and takes it as a press. With the meter spent or the fight over, the kept press is dropped.
+      const key = kept.current;
+      kept.current = null;
+      if (key !== null && powerKey !== null) {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+        window.dispatchEvent(new KeyboardEvent("keyup", { key }));
+      }
+      return;
+    }
+    const keep = (event: KeyboardEvent): void => {
+      if (event.repeat || !isPowerKey(powerKey, event.key)) return;
+      // As in src/input/keyboard.ts: a key pressed in a menu is the menu's.
+      if (event.target instanceof Element && event.target.closest("[role=dialog]")) return;
+      kept.current = event.key;
+      setQueued(true);
+    };
+    window.addEventListener("keydown", keep);
+    return () => { window.removeEventListener("keydown", keep); };
+  }, [waiting, powerKey]);
+
   if (prompt === null) {
     const patron = champion(god, power, phase);
     if (patron === null) return null;
@@ -88,8 +120,9 @@ export function PowerReady(props: PowerReadyProps) {
   }
   const keys = keyboard && prompt.key !== null;
   const style = { "--power-ready-accent": prompt.accent } as CSSProperties;
+  const look = waiting ? (queued ? " power-ready--waiting power-ready--queued" : " power-ready--waiting") : "";
   return (
-    <div className={`power-ready power-ready--live power-ready--${prompt.god}${keys ? " power-ready--keys" : ""}`} style={style} role="status" aria-live="polite">
+    <div className={`power-ready power-ready--live power-ready--${prompt.god}${keys ? " power-ready--keys" : ""}${look}`} style={style} role="status" aria-live="polite">
       <div className="power-ready__frame">
         <div className="power-ready__edge">
           <div className="power-ready__plate">
@@ -105,6 +138,7 @@ export function PowerReady(props: PowerReadyProps) {
                 </>
               )}
             </div>
+            <div className="power-ready__wait" aria-hidden={!waiting}>On the next card</div>
           </div>
         </div>
       </div>

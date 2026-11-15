@@ -51,6 +51,24 @@
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
   font: inherit; font-weight: 700; line-height: 1.1; text-align: center; color: var(--power-ready-accent, #ffd9a0);
 }
+/* Between cards (--waiting) the engine drops a power move, so the plate stops asking: it dims, the pulse holds still,
+   and "On the next card" stands where the key or the gesture was. The dim and the words come 0.8 s late, so the short
+   beat after each strike (0.7 s) changes nothing and only the long one after a phase change does; they leave at once.
+   A press kept for the next card (--queued) brings them at once, so the press is seen to be taken: no transition, as a
+   shorter delay would not move one that is already counting down. */
+.power-ready .power-ready__edge { transition: opacity 0.12s ease-out; }
+.power-ready .power-ready__wait {
+  grid-area: how; visibility: hidden; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
+  font-size: clamp(18px, 1.72vw, 27px); font-weight: 700; line-height: 1.2; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  color: var(--white, #f2e4c8);
+}
+.power-ready.power-ready--waiting .power-ready__frame { animation-play-state: running, paused; }
+.power-ready.power-ready--waiting .power-ready__edge { opacity: 0.55; transition: opacity 0.25s ease-out 0.8s; }
+.power-ready.power-ready--waiting .power-ready__how { visibility: hidden; transition: visibility 0s linear 0.8s; }
+.power-ready.power-ready--waiting .power-ready__wait { visibility: visible; transition: visibility 0s linear 0.8s; }
+.power-ready.power-ready--queued .power-ready__edge { transition: none; }
+.power-ready.power-ready--queued .power-ready__how { transition: none; }
+.power-ready.power-ready--queued .power-ready__wait { transition: none; }
 /* Keyboard play: the key is the instruction, so it is nearly as large as the move's name. */
 .power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2.6vw, 40px); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
@@ -88,4 +106,5 @@
   .power-ready.power-ready--champion { display: none; }
   .power-ready .power-ready__plate { grid-template-columns: auto; grid-template-areas: "title" "move" "how"; padding: 7px 30px 8px; }
   .power-ready .power-ready__how { max-width: none; margin-top: 4px; padding-left: 0; border-left: 0; }
+  .power-ready .power-ready__wait { margin-top: 4px; padding-left: 0; border-left: 0; }
 }

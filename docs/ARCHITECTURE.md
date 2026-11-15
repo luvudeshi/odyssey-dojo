@@ -1,8 +1,8 @@
-# Odyssey Fighter: plan and architecture
+# Odyssey Dojo: plan and architecture
 
 HackUTA 2026. Theme: Homer's Odyssey. Judged on Robustness (does it work), Theme and Creativity. One judge plays on our laptop for about 3 minutes, then 2 minutes of questions. **Deadline: 12 PM Sunday.**
 
-Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-fighter/issues). How to claim one and report on it: [COORDINATION.md](COORDINATION.md).
+Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-dojo/issues). How to claim one and report on it: [COORDINATION.md](COORDINATION.md).
 
 ## The game
 
