@@ -20,6 +20,8 @@ const EVERY_SIZE = SIZES.map((_, index) => index);
 
 /** In-scope pairs that still fire, each with why it is left. The reasons are spelled out in docs/cross-fire.md. */
 const LEFT: Record<string, string> = {
+  "jab>cross": "by the owner's ruling: jab and cross read on either hand, and the fight counts only the one it asked for",
+  "cross>jab": "the same ruling",
   "overhead_strike>thunderbolt": "the same motion by design: the right-hand thunderbolt is the overhead strike",
   "hammer_fist>thunderbolt": "the same motion by design: the left-hand thunderbolt is the hammer fist",
   "double_palm>aegis_push": "the same motion by design: both palms pushed out from the chest",
@@ -31,8 +33,8 @@ const LEFT: Record<string, string> = {
 
 /** Pairs that fire but can never be asked of one player in one fight: two styles' strikes, or the finisher. */
 const OUTSIDE: readonly string[] = [
-  "reverse_punch>cross", "knife_hand>cross", "double_palm>spear_thrust", "chain_punch>jab", "chain_punch>cross",
-  "stake_thrust>aegis_push",
+  "reverse_punch>jab", "reverse_punch>cross", "knife_hand>jab", "knife_hand>cross", "double_palm>spear_thrust",
+  "chain_punch>jab", "chain_punch>cross", "stake_thrust>aegis_push",
 ];
 
 /** In-scope pairs that fired before #191 (or, for thunderbolt>uppercut, before the lenient-strikes PR) and were separated. */
@@ -104,10 +106,11 @@ describe.each(BUILDS)("a punch aimed upward soon after the hands come up, on %s"
     const steps: Step[] = [[READY, 300], [READY, wait], [out, 130], [out, 200]];
     return firedIn(builtRecording(build, steps.filter(([, ms]) => ms > 0)));
   };
+  // Jab and cross read on either hand, so each punch reads as both, and as neither rising strike.
   test.each([20, 30, 40])("at %i degrees a cross is a cross and not an uppercut, a jab a jab and not a rising palm", (degrees) => {
     for (const wait of [0, 300]) {
-      expect(punched("right", degrees, wait), `cross, ${String(wait)} ms wait`).toEqual(["cross"]);
-      expect(punched("left", degrees, wait), `jab, ${String(wait)} ms wait`).toEqual(["jab"]);
+      expect(punched("right", degrees, wait), `cross, ${String(wait)} ms wait`).toEqual(["cross", "jab"]);
+      expect(punched("left", degrees, wait), `jab, ${String(wait)} ms wait`).toEqual(["cross", "jab"]);
     }
   });
 });

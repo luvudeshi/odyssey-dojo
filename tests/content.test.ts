@@ -33,7 +33,7 @@ test("style strikes are strike moves, and move keys are unique", () => {
   expect(new Set(keys).size).toBe(keys.length);
 });
 
-test("standing still triggers nothing; fists at the face is a block; bent-then-straight left arm is one jab", () => {
+test("standing still triggers nothing; fists at the face is a block; bent-then-straight left arm is one straight punch", () => {
   const read = createPoseInput(MOVES);
   let history = EMPTY_HISTORY;
   for (let i = 0; i < 20; i++) history = pushFrame(history, frameAt(i * 33));
@@ -48,7 +48,8 @@ test("standing still triggers nothing; fists at the face is a block; bent-then-s
   const bent = frameAt(700, {}, { [JOINT.leftElbow]: [-0.3, -0.35, 0], [JOINT.leftWrist]: [-0.2, -0.45, -0.05] });
   const straight = frameAt(900, {}, { [JOINT.leftElbow]: [-0.2, -0.5, -0.3], [JOINT.leftWrist]: [-0.2, -0.5, -0.6] });
   const punched = pushFrame(pushFrame(history, bent), straight);
-  expect(read(punched).struck.map((strike) => strike.move)).toEqual(["jab"]);
+  // Jab and cross read on either hand, so the punch is both.
+  expect(read(punched).struck.map((strike) => strike.move)).toEqual(["cross", "jab"]);
   expect(read(punched).struck).toEqual([]);
 });
 
