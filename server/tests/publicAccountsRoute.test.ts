@@ -357,6 +357,16 @@ function fixed(): Fixed {
 const from = (address: string): Record<string, string> => ({ ...TUNNEL, "Cf-Connecting-Ip": address, "X-Forwarded-For": address });
 const statuses = async (asks: readonly Promise<Answer>[]): Promise<number[]> => (await Promise.all(asks)).map((answer) => answer.status);
 const times = <T>(count: number, make: (index: number) => T): T[] => Array.from({ length: count }, (_, index) => make(index));
+/**
+ * The statuses of `count` requests, sent 50 at a time, each batch answered before the next is sent. A test server on Windows
+ * refuses hundreds of new connections in one instant (ECONNREFUSED); what is counted is the same either way.
+ */
+const BATCH = 50;
+async function inBatches(count: number, make: (index: number) => Promise<Answer>): Promise<number[]> {
+  const got: number[] = [];
+  for (let start = 0; start < count; start += BATCH) got.push(...await statuses(times(Math.min(BATCH, count - start), (index) => make(start + index))));
+  return got;
+}
 /** Waits until `met` is true, for five seconds at most. */
 async function until(met: () => boolean): Promise<void> {
   for (let waited = 0; waited < 500 && !met(); waited += 1) await new Promise((resolve) => { setTimeout(resolve, 10); });
@@ -379,7 +389,7 @@ test("empty and malformed sign-ups use up nobody's sign-ups: the same address an
   expect([made.status, JSON.parse(made.text)]).toEqual([201, { token: KNOWN_TOKEN, name: "Odysseus" }]);
 
   // Past the per-address count of requests the venue waits a minute; an address that did nothing is not held up by it.
-  const flood = await statuses(times(ATTEMPTS_PER_ADDRESS, () => call("POST", "/api/account/signup", { headers: venue })));
+  const flood = await inBatches(ATTEMPTS_PER_ADDRESS, () => call("POST", "/api/account/signup", { headers: venue }));
   expect(flood.filter((status) => status === 429).length).toBeGreaterThan(0);
   const refused = await call("POST", "/api/account/signup", { json: CREDENTIALS, headers: venue });
   expect([refused.status, JSON.parse(refused.text)]).toEqual([429, { error: "slow_down" }]);
@@ -424,11 +434,11 @@ test("junk tokens from an address are counted before the database is asked, and 
   expect(stand.asked).toEqual(["accountOf", "readSave", "writeSave"]);
 
   // No token at all costs nothing and is counted nowhere.
-  expect(await statuses(times(200, () => call("GET", "/api/account/save", { headers: venue })))).toEqual(times(200, () => 401));
+  expect(await inBatches(200, () => call("GET", "/api/account/save", { headers: venue }))).toEqual(times(200, () => 401));
   expect(stand.asked).toHaveLength(3);
 
-  // Somebody else at the same address sends junk, all at once. Only as many as the budget holds reach the database.
-  const junk = await statuses(times(WRONG_TOKENS_PER_ADDRESS + 40, () => call("GET", "/api/account/save", { token: makeToken(), headers: venue })));
+  // Somebody else at the same address sends junk, fifty at once. Only as many as the budget holds reach the database.
+  const junk = await inBatches(WRONG_TOKENS_PER_ADDRESS + 40, () => call("GET", "/api/account/save", { token: makeToken(), headers: venue }));
   expect(junk.filter((status) => status === 401)).toHaveLength(WRONG_TOKENS_PER_ADDRESS);
   expect(junk.filter((status) => status === 429)).toHaveLength(40);
   expect(stand.asked.filter((what) => what === "accountOf")).toHaveLength(1 + WRONG_TOKENS_PER_ADDRESS);
@@ -450,7 +460,7 @@ test("junk tokens from an address are counted before the database is asked, and 
 test("sign-out with no token or a malformed one is 204 and asks nothing", async () => {
   const stand = fixed();
   const { call } = await serve({ accounts: stand.accounts });
-  expect(await statuses(times(150, () => call("POST", "/api/account/signout", { headers: TUNNEL })))).toEqual(times(150, () => 204));
+  expect(await inBatches(150, () => call("POST", "/api/account/signout", { headers: TUNNEL }))).toEqual(times(150, () => 204));
   expect((await call("POST", "/api/account/signout", { headers: { ...TUNNEL, Authorization: "Bearer not-a-token" } })).status).toBe(204);
   expect(stand.asked).toEqual([]);
 });
@@ -464,7 +474,7 @@ test("a request from this machine that carries any relay header is counted like 
     expect(answers.filter((status) => status === 429).length, JSON.stringify(headers)).toBeGreaterThan(0);
   }
   // The laptop's own browser sends none, and is never refused.
-  const own = await statuses(times(ATTEMPTS_PER_ADDRESS + 20, () => call("POST", "/api/account/signin", { json: { name: "Nestor", password: "a wrong password" } })));
+  const own = await inBatches(ATTEMPTS_PER_ADDRESS + 20, () => call("POST", "/api/account/signin", { json: { name: "Nestor", password: "a wrong password" } }));
   expect(own).toEqual(times(ATTEMPTS_PER_ADDRESS + 20, () => 401));
 });
 
@@ -574,12 +584,12 @@ test("a flood of sign-ins holds two places at the database and one hash at a tim
   const { call } = await serve({ accounts });
   let release: () => void = () => undefined;
   stand.hold = new Promise<void>((resolve) => { release = resolve; });
-  // A hundred sign-ins in one instant, each from its own address and to its own name, so no count per address or per name stops them.
-  const FLOOD = 100;
+  // Fifty sign-ins in one instant (a test server on Windows refuses many more new connections at once), each from its own address and to its own name, so no count per address or per name stops them.
+  const FLOOD = 50;
   const burst = times(FLOOD, (index) => call("POST", "/api/account/signin", { json: { name: `Hero ${String(index)}`, password: "a wrong password" }, headers: from(`198.51.100.${String(index)}`) }));
   let turnedAway = 0;
   for (const ask of burst) void ask.then((answer) => { if (answer.status === 429) turnedAway += 1; });
-  // The database is slow: two look-ups are in it, sixteen wait, and the other 82 already have their answer.
+  // The database is slow: two look-ups are in it, sixteen wait, and the other 32 already have their answer.
   await until(() => turnedAway === FLOOD - STRANGERS_AT_ONCE - STRANGERS_WAITING);
   expect(turnedAway).toBe(FLOOD - STRANGERS_AT_ONCE - STRANGERS_WAITING);
   expect(stand.inside).toBe(STRANGERS_AT_ONCE);

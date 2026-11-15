@@ -342,17 +342,47 @@ test("a password hash holds no place at the strangers' gate: only the statements
   // All three wait for their hash, and none of them holds a place: other strangers' statements run meanwhile.
   expect(hashing).toBe(3);
   expect(inside).toBe(0);
-  expect(places).toBe(3);
+  // The two look-ups, and the sign-up's count and its "is the name taken".
+  expect(places).toBe(4);
   release();
   expect(await signIn).toMatchObject({ name: "Odysseus" });
   expect(await wrong).toBeNull();
   expect(await signUp).toMatchObject({ name: "Penelope" });
   expect(insideWhileHashing).toEqual([0, 0, 0, 0, 0, 0]);
-  // A place each for the look-up and the count, then one for the new session and one for the insert. A wrong password takes no second one.
-  expect(places).toBe(5);
+  // A place each for the look-up and the count, one for the sign-up's "is the name taken", then one for the new session and one for the insert. A wrong password takes no second one.
+  expect(places).toBe(6);
   expect(inside).toBe(0);
   // Without a gate handed over (this machine, the tests of the database) nothing changes: the statements run as they are.
   expect(await accounts.signIn("Odysseus", PASSWORD)).toMatchObject({ name: "Odysseus" });
+});
+
+test("a sign-up with a taken name is answered before any hash: one select by the name's key, no insert; without the setting the hash comes first, as on main", async () => {
+  captureLog();
+  const run = async (isPublic: boolean, taken: boolean): Promise<{ answer: unknown; hashes: number; texts: string[] }> => {
+    const texts: string[] = [];
+    const stand = scripted((text) => {
+      // The statements of the sign-up itself; the tables are made first and are not part of it.
+      if (!text.startsWith("create ")) texts.push(text.trimStart().slice(0, 12));
+      if (text.includes("count(*)")) return [{ n: 0, hour: 0, day: 0 }];
+      if (text.startsWith("select 1 as taken")) return taken ? [{ taken: 1 }] : [];
+      // The insert makes no row for a taken name (on conflict do nothing).
+      return text.startsWith("with made") && !taken ? [{ id: "0d15ea5e-0000-4000-8000-000000000000" }] : [];
+    });
+    let hashes = 0;
+    const gate: Gate = () => {
+      hashes += 1;
+      return Promise.resolve(Buffer.alloc(HASH_BYTES)) as never;
+    };
+    const accounts = createAccounts(() => Promise.resolve(stand.db), { gate, isPublic: () => isPublic });
+    return { answer: await accounts.signUp("Odysseus", PASSWORD), hashes, texts };
+  };
+  // The setting on: the name is asked for after the count, and a taken one stops there. The hash is called 0 times.
+  expect(await run(true, true)).toEqual({ answer: "name_taken", hashes: 0, texts: ["select count", "select 1 as "] });
+  // A new name goes on to one hash and the insert. A name taken between the two is still caught by the insert (no row back).
+  expect(await run(true, false)).toMatchObject({ answer: { name: "Odysseus" }, hashes: 1, texts: ["select count", "select 1 as ", "with made as"] });
+  // The setting off: main's order. The count, the hash, the insert, and the name is never asked for on its own.
+  expect(await run(false, true)).toEqual({ answer: "name_taken", hashes: 1, texts: ["select count", "with made as"] });
+  expect(await run(false, false)).toMatchObject({ answer: { name: "Odysseus" }, hashes: 1, texts: ["select count", "with made as"] });
 });
 
 test("Unavailable says nothing about why", () => {
