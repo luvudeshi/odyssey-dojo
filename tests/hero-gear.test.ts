@@ -1,4 +1,4 @@
-// Which gear is in the spartan's hands: nothing at rest, a spear only for a Hoplite's spear moves, the stake only for the stake.
+// Which gear is in the spartan's hands: nothing at rest, never a spear (no style fights with one now), the stake only for the stake.
 import { expect, test } from "vitest";
 import { STYLES } from "../src/styles/registry";
 import { MOVES } from "../src/moves/registry";
@@ -9,23 +9,19 @@ import type { HeroInput } from "../src/render/hero/heroClips";
 const calm: HeroInput = { held: new Set(), struckMove: "", sinceStrike: Infinity, sinceHurt: Infinity, won: false, lost: false, finisherMove: null };
 const strike = (move: string, sinceStrike = 0.1, extra: Partial<HeroInput> = {}): HeroInput => ({ ...calm, struckMove: move, sinceStrike, ...extra });
 
-test("both hands are empty at rest, while blocking and while ducking", () => {
-  expect(heldGear(TIMING, calm, "hoplite")).toBe("none");
-  expect(heldGear(TIMING, { ...calm, held: new Set(["block"]) }, "hoplite")).toBe("none");
-  expect(heldGear(TIMING, strike("spear_thrust", 0.1, { held: new Set(["duck"]) }), "hoplite")).toBe("none");
+test("both hands are empty at rest, while blocking and while ducking, in every style", () => {
+  for (const style of STYLES) {
+    expect(heldGear(TIMING, calm, style.id), style.id).toBe("none");
+    expect(heldGear(TIMING, { ...calm, held: new Set(["block"]) }, style.id), style.id).toBe("none");
+    expect(heldGear(TIMING, strike("spear_thrust", 0.1, { held: new Set(["duck"]) }), style.id), style.id).toBe("none");
+  }
 });
 
-test("a Hoplite draws the spear for the spear thrust and the overhead strike, and stows it when the clip ends", () => {
-  expect(heldGear(TIMING, strike("spear_thrust"), "hoplite")).toBe("spear");
-  expect(heldGear(TIMING, strike("overhead_strike"), "hoplite")).toBe("spear");
-  expect(heldGear(TIMING, strike("spear_thrust", 5), "hoplite")).toBe("none");
-  expect(heldGear(TIMING, strike("overhead_strike", 5), "hoplite")).toBe("none");
-});
-
-test("every other style throws those moves with empty hands", () => {
-  for (const style of STYLES.filter((s) => s.id !== "hoplite")) {
-    expect(heldGear(TIMING, strike("spear_thrust"), style.id), style.id).toBe("none");
-    expect(heldGear(TIMING, strike("overhead_strike"), style.id), style.id).toBe("none");
+test("no style fights with a spear: the spear thrust and the overhead strike are thrown with empty hands", () => {
+  for (const id of [...STYLES.map((s) => s.id), "hoplite", "pankration", ""]) {
+    expect(heldGear(TIMING, strike("spear_thrust"), id), id).toBe("none");
+    expect(heldGear(TIMING, strike("overhead_strike"), id), id).toBe("none");
+    expect(heldGear(TIMING, strike("spear_thrust", 5), id), id).toBe("none");
   }
 });
 
@@ -43,13 +39,14 @@ test("the stake is in his hands for the stake finisher only, in any style", () =
 });
 
 test("defeat and victory put everything away", () => {
-  expect(heldGear(TIMING, strike("spear_thrust", 0.1, { lost: true }), "hoplite")).toBe("none");
-  expect(heldGear(TIMING, strike("spear_thrust", 5, { won: true }), "hoplite")).toBe("none");
+  for (const style of STYLES) {
+    expect(heldGear(TIMING, strike("stake_thrust", 0.1, { lost: true }), style.id), style.id).toBe("none");
+    expect(heldGear(TIMING, strike("stake_thrust", 5, { won: true }), style.id), style.id).toBe("none");
+  }
 });
 
-test("the spear is slung on the back for a Hoplite only, and only while it is not in his hand", () => {
-  expect(spearSlung("hoplite", "none")).toBe(true);
-  expect(spearSlung("hoplite", "stake")).toBe(true);
-  expect(spearSlung("hoplite", "spear")).toBe(false);
-  for (const id of ["boxer", "jiu_jitsu", "karate", "kung_fu", "taekwondo", ""]) expect(spearSlung(id, "none"), id).toBe(false);
+test("no spear is slung on his back, in any style and whatever is in his hand", () => {
+  for (const id of [...STYLES.map((s) => s.id), "hoplite", "pankration", ""]) {
+    for (const held of ["none", "stake", "spear"] as const) expect(spearSlung(id, held), `${id} ${held}`).toBe(false);
+  }
 });
