@@ -10,7 +10,7 @@ import type { Landmark, PoseFrame } from "../core/types";
 import { JOINT, joint } from "../pose/signals";
 import { defendSeen } from "../hud/DefendFlash";
 import { battle, calmMotion, decay, nowSeconds } from "./battle";
-import { LOOKS, dodge, dodgeVariant, stepDodge } from "./effects/dodge/dodgeMotion";
+import { LOOK, dodge, stepDodge } from "./effects/dodge/dodgeMotion";
 import { HURT_SECONDS, STRIKE_SECONDS, blendPose, chooseAction, makePose, syntheticPose } from "./heroPose";
 import type { HeroAction } from "./heroPose";
 
@@ -30,7 +30,6 @@ const BLEND_SECONDS = 0.12;
 /** How far a dodge throws him sideways (metres). */
 const DODGE_X = 0.9;
 const SETTLE_SECONDS = 0.8;
-const DODGE_LOOK = dodgeVariant(window.location.search);
 const BRONZE = <meshStandardMaterial color="#c8963c" metalness={0.8} roughness={0.35} />;
 
 // MediaPipe's y points down and its origin is the hips; lift the figure so its feet touch the floor.
@@ -124,8 +123,8 @@ export function PlayerFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null>
     const targetZ = 0.6 * decay(now, battle.playerHitAt, 0.4) + (action === "defeat" ? 0.4 : 0) - (action === "victory" ? 0.3 : 0);
     // The webcam lean already shows a dodge; only the stance needs help sliding.
     const targetX = live ? 0 : action === "dodgeLeft" ? -DODGE_X : action === "dodgeRight" ? DODGE_X : 0;
-    // Dodges snap aside and back; the other steps ease. ?dodge=1..4 carry him on a spring instead (effects/dodge).
-    const look = DODGE_LOOK > 0 && !calmMotion() ? LOOKS[DODGE_LOOK] : null;
+    // Dodges snap aside and back; the other steps ease. the dodge look carries him on a spring instead (effects/dodge).
+    const look = calmMotion() ? null : LOOK;
     stepDodge(dodge, look, {
       now, dt, held: battle.held, seen: defendSeen(phase ?? { kind: "intro", msLeft: 0 }), defendedAt: battle.defendedAt,
       defendedMove: battle.defendedMove, live,

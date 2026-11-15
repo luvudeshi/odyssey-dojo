@@ -17,10 +17,9 @@ export function CameraRig() {
     const dt = Math.min(delta, 0.05);
     const { target, now } = (shots.current ??= { target: makeShot(), now: makeShot() });
     cameraShot(target, battle, nowSeconds(), calmMotion());
-    if (dodge.variant > 0) {
-      // ?dodge: the shot follows the hero sideways, which hides his travel. Give back most of that, and on the Hermes look push in as the blow misses.
+    if (dodge.active) {
+      // The shot follows the hero sideways, which hides his travel in a dodge. Give back most of that.
       target.px -= dodge.x * 0.45; target.lx -= dodge.x * 0.28;
-      target.kick += 0.07 * dodge.push; target.fovKick -= 5 * dodge.push;
     }
     const k = target.lambda;
     now.px = MathUtils.damp(now.px, target.px, k, dt);
