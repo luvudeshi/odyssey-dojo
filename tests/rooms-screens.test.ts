@@ -1,8 +1,10 @@
 // The room screens' pure parts: the flow reducer's room cases, the join link and how a guest will play.
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { START, flowReducer, openAt } from "../src/screens/flow";
 import type { Flow, FlowAction } from "../src/screens/flow";
 import { STYLES } from "../src/styles/registry";
+import type { EnemySpec } from "../src/core/types";
+import { fetchLanBase } from "../src/screens/roomNet";
 import { guestMode, joinUrl, reachableBase, roomFromSearch } from "../src/screens/roomUrl";
 
 const run = (actions: readonly FlowAction[], from: Flow = START): Flow => actions.reduce(flowReducer, from);
@@ -42,8 +44,13 @@ test("room actions out of place change nothing", () => {
 });
 
 test("a link with a room code opens the join screen; without one the game opens as before", () => {
-  expect(openAt([], null, "KXTR").screen).toBe("join");
-  expect(openAt([], null, null)).toBe(START);
+  expect(openAt([], null, "KXTR", []).screen).toBe("join");
+  expect(openAt([], null, null, [])).toBe(START);
+  // A reload keeps the stops the saved profile has beaten, on top of the ones `?stop` marks, and drops unknown ids.
+  const road = ["a", "b", "c"].map((id) => ({ id }) as EnemySpec);
+  expect(openAt(road, null, null, ["c", "zzz"]).cleared).toEqual(["c"]);
+  expect(openAt(road, "b", null, ["a", "c"]).cleared).toEqual(["a", "c"]);
+  expect(openAt(road, null, "KXTR", ["b"])).toMatchObject({ screen: "join", cleared: ["b"] });
 });
 
 test("the QR link is the reachable address plus the code", () => {
@@ -65,4 +72,16 @@ test("a guest uses the camera only on a secure page, else touch on a phone and t
   expect(guestMode({ secure: false, hasCamera: false, touch: true })).toBe("touch");
   expect(guestMode({ secure: false, hasCamera: false, touch: false })).toBe("keyboard");
   expect(guestMode({ secure: true, hasCamera: false, touch: false })).toBe("keyboard");
+});
+
+test("the address lookup gives up after its time limit when the server never answers", async () => {
+  vi.stubGlobal("window", { location: { port: "4173" } });
+  // A server that accepts the call and never answers: only the abort ends it.
+  vi.stubGlobal("fetch", (_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+    init.signal?.addEventListener("abort", () => { reject(new Error("aborted")); });
+  }));
+  const started = Date.now();
+  expect(await fetchLanBase(40)).toBeNull();
+  expect(Date.now() - started).toBeLessThan(2000);
+  vi.unstubAllGlobals();
 });
