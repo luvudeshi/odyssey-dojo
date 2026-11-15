@@ -67,9 +67,8 @@ beside him telling him what to do. That is self-defense, and that is a coach.
   character and trophies on another browser, and see the best scores. A signed-in player can change
   their sign-in name and password there. Without an account, progress stays in your browser.
 
-| Main menu | Multiplayer |
-|---|---|
-| <!-- picture: the storm main menu with its four shield cards --> | <!-- picture: the Multiplayer screen with its four cards --> |
+<!-- pictures: the storm main menu with its four shield cards, and the Multiplayer screen with its four cards, side by side -->
+
 
 ## 🌟 What makes it different
 
