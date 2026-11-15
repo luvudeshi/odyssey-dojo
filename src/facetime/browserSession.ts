@@ -3,6 +3,7 @@
 // the style pick, the map and the fight. While the friend is on the line a small plate on the host's screen shows
 // the time left and a hang up button; it is plain DOM added to the page, so no screen has to mount it.
 // When the call ends or fails in the middle of a fight the plate stays a few seconds and says why.
+import { gameSoundStream, stopGameSoundStream } from "../audio/soundOut";
 import { createPoseInput } from "../input/poseInput";
 import { ENEMIES } from "../enemies/registry";
 import { MOVES } from "../moves/registry";
@@ -31,8 +32,11 @@ export function browserDeps(): SessionDeps {
     api: createFaceTimeApi(),
     openRoom: openLivekitRoom,
     startPicture: () => startCompositor(frameShape()),
-    // When src/audio exports gameSoundStream(), this becomes startCallAudio({ gameSound: gameSoundStream }).
-    startSound: () => startCallAudio(),
+    // The game's one stream (src/audio/soundOut.ts) is what goes to the phone, and it is closed with the call.
+    startSound: () => {
+      const sound = startCallAudio({ gameSound: gameSoundStream });
+      return { ...sound, stop() { sound.stop(); stopGameSoundStream(); } };
+    },
     watchFriend: async (track) => createRemotePlayer(track, await mediapipeDetector()),
     poseReader: () => createPoseInput(MOVES),
     pushFrame,
