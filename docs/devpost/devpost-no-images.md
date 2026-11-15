@@ -1,4 +1,4 @@
-<!-- Devpost form fields: paste these into the separate fields on the submission form, not into the story. Text-only copy of devpost.md, checked against main at 7161d69 (PR 392, Sunday 6:34 AM). -->
+<!-- Devpost form fields: paste these into the separate fields on the submission form, not into the story. Text-only copy of devpost.md, checked against main at 7161d69 (PR 392, Sunday 6:34 AM), with the account lines redone at 5b90ce8 (PR 396). -->
 
 **Project name:** Odyssey Dojo
 
@@ -101,7 +101,7 @@ The teaching is tested too. One test fails if a move has no real-world line. Ano
 
 The server is optional. It runs the rooms, the FaceTime call and the accounts, and the game plays without it. The live copy at https://odysseydojo.club is a page on Vercel in front of one small Vultr server in Dallas, running in Docker with Caddy for https.
 
-Accounts and a Hall of heroes are built on Tiger Data. Every finished fight of a signed-in player is a row in a hypertable, a continuous aggregate keeps each hero's best score by the hour, and `time_bucket_gapfill` draws the last six hours of activity in ten-minute buckets, with the quiet ones as zeros. We ran the 27 database tests against a real Tiger Data service. The sign-in is not on the Account page yet, so today a player's progress stays in their browser.
+Accounts and a Hall of heroes are built on Tiger Data. Every finished fight of a signed-in player is a row in a hypertable, a continuous aggregate keeps each hero's best score by the hour, and `time_bucket_gapfill` draws the last six hours of activity in ten-minute buckets, with the quiet ones as zeros. We ran the 27 database tests against a real Tiger Data service. On the Account page you can sign in to keep your name, settings, character and trophies, and open the Hall of heroes for the best scores tonight and of all time. Without an account, your progress stays in your browser.
 
 ## Tech stack
 
@@ -151,6 +151,7 @@ We ran the voice clips through speech to text afterward. The check heard `call_k
 - A full game you can play with only your body, or only a keyboard.
 - Rooms where two people fight one monster and strike together for double damage.
 - A real FaceTime call answered by a browser game.
+- Accounts and a Hall of heroes leaderboard on Tiger Data.
 - Six stops, each with its own cutscene and finishing move. Polyphemus's is the stake from Book 9.
 - Rules that run without a browser, so the whole fight is tested as code.
 - A live copy anyone can open: https://odysseydojo.club.
@@ -166,7 +167,6 @@ We ran the voice clips through speech to text afterward. The check heard `call_k
 
 - Put the Dojo in front of a self-defense instructor and fix what they flag. `[confirm: the team agrees this is a next step]`
 - Tune the detectors on more real bodies.
-- Put the sign-in and the Hall of heroes on the Account page. The server and the Tiger Data code are built and tested, both panels are built, and no screen shows them yet.
 - Show the defense panel: what you defended by kind, and what to practise next. It is built, and today only its one line appears on the result screen.
 - Two players on one camera. The logic and its tests are merged, and the Multiplayer screen has no card for it yet.
 - Swap kicks the camera cannot see when a player is framed from the waist up. The swap is written and nothing calls it yet.
