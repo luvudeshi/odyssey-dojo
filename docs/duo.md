@@ -10,9 +10,9 @@ The code is in `src/duo/`. It is merged but **not mounted**: one diff to lead-ow
 2. **Seats** (`src/duo/assign.ts`). Every body found goes to `createSeating()`. Which body is which is decided by `assignPlayers` from `src/pose/players.ts` (PR #99): of a fresh pair, the one on the left of the picture is player one; after that each body goes to the player it moved least from, so walking past each other or the model swapping its order does not swap the players. On top of that:
    - a body with hidden shoulders, a body with shoulders under 6% of the picture (someone in the background), and one person the model found twice are dropped;
    - the second player **joins** after standing in the picture for 1 second without a break;
-   - the second player has **left** after not being seen for 0.7 seconds; fewer lost frames change nothing;
+   - the second player has **left** after not being seen for 0.7 seconds in pictures that keep coming; fewer lost frames change nothing. A hitch in the pictures themselves (none at all for up to 1.5 seconds) is not a leave;
    - if **player one** walks out and the other stays, after 0.4 seconds the one who stayed becomes player one. Their picture is moved and sized to where the first hero stood, so the stance measured at calibration still fits and the fight does not stop to ask anyone to step back in.
-3. **Each body is read on its own** (`src/duo/split.ts`). Player two gets their own history, their own neutral stance (taken at the moment they join) and their own `createPoseInput`, the same reader a single player gets. Standing to one side does not matter: every detector measures against the body's own stance.
+3. **Each body is read on its own** (`src/duo/split.ts`). Player two gets their own history, their own neutral stance (taken from their first 8 frames, and again at the moment they join) and their own `createPoseInput`, the same reader a single player gets. Standing to one side does not matter: every detector measures against the body's own stance.
 4. **The link** (`src/duo/duoLink.ts`). The fight screen already takes a `HostLink` for online rooms, and the FaceTime call uses the same one. `createDuoLink` builds that same link on a transport that never leaves the page, and feeds player two's strikes in as the guest's. So the fight, the "Together! x2" flash and the scoring are the room fight's, unchanged.
 5. **The second hero** (`src/duo/SecondFigure.tsx`): the same spartan in blue, to the hero's right, moved by player two's body. Drawn only while two are playing.
 6. **The choice** (`src/duo/ui/DuoCard.tsx`): a card on the Multiplayer screen, "Two players, one camera".
@@ -81,7 +81,7 @@ With the diff applied, it plays a fight with the pose path on. Chrome's fake cam
 
 ## What was tested
 
-- `npx vitest run tests/duoAssign.test.ts tests/duoLink.test.ts`: 20 tests with made-up landmark frames. Seats through a crossing and through lost frames; joining and leaving; player one leaving; where the promoted player is drawn in the camera panel; bodies that are dropped; two bodies giving two inputs; player two's strike reaching the real engine through the link; both striking for double damage; each defending for themself; the fight carrying on at once when player two leaves.
+- `npx vitest run tests/duoAssign.test.ts tests/duoLink.test.ts`: 24 tests with made-up landmark frames. Seats through a crossing and through lost frames; joining and leaving; player one leaving; where the promoted player is drawn in the camera panel; bodies that are dropped; two bodies giving two inputs; player two's strike reaching the real engine through the link; both striking for double damage; each defending for themself; the fight carrying on at once when player two leaves.
 - `node scripts/duo-smoke.mjs` with the diff applied: the last two full runs passed every check (one with all five files, one without `CameraView.tsx`). Two earlier runs, made while the script was being written, went wrong in ways that are not the two-player code as far as could be told: in one the fight stood still for 23 seconds after the first body left, on a laptop that was running other browsers at the time (that run is why the script now measures the gap between the tracker's pictures; it did not happen again in four more runs); in one the dev server reloaded the page and the card could not be pressed (the script now loads everything once before it starts). A single-body strike took 14 to 18 health and a doubled one 30 to 40.
 
 ## What was not tested
@@ -91,6 +91,15 @@ With the diff applied, it plays a fight with the pose path on. Chrome's fake cam
 - Calibration with two real people in the picture. In the smoke run the made-up player one stands at 0.38 of the picture and player two at 0.70.
 - A second player who is moving while they walk in. Their place in the picture is the average of their first 15 frames, so someone who dodges in those frames would be drawn a little off after a take-over.
 - Edge, and software GL. The runs were in Chrome on the laptop's own GPU.
+
+## Two faults the smoke script found
+
+The check "a defend counts only when both make it" failed about one run in three on a busy laptop. Both causes were in `src/duo`, not in the script, and both have unit tests now.
+
+- **Player two's stance was taken at a chance moment.** The shared pose history takes a stance once 20 frames fit inside one second. Player one never relies on that (calibration gives theirs), but player two did. At about 20 pictures a second that moment came late and at random, sometimes in the middle of a dodge. Standing still then read as the opposite dodge for the rest of the fight: a dodge made by player one alone counted for both, and a dodge made by both in the other direction did not count. Under 20 pictures a second player two would have had no stance at all, so no dodge or duck of theirs would ever have been read. Now the stance comes from player two's first 8 frames (`STANCE_FRAMES` in `src/duo/split.ts`).
+- **A hitch in the pictures counted as player two leaving.** With no picture for 0.7 seconds the count fell to one player and came straight back. For that moment player one defended for both, and player two's stance was taken again from whatever they were doing. Now only pictures that keep coming without player two count them out; pictures stopping altogether does so after 1.5 seconds (`STOPPED_MS` in `src/duo/assign.ts`).
+
+After the two fixes the script passed six runs out of six with the diff applied.
 
 ## Known rough edges
 
