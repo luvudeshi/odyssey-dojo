@@ -75,7 +75,7 @@ export const register: Register = (router) => {
     refuse(response, refusal);
   };
 
-  router.post(["/api/rooms", "/api/rooms/:code/join"], body(SMALL_BODY_BYTES));
+  router.post(["/api/rooms", "/api/rooms/:code/join", "/api/rooms/:code/leave"], body(SMALL_BODY_BYTES));
   router.post("/api/rooms/:code/send", body(MAX_MESSAGE_BYTES + SEND_ENVELOPE_BYTES));
 
   router.post("/api/rooms", (request, response) => {
@@ -216,5 +216,22 @@ export const register: Register = (router) => {
     if (result === "slow") slowDown(response, 1);
     else if (result === "unknown" || result === "denied") refuseCounted(response, client(request), result);
     else response.json({ delivered: result === "sent" });
+  });
+
+  /**
+   * A member says it is going: `{ token }`. The other member is told at once and a guest's seat is free at once
+   * (rooms.leave in ../lib/rooms). Only the member's own token does anything; a wrong code or token is refused and
+   * counted like one on a send. The page sends it as it closes, so the answer is small and nobody may read it.
+   */
+  router.post("/api/rooms/:code/leave", (request, response) => {
+    const sent: unknown = request.body;
+    const token = isRelayMessage(sent) ? sent.token : undefined;
+    if (typeof token !== "string") {
+      response.status(400).json({ error: "bad_request" });
+      return;
+    }
+    const result = rooms.leave(request.params.code, token);
+    if (result === "left") response.json({ left: true });
+    else refuseCounted(response, client(request), result);
   });
 };

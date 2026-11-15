@@ -31,10 +31,11 @@ Scan the QR code, or open the game, press **Multiplayer**, and type the four let
 - The guest draws the state the host sends, about 15 times a second, and sends its strikes back. Only the host defends.
 - Guest leaves: the host carries on alone at once.
 - Host leaves: the guest sees "The host left the room." and a button back to the start.
+- Both are told at once when the one who goes presses its button (**Close the room**, **Leave the room**, **Back to the start**, or fighting alone from an open room): the page sends the leave call, see "Leaving" below. A tab that is just shut is found out the slower way.
 - Guest comes back mid-fight (its page closed or reloaded, or it joined late): the host says which fight is on again, with the newest state, as soon as the relay reports the guest, and the guest goes straight in. A guest already in that fight ignores the repeat (each start carries the fight's `id`). A guest that hears states but knows no fight sends `ask`, and the host answers with the start, at most once a second. Once the fight is over, or the host has left it, nothing is said again: a guest who joins then waits for the next one.
 - After a fight the guest waits; when the host starts the next one, the guest goes straight in.
 - Rooms live in the server's memory and hold two people. A room is removed 30 minutes after its last use: creating it, joining it, a stream or a poll starting, or a message that was let through. The host sends a small "keep" message every 5 minutes while its fight screen is open, so a quiet room lasts as long as the host does.
-- A guest's seat is freed 20 seconds after the guest goes (no open stream and no poll for 20 seconds). Coming back with the same token inside that time keeps the seat. `joinRoomAgain` in src/net/transport.ts keeps the token for the tab and tries it first, so a reload returns to its own seat without that wait (the join screen calls it). After the 20 seconds the old token is refused and the code takes a new guest, so a guest who leaves, or a stranger who took the seat, does not cost the host a new room. The host's seat is never freed this way.
+- A guest's seat is freed at once when the guest leaves by its button (the leave call), and otherwise 20 seconds after the guest goes (no open stream and no poll for 20 seconds). Coming back with the same token inside that time keeps the seat. `joinRoomAgain` in src/net/transport.ts keeps the token for the tab and tries it first, so a reload returns to its own seat without that wait (the join screen calls it). After the 20 seconds the old token is refused and the code takes a new guest, so a guest who leaves, or a stranger who took the seat, does not cost the host a new room. The host's seat is never freed this way.
 - A guest whose page stays open but whose network is gone for longer than that (a phone that left the Wi-Fi, a laptop that slept) gets back in by itself: when the relay refuses its token, the guest's link joins the room again, keeps the new token for the tab, and the host says again which fight is on. If the seat went to somebody else meanwhile, or the room is gone, the guest's screen says the host left.
 
 ## How messages travel
@@ -45,6 +46,26 @@ The relay numbers every message it delivers to a seat and keeps the newest 256 p
 - **Long poll** (`GET /api/rooms/CODE/poll?token=...&after=N`): answers at once with the messages after number N, or holds the request up to 20 seconds until one arrives, then answers with an empty list. Messages are plain request and response, so it works where a stream does not.
 
 The client (src/net/transport.ts) opens the stream first. If the stream says nothing for 3 seconds (the relay writes a line the moment a stream opens) or reports an error, the link switches to polling and stays on it, asking for everything after the newest number it heard, so nothing is lost or heard twice. The relay also puts a small "beat" on every open stream each 5 seconds. A stream that has sent a beat and then says nothing for 12 seconds has died without telling the page, so the link switches to polling then too; a relay that sends no beats is never judged this way. **Through a Cloudflare quick tunnel the stream never gets through, so a guest on the tunnel always ends up polling.** The screens do not know the difference.
+
+## Leaving
+
+The relay learns by itself that a member went only when its event stream closes, or 20 seconds after its last poll ended (`AWAY_MS`). A proxy in front of the server can keep a stream open on the relay's side after the browser has gone (Vercel's rewrite does), which is why the hosted page only polls; and a poll that stops says nothing. A held poll runs up to 20 seconds, so a guest on the hosted page heard "The host left the room." only about 38 seconds after the host went, and a guest who dropped was refused its seat for about 20.
+
+So a member that leaves says so: `POST /api/rooms/CODE/leave` with `{ "token": "..." }` answers `{ "left": true }`.
+
+- **The host's token:** the guest is told at once (the same `peer: false` a closed stream gives; a held poll is answered with it). The host's seat is then closed for good: its token is refused on every other call, so a poll of its that was still on the way cannot bring it back, and the room takes no new guest. The guest's seat stays, so the guest can still read what it was sent. Once the guest has gone too the room is one "nobody is connected to" and makes way for its owner's next room.
+- **A guest's token:** the seat is free at once, so the code takes a new guest without the 20 second wait, and the host is told if the guest had been connected. The token is dead from then on.
+- **Twice:** the same call again answers the same and changes nothing. That holds for a guest's token too, although the seat is gone: the room remembers the last guest who left, and that token still cannot do anything else, nor touch whoever has the seat now.
+- **Without the token:** nothing happens. A wrong token is 401 and an unknown room 404, counted with the wrong codes and tokens on a send or a stream (20 a minute per address, then 429). A body with no token is 400, and one over 1 KB is 413. The token is read from the body only.
+- A leave is not use of the room: it does not push back the 30 minutes.
+- The tunnel guard already lets it through: a request that was passed on may reach any path under `/api/rooms/CODE/` (server/lib/localOnly.ts).
+
+**When the page sends it** (src/net/transport.ts). `close()` on a room link sends it, once, with `keepalive`, so the browser finishes the request although the page is on its way out. The screens call `close()` only when the player leaves on purpose: **Close the room** and fighting alone on the host's card, **Leave the room** and **Back to the start** on the guest's screens. A page that is loaded again never calls `close()`, and it must not send a leave: a guest's page comes back with the token it kept for the tab (`joinRoomAgain`), and a leave on the way out would have given that seat away to whoever asked first.
+
+- A guest's link that took a seat again after a long network drop leaves with its new token only. The old one is dead at the relay already, and is never sent. If the link is closed while that join is on its way, the seat the join brings is given straight back.
+- A guest whose seat went to somebody else, or whose room is gone, sends nothing: it has no seat to give back, and a refused token would count against its address.
+- A tab that is shut, or a browser that is killed, calls nothing. For that a host's link can be told the page is going (`onPageGone` in `NetDeps`, the browser's `pagehide`) and sends the leave then: a host's page cannot come back to its room, because its token is kept nowhere, so nothing is lost by saying so. A guest's link never listens for it, because the browser cannot tell a shut tab from a reload. **The game's own page does not pass `onPageGone` yet** (it belongs in `src/screens/roomNet.ts`), so today a host who shuts the tab, and any guest who does, are still found out by the 20 second rule.
+- If the leave call does not get out (no network), the 20 second rule still does its work.
 
 ## Limits
 
@@ -58,7 +79,7 @@ The relay is built to be reachable through a tunnel, so every call is bounded (s
 - 250 polls a second per address. A normal poll loop makes about one poll per message it is sent, at most 120 a second per member, so only a runaway loop reaches it.
 - A client that gets 429 sees "Too many tries from this network. Wait a minute and try again."
 
-Through a tunnel only the room paths answer (join, events, send, poll and the address): see docs/rooms-tunnel.md.
+Through a tunnel only the room paths answer (join, events, send, poll, leave and the address): see docs/rooms-tunnel.md.
 
 ## Checking it: the rooms smoke run
 
