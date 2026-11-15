@@ -53,7 +53,8 @@ const list = (items: readonly string[]): string =>
 /** The ids in a folder's index.json, or null when the file is missing or is not a list of strings. */
 function readIndex(folder: string): readonly string[] | null {
   try {
-    const data: unknown = JSON.parse(readFileSync(join(folder, "index.json"), "utf8"));
+    // A Windows editor may save the file with a byte order mark. The browser skips it, so this does too.
+    const data: unknown = JSON.parse(readFileSync(join(folder, "index.json"), "utf8").replace(/^﻿/, ""));
     return Array.isArray(data) && data.every((id) => typeof id === "string") ? data : null;
   } catch {
     return null;
@@ -159,12 +160,13 @@ export async function checkServer(port: number, keys: KeyFlags, fetcher: typeof 
 }
 
 /** Check 6: the pose model and its runtime are on this disk, so the camera works with no network. */
-export function checkPoseFiles(publicDir: string): Result {
+export function checkPoseFiles(publicDir: string, platform: string = process.platform): Result {
   const needed = [POSE_MODEL, ...POSE_WASM_FILES.map((file) => `${POSE_WASM_DIR}/${file}`)];
   const missing = needed.filter((file) => !filled(join(publicDir, file)));
-  return missing.length === 0
-    ? result("PASS", "pose model", `${String(needed.length)} files in public/mediapipe`)
-    : result("FAIL", "pose model", `missing under public/: ${missing.join(", ")}; run npm install with a network connection`);
+  if (missing.length === 0) return result("PASS", "pose model", `${String(needed.length)} files in public/mediapipe`);
+  // The install step that copies these files is a shell script, and cmd and PowerShell have no sh to run it with.
+  const how = platform === "win32" ? "run npm install from Git Bash with a network connection" : "run npm install with a network connection";
+  return result("FAIL", "pose model", `missing under public/: ${missing.join(", ")}; ${how}`);
 }
 
 /** Blanks out every whole key in the text, then cuts it to one line of MAX_LINE. In that order, so no part of a key is left. */
