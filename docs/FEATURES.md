@@ -67,7 +67,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 
 - **built, not mounted** God scan: a webcam snapshot goes to Gemini through our server and comes back as your Olympian with one power. It was taken out of the game (PR #392). The server route (`POST /api/reveal`) and the screen (`src/ai/ui/RevealScreen.tsx`) remain; only the developer page (`src/ai/lab/`) opens it.
 - **in the game** The AI server is optional. Every route has a fallback and a time limit, so the game plays with it off.
-- **in the game** AI-made fights: the "Ask the Muse" button on the main menu (or `?ai=1`) opens "How do you fight?". Type or say a sentence and Gemini writes a fight the engine runs (`POST /api/level`, `src/ai/adapt.ts`, `src/ai/ui/museDoor.tsx`, `src/ai/ui/StyleScreen.tsx`; PR #43, #78, #92, #307, #409). With no key or a slow answer it is one of five bundled fights. Not checked: camera play inside it, and a Muse fight played through to its ending.
+- **built, not on the menu** AI-made fights: `?ai=1` opens "How do you fight?" (the main menu's "Ask the Muse" button was taken out on 15 November). Type or say a sentence and Gemini writes a fight the engine runs (`POST /api/level`, `src/ai/adapt.ts`, `src/ai/ui/museDoor.tsx`, `src/ai/ui/StyleScreen.tsx`; PR #43, #78, #92, #307, #409). With no key or a slow answer it is one of five bundled fights. Not checked: camera play inside it, and a Muse fight played through to its ending.
 
 ## Voice and sound
 

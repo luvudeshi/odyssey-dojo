@@ -39,7 +39,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 - **Hosting:** a kit to run the game on Vultr over https, in `deploy/vultr/` (PR #332, `docs/deploy-vultr.md`). Not run on a real instance.
 - **Accounts and the Hall of heroes on Tiger Data** (PR #322): the server routes, the database code and the tests. Off unless `DATABASE_URL` is set (`docs/accounts.md`). The sign-in dialog and the hall board are built and are not on a screen yet.
 - **Built, not on a screen:** the god scan character pick, which gives each god one of the five characters (PR #340), and a defense-first progress panel with its saved history (PR #341). Both are modules with tests.
-- Earlier, still true: calibration with a keyboard escape, the live camera panel, balance and adaptive difficulty, detectors that hold for any body size and a 30 degree turn, five styles (Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo), 26 moves each with a line on what it is for, the AI server (god scan, rooms relay, replay sharing), the Muse's "How do you fight?" screen, where Gemini writes a fight from a sentence, reached from the main menu's "Ask the Muse" button or at `?ai=1` (PR #307), the demo runbook (PR #286) and credits for every shipped asset (PR #283).
+- Earlier, still true: calibration with a keyboard escape, the live camera panel, balance and adaptive difficulty, detectors that hold for any body size and a 30 degree turn, five styles (Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo), 26 moves each with a line on what it is for, the AI server (god scan, rooms relay, replay sharing), the Muse's "How do you fight?" screen, reached only at `?ai=1` (PR #307), the demo runbook (PR #286) and credits for every shipped asset (PR #283).
 
 ### Still open
 - **Must:** one full webcam fight on a real body on the demo laptop, and detector tuning from real traces (#7, #17). The Devpost page, the demo video and the backup recording (#21, #130).
@@ -91,7 +91,7 @@ Branches that are not merged are not described here: other HUD looks, boss cutsc
 | 22 | Player figure dressed for the style; real sound effects; Homer's narration and taunts | #18, #19, #2 |
 
 ### Stretch
-- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Built: reached from the main menu's "Ask the Muse" button (PR #409), never in the way of the quest.
+- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Built: reached only at `?ai=1`. The main menu's "Ask the Muse" button (PR #409) was taken out on 15 November at the owner's word.
 - Replay and god card with a QR code (#2).
 - More quest stops: Circe, the Sirens, Charybdis, the suitors.
 - Difficulty that adapts to the player. Rigged downloaded models.
