@@ -1,9 +1,11 @@
 // The four defend moves on a worse camera than the other tests use: 1% landmark jitter, wrists and hips the tracker
 // is unsure of, 15 frames a second, and a player 20% closer to or further from the lens than at calibration.
-// Done right, each move stays at or above the 0.7 hold level (src/input/poseInput.ts) for the half second it is
+// Done right, each move stays at or above the hold level (src/input/poseInput.ts) for the half second it is
 // held; standing or waiting with the hands up, it never reaches it. Every case runs on ten seeds.
+// The hold level was 0.7 until the owner asked for every defend to read a rougher attempt; it is DEFEND_ON now.
 import { expect, test } from "vitest";
 import type { MoveDef } from "../../src/core/types";
+import { DEFEND_ON } from "../../src/input/poseInput";
 import { move as block } from "../../src/moves/defs/block";
 import { move as dodgeLeft } from "../../src/moves/defs/dodgeLeft";
 import { move as dodgeRight } from "../../src/moves/defs/dodgeRight";
@@ -11,7 +13,7 @@ import { move as duck } from "../../src/moves/defs/duck";
 import { CLEAN, WRISTS_AND_HIPS, film, highest, longestAbove, lowest, type Camera } from "../helpers/noisyCamera";
 import { READY, STANDING, pose, type BodyPose, type Step } from "../poseFixture";
 
-const HOLD = 0.7;
+const HOLD = DEFEND_ON;
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const JITTER = 0.01;
 

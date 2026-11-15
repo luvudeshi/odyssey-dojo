@@ -93,7 +93,8 @@ const WEAK: readonly (readonly [string, string, PracticeTip, PoseFrame[]])[] = [
   ["block", "the hands go up and straight back down", T.hold, sequence(keys([0, pose(DOWN)], [120, both(GUARD)], [240, pose(DOWN)]))],
   ["duck", "a shallow dip", T.depth, sequence(keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, 0, 0.06)], [500, pose(DOWN, DOWN, 0, 0.06)]))],
   ["duck", "a bow from the waist", T.knees, hipsStay(sequence(need(GOOD.duck)))],
-  ["dodge_left", "a small lean", T.distance, sequence(keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, -0.06, 0)], [500, pose(DOWN, DOWN, -0.06, 0)]))],
+  // Just under the line: a lean of 0.375 widths counts since the owner asked for rougher attempts to count.
+  ["dodge_left", "a small lean", T.distance, sequence(keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, -0.05, 0)], [500, pose(DOWN, DOWN, -0.05, 0)]))],
   ["dodge_left", "a step the wrong way", T.toLeft, sequence(need(GOOD.dodge_right))],
   ["dodge_left", "a sway out and straight back", T.stay, sequence(keys([0, pose(DOWN)], [100, pose(DOWN, DOWN, -0.12, 0)], [200, pose(DOWN)]))],
   ["dodge_right", "a step the wrong way", T.toRight, sequence(need(GOOD.dodge_left))],
