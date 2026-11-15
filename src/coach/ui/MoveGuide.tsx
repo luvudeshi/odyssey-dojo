@@ -212,20 +212,24 @@ export function MoveGuide(props: MoveGuideProps) {
         <h2 className="mg-name">{guide?.title ?? move.name}</h2>
         <p className="mg-how">{guide?.how ?? move.hint}</p>
         {msTotal !== undefined && <div className="mg-time" role="presentation"><div className="mg-time-fill" /></div>}
-        <div className="mg-match">
-          <span className="mg-match-word">Match</span>
-          <div className="mg-match-bar"><div className="mg-match-fill" /></div>
-          <span className="mg-match-number">0%</span>
-        </div>
-        <ol className="mg-checks" aria-label="What the camera is looking for">
-          {Array.from({ length: rowCount }, (_, index) => (
-            <li key={index} hidden={!checks[index]} data-met="false">
-              <span className="mg-tick" aria-hidden="true" />
-              <span className="mg-label">{checks[index]?.label ?? ""}</span>
-              <span className="mg-bar"><span className="mg-bar-fill" /></span>
-            </li>
-          ))}
-        </ol>
+        {size !== "card" && (
+          <>
+            <div className="mg-match">
+              <span className="mg-match-word">Match</span>
+              <div className="mg-match-bar"><div className="mg-match-fill" /></div>
+              <span className="mg-match-number">0%</span>
+            </div>
+            <ol className="mg-checks" aria-label="What the camera is looking for">
+              {Array.from({ length: rowCount }, (_, index) => (
+                <li key={index} hidden={!checks[index]} data-met="false">
+                  <span className="mg-tick" aria-hidden="true" />
+                  <span className="mg-label">{checks[index]?.label ?? ""}</span>
+                  <span className="mg-bar"><span className="mg-bar-fill" /></span>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
       </div>
     </section>
   );
