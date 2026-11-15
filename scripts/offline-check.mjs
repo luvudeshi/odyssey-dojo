@@ -268,6 +268,7 @@ async function cameraPass(browser, base, log, ms) {
   const notice = started ? "" : (await page.locator("main.menu .notice").innerText()).trim();
   let god = "";
   let calibration = "";
+  let ending = "";
   if (started) {
     // The scan sends one picture to /api/reveal. No server answers, so the god must be chosen in the browser.
     await scan.click();
@@ -282,9 +283,10 @@ async function cameraPass(browser, base, log, ms) {
     // Calibration feeds camera pictures to the model. Nobody is in the test pattern, so it only has to keep running.
     calibration = (await page.locator(".overlay h1").first().innerText()).trim();
     await page.waitForTimeout(Math.max(0, ms - (Date.now() - startedAt)));
+    ending = await page.evaluate(() => (document.querySelector(".fight .hud") ? "the fight" : (document.querySelector("h1")?.textContent ?? "nothing")));
   }
   await context.close();
-  return { started, notice, god, calibration, seconds: (Date.now() - startedAt) / 1000 };
+  return { started, notice, god, calibration, ending, seconds: (Date.now() - startedAt) / 1000 };
 }
 
 function countBy(items, keyOf) {
@@ -323,7 +325,7 @@ function report(log, fight, camera) {
   log.pageErrors.forEach((entry) => { say(`    [${entry.pass} ${entry.stage}] ${entry.text}`); });
   if (camera) {
     const pose = local.filter((entry) => entry.pass === "camera" && entry.path.startsWith("/mediapipe/"));
-    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, god scan chose "${camera.god}", then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s` : ""}`);
+    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, god scan chose "${camera.god}", then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s, on screen at the end: ${camera.ending}` : ""}`);
     list("pose files asked for, all from localhost", pose);
     list("calls to the AI server in the camera pass (none is running)", local.filter((entry) => entry.pass === "camera" && isApi(entry)));
   } else say("\nCamera pass: skipped (--no-camera)");
