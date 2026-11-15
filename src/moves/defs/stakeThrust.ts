@@ -57,7 +57,7 @@ export const move: MoveDef = {
   kind: "strike",
   prompt: "DRIVE THE STAKE",
   hint: "Grip both hands together at your chest, then drive them forward and down",
-  key: "o",
+  key: "t",
   diagram: { leftElbow: [36, 48], leftWrist: [47, 66], rightElbow: [64, 48], rightWrist: [53, 66], shiftY: 2 },
   teaches: "Use your body weight, not just arm strength, to break a grip and get free",
   detect(history) {
