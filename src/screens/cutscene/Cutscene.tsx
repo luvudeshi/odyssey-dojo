@@ -48,8 +48,9 @@ export function Cutscene({ enemy, onDone }: { enemy: EnemySpec; onDone: () => vo
         event.preventDefault();
         event.stopImmediatePropagation();
       }
-      if (swallowed.keys.size === 0) removeAfter();
+      if (ended && swallowed.keys.size === 0) removeAfter();
     };
+    let ended = false;
     let afterTimer = 0;
     const removeAfter = (): void => {
       window.removeEventListener("keydown", onAfter, true);
@@ -57,15 +58,16 @@ export function Cutscene({ enemy, onDone }: { enemy: EnemySpec; onDone: () => vo
       clearTimeout(afterTimer);
     };
     window.addEventListener("keydown", onKey, true);
+    // Listening from the start, so a key released while the cutscene is still up is forgotten and cannot eat a later keyup.
+    window.addEventListener("keydown", onAfter, true);
+    window.addEventListener("keyup", onAfter, true);
     handle = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(handle);
       window.removeEventListener("keydown", onKey, true);
-      if (swallowed.keys.size > 0) {
-        window.addEventListener("keydown", onAfter, true);
-        window.addEventListener("keyup", onAfter, true);
-        afterTimer = window.setTimeout(removeAfter, 5000);
-      }
+      ended = true;
+      if (swallowed.keys.size === 0) removeAfter();
+      else afterTimer = window.setTimeout(removeAfter, 5000);
       cutClock.ms = null;
     };
   }, [enemy.id, reduced]);
