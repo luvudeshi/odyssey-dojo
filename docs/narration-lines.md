@@ -114,7 +114,7 @@ if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(ene
 // and stopStory() in that effect's cleanup, so a taunt does not play on into the next screen
 ```
 
-`speakHomecoming` has no caller on `main` yet: the last stop's result screen is `src/screens/EndScreen.tsx`, the lead's file, and the change is offered to him as a patch on issue #179. Until it is in, the last win speaks `homer_after_suitors` like any other stop.
+`speakHomecoming` has no caller on `main` yet: the last stop's result screen is `src/screens/EndScreen.tsx`, the lead's file, and the change is offered to him as a patch, not pushed. Until it is in, the last win speaks `homer_after_suitors` like any other stop.
 
 `return stopStory` is required, not optional. Homer's new lines are 6 to 9 seconds long and wait up to 6 seconds for Athena. Without the cleanup:
 
