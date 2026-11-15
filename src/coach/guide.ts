@@ -252,6 +252,19 @@ export function toScreen(pose: GuidePose, toward: Toward, mirrored = true): Scre
   };
 }
 
+/** The smallest box, as an SVG viewBox, that holds the figure all the way round the loop: for a small card. */
+export function fitView(guide: Guide, mirrored = true): string {
+  const points = guide.keyframes.flatMap((key) => {
+    const screen = toScreen(key.pose, towardOf(key), mirrored);
+    return JOINTS.map((name) => screen.at[name]);
+  });
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const pad = 20;
+  const [left, top] = [Math.min(...xs) - pad, Math.min(...ys) - pad];
+  return [left, top, Math.max(...xs) + pad - left, FLOOR + 6 - top].map((value) => value.toFixed(0)).join(" ");
+}
+
 /** One thing the detector is looking for, in the player's words. */
 export interface LiveCheck {
   /** At most 28 characters. */
@@ -262,7 +275,7 @@ export interface LiveCheck {
 }
 
 export interface LiveChecks {
-  /** At most four: the ones the player controls most, plus any of the rest that is failing. */
+  /** At most `max` (four unless told): the ones the player controls most, plus any of the rest that is failing. */
   readonly checks: readonly LiveCheck[];
   /** 0..1 over every condition of the move, shown or not. 1 only when all are met, which is when the detector fires. */
   readonly overall: number;
@@ -344,18 +357,18 @@ function readOption(measures: readonly Measure[], labels: readonly Label[], hist
  * What the move's detector sees on the newest frame of `history`. `baseline`, when given, is used in place of the
  * history's own. A move either side can make shows the side that is nearest. Never throws: no frames is all unmet.
  */
-export function liveChecks(move: MoveDef, history: PoseHistory | null, baseline?: Baseline | null): LiveChecks {
+export function liveChecks(move: MoveDef, history: PoseHistory | null, baseline?: Baseline | null, max = MAX_SHOWN): LiveChecks {
   const held = history && baseline !== undefined ? { ...history, baseline } : history;
   const total = (reads: readonly Read[]): number => reads.reduce((sum, read) => sum + (read.met ? 1 : 0) + read.progress, 0);
   const options = (MEASURES[move.id] ?? []).map((measures, index) =>
     readOption(measures, LABELS[move.id]?.(SIDES[index] ?? "left") ?? [], held));
   const reads = options.reduce<readonly Read[]>((best, option) => (best.length === 0 || total(option) > total(best) ? option : best), []);
   if (reads.length === 0) return { checks: [], overall: 0, matched: false };
-  const shown = reads.filter((read) => read.rank > 0).sort((a, b) => a.rank - b.rank).slice(0, MAX_SHOWN);
+  const shown = reads.filter((read) => read.rank > 0).sort((a, b) => a.rank - b.rank).slice(0, max);
   for (const failing of reads.filter((read) => read.rank === 0 && !read.met)) {
     // A rarely failed condition takes a free row, or the place of the last one already met: it is why the move is not firing.
     const spare = shown.map((read) => read.met).lastIndexOf(true);
-    if (shown.length < MAX_SHOWN) shown.push(failing);
+    if (shown.length < max) shown.push(failing);
     else if (spare >= 0) shown[spare] = failing;
   }
   const matched = reads.every((read) => read.met);

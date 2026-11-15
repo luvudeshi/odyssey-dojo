@@ -67,6 +67,34 @@
 /* No camera: the checklist is a list of what to do, with nothing to tick. */
 .move-guide[data-live="false"] .mg-match, .move-guide[data-live="false"] .mg-bar, .move-guide[data-live="false"] .mg-tick { opacity: 0.35; }
 
+/* The card size: a column that fits the prompt card, 260 px wide and at most 300 px tall. The card has the move's
+   name and its timer already, so here it is the figure, the instruction, the match bar and three checks at 18 px. */
+.move-guide.card {
+  --mg-figure: 140px; --mg-how: 18px; --mg-check: 18px;
+  box-sizing: border-box; flex-direction: column; align-items: stretch; gap: 3px; width: 260px; max-height: 300px; overflow: hidden;
+  padding: 6px 8px; border-width: 2px; box-shadow: none;
+}
+.card .mg-words { display: contents; }
+.card .mg-kind, .card .mg-name, .card .mg-depth, .card .mg-match-word, .card .mg-bar { display: none; }
+.card .mg-figure { justify-content: center; }
+.card .mg-svg { max-width: 100%; }
+.card .mg-svg line, .card .mg-svg polygon { stroke-width: 8; }
+.card .mg-svg line.mg-lit, .card .mg-svg polygon.mg-lit { stroke-width: 11; }
+.card .mg-steps .mg-svg { height: calc(var(--mg-figure) * 0.62); }
+.card .mg-steps figcaption { line-height: 1; }
+.card .mg-how { margin: 0; text-align: center; line-height: 1.15; font-weight: 700; }
+.card .mg-time { height: 5px; margin: 0; }
+.card .mg-match { margin: 0; gap: 6px; line-height: 1; }
+.card .mg-match-bar { height: 12px; }
+.card .mg-checks { gap: 0; }
+.card .mg-checks li {
+  grid-template-columns: 16px 1fr; column-gap: 5px; line-height: 21px;
+  background: linear-gradient(to right, color-mix(in srgb, var(--mg-accent) 30%, transparent) calc(var(--mg-progress, 0) * 100%), transparent 0);
+}
+.card .mg-checks li[data-met="true"] { background: color-mix(in srgb, var(--mg-good) 20%, transparent); }
+.card .mg-tick { grid-row: auto; width: 14px; height: 14px; }
+.card .mg-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 @media (max-width: 46rem) {
-  .move-guide { flex-direction: column; padding: 0.75rem 1rem 1rem; }
+  .move-guide:not(.card) { flex-direction: column; padding: 0.75rem 1rem 1rem; }
 }
