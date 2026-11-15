@@ -41,7 +41,7 @@ Open http://localhost:5173. Choose "Fight with your body" and allow the camera, 
 | | Reverse punch, Hammer fist | R, M |
 | | Knife hand, Rising palm | H, G |
 | | Double palm, Chain punch | P, C |
-| **Finisher** | Stake thrust (Polyphemus) | O |
+| **Finisher** | Stake thrust (Polyphemus) | T |
 | **God Powers** (full meter) | Thunderbolt, Trident sweep, Aegis push | 1, 2, 3 |
 | | Swift dash, Moon arrow, Sun burst | 4, 5, 6 |
 
