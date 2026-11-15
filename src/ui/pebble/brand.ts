@@ -2,7 +2,7 @@
 // the sea is round it. Drawn from our own strokes at runtime; nothing is shipped but this code.
 import { LEAD, PAL } from "./palette";
 import { type Layout, type Pt, type Rng, ellipsePoly, fillPoly, lineStones, makeRng, newLayout, pebble, pick, strip } from "./stones";
-import { circleBase, straightBase, waveBand } from "./wave";
+import { circleBase, waveBand } from "./wave";
 
 type Stroke = Pt[];
 const bez = (p0: Pt, p1: Pt, p2: Pt, p3: Pt, n = 10): Pt[] => {
@@ -78,13 +78,12 @@ export function emblem(l: Layout, r: Rng, cx: number, cy: number, rad: number, p
   }
 }
 
-/** ODYSSEY over DOJO (centred) over a wave band. Returns the width. */
+/** ODYSSEY over DOJO (centred). Returns the width. */
 export function wordmark(l: Layout, r: Rng, x: number, y: number, scale = 1): number {
   const u = 16.5 * scale, w = wordWidth("ODYSSEY", u, 1.3 * u);
   strokeWord(l, r, "ODYSSEY", x, y, u, { size: 5.4 * scale, rows: 3, col: (_i, row, rg) => (row === 1 ? pick(PAL.cream, rg) : pick(PAL.ochre, rg)) });
   const u2 = 12 * scale, tr = 3.4 * u2, y2 = y + 132 * scale;
   strokeWord(l, r, "DOJO", x + (w - wordWidth("DOJO", u2, tr)) / 2, y2, u2, { size: 4.2 * scale, rows: 2, track: tr, col: (_i, _row, rg) => (rg() < 0.2 ? pick(PAL.cream, rg) : pick(PAL.terra, rg)) });
-  waveBand(l, r, straightBase(x, y2 + 100 * scale), w, { size: 4.6 * scale });
   return w;
 }
 
@@ -96,7 +95,8 @@ export function logoSize(scale: number): { w: number; h: number } {
 export function logoLayout(scale: number, seed = 7): Layout {
   const l = newLayout(), r = makeRng(seed);
   emblem(l, r, 170 * scale, 170 * scale, 150 * scale);
-  wordmark(l, r, 372 * scale, 56 * scale, scale);
+  // The two words span 204 units; this centres them on the emblem.
+  wordmark(l, r, 372 * scale, 68 * scale, scale);
   return l;
 }
 

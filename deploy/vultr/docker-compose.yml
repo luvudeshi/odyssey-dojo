@@ -1,0 +1,44 @@
+# The hosted game: the game server, and Caddy in front of it for https.
+# Run from this folder, with a .env beside this file (copy .env.example):  docker compose up -d --build
+name: odyssey-dojo
+
+services:
+  game:
+    build:
+      context: ../..
+      dockerfile: deploy/vultr/Dockerfile
+    restart: unless-stopped
+    # Optional keys come from .env. They never go into the image or into git.
+    env_file: .env
+    environment:
+      AI_SERVER_PORT: "8787"
+      # Room and replay links handed to a phone start with this.
+      PUBLIC_BASE_URL: https://${DOMAIN:?Set DOMAIN in the .env beside docker-compose.yml}
+    volumes:
+      - game-data:/app/server/data
+    # Only the instance itself can reach the server directly; the internet goes through Caddy.
+    # This is for the optional "host a room" step in docs/deploy-vultr.md (an SSH tunnel).
+    ports:
+      - "127.0.0.1:8787:8787"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - game
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in the .env beside docker-compose.yml}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The certificates. Keep this volume: asking for new ones too often gets the domain rate limited.
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  game-data:
+  caddy-data:
+  caddy-config:

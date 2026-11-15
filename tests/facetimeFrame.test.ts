@@ -5,7 +5,7 @@ import type { CombatState, MoveDef } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import { wrapLines } from "../src/facetime/frameDraw";
 import { HERO_HP, frameHud, gradeWord } from "../src/facetime/frameHud";
-import { SAFE_MARGIN, barFill, containFit, coverCrop, figurePoint, fitFont, frameLayout, inside, overlaps } from "../src/facetime/frameLayout";
+import { CUT_MARGIN, SAFE_MARGIN, barFill, containFit, coverCrop, figurePoint, fitFont, frameLayout, inside, overlaps, safeMargins } from "../src/facetime/frameLayout";
 import type { FrameLayout, Rect } from "../src/facetime/frameLayout";
 import { MOVES } from "../src/moves/registry";
 import { rating } from "../src/pose/quality";
@@ -20,9 +20,25 @@ describe.each(["portrait", "landscape"] as const)("the %s frame", (shape) => {
   const layout = frameLayout(shape);
   const box = (name: keyof FrameLayout): Rect => layout[name] as Rect;
 
-  test("is a phone-sized picture with a safe margin", () => {
+  test("is a phone-sized picture with a safe margin, wider on the edges a phone's long screen cuts", () => {
     expect([layout.width, layout.height]).toEqual(shape === "portrait" ? [720, 1280] : [1280, 720]);
-    expect(layout.safe).toEqual({ x: SAFE_MARGIN, y: SAFE_MARGIN, w: layout.width - SAFE_MARGIN * 2, h: layout.height - SAFE_MARGIN * 2 });
+    const margins = safeMargins(shape);
+    expect(margins).toEqual(shape === "portrait" ? { x: 72, y: 36 } : { x: 36, y: 72 });
+    expect([SAFE_MARGIN, CUT_MARGIN]).toEqual([36, 72]);
+    expect(layout.safe).toEqual({ x: margins.x, y: margins.y, w: layout.width - margins.x * 2, h: layout.height - margins.y * 2 });
+  });
+
+  test("a phone that fills its 393 x 852 screen with the picture cuts nothing that must be read", () => {
+    // The picture is scaled until it covers the screen; what hangs over the long sides is not shown.
+    const [screenW, screenH] = shape === "portrait" ? [393, 852] : [852, 393];
+    const scale = Math.max(screenW / layout.width, screenH / layout.height);
+    const shownW = screenW / scale, shownH = screenH / scale;
+    const shown: Rect = { x: (layout.width - shownW) / 2, y: (layout.height - shownH) / 2, w: shownW, h: shownH };
+    // About 65 px are lost from each long side: more than the old 36 px margin all round.
+    const lost = shape === "portrait" ? shown.x : shown.y;
+    expect(lost).toBeGreaterThan(SAFE_MARGIN);
+    expect(lost).toBeLessThan(CUT_MARGIN);
+    for (const name of READABLE) expect(inside(box(name), shown), name).toBe(true);
   });
 
   test("everything that must be read is inside the safe margin", () => {

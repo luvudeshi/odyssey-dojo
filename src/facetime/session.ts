@@ -23,6 +23,8 @@ import type { FaceTimeRoom, RoomEvent } from "./room";
 export const BRIDGE_FALLBACK_MS = 3000;
 /** How often the call service is asked whether the call is still on. */
 export const POLL_EVERY_MS = 2000;
+/** A body found in the friend's camera this recently counts as in view. */
+export const IN_VIEW_MS = 2000;
 
 const NOT_JOINED = "The game could not join the call's room. Check LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET on the server.";
 
@@ -73,6 +75,8 @@ export interface FaceTimeSession {
   link(): HostLink | null;
   /** True while the friend's camera is being read. */
   friendSeen(): boolean;
+  /** True while a body was found in the friend's camera in the last two seconds. */
+  friendInView(): boolean;
 }
 
 export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
@@ -93,6 +97,9 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
   let fallbackAt: number | null = null;
   let grade: { readonly word: string; readonly until: number } | null = null;
   let lastNow = 0;
+  let bodyAt = -Infinity;
+  /** The room's name once the server gave a seat in it: what hang up closes. */
+  let roomName: string | null = null;
   const listeners = new Set<() => void>();
 
   const teardown = (): void => {
@@ -105,6 +112,11 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     const leaving = room;
     room = null;
     void leaving?.disconnect().catch(() => undefined);
+    // Leaving is not enough: the bridge stays in the room, and with it the call on the phone. The server closes the room.
+    const closing = roomName;
+    roomName = null;
+    if (closing !== null) void deps.api.hangUp(closing).catch(() => undefined);
+    bodyAt = -Infinity;
     friendLink?.friend.setHere(false);
     callId = null;
     friendSeat = null;
@@ -164,6 +176,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
             watcher?.stop();
             watcher = next;
             history = { frames: [], baseline: null };
+            bodyAt = -Infinity;
             readPose = deps.poseReader();
             friendLink?.friend.setHere(true);
             listeners.forEach((listener) => { listener(); });
@@ -198,6 +211,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     const seat = await deps.api.seat();
     if (!live()) return;
     if (!seat.ok) { fail(seat.why, seat.message); return; }
+    roomName = seat.value.room;
     try {
       const joined = await deps.openRoom();
       if (!live()) return;
@@ -268,6 +282,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
       const friend = friendLink.friend;
       const seen = watcher?.read() ?? null;
       if (seen && readPose) {
+        bodyAt = now;
         history = deps.pushFrame(history, seen);
         friend.sendInput(readPose(history));
       }
@@ -306,5 +321,6 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     },
     link: () => friendLink?.host ?? null,
     friendSeen: () => watcher !== null,
+    friendInView: () => watcher !== null && lastNow - bodyAt < IN_VIEW_MS,
   };
 }
