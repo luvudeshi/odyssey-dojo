@@ -2,6 +2,7 @@
 // Everything is a function of one clock (ms), so a test can run any frame. Only transform and opacity move.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { playEvent } from "../../audio/sfx";
+import { swallowAfterCut } from "./keySwallow";
 import { BOSS_CUTS, type Weather } from "./bosses";
 import "./cutscene.css";
 import { clamp01, curve, cutBeat, DARK_END, easeIn, easeOut, REDUCED_MS, REVEAL_END, SLAM_MS, TOTAL_MS } from "./timing";
@@ -63,18 +64,31 @@ export function Cutscene({ id, name, onDone }: { readonly id: string; readonly n
   }, [reduced]);
 
   // Any plain key skips, and the key goes no further: the fight never sees it. Browser shortcuts (Cmd, Ctrl, Alt) pass.
-  // Key releases are swallowed too, until a moment after the cutscene unmounts, so a key held at skip time cannot reach the fight.
+  // Only the keys swallowed here stay swallowed after the cutscene ends (repeats, and their one keyup); other keys pass to the fight.
   useEffect(() => {
+    const pending = new Set<string>();
+    let ended = false;
     const onKey = (event: KeyboardEvent): void => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+      pending.add(event.code);
       event.preventDefault(); event.stopImmediatePropagation(); finishRef.current();
     };
-    const onUp = (event: KeyboardEvent): void => { event.stopImmediatePropagation(); };
+    const detach = (): void => {
+      window.removeEventListener("keydown", onTail, true);
+      window.removeEventListener("keyup", onTail, true);
+    };
+    const onTail = (event: KeyboardEvent): void => {
+      if (swallowAfterCut(pending, event.type === "keyup" ? "keyup" : "keydown", event.code, event.repeat)) event.stopImmediatePropagation();
+      if (ended && pending.size === 0) detach();
+    };
     window.addEventListener("keydown", onKey, true);
-    window.addEventListener("keyup", onUp, true);
+    window.addEventListener("keydown", onTail, true);
+    window.addEventListener("keyup", onTail, true);
     return () => {
       window.removeEventListener("keydown", onKey, true);
-      setTimeout(() => { window.removeEventListener("keyup", onUp, true); }, 400);
+      ended = true;
+      if (pending.size === 0) detach();
+      else window.setTimeout(detach, 5000);
     };
   }, []);
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { cutBeat, curve, DARK_END, NAME_END, REDUCED_MS, REVEAL_END, TOTAL_MS } from "../src/screens/cutscene/timing";
 
+import { swallowAfterCut } from "../src/screens/cutscene/keySwallow";
+
 describe("cutscene timing", () => {
   it("walks the four beats and ends by itself", () => {
     expect(cutBeat(0, false)).toEqual({ beat: "dark", t: 0 });
@@ -26,5 +28,26 @@ describe("cutscene timing", () => {
     expect(curve(20, pts)).toBe(1);
     expect(curve(5, pts)).toBe(0);
     expect(curve(99, pts)).toBe(0);
+  });
+});
+
+describe("cutscene key swallow", () => {
+  it("lets a tapped other key keep its keyup", () => {
+    const pending = new Set<string>(["Space"]);
+    expect(swallowAfterCut(pending, "keydown", "KeyS", false)).toBe(false);
+    expect(swallowAfterCut(pending, "keyup", "KeyS", false)).toBe(false);
+  });
+  it("swallows the skip key's keyup once", () => {
+    const pending = new Set<string>(["Space"]);
+    expect(swallowAfterCut(pending, "keyup", "Space", false)).toBe(true);
+    expect(swallowAfterCut(pending, "keyup", "Space", false)).toBe(false);
+  });
+  it("swallows a held skip key's repeats until release", () => {
+    const pending = new Set<string>(["Space"]);
+    expect(swallowAfterCut(pending, "keydown", "Space", true)).toBe(true);
+    expect(swallowAfterCut(pending, "keydown", "Space", true)).toBe(true);
+    expect(swallowAfterCut(pending, "keyup", "Space", false)).toBe(true);
+    expect(swallowAfterCut(pending, "keydown", "Space", true)).toBe(false);
+    expect(pending.size).toBe(0);
   });
 });
