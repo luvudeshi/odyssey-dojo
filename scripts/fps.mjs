@@ -28,6 +28,12 @@ const DRAW_COUNT_MS = 1000;
 const SOFTWARE = /swiftshader|llvmpipe|software|basic render/i;
 const LOCKED = "not playable on this build: the stop has no 3D model yet, so the map keeps it locked";
 const TARGET_FPS = 50;
+/** A sample taken with more than this share of the machine's processor time in use is taken again. */
+const BUSY_LIMIT = 0.65;
+/** So is a sample taken while one core ran at less than this share of its full speed (a clamped processor). */
+const SPEED_LIMIT = 0.6;
+const MAX_SAMPLES = 5;
+const QUIET_WAIT_MS = 180_000;
 /** Every defense is held while sampling so no attack lands and the fight outlasts the sample. */
 const DEFENSE_KEYS = [" ", "ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp"];
 /** Must match `Quality` in src/render/quality.ts; the first is what every fight starts on. */
@@ -49,7 +55,8 @@ function readStops() {
       return { id: field(/^ {2}id: "([^"]+)"/m), name: field(/^ {2}name: "([^"]+)"/m), order: Number(field(/^ {2}order: ([\d.]+)/m)) };
     })
     .filter((stop) => stop.id && stop.name)
-    .sort((a, b) => a.order - b.order);
+    .sort((a, b) => a.order - b.order)
+    .map((stop, index) => ({ ...stop, index }));
 }
 
 function loadChromium() {
@@ -174,22 +181,24 @@ function countDraws(ms) {
 }
 
 /**
- * Title -> Keyboard only -> first style -> the open stop -> intro button -> fight. Returns the style picked,
- * or null when the map does not offer this stop (a stop with no 3D model stays locked, see `playable` in flow.ts).
+ * Title -> Keyboard only -> first style -> this stop on the map -> intro button -> fight. Returns the style picked,
+ * or null when the map keeps this stop locked (a stop with no 3D model stays locked, see `playable` in flow.ts).
  */
 async function enterFight(page, base, stop) {
   await page.goto(`${base}/?stop=${stop.id}&debug`);
   await page.getByRole("button", { name: "Keyboard only" }).click();
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
   const styleButton = page.locator("main.menu button").first();
-  const style = (await styleButton.innerText()).split("\n")[0].trim();
+  // textContent, not innerText: the CSS shows buttons and headings in upper case, and innerText returns what is shown.
+  const style = await styleButton.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
   await styleButton.click();
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
-  const open = page.locator("button.stop.open");
-  if ((await open.count()) === 0) return null;
-  await open.first().click();
-  const heading = (await page.locator("main.menu h1").innerText()).trim();
-  if (heading !== stop.name) return null;
+  // The map draws one button per enemy in ladder order; only the one for this stop will do.
+  const button = page.locator("button.stop").nth(stop.index);
+  if (!(await button.evaluate((element) => element.classList.contains("open")))) return null;
+  await button.click();
+  const heading = ((await page.locator("main.menu h1").textContent()) ?? "").trim();
+  if (heading !== stop.name) throw new Error(`the map opened "${heading}" instead of "${stop.name}"`);
   await page.getByRole("button", { name: `Face ${stop.name}` }).click();
   await page.locator(".fight canvas").waitFor();
   await page.waitForLoadState("networkidle");
@@ -215,22 +224,94 @@ async function setQuality(page, wanted) {
   await page.waitForTimeout(SETTLE_MS);
 }
 
-/** One row of the table. If the fight ends inside the sample, goes back in and samples again, twice at most. */
+/** Processor time of the whole machine so far, over every core. */
+function cpuTimes() {
+  let idle = 0;
+  let total = 0;
+  for (const cpu of os.cpus()) {
+    idle += cpu.times.idle;
+    total += cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.irq + cpu.times.idle;
+  }
+  return { idle, total };
+}
+
+/** The share of the whole machine's processor time that was in use since `before`, this browser included. */
+function busySince(before) {
+  const now = cpuTimes();
+  const total = now.total - before.total;
+  return total > 0 ? 1 - (now.idle - before.idle) / total : 0;
+}
+
+let fastestLoopMs = Infinity;
+
+/**
+ * How fast one core runs now, as a share of the fastest it has run during this script (1 = full speed). It times
+ * a fixed loop. A laptop that has clamped its processor (heat, a power limit) shows up here as a low number even
+ * when nothing else is running.
+ */
+function cpuSpeed() {
+  let loopMs = Infinity;
+  for (let round = 0; round < 3; round += 1) {
+    const started = performance.now();
+    let sum = 0;
+    for (let i = 0; i < 2e7; i += 1) sum += Math.sqrt(i);
+    if (sum > 0) loopMs = Math.min(loopMs, performance.now() - started);
+  }
+  fastestLoopMs = Math.min(fastestLoopMs, loopMs);
+  return fastestLoopMs / loopMs;
+}
+
+const disturbed = (sample) => sample.busy > BUSY_LIMIT || sample.speed < SPEED_LIMIT;
+
+/** Waits until the machine is quiet and at full speed for two seconds, or QUIET_WAIT_MS at most. */
+async function waitForQuiet() {
+  for (const started = Date.now(); Date.now() - started < QUIET_WAIT_MS; ) {
+    const before = cpuTimes();
+    await new Promise((next) => setTimeout(next, 2000));
+    if (!disturbed({ busy: busySince(before), speed: cpuSpeed() })) return;
+  }
+}
+
+/**
+ * One row of the table. A sample counts only if the fight was still on at its end: if the fight ends inside it,
+ * the script goes back into the stop and samples the full time again. A sample taken while the machine was busy
+ * with other work (a build, another browser) or running slow (a clamped processor) is taken again once the
+ * machine is quiet and back at speed; the least disturbed one is kept.
+ */
 async function measure(page, base, stop, quality, seconds) {
-  let result = null;
-  let ended = false;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (await fightOver(page)) await enterFight(page, base, stop);
+  let best = null;
+  let reentries = 0;
+  let retakes = 0;
+  for (let attempt = 0; attempt < MAX_SAMPLES; attempt += 1) {
+    if (await fightOver(page)) {
+      await enterFight(page, base, stop);
+      reentries += 1;
+    }
     await holdDefenses(page);
     await setQuality(page, quality);
-    result = await page.evaluate(sampleFrames, seconds * 1000);
-    ended = await fightOver(page);
-    if (!ended) {
-      result = { ...result, ...(await page.evaluate(countDraws, DRAW_COUNT_MS)) };
-      break;
-    }
+    const speedBefore = cpuSpeed();
+    const before = cpuTimes();
+    const frames = await page.evaluate(sampleFrames, seconds * 1000);
+    const busy = busySince(before);
+    const speed = Math.min(speedBefore, cpuSpeed());
+    if (await fightOver(page)) continue;
+    const sample = { ...frames, ...(await page.evaluate(countDraws, DRAW_COUNT_MS)), busy, speed };
+    if (best === null || sample.speed * (1 - sample.busy) > best.speed * (1 - best.busy)) best = sample;
+    if (!disturbed(sample)) break;
+    retakes += 1;
+    say(`  ${stop.id} ${quality}: machine ${whole(busy * 100)}% busy, processor at ${whole(speed * 100)}% speed during the sample (${one(frames.fps)} fps); resting, then sampling again`);
+    if (attempt + 1 === MAX_SAMPLES) break;
+    // The game is taken off the screen for the wait, so a hot or power-limited machine gets to recover.
+    await page.goto("about:blank");
+    await waitForQuiet();
+    await enterFight(page, base, stop);
   }
-  return { stop: stop.id, quality, ...result, note: ended ? "fight ended during the sample" : "" };
+  const notes = [];
+  if (best === null) notes.push("fight ended during every sample");
+  else if (reentries > 0) notes.push(`fight ended early, re-entered ${String(reentries)}x; the numbers are from a full sample of fight`);
+  if (best !== null && disturbed(best)) notes.push("the machine was busy or slow in every sample, so the frame rate may be too low");
+  else if (retakes > 0) notes.push(`sampled again ${String(retakes)}x because the machine was busy or slow`);
+  return { stop: stop.id, quality, ...best, retakes, note: notes.join("; ") };
 }
 
 /** One browser, every stop, every quality level. The browser is closed whatever happens. */
@@ -269,12 +350,13 @@ async function runPass(chromium, base, stops, seconds, uncapped) {
 const has = (value) => value !== null && value !== undefined;
 const one = (value) => (has(value) ? value.toFixed(1) : "n/a");
 const whole = (value) => (has(value) ? String(Math.round(value)) : "n/a");
+const percent = (share) => (has(share) ? String(Math.round(share * 100)) : "n/a");
 
 function table(rows) {
   const lines = [
-    "| stop | quality | mean fps | slowest 1% frame (ms) | worst frame (ms) | draw calls | triangles | note |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
-    ...rows.map((row) => `| ${row.stop} | ${row.quality} | ${one(row.fps)} | ${one(row.slow1)} | ${one(row.worst)} | ${whole(row.calls)} | ${whole(row.triangles)} | ${row.note} |`),
+    "| stop | quality | mean fps | slowest 1% frame (ms) | worst frame (ms) | draw calls | triangles | machine busy (%) | processor speed (%) | note |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+    ...rows.map((row) => `| ${row.stop} | ${row.quality} | ${one(row.fps)} | ${one(row.slow1)} | ${one(row.worst)} | ${whole(row.calls)} | ${whole(row.triangles)} | ${percent(row.busy)} | ${percent(row.speed)} | ${row.note} |`),
   ];
   return lines.join("\n");
 }
@@ -288,6 +370,29 @@ function report(capped, headroom, run) {
     ? `No measured stop is under ${String(TARGET_FPS)} fps at the default quality (${QUALITIES[0]}).`
     : `Under ${String(TARGET_FPS)} fps at the default quality (${QUALITIES[0]}): ${slow.map((row) => `**${row.stop}** (${one(row.fps)} fps)`).join(", ")}.`;
   const unmeasured = locked.length === 0 ? "" : `\n\nNot measured: ${locked.join(", ")}. ${LOCKED[0].toUpperCase()}${LOCKED.slice(1)}. Run this again when their models land.`;
+  const all = [...capped.rows, ...(headroom?.rows ?? [])].filter((row) => has(row.fps));
+  const retaken = all.filter((row) => row.retakes > 0);
+  const retakenPart = retaken.length === 0
+    ? ""
+    : `\n\n${String(retaken.length)} of ${String(all.length)} rows were sampled more than once because the machine was busy with other work or its processor was running slow at the time; the notes say which, and "How to read it" says how that is decided.`;
+  const top3 = (quality, first, second) => measured
+    .filter((row) => row.quality === quality && has(row.calls) && has(row.triangles))
+    .sort((a, b) => b[first] - a[first] || b[second] - a[second])
+    .slice(0, 3)
+    .map((row) => `${row.stop} (${whole(row.calls)} draw calls, ${whole(row.triangles)} triangles)`)
+    .join(", ") || "n/a";
+  const heaviest = QUALITIES.flatMap((quality) => [
+    `- **${quality}**, by draw calls: ${top3(quality, "calls", "triangles")}`,
+    `- **${quality}**, by triangles: ${top3(quality, "triangles", "calls")}`,
+  ]).join("\n");
+  const flat = measured.filter((row) => {
+    const top = measured.find((other) => other.stop === row.stop && other.quality === QUALITIES[0]);
+    return row.quality !== QUALITIES[0] && top && has(row.triangles) && has(top.triangles) && row.triangles >= top.triangles;
+  });
+  const lower = QUALITIES.slice(1).join(", ");
+  const flatPart = flat.length === 0
+    ? `Every measured stop draws fewer triangles at ${lower} than at ${QUALITIES[0]}.`
+    : `Quality ${lower} does not reduce triangles at: ${flat.map((row) => `**${row.stop}**`).join(", ")}.`;
   const headroomPart = headroom
     ? `\n\n## Headroom: the same run with the frame cap off\n\nStarted with \`${headroom.flags.join(" ")}\`. Here mean fps is how fast the scene could be drawn, not what a player sees.\n\n${table(headroom.rows)}`
     : "";
@@ -302,7 +407,15 @@ Written by \`node scripts/fps.mjs\` (\`make fps\`). Do not edit by hand: run it 
 - **Browser:** ${capped.browser}, headless, started with \`${capped.flags.join(" ")}\`
 - **Canvas:** ${String(VIEWPORT.width)}x${String(VIEWPORT.height)}, device pixel ratio 1, keyboard only (no camera, no pose tracking), style ${capped.style || "n/a"}
 
-${verdict}${unmeasured}
+${verdict}${unmeasured}${retakenPart}
+
+## What costs the most
+
+The three heaviest stops at each quality level, from the run with the frame cap on. Draw calls and triangles are per frame.
+
+${heaviest}
+
+${flatPart}
 
 ## As a player sees it: frame cap on
 
@@ -315,6 +428,9 @@ ${table(capped.rows)}${headroomPart}
 - Each row is ${String(run.seconds)} s of \`requestAnimationFrame\` in the fight, after ${String(WARMUP_MS / 1000)} s of warm-up, with every defense key held so no attack lands and the fight does not end.
 - **mean fps** is frames drawn over time elapsed. **slowest 1% frame** is the frame time that 99% of frames beat. **worst frame** is the single longest.
 - **draw calls** and **triangles** are the median per frame over ${String(DRAW_COUNT_MS / 1000)} s after the timing, summed over every pass (shadow map, scene, each post-processing pass). The game exposes no renderer under \`/?debug\`, so the script counts the draw calls on the canvas's WebGL context.
+- **machine busy** is the share of the whole machine's processor time in use during the sample, this browser included. **processor speed** is how fast one core ran a fixed loop around the sample, against the fastest it ran during the whole run: a laptop that clamps its processor (heat, a power limit) shows a low number here.
+- A sample with the machine more than ${percent(BUSY_LIMIT)}% busy or the processor under ${percent(SPEED_LIMIT)}% speed says more about the machine than about the scene. The script then leaves the fight, waits (up to ${String(QUIET_WAIT_MS / 1000)} s) for the machine to go quiet and come back to speed, goes back in and samples again, up to ${String(MAX_SAMPLES)} times, and keeps the least disturbed sample. The note says when that happened.
+- If a fight ends inside a sample, the script goes back into the stop and samples the full ${String(run.seconds)} s again, so every row is ${String(run.seconds)} s of fight.
 - The quality level is switched with the \`q\` key and checked against the \`q: quality\` label shown under \`/?debug\`.
 - Pose tracking was off. With the webcam on, MediaPipe shares the GPU and the CPU, so expect less.
 
