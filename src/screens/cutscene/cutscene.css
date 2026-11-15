@@ -1,0 +1,28 @@
+/* The boss cutscene. Only transform and opacity change over time; everything else is fixed. */
+.cut { position: absolute; inset: 0; z-index: 40; overflow: hidden; cursor: pointer; }
+.cut-bar { position: absolute; left: 0; right: 0; height: 14%; background: #030405; z-index: 2; }
+.cut-top { top: 0; border-bottom: 3px solid #5a2410; box-shadow: 0 6px 24px rgba(255, 90, 20, 0.25); }
+.cut-bottom { bottom: 0; border-top: 3px solid #5a2410; box-shadow: 0 -6px 24px rgba(255, 90, 20, 0.25); }
+.cut-skip { position: absolute; right: 28px; top: 50%; margin: 0; translate: 0 -50%; font: 700 20px/1 var(--font-display, sans-serif); letter-spacing: 0.14em; text-transform: uppercase; color: #9fd8ff; }
+
+.cut-plate { position: absolute; left: 50%; top: 50%; z-index: 1; width: min(88%, 1180px); translate: -50% -50%; padding: clamp(22px, 4.2vh, 44px) clamp(28px, 5vw, 80px); text-align: center; }
+.cut-slab { position: absolute; inset: 0; clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%); background:
+  linear-gradient(112deg, transparent 38%, rgba(150, 205, 240, 0.13) 46%, rgba(150, 205, 240, 0.03) 52%, transparent 60%),
+  linear-gradient(180deg, #11171d 0%, #04060a 55%, #0a0d12 100%);
+  box-shadow: inset 0 0 90px rgba(255, 80, 20, 0.22); }
+.cut-lava { position: absolute; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, transparent, #ff4a12 12%, #ffc15a 50%, #ff4a12 88%, transparent); box-shadow: 0 0 18px 4px rgba(255, 110, 30, 0.7); }
+.cut-lava-top { top: 0; }
+.cut-lava-bottom { bottom: 0; }
+.cut-cracks { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cut-cracks path { fill: none; stroke: #ff6a1c; stroke-width: 2.2; opacity: 0.75; vector-effect: non-scaling-stroke; }
+
+.cut-words { position: relative; display: flex; flex-direction: column; align-items: center; gap: clamp(4px, 1vh, 10px); }
+.cut-book { margin: 0; font: 700 22px/1.1 var(--font-display, sans-serif); letter-spacing: 0.3em; text-transform: uppercase; color: #8fd0ff; }
+.cut-name { margin: 0; font: 700 clamp(60px, 9.6vw, 168px)/0.98 var(--font-display, sans-serif); letter-spacing: 0.1em; text-transform: uppercase; color: #f6efe2; text-shadow: 0 3px 0 #5a2410, 0 0 38px rgba(255, 110, 30, 0.55); }
+.cut-epithet { margin: 0; font: 700 clamp(26px, 2.6vw, 44px)/1.1 var(--font-display, sans-serif); letter-spacing: 0.2em; text-transform: uppercase; color: #ffb066; }
+.cut-flash { position: absolute; inset: 0; z-index: 3; pointer-events: none; background: radial-gradient(ellipse at center, rgba(255, 200, 120, 0.85), rgba(255, 90, 20, 0.25) 60%, transparent 80%); }
+
+/* The fight's HUD is hidden while the cutscene runs, and fades in as the bars leave. The canvas is the first child. */
+html[data-look="b"] .fight:has(> .cut) > :not(:first-child):not(.cut) { opacity: 0; pointer-events: none; }
+html[data-look="b"] .fight:has(> .cut[data-beat="exit"]) > :not(:first-child):not(.cut) { opacity: 1; transition: opacity 0.7s ease-out; }
+html[data-look="b"] .sk-intro { display: none; }

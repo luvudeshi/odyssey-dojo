@@ -7,6 +7,8 @@ import { battle, calmMotion, nowSeconds } from "./battle";
 import { cameraShot, makeShot } from "./cameraShots";
 import { dodge } from "./effects/dodge/dodgeMotion";
 import type { Shot } from "./cameraShots";
+import { cutClock } from "../screens/cutscene/clock";
+import { cutShot } from "../screens/cutscene/cutShot";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
@@ -21,6 +23,8 @@ export function CameraRig() {
       // The shot follows the hero sideways, which hides his travel in a dodge. Give back most of that.
       target.px -= dodge.x * 0.45; target.lx -= dodge.x * 0.28;
     }
+    // The boss cutscene draws the camera itself, with no easing, and hands over to the fight shot at its end.
+    if (cutClock.ms !== null) Object.assign(now, cutShot(target, cutClock.enemyId, cutClock.ms));
     const k = target.lambda;
     now.px = MathUtils.damp(now.px, target.px, k, dt);
     now.py = MathUtils.damp(now.py, target.py, k, dt);

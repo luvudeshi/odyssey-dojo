@@ -37,6 +37,8 @@ import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
 import { fallsLine } from "../enemies/wording";
+import { Cutscene } from "./cutscene/Cutscene";
+import { CUTSCENE_ON } from "./cutscene/clock";
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -57,6 +59,10 @@ export function FightScreen(props: {
 }) {
   const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
+  // The boss cutscene (a draft, ?look=b): the fight's clock is held until it ends or is skipped.
+  const [cutting, setCutting] = useState(CUTSCENE_ON);
+  const holdRef = useRef(CUTSCENE_ON);
+  useEffect(() => { holdRef.current = cutting; }, [cutting]);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
   const patronRef = useRef<GodId>(god ?? "athena");
@@ -95,7 +101,7 @@ export function FightScreen(props: {
       }
       const dt = Math.min(now - last, 100);
       const keys = keyboard.read();
-      if (pausedRef.current) {
+      if (pausedRef.current || holdRef.current) {
         // Paused: the clock, the gate and the keys stand still; keys pressed meanwhile are dropped.
         keyboard.read();
         last = now;
@@ -188,6 +194,7 @@ export function FightScreen(props: {
           onQuit={() => { onQuit?.(); }}
         />
       )}
+      {cutting && <Cutscene enemy={enemy} onDone={() => { setCutting(false); }} />}
       {over && (
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>

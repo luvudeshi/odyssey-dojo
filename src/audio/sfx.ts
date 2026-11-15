@@ -302,7 +302,7 @@ function whenRunning(active: Player, play: () => void): void {
  * howl, the suitors' jeer), which goes over it. It starts in the frame of Athena's phase line and stops nothing. With
  * no clip, or no audio, it is silent and the event keeps the sound it had.
  */
-function playPhaseHorn(): void {
+export function playPhaseHorn(): void {
   const active = sharedPlayer();
   if (!active) return;
   whenRunning(active, () => {
