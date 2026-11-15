@@ -35,7 +35,7 @@ const scan = (fetcher: typeof fetch): Promise<GodReveal> =>
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-test("every server limit ends at least a second before the page stops waiting, and all but the portrait end in under five seconds", () => {
+test("every server limit ends at least a second before the page stops waiting, and all but the portrait and the generated fight end in under five seconds", () => {
   const pairs = [
     { route: "level", server: TIMEOUTS.levelMs, page: LEVEL_TIMEOUT_MS },
     { route: "reveal", server: TIMEOUTS.revealMs, page: REVEAL_BUDGET_MS },
@@ -45,10 +45,13 @@ test("every server limit ends at least a second before the page stops waiting, a
   for (const { route, server, page: wait } of pairs) {
     expect(wait - server, route).toBeGreaterThanOrEqual(1000);
     // 200 ms is left for the answer to be written and to travel.
-    if (route !== "portrait") expect(server, route).toBeLessThanOrEqual(4800);
+    if (route !== "portrait" && route !== "level") expect(server, route).toBeLessThanOrEqual(4800);
   }
   // No screen the player must sit through waits on the server for longer than this.
-  for (const wait of [LEVEL_TIMEOUT_MS, REVEAL_BUDGET_MS]) expect(wait).toBeLessThanOrEqual(6500);
+  expect(REVEAL_BUDGET_MS).toBeLessThanOrEqual(6500);
+  // A generated fight is one the player asked for, and real ones take 3.3 to 5.2 s: it gets longer, and no more than this.
+  expect(TIMEOUTS.levelMs).toBeLessThanOrEqual(8500);
+  expect(LEVEL_TIMEOUT_MS).toBeLessThanOrEqual(9500);
   // The second scan attempt starts with time left to answer, and no earlier than a real scan can take (0.85 to 2.3 s measured).
   expect(TIMEOUTS.revealHedgeMs).toBeGreaterThanOrEqual(2300);
   expect(TIMEOUTS.revealMs - TIMEOUTS.revealHedgeMs).toBeGreaterThanOrEqual(2300);

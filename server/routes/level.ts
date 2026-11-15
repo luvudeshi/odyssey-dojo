@@ -29,8 +29,10 @@ export const register: Register = (router, { ai, config }) => {
       return;
     }
     try {
+      // A fight takes most of the limit to write, so the first model gets all of it: a second one started halfway
+      // could not finish. The second model is only asked when the first fails fast.
       const raw = await withTimeout(config.timeouts.levelMs, (signal) =>
-        generate({ prompt: levelPrompt(parsed.data), schema: SCHEMA, signal }),
+        generate({ prompt: levelPrompt(parsed.data), schema: SCHEMA, signal, attemptMs: config.timeouts.levelMs }),
       );
       const level = repairLevel(raw, base);
       if (level === null) log("warn", "level_unusable", { phrase: parsed.data.phrase });

@@ -1,6 +1,6 @@
 // The failure drill (issue #198, docs/failure-drill.md): every route, with the key missing, with the upstream service
 // stalled for 15 seconds, and with an upstream answer that is not what was asked for. Each test is one cell or one row
-// of the table in that file. The stall test runs on the limits the real server uses, so it takes about five seconds.
+// of the table in that file. The stall test runs on the limits the real server uses, so it takes about nine seconds.
 // The page's side is tests/ai/failureDrill.test.ts, and the god scan's second attempt is server/tests/revealHedge.test.ts.
 import { afterEach, expect, test, vi } from "vitest";
 import { LevelResponseSchema, RevealResponseSchema } from "../../src/ai/contracts";
@@ -109,7 +109,7 @@ test("key for the scan but not for speech, and the other way round: each service
   expect(await (await drill.call("/api/level", phrase)).json()).toEqual({ level: bundled, source: "fallback" });
 });
 
-test("upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback when their limit is up, each limit is under five seconds, and the other routes answer meanwhile", async () => {
+test("upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback when their limit is up, the scan and speech in under five seconds and the level in under nine, and the other routes answer meanwhile", async () => {
   // Every upstream call ignores its abort signal and answers correctly, but only after 15 s.
   let calls = 0;
   const ai: Partial<AiClients> = {
@@ -147,7 +147,9 @@ test("upstream stalled for 15 s, on the real limits: level, scan and speech each
   // One call for the level and two for the scan (the second attempt). Level generation is not tried twice.
   expect(calls).toBe(3);
   // Each limit leaves at least 200 ms for the answer to be written and to travel.
-  for (const limit of [TIMEOUTS.levelMs, TIMEOUTS.revealMs, TIMEOUTS.speechMs]) expect(limit).toBeLessThanOrEqual(4800);
+  for (const limit of [TIMEOUTS.revealMs, TIMEOUTS.speechMs]) expect(limit).toBeLessThanOrEqual(4800);
+  // The generated fight is the one wait the player asked for: it may take longer, on "The Muse is composing...".
+  expect(TIMEOUTS.levelMs).toBeLessThanOrEqual(8500);
 });
 
 test("a stalled portrait: the god is answered at once, and the portrait request ends with no picture when the painting's time is up", async () => {

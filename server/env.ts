@@ -33,19 +33,21 @@ export interface Config {
 
 /**
  * How long each AI call may take before the route answers with its fallback. Every route the player waits on answers
- * in under five seconds, and every limit is at least a second shorter than the browser's own wait for that route, so
- * the server is never still working when the page has given up. docs/failure-drill.md has the table, and
- * server/tests/failureDrill.test.ts holds both rules.
+ * in under five seconds, but for the generated fight, and every limit is at least a second shorter than the browser's
+ * own wait for that route, so the server is never still working when the page has given up. docs/failure-drill.md has
+ * the table, and server/tests/failureDrill.test.ts holds both rules.
  *
- * - levelMs: the page waits LEVEL_TIMEOUT_MS (src/ai/client.ts). A real level took 2.9 to 3.6 s, and 1 in 11 was not back by 4.8 s.
+ * - levelMs: the page waits LEVEL_TIMEOUT_MS (src/ai/client.ts). The second limit over five seconds: the player asked
+ *   for this fight and watches "The Muse is composing..." meanwhile. 16 real levels took 3.3 to 5.2 s, 9 of them over
+ *   4.5 s, so the old 4.8 s limit would have turned many into the bundled fight.
  * - revealMs and revealHedgeMs: the page waits REVEAL_BUDGET_MS (src/ai/revealGod.ts). A real scan took 0.85 to 2.3 s,
  *   so a second attempt started at 2.5 s is not started for nothing and still has time to answer before revealMs.
- * - portraitMs: the one limit over five seconds, because a painting takes that long. Nothing waits on it: the god is
+ * - portraitMs: the other limit over five seconds, because a painting takes that long. Nothing waits on it: the god is
  *   shown first and the picture is filled in when it comes (PORTRAIT_TIMEOUT_MS in src/ai/reveal.ts).
  * - speechMs: the page waits SPEECH_WAIT_MS (src/audio/narration.ts). A real line took 0.2 to 0.6 s.
  */
 export const TIMEOUTS: Required<Config["timeouts"]> = {
-  levelMs: 4800,
+  levelMs: 8500,
   revealMs: 4800,
   revealHedgeMs: 2500,
   portraitMs: 12000,
