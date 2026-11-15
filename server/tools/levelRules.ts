@@ -37,9 +37,9 @@ const PEAK_MARGIN_DB = 0.05;
 const SFX_MASTER = 0.5;
 const SFX_LEVELS: Readonly<Record<string, number>> = { telegraph: 0.85, opening: 0.5, whiffed: 0.55, defended: 0.8, won: 0.85, lost: 0.85 };
 /** music.ts: MUSIC_GAIN, MAX_LEVEL and the loudness of each scene. */
-const MUSIC_GAIN = 0.16;
+const MUSIC_GAIN = 0.3;
 const MAX_LEVEL = 12;
-const MUSIC_LOUDNESS: Readonly<Record<string, number>> = { menu: 0.1, fight: 0.16, win: 0.14, loss: 0.14 };
+const MUSIC_LOUDNESS: Readonly<Record<string, number>> = { menu: 0.1, fight: 0.16, boss: 0.18, win: 0.14, loss: 0.14 };
 /** stopAudio.ts: EVENT_* and AMBIENCE_*. */
 const STOP_EVENT = { gain: 0.5, loudness: 0.12, peak: 0.9 };
 const STOP_AMBIENCE = { gain: 0.16, loudness: 0.08, peak: 2 };
