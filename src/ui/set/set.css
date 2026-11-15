@@ -1,0 +1,92 @@
+/* Storm and bronze: the shared kit of the interface set (draft look "storm", switched on by ?look=storm).
+   Dark storm-teal paintings, cast bronze for everything you press, sea-glass panels with a thin bronze rim and rivets,
+   titles in gold. Every rule is scoped to :root[data-look="storm"], so without ?look nothing changes.
+   Kit: .set-title  .set-panel  .set-btn / .set-btn--primary  .set-back  .set-stat  .set-backdrop
+   The same rules also reach the screens' own classes (pebble buttons, the dojo's buttons, the account's cards) through the
+   :is() lists, so settings and the rest follow without touching their markup. */
+:root {
+  --st-abyss: #04100f;
+  --st-sea: #0a2a2d;
+  --st-glass: rgba(6, 24, 27, 0.86);
+  --st-teal: #2c8a86;
+  --st-bronze-hi: #ffe6b0;
+  --st-bronze: #e0a552;
+  --st-bronze-mid: #a86424;
+  --st-bronze-lo: #5a300f;
+  --st-bronze-dark: #2a1406;
+  --st-gold: #f4c56a;
+  --st-ink: #f6eedc;
+  --st-dim: #d9cfb6;
+  --st-focus: #fff4d2;
+  --st-display: Herculanum, "Trajan Pro", Copperplate, Georgia, serif;
+  --st-body: Optima, "Gill Sans", Candara, sans-serif;
+  --st-rivet: radial-gradient(circle at 35% 30%, #ffe6b0 0 18%, #c98f37 45%, #4a2408 100%);
+}
+
+:root[data-look="storm"] {
+  /* A full-bleed painting; only a soft dark veil sits over it, where the words are. */
+  .set-backdrop { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: var(--st-abyss); pointer-events: none; }
+  .set-backdrop img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; }
+  .set-backdrop i { position: absolute; inset: 0; background: radial-gradient(ellipse 60% 62% at 50% 50%, rgba(2, 12, 14, 0.62), rgba(2, 12, 14, 0.28) 70%, rgba(2, 12, 14, 0.1)); }
+
+  /* Title: gold Herculanum, a thin bronze rule with a diamond under it. */
+  .set-title {
+    position: relative; margin: 0; padding-bottom: 0.55em; font: 400 clamp(34px, 3.4vw, 52px)/1.05 var(--st-display); letter-spacing: 0.03em; text-transform: uppercase; text-align: center;
+    color: var(--st-gold); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 0 #1a0d06) drop-shadow(0 0 14px rgba(255, 170, 70, 0.35));
+  }
+  .set-title::after { content: ""; position: absolute; left: 50%; bottom: 0; width: min(78%, 22em); height: 10px; transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, var(--st-bronze) 30%, var(--st-bronze) 70%, transparent) center / 100% 2px no-repeat; }
+  .set-title::before { content: ""; position: absolute; left: 50%; bottom: 0; width: 12px; height: 12px; margin-left: -6px; transform: translateY(1px) rotate(45deg);
+    background: linear-gradient(135deg, #ffe6b0, #a86424); box-shadow: 0 0 0 2px #1a0d06; z-index: 1; }
+  .set-kicker { margin: 0 0 4px; font: 700 18px var(--st-body); letter-spacing: 0.22em; text-transform: uppercase; color: var(--st-bronze); text-align: center; text-shadow: 0 1px 6px #000; }
+
+  .set-panel { position: relative; }
+  /* Panel: sea-glass, a thin bronze rim, a second fine line inside and four rivets. */
+  :is(.set-panel, .acc-wall > section, .acc-herm, .acc-detail, .dojo-card, .dojo-side, .dojo-pick > .dojo-closing, .dojo-pick > .dojo-key) {
+    box-sizing: border-box; color: var(--st-ink); border: 2px solid var(--st-bronze-mid); border-radius: 12px;
+    background:
+      var(--st-rivet) left 9px top 9px / 11px 11px no-repeat, var(--st-rivet) right 9px top 9px / 11px 11px no-repeat,
+      var(--st-rivet) left 9px bottom 9px / 11px 11px no-repeat, var(--st-rivet) right 9px bottom 9px / 11px 11px no-repeat,
+      linear-gradient(rgba(12, 42, 46, 0.9), rgba(4, 18, 21, 0.92));
+    box-shadow: 0 0 0 1px #140a04, inset 0 0 0 4px rgba(6, 24, 27, 0.9), inset 0 0 0 5px rgba(224, 165, 82, 0.34), 0 16px 34px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Button: a cast bronze plaque with a hammered (dotted) edge. Secondary is dark bronze; primary is bright gold. */
+  :is(.set-btn, .pb-btn, .dojo-button) {
+    position: relative; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 50px; padding: 8px 28px; cursor: pointer;
+    font: 400 21px/1.1 var(--st-display); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+    color: var(--st-bronze-hi); text-shadow: 0 2px 0 rgba(26, 13, 6, 0.9);
+    background: linear-gradient(#c98f37, #a86424 45%, #6b3a12); border: 2px solid #1a0d06; border-radius: 8px;
+    box-shadow: inset 0 2px 0 rgba(255, 238, 200, 0.55), inset 0 -4px 8px rgba(40, 18, 4, 0.6), 0 5px 10px rgba(0, 0, 0, 0.55);
+    transition: transform 120ms, filter 120ms;
+  }
+  :is(.set-btn, .pb-btn, .dojo-button)::before { content: ""; position: absolute; inset: 4px; border: 2px dotted rgba(26, 13, 6, 0.55); border-radius: 5px; pointer-events: none; }
+  :is(.set-btn, .pb-btn, .dojo-button):hover, :is(.set-btn, .pb-btn, .dojo-button).is-hover { transform: translateY(-2px); filter: brightness(1.16); background: linear-gradient(#d9a24a, #b97330 45%, #7a4416); border-color: #1a0d06; color: #fff6dc; }
+  :is(.set-btn, .pb-btn, .dojo-button):active { transform: translateY(1px); }
+  :is(.set-btn, .pb-btn, .dojo-button):focus-visible, :is(.set-btn, .pb-btn, .dojo-button).is-focus { outline: 3px solid var(--st-focus); outline-offset: 4px; box-shadow: inset 0 2px 0 rgba(255, 238, 200, 0.55), inset 0 -4px 8px rgba(40, 18, 4, 0.6), 0 0 22px rgba(255, 220, 140, 0.7); }
+  :is(.set-btn, .pb-btn, .dojo-button):disabled { opacity: 0.5; filter: grayscale(0.4); transform: none; cursor: default; }
+  :is(.set-btn--primary, .pb-btn--primary, .dojo-button.primary) { color: var(--st-bronze-dark); text-shadow: 0 1px 0 rgba(255, 240, 200, 0.7); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); border-color: #3a1d08; }
+  :is(.set-btn--primary, .pb-btn--primary, .dojo-button.primary):hover, :is(.set-btn--primary, .pb-btn--primary, .dojo-button.primary).is-hover { background: linear-gradient(#fff8dc, #ffd57e 45%, #d99a3e); color: var(--st-bronze-dark); }
+  .pb-btn canvas { display: none; }
+  .pb-btn__label { display: inline; }
+
+  /* Back: a small bronze shield with an arrow, the word on a dark bronze-rimmed pill. The same on every screen. */
+  .set-back, .dojo-quit {
+    --shield: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><defs><radialGradient id='g' cx='.35' cy='.3' r='.9'><stop offset='0' stop-color='%23ffe6b0'/><stop offset='.5' stop-color='%23d79a45'/><stop offset='1' stop-color='%236b3a12'/></radialGradient></defs><circle cx='24' cy='24' r='23' fill='%231a0d06'/><circle cx='24' cy='24' r='21' fill='url(%23g)'/><circle cx='24' cy='24' r='16.5' fill='none' stroke='%233e2109' stroke-opacity='.55' stroke-width='1.3'/><path d='M27.5 13 L16 24 L27.5 35 M16 24 H35' fill='none' stroke='%232a1406' stroke-width='4.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    position: relative; display: inline-flex; align-items: center; gap: 12px; box-sizing: border-box; min-height: 52px; margin: 0; padding: 3px 24px 3px 3px; cursor: pointer;
+    font: 400 21px/1 var(--st-display); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06;
+    background: linear-gradient(rgba(12, 42, 46, 0.92), rgba(4, 18, 21, 0.94)); border: 2px solid var(--st-bronze-mid); border-radius: 999px;
+    box-shadow: 0 0 0 1px #140a04, inset 0 0 0 2px rgba(6, 24, 27, 0.9), 0 6px 14px rgba(0, 0, 0, 0.55); filter: none; transition: transform 120ms;
+  }
+  .set-back::before, .dojo-quit::before { content: ""; position: static; inset: auto; flex: none; width: 44px; height: 44px; border: 0; border-radius: 0; background: var(--shield) center / contain no-repeat; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.6)); }
+  .set-back:hover, .set-back.is-hover, .dojo-quit:hover { transform: translateY(-2px); filter: none; color: #fff6dc; border-color: var(--st-bronze); background: linear-gradient(rgba(20, 64, 66, 0.95), rgba(6, 26, 29, 0.96)); }
+  .set-back:focus-visible, .set-back.is-focus, .dojo-quit:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 4px; }
+
+  /* Stat or badge: a bronze coin with the number in gold over a small caption. */
+  :is(.set-stat, .acc-stats > div) { display: grid; justify-items: center; min-width: 96px; padding: 6px 10px 8px; border: 2px solid var(--st-bronze-mid); border-radius: 12px; background: linear-gradient(rgba(224, 165, 82, 0.2), rgba(4, 18, 21, 0.85)); box-shadow: inset 0 0 0 2px rgba(6, 24, 27, 0.9); }
+  :is(.set-stat b, .acc-stats dd) { margin: 0; font: 400 30px/1.05 var(--st-display); color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; font-variant-numeric: tabular-nums; }
+  :is(.set-stat small, .acc-stats dt) { font: 700 18px var(--st-body); letter-spacing: 0.04em; color: var(--st-dim); text-transform: none; white-space: nowrap; text-align: center; }
+
+  @media (prefers-reduced-motion: reduce) { :is(.set-btn, .pb-btn, .dojo-button, .set-back, .dojo-quit) { transition: none; } }
+}
