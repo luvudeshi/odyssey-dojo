@@ -4,7 +4,7 @@ import { startFight, step } from "../src/combat/engine";
 import type { CombatEvent, CombatInput, CombatState, EnemySpec, FightingStyle } from "../src/core/types";
 import { createDuoLink } from "../src/duo/duoLink";
 import { MOVES } from "../src/moves/registry";
-import { createHostLink, forTwo } from "../src/net/host";
+import { ROOM_TOGETHER_MS, TOGETHER_MS, createHostLink, forTwo } from "../src/net/host";
 import type { RoomTransport } from "../src/net/transport";
 
 import { clearFriend, feedFromGuest, feedFromHost, friendStage } from "../src/net/friendStage";
@@ -60,4 +60,15 @@ test("clearing takes the friend off the stage", () => {
   feedFromGuest([{ move: "hook", quality: 1, player: 1 }], 4);
   clearFriend();
   expect(friendStage).toMatchObject({ here: false, struckMove: "", struckAt: -Infinity });
+});
+
+test("a room holds a lone strike for ROOM_TOGETHER_MS, a duo or FaceTime link for TOGETHER_MS", () => {
+  const transport: RoomTransport = { send: () => Promise.resolve(true), onMessage: () => undefined, close: () => undefined };
+  const lone: CombatInput = { held: new Set(), struck: [{ move: "jab", quality: 1, player: 0 }] };
+  const none: CombatInput = { held: new Set(), struck: [] };
+  for (const [link, wait] of [[createHostLink(transport, true), ROOM_TOGETHER_MS], [createHostLink(transport), TOGETHER_MS]] as const) {
+    expect(link.takeInput(lone, 1000).struck).toHaveLength(0);
+    expect(link.takeInput(none, 1000 + wait - 1).struck).toHaveLength(0);
+    expect(link.takeInput(none, 1000 + wait).struck).toHaveLength(1);
+  }
 });

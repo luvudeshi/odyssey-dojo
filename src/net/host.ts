@@ -6,6 +6,8 @@ import type { RoomTransport } from "./transport";
 
 /** How long a strike waits for the other player's, so two strikes a moment apart still land together. */
 export const TOGETHER_MS = 400;
+/** In a room every strike waits this long, so a lone strike (the usual one) lands within about 150 ms, not 400 ms. */
+export const ROOM_TOGETHER_MS = 150;
 /** State goes out about 15 times a second; a frame with events goes out at once. */
 export const STATE_EVERY_MS = 66;
 const MAX_WAITING = 16;
@@ -50,6 +52,7 @@ export function forTwo(state: CombatState): CombatState {
 }
 
 export function createHostLink(transport: RoomTransport, room = false): HostLink {
+  const holdMs = room ? ROOM_TOGETHER_MS : TOGETHER_MS;
   let here = false;
   let arrived: Strike[] = [];
   let waiting: Waiting[] = [];
@@ -114,7 +117,7 @@ export function createHostLink(transport: RoomTransport, room = false): HostLink
       arrived = [];
       waiting = [...waiting, ...fresh.map((strike) => ({ strike, at: nowMs }))].slice(-MAX_WAITING);
       const release = (entry: Waiting): boolean =>
-        nowMs - entry.at >= TOGETHER_MS ||
+        nowMs - entry.at >= holdMs ||
         waiting.some((other) => other.strike.move === entry.strike.move && other.strike.player !== entry.strike.player);
       const struck = waiting.filter(release).map((entry) => entry.strike);
       waiting = waiting.filter((entry) => !struck.includes(entry.strike));
