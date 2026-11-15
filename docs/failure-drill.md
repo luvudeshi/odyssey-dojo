@@ -6,7 +6,7 @@ Issue #198. On demo day the venue's network may be slow, an AI service may answe
 
 | Rule | Held by |
 | --- | --- |
-| Every route the player waits on answers in under 5 seconds, whatever the AI service does. | S3, H2, P1 |
+| Every route the player waits on answers in under 5 seconds, whatever the AI service does: it answers when its limit is up (S3, H2), and each limit is 4.8 s or less (P1). | S3, H2, P1 |
 | Every server limit ends at least 1 second before the page stops waiting for that route, so the server is never still working when the page has given up. | P1 |
 | The game always has something to show: the lot for the god scan, a bundled fight for a generated one, the written line when the voice does not come. | P2, P3, P5, P6, P7 |
 | No answer and no log line contains an API key. | S12, R1, R2 |
@@ -42,7 +42,7 @@ Only this call is hedged. It is one cheap request, and its normal answer (under 
 
 ## Route by failure
 
-"At once" means the route has nothing to wait for. The no-key answers were all measured at under 0.01 s on the real server, and the tests hold them under 1 s.
+"At once" means the route has nothing to wait for. The no-key answers were all measured at under 0.01 s on the real server, and the tests hold them under 2 s, the same room the older server tests leave for a busy machine.
 
 ### `POST /api/reveal` (god scan)
 
@@ -145,7 +145,7 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 
 - S1: key missing: every route answers at once, the AI routes with their fallback and the rest as if nothing were wrong
 - S2: key for the scan but not for speech, and the other way round: each service falls back by itself
-- S3: upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback in under five seconds, and the other routes answer meanwhile
+- S3: upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback when their limit is up, each limit is under five seconds, and the other routes answer meanwhile
 - S4: a stalled portrait: the god is answered at once, and the portrait request ends with no picture when the painting's time is up
 - S5: a stalled voice service is not waited on again: once it answers, the next line is spoken
 - S6: upstream answers with the wrong thing: a level that is not a level gives the bundled fight, a god that is not a god gives unavailable
@@ -159,7 +159,7 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 `server/tests/revealHedge.test.ts`
 
 - H1: first attempt slow, second fast: the second's answer comes back about 2.5 s plus its own time after the scan began
-- H2: both attempts stall for 15 s: unavailable at the limit, under five seconds, and never a third attempt
+- H2: both attempts stall for 15 s: unavailable when the limit is up, and never a third attempt
 - H3: the real limits leave the second attempt as long as a real scan takes, and end before the page stops waiting
 - H4: a first attempt that fails fast is tried again at once, and the second answer is used
 - H5: an answer that is not a god counts as a failed attempt: the second attempt's god is used
@@ -172,6 +172,7 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 - R1: a key is cut out wherever it stands, however often, and the rest of the error stays readable
 - R2: a key that falls across the place where a long error is cut does not leave half of itself behind
 - R3: a snapshot echoed in an error is cut out, and a short word is not
+- R4: with no keys held nothing is replaced, and something that is not an error says nothing about itself
 
 `tests/ai/failureDrill.test.ts` (the page's side)
 
@@ -185,4 +186,4 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 
 `server/tests/hedge.test.ts` has nine more tests of the second-attempt helper by itself.
 
-A note on the timing tests: S3, H1 and H2 check that the answer comes no earlier than the limit and no later than 0.7 s after it. The 0.7 s is room for a busy machine running the whole test suite; on a quiet one the answer comes within a few milliseconds of the limit (4.81 s measured for the fight above). The "under five seconds" in the rules rests on the limits being 4.8 s or less, which P1 and S3 check as numbers.
+A note on the timing tests: S3, H1 and H2 check that the answer comes no earlier than the limit and no later than 1 s after it. The second is room for a busy machine running the whole test suite; on a quiet one the answer comes within a few milliseconds of the limit (4.81 s measured for the fight above). The "under five seconds" in the rules rests on the limits being 4.8 s or less, which P1 and S3 check as numbers.
