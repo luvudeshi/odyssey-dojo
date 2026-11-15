@@ -5,6 +5,7 @@
 import type { CombatInput, CombatState } from "../core/types";
 import { MONSTER_CHEST } from "./effects/events";
 import type { Vec3 } from "./effects/events";
+import { defendCounted, defendSeen } from "../hud/DefendFlash";
 import { REACH } from "./strikeReach";
 
 export interface Battle {
@@ -34,6 +35,9 @@ export interface Battle {
   struckAt: number;
   /** Counts strikes. Unlike struckAt it is not a time, so pausing (shiftBattleTimes) cannot change it. */
   strikes: number;
+  /** When the last defend counted and which one ("block", "duck", "dodge_left"...), for the shield and the burst. */
+  defendedAt: number;
+  defendedMove: string;
   /** The fighting style in play, set by FightScreen. resetBattle leaves it: the style outlives one fight. */
   styleId: string;
 }
@@ -42,6 +46,7 @@ export const battle: Battle = {
   state: null, enemyHitAt: -Infinity, playerHitAt: -Infinity, phaseAt: -Infinity, wonAt: -Infinity,
   lostAt: -Infinity, heroX: 0, heroZ: 0, reachAt: -Infinity, hitSpot: null, reachX: 0, reachY: 0, reachZ: 0,
   shakeX: 0, shakeY: 0, held: new Set(), struckMove: "", struckAt: -Infinity, strikes: 0, styleId: "",
+  defendedAt: -Infinity, defendedMove: "",
 };
 
 export function resetBattle(target: Battle = battle): void {
@@ -49,6 +54,7 @@ export function resetBattle(target: Battle = battle): void {
     state: null, enemyHitAt: -Infinity, playerHitAt: -Infinity, phaseAt: -Infinity, wonAt: -Infinity,
     lostAt: -Infinity, heroX: 0, heroZ: 0, reachAt: -Infinity, hitSpot: null, reachX: 0, reachY: 0, reachZ: 0,
     shakeX: 0, shakeY: 0, held: new Set<string>(), struckMove: "", struckAt: -Infinity, strikes: 0,
+    defendedAt: -Infinity, defendedMove: "",
   });
 }
 
@@ -82,6 +88,8 @@ export function syncBattle(target: Battle, next: CombatState, now: number, finis
   // A power's damage has no reach, so it shows at once.
   if (next.enemyHp < prev.enemyHp) target.enemyHitAt = struck ? now + REACH.out : now;
   if (next.playerHp < prev.playerHp) target.playerHitAt = now;
+  const counted = defendCounted(defendSeen(prev.phase), defendSeen(next.phase));
+  if (counted !== null) { target.defendedAt = now; target.defendedMove = counted; }
   if (next.phaseIndex !== prev.phaseIndex) target.phaseAt = now;
   if (next.phase.kind === "won" && prev.phase.kind !== "won") target.wonAt = now;
   if (next.phase.kind === "lost" && prev.phase.kind !== "lost") target.lostAt = now;

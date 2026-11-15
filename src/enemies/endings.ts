@@ -37,7 +37,7 @@ export const ENDINGS: Readonly<Record<string, Ending>> = {
     kind: "escape",
     win: "You heard the song, and the ship sailed on past.",
     loss: "The song pulls you in this time. Steady yourself and retry.",
-    lesson: "Plan ahead and lean on friends. Help you set up early holds when it gets hard.",
+    lesson: "Plan ahead and lean on friends. The help you set up early holds when it gets hard.",
   },
   scylla: {
     kind: "escape",
