@@ -11,7 +11,7 @@ npx tsx server/tools/levelClips.ts --write    # re-encodes the voice clips that 
 npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and changes no clip
 ```
 
-**After you add or replace a clip, run it with `--write`.** It is safe to run again at any time. A clip within tolerance is left byte for byte as it is. Only clips in `athena`, `narration` and `taunts` are ever rewritten. It reads the folders, not the `index.json` files, and never edits them. `tests/audioLevels.test.ts` fails when a clip has no row below. With no ffmpeg, add the row by hand: the path in backticks and a dash in each other cell.
+**After you add or replace a clip, run it with `--write`.** It is safe to run again at any time. A clip within tolerance is left byte for byte as it is. Only clips in `athena`, `narration` and `taunts` are ever rewritten. It reads the folders, not the `index.json` files, and never edits them. `tests/audioLevels.test.ts` fails when a clip has no row in the tables below. With no ffmpeg, add the row by hand under "Measured now": the path in backticks and a dash in each other cell.
 
 ## What the columns mean
 
@@ -26,7 +26,8 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | category | how it is played | at the listener |
 |---|---|---|
 | Athena | An audio element at the voice volume (`voice.ts`). Default 1, so the file's own level. | -15.6 LUFS (-16.8 to -14.0) |
-| Homer and the monsters | The same path (`storyVoice.ts` speaks through `voice.ts`). | -19.0 LUFS (-20.5 to -18.8) |
+| Homer | The same path (`storyVoice.ts` speaks through `voice.ts`). | -19.0 LUFS (-20.1 to -19.0) |
+| A monster's taunt | Its own channel, at `TAUNT_VOLUME` 0.7 of the voice volume (`voice.ts`). It plays under Athena's calls. | -22.1 LUFS (-23.6 to -21.9) |
 | Effects (`sfx`) | The file's own level, times `LEVELS[type]`, times `MASTER_GAIN` 0.5 (`sfx.ts`). Files are not levelled. | -25.8 LUFS (-41.2 to -16.7) |
 | Stop events | Each clip is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `EVENT_GAIN` 0.5 (`stopAudio.ts`). | -22.4 LUFS (-31.4 to -17.0) |
 | Music | Each clip is brought to its scene's RMS (0.1 to 0.16), then times `MUSIC_GAIN` 0.16, times the music volume (`music.ts`). | fight -34.0, menu -36.5, loss -32.3, win -28.6 LUFS |
@@ -37,11 +38,11 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 
 What was wanted: Athena's calls clearly on top, Homer and the monsters near her, effects under the voice, music and ambience well under.
 
-- **Athena is on top.** Her lines sit at -15.6 LUFS, 3.4 LU over Homer and the monsters.
-- **Homer and the monsters are near her now.** Before this change they were 6.6 LU under her (about -22 LUFS). A monster's taunt was then quieter than the hit sound it is spoken over (-19.9 LUFS).
-- **Most effects are under the voice.** The median effect is 10 LU under Athena, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
-- **Music and ambience are well under.** The fight music is 18 LU under Athena, and 24 LU under while she speaks. The menu loop is 17.5 LU under Homer, 23.5 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7). The dip is what gets the music past it. So the level `music.ts` picks is sensible against the voice and no constant was changed. If the music cannot be heard in a loud room, `MUSIC_GAIN` is the one number to raise: 0.22 is 2.8 dB more.
-- **`music.ts` does not read the music volume setting.** It starts at 1 and changes only when `setMusicVolume` is called. Nothing calls it yet. The numbers above assume the caller passes the setting (default 0.7), as the ambience already reads it. At 1 the music is 3.1 dB louder: the fight at -30.9 LUFS.
+- **Athena is on top.** Her lines sit at -15.6 LUFS.
+- **Homer is near her now**, 3.4 LU under. Before this change he was 7 LU under (about -22.3 LUFS).
+- **A taunt is 6.5 LU under her.** The clips are 3.4 LU under hers, and `TAUNT_VOLUME` takes 3.1 dB more because a taunt plays at the same time as her calls. Before this change a taunt was 9.6 LU under her (-25.0 LUFS), quieter than most of the effects around it. It is now level with the median stop event (-22.4) and still 2.2 LU under the hit sound (`enemyHit`, -19.9). `TAUNT_VOLUME` was not changed: it is in `voice.ts`, which others are editing, and nobody has heard whether a louder taunt masks her calls.
+- **Most effects are under Athena.** The median effect is 10 LU under her, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
+- **Music and ambience are well under.** The fight music is 18 LU under Athena, and 24 LU under while she speaks. The menu loop is 17.5 LU under Homer, 23.5 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7). The dip is what gets the music past it. So the level `music.ts` picks is sensible against the voice and no constant was changed. In RMS terms the fight music comes out at -31.8 dBFS with the music volume at 1 and -34.9 dBFS at the default 0.7. If the music cannot be heard in a loud room, `MUSIC_GAIN` is the one number to raise: 0.22 is 2.8 dB more.
 
 ### What the numbers say is wrong, and was not changed
 
@@ -49,36 +50,37 @@ These are effects, stop sounds and music. This change does not touch those files
 
 1. **The effect files are not levelled, and they differ by 24.5 LU at the listener.** `sfx.ts` plays a file at its own level. `LEVELS` was set for the built-in synthesised sounds, which all peak at 0.9. The files that replaced them do not. `opening` (-41.2), `whiffed` (-39.7), `lost` (-38.5) and `phaseChanged` (-36.3) are 20 LU or more under Athena and are likely not heard. `playerHit` (-28.6) is 8.7 LU quieter than `enemyHit` (-19.9), so the hit you take is much quieter than the hit you land. `finished` (-16.7) is about as loud as Athena. Suggested fix: have `sfx.ts` level each file when it loads, with `stopClipLevel` from `stopAudio.ts`, as the stop sounds already are.
 2. **Some hit sounds start late.** `sfx/playerHit` has 197 ms of silence before the sound, `sfx/enemyHit` 88 ms, `stops/sirens/swoop` 339 ms, `stops/suitors/throw` 196 ms, `stops/scylla/snap` 155 ms, `stops/suitors/hurt` 107 ms. Suggested fix: start each buffer past its silence (`source.start(0, offset)`), or trim the files.
-3. **The stop events still differ by 14 LU after levelling.** Levelling is by RMS over the whole clip, so a clip that is mostly tail comes out quiet. `stops/scylla/snap` (-31.4), `stops/sirens/wave` (-29.0) and `stops/sirens/hurt` (-27.0) are the quiet ones. `stops/circe/wand` (-17.0) and `stops/circe/squeal` (-18.5) are louder than the monsters' taunts.
+3. **The stop events still differ by 14 LU after levelling.** Levelling is by RMS over the whole clip, so a clip that is mostly tail comes out quiet. `stops/scylla/snap` (-31.4), `stops/sirens/wave` (-29.0) and `stops/sirens/hurt` (-27.0) are the quiet ones. `stops/circe/wand` (-17.0) and `stops/circe/squeal` (-18.5) are louder than a taunt.
 4. **The win sting is 5.4 LU louder than the fight music** (-28.6 against -34.0), for the same reason: it has 1.8 s of quiet tail, so its RMS underrates it. It is still 9.6 LU under Homer's result line and 13 LU under Athena's.
-5. **Lines made at run time are not levelled.** `narration.ts` plays what `/api/speech` returns at its own level. Recorded Homer lines came out near -22 LUFS before this change, so a line made at run time will likely be about 3 LU under the recorded ones.
-6. **Calls have up to 301 ms of silence after them.** The voice counts as busy until the clip ends, so praise or a warning asked for in that tail is skipped. Not trimmed here.
+5. **Lines made at run time are not levelled.** `narration.ts` plays what `/api/speech` returns at its own level. Recorded Homer lines came out near -22.3 LUFS before this change, so a line made at run time will likely be about 3 LU under the recorded ones.
+6. **Calls have up to 301 ms of silence after them.** Not trimmed here.
 
-At commit 387ffb5 only `FightScreen` plays sound: the effects and Athena's lines for combat events. No screen calls `startMusic`, `setMusicVolume`, `startStopAmbience`, `playStopEvent`, `speakNarration`, `speakResult`, `speakMonsterTaunt` or `speakLine("fight_start")` yet. The numbers for music, ambience, stop sounds, Homer and the taunts are what they will reach once a screen plays them.
+At commit 9578330 no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
 
 ## What was changed
 
-Voice clips only: `athena`, `narration`, `taunts`. 54 of the 69 were re-encoded. 15 were within tolerance and are untouched.
+Voice clips only: `athena`, `narration`, `taunts`. 66 of the 82 were re-encoded. 16 were within tolerance and are untouched. That was two runs of the tool: 54 of the 69 clips that existed first, then 12 of the 13 clips PR #167 added.
 
-**Targets.** The clips came in two groups 6.6 LU apart, so one target would have meant changing every clip by 3 dB or more. Athena's own lines also had peaks near -0.9 dBTP, and Homer's had peaks 19 dB above their loudness, so neither group could simply be moved to the other. There are two targets:
+**Targets.** The clips came in two groups about 7 LU apart, so one target would have meant changing every clip by 3 dB or more. Athena's own lines also had peaks near -0.9 dBTP, and Homer's had peaks 19 dB above their loudness, so neither group could simply be moved to the other. There are two targets:
 
-- **Athena's own lines: -15.5 LUFS.** The median of her 37 clips as they were made was -15.4.
+- **Athena's own lines: -15.5 LUFS.** The median of her first 37 clips as they were made was -15.4.
 - **Homer and the monsters: -19.0 LUFS**, 3.5 LU under her. Their median was -22.2. -19.0 is about as loud as the hardest of them gets with no more than 3 dB of limiting (`homer_after_scylla` stops at -19.5). This includes the Homer and Polyphemus clips that live in `public/audio/athena`.
 
 **Tolerance.** A voice clip is out of tolerance when it is more than 1.5 LU from its target, or its true peak is above -1.0 dBTP, or it is a move call (`call_*`) with more than 60 ms of silence before it. A clip that is rewritten ends with its peak at or under -1.5 dBTP and, for a late call, 30 ms of lead.
 
-**How a clip is fixed.** One gain puts it on target. If that gain would lift the peak past -1.5 dBTP, the gain stops there when that lands within 1 LU of the target. Only otherwise is ffmpeg's lookahead limiter (`alimiter`) used, and never for more than 3 dB. 25 clips went through the limiter. The clip is re-encoded with libmp3lame at the rate, channels and bitrate it had (all 69 are 44.1 kHz mono at 128 kbps, before and after). The encoder itself takes about 0.5 dB off at this bitrate, so the tool measures what it made and tries again until it lands.
+**How a clip is fixed.** One gain puts it on target. If that gain would lift the peak past -1.5 dBTP, the gain stops there when that lands within 1 LU of the target. Only otherwise is ffmpeg's lookahead limiter (`alimiter`) used, and never for more than 3 dB. 26 clips went through the limiter. The clip is re-encoded with libmp3lame at the rate, channels and bitrate it had (all 82 are 44.1 kHz mono at 128 kbps, before and after). The encoder itself takes about 0.5 dB off at this bitrate, so the tool measures what it made and tries again until it lands.
 
-**What this leaves.** 11 untouched clips peak between -1.4 and -1.0 dBTP: within tolerance, so not rewritten. No move call had more than 48 ms of lead, so none was trimmed. Clip lengths did not change.
+**What this leaves.** 12 untouched clips peak between -1.4 and -1.0 dBTP: within tolerance, so not rewritten. No move call had more than 48 ms of lead, so none was trimmed. Clip lengths did not change.
 
 | group | clips | before: quietest to loudest (median) | spread | after: quietest to loudest (median) | spread |
 |---|---|---|---|---|---|
-| athena (Athena's own lines) | 37 | -19.4 to -12.7 (-15.4) | 6.7 LU | -16.8 to -14.0 (-15.6) | 2.8 LU |
-| athena (Homer and Polyphemus) | 8 | -23.0 to -20.4 (-22.0) | 2.6 LU | -20.4 to -19.0 (-19.0) | 1.4 LU |
+| athena (Athena's own lines) | 50 | -19.4 to -12.6 (-15.3) | 6.8 LU | -16.8 to -14.0 (-15.6) | 2.8 LU |
+| athena (Homer) | 4 | -22.4 to -21.4 (-21.9) | 1.0 LU | -19.0 to -19.0 (-19.0) | 0.0 LU |
+| athena (Polyphemus) | 4 | -23.0 to -20.4 (-22.2) | 2.6 LU | -20.4 to -19.0 (-19.0) | 1.4 LU |
 | narration | 11 | -23.7 to -21.5 (-22.6) | 2.2 LU | -20.1 to -19.0 (-19.0) | 1.1 LU |
 | taunts | 13 | -24.7 to -18.8 (-21.9) | 5.9 LU | -20.5 to -18.8 (-19.0) | 1.7 LU |
 
-Before, 21 voice clips peaked above -1.0 dBTP (the highest at -0.4). After, none does.
+Before, 31 voice clips peaked above -1.0 dBTP (the highest at -0.4). After, none does.
 
 The clips that were rewritten. "limiter" marks the ones that went through it.
 
@@ -93,6 +95,7 @@ The clips that were rewritten. "limiter" marks the ones that went through it.
 | `athena/call_hammer_fist.mp3` | -15.4 | -16.5 | -1.1 | -0.5 | -1.6 |  |
 | `athena/call_hook.mp3` | -15.3 | -16.0 | -0.7 | -0.9 | -1.6 |  |
 | `athena/call_jab.mp3` | -15.8 | -16.7 | -0.9 | -0.8 | -1.5 |  |
+| `athena/call_knee.mp3` | -13.8 | -15.5 | -1.7 | -0.9 | -2.5 |  |
 | `athena/call_moon_arrow.mp3` | -15.0 | -15.7 | -0.7 | -0.9 | -1.5 |  |
 | `athena/call_overhead_strike.mp3` | -14.3 | -15.5 | -1.2 | -0.8 | -2.0 |  |
 | `athena/call_rising_palm.mp3` | -13.2 | -15.5 | -2.3 | -0.8 | -3.1 |  |
@@ -109,6 +112,17 @@ The clips that were rewritten. "limiter" marks the ones that went through it.
 | `athena/loss.mp3` | -19.4 | -15.6 | +3.8 | -2.9 | -1.6 | yes |
 | `athena/phase_1.mp3` | -17.1 | -15.6 | +1.5 | -1.9 | -1.5 | yes |
 | `athena/phase_2.mp3` | -16.3 | -15.5 | +0.8 | -0.8 | -1.6 | yes |
+| `athena/phase_any.mp3` | -19.3 | -16.5 | +2.8 | -4.4 | -1.6 |  |
+| `athena/phase_eurymachus.mp3` | -12.6 | -15.5 | -2.9 | -0.7 | -3.7 |  |
+| `athena/phase_six_heads.mp3` | -15.7 | -16.5 | -0.8 | -0.7 | -1.5 |  |
+| `athena/phase_the_fig_tree.mp3` | -13.6 | -15.5 | -1.9 | -0.7 | -2.6 |  |
+| `athena/phase_the_meadow_of_bones.mp3` | -14.4 | -15.6 | -1.2 | -0.8 | -1.9 |  |
+| `athena/phase_the_song.mp3` | -13.2 | -15.5 | -2.3 | -0.8 | -3.0 |  |
+| `athena/phase_the_spew.mp3` | -15.4 | -16.3 | -0.9 | -0.7 | -1.6 |  |
+| `athena/phase_the_toll.mp3` | -13.7 | -15.5 | -1.8 | -0.4 | -2.2 |  |
+| `athena/phase_the_volley.mp3` | -14.7 | -15.5 | -0.8 | -0.8 | -1.6 |  |
+| `athena/phase_the_wand.mp3` | -16.0 | -15.6 | +0.4 | -0.7 | -1.5 | yes |
+| `athena/phase_unmasked.mp3` | -13.3 | -15.5 | -2.2 | -1.0 | -3.1 |  |
 | `athena/praise_1.mp3` | -18.0 | -15.5 | +2.5 | -2.6 | -1.6 | yes |
 | `athena/praise_2.mp3` | -13.9 | -15.5 | -1.6 | -0.7 | -2.4 |  |
 | `athena/praise_3.mp3` | -14.6 | -15.5 | -0.9 | -0.8 | -1.8 |  |
@@ -153,14 +167,15 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 
 | group | clips | quietest | median | loudest | spread LU | at the listener, median (range) |
 |---|---|---|---|---|---|---|
-| athena | 37 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
-| athena (Homer and Polyphemus) | 8 | -20.4 | -19.0 | -19.0 | 1.4 | -19.0 (-20.4 to -19.0) |
+| athena | 50 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
+| athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
+| athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
 | music | 4 | -37.7 | -12.9 | -9.8 | 27.9 | -33.1 (-36.5 to -28.6) |
 | narration | 11 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
 | stops (events) | 20 | -38.0 | -20.1 | -12.3 | 25.7 | -22.4 (-31.4 to -17.0) |
-| taunts | 13 | -20.5 | -19.0 | -18.8 | 1.7 | -19.0 (-20.5 to -18.8) |
+| taunts | 13 | -20.5 | -19.0 | -18.8 | 1.7 | -22.1 (-23.6 to -21.9) |
 
 ### Voice clips out of tolerance
 
@@ -201,10 +216,12 @@ None.
 | `athena/call_dodge_right.mp3` | 1.44 | -14.7 | -1.0 | 16 | 0 | 0.0 | -14.7 |
 | `athena/call_double_palm.mp3` | 2.32 | -14.5 | -1.0 | 28 | 157 | 0.0 | -14.5 |
 | `athena/call_duck.mp3` | 1.92 | -15.8 | -1.5 | 32 | 295 | 0.0 | -15.8 |
+| `athena/call_front_kick.mp3` | 1.84 | -15.8 | -1.0 | 17 | 98 | 0.0 | -15.8 |
 | `athena/call_hammer_fist.mp3` | 2.48 | -16.5 | -1.6 | 29 | 118 | 0.0 | -16.5 |
 | `athena/call_hook.mp3` | 2.08 | -16.0 | -1.6 | 33 | 254 | 0.0 | -16.0 |
 | `athena/call_jab.mp3` | 1.92 | -16.7 | -1.5 | 26 | 105 | 0.0 | -16.7 |
 | `athena/call_jump.mp3` | 1.68 | -15.9 | -1.4 | 21 | 250 | 0.0 | -15.9 |
+| `athena/call_knee.mp3` | 2.16 | -15.5 | -2.5 | 42 | 179 | 0.0 | -15.5 |
 | `athena/call_knife_hand.mp3` | 2.00 | -14.0 | -1.0 | 27 | 265 | 0.0 | -14.0 |
 | `athena/call_moon_arrow.mp3` | 2.08 | -15.7 | -1.5 | 28 | 159 | 0.0 | -15.7 |
 | `athena/call_overhead_strike.mp3` | 2.16 | -15.5 | -2.0 | 37 | 100 | 0.0 | -15.5 |
@@ -221,6 +238,17 @@ None.
 | `athena/loss.mp3` | 3.76 | -15.6 | -1.6 | 34 | 125 | 0.0 | -15.6 |
 | `athena/phase_1.mp3` | 1.68 | -15.6 | -1.5 | 22 | 261 | 0.0 | -15.6 |
 | `athena/phase_2.mp3` | 2.40 | -15.5 | -1.6 | 23 | 0 | 0.0 | -15.5 |
+| `athena/phase_any.mp3` | 2.40 | -16.5 | -1.6 | 20 | 134 | 0.0 | -16.5 |
+| `athena/phase_eurymachus.mp3` | 2.24 | -15.5 | -3.7 | 35 | 214 | 0.0 | -15.5 |
+| `athena/phase_six_heads.mp3` | 2.56 | -16.5 | -1.5 | 32 | 180 | 0.0 | -16.5 |
+| `athena/phase_the_fig_tree.mp3` | 2.32 | -15.5 | -2.6 | 36 | 140 | 0.0 | -15.5 |
+| `athena/phase_the_meadow_of_bones.mp3` | 2.16 | -15.6 | -1.9 | 0 | 124 | 0.0 | -15.6 |
+| `athena/phase_the_song.mp3` | 2.08 | -15.5 | -3.0 | 25 | 183 | 0.0 | -15.5 |
+| `athena/phase_the_spew.mp3` | 2.48 | -16.3 | -1.6 | 7 | 127 | 0.0 | -16.3 |
+| `athena/phase_the_toll.mp3` | 2.80 | -15.5 | -2.2 | 23 | 125 | 0.0 | -15.5 |
+| `athena/phase_the_volley.mp3` | 2.56 | -15.5 | -1.6 | 38 | 179 | 0.0 | -15.5 |
+| `athena/phase_the_wand.mp3` | 2.16 | -15.6 | -1.5 | 32 | 118 | 0.0 | -15.6 |
+| `athena/phase_unmasked.mp3` | 2.08 | -15.5 | -3.1 | 23 | 98 | 0.0 | -15.5 |
 | `athena/praise_1.mp3` | 1.36 | -15.5 | -1.6 | 44 | 88 | 0.0 | -15.5 |
 | `athena/praise_2.mp3` | 1.44 | -15.5 | -2.4 | 21 | 263 | 0.0 | -15.5 |
 | `athena/praise_3.mp3` | 1.36 | -15.5 | -1.8 | 17 | 265 | 0.0 | -15.5 |
@@ -229,7 +257,7 @@ None.
 | `athena/warn_3.mp3` | 1.36 | -15.9 | -2.1 | 36 | 236 | 0.0 | -15.9 |
 | `athena/win.mp3` | 3.28 | -14.1 | -1.4 | 17 | 140 | 0.0 | -14.1 |
 
-### athena (Homer and Polyphemus)
+### athena (Homer)
 
 | clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
 |---|---|---|---|---|---|---|---|
@@ -237,10 +265,15 @@ None.
 | `athena/homer_loss.mp3` | 5.84 | -19.0 | -1.6 | 57 | 160 | 0.0 | -19.0 |
 | `athena/homer_title.mp3` | 4.40 | -19.0 | -1.5 | 29 | 265 | 0.0 | -19.0 |
 | `athena/homer_win.mp3` | 4.64 | -19.0 | -1.6 | 21 | 118 | 0.0 | -19.0 |
-| `athena/taunt_polyphemus_1.mp3` | 3.20 | -19.0 | -2.7 | 20 | 149 | 0.0 | -19.0 |
-| `athena/taunt_polyphemus_2.mp3` | 2.80 | -19.0 | -2.2 | 39 | 186 | 0.0 | -19.0 |
-| `athena/taunt_polyphemus_3.mp3` | 4.88 | -19.0 | -2.5 | 21 | 136 | 0.0 | -19.0 |
-| `athena/taunt_polyphemus_4.mp3` | 2.64 | -20.4 | -3.5 | 36 | 113 | 0.0 | -20.4 |
+
+### athena (Polyphemus)
+
+| clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
+|---|---|---|---|---|---|---|---|
+| `athena/taunt_polyphemus_1.mp3` | 3.20 | -19.0 | -2.7 | 20 | 149 | -3.1 | -22.1 |
+| `athena/taunt_polyphemus_2.mp3` | 2.80 | -19.0 | -2.2 | 39 | 186 | -3.1 | -22.1 |
+| `athena/taunt_polyphemus_3.mp3` | 4.88 | -19.0 | -2.5 | 21 | 136 | -3.1 | -22.1 |
+| `athena/taunt_polyphemus_4.mp3` | 2.64 | -20.4 | -3.5 | 36 | 113 | -3.1 | -23.5 |
 
 ### music
 
@@ -322,18 +355,18 @@ None.
 
 | clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
 |---|---|---|---|---|---|---|---|
-| `taunts/taunt_charybdis_1.mp3` | 4.88 | -19.0 | -2.6 | 25 | 108 | 0.0 | -19.0 |
-| `taunts/taunt_charybdis_2.mp3` | 2.64 | -19.5 | -1.5 | 27 | 122 | 0.0 | -19.5 |
-| `taunts/taunt_charybdis_3.mp3` | 4.00 | -19.0 | -1.7 | 32 | 150 | 0.0 | -19.0 |
-| `taunts/taunt_circe_1.mp3` | 3.52 | -19.0 | -1.5 | 49 | 140 | 0.0 | -19.0 |
-| `taunts/taunt_circe_2.mp3` | 3.44 | -19.0 | -1.5 | 83 | 1 | 0.0 | -19.0 |
-| `taunts/taunt_circe_3.mp3` | 3.68 | -19.5 | -1.5 | 45 | 197 | 0.0 | -19.5 |
-| `taunts/taunt_scylla_1.mp3` | 3.04 | -20.5 | -3.7 | 39 | 133 | 0.0 | -20.5 |
-| `taunts/taunt_sirens_1.mp3` | 5.76 | -19.0 | -3.3 | 84 | 116 | 0.0 | -19.0 |
-| `taunts/taunt_sirens_2.mp3` | 4.40 | -19.0 | -3.0 | 33 | 126 | 0.0 | -19.0 |
-| `taunts/taunt_sirens_3.mp3` | 5.20 | -19.0 | -1.9 | 43 | 106 | 0.0 | -19.0 |
-| `taunts/taunt_suitors_1.mp3` | 4.08 | -19.0 | -2.7 | 29 | 151 | 0.0 | -19.0 |
-| `taunts/taunt_suitors_2.mp3` | 4.56 | -19.0 | -1.5 | 37 | 186 | 0.0 | -19.0 |
-| `taunts/taunt_suitors_3.mp3` | 4.32 | -18.8 | -1.0 | 28 | 0 | 0.0 | -18.8 |
+| `taunts/taunt_charybdis_1.mp3` | 4.88 | -19.0 | -2.6 | 25 | 108 | -3.1 | -22.1 |
+| `taunts/taunt_charybdis_2.mp3` | 2.64 | -19.5 | -1.5 | 27 | 122 | -3.1 | -22.6 |
+| `taunts/taunt_charybdis_3.mp3` | 4.00 | -19.0 | -1.7 | 32 | 150 | -3.1 | -22.1 |
+| `taunts/taunt_circe_1.mp3` | 3.52 | -19.0 | -1.5 | 49 | 140 | -3.1 | -22.1 |
+| `taunts/taunt_circe_2.mp3` | 3.44 | -19.0 | -1.5 | 83 | 1 | -3.1 | -22.1 |
+| `taunts/taunt_circe_3.mp3` | 3.68 | -19.5 | -1.5 | 45 | 197 | -3.1 | -22.6 |
+| `taunts/taunt_scylla_1.mp3` | 3.04 | -20.5 | -3.7 | 39 | 133 | -3.1 | -23.6 |
+| `taunts/taunt_sirens_1.mp3` | 5.76 | -19.0 | -3.3 | 84 | 116 | -3.1 | -22.1 |
+| `taunts/taunt_sirens_2.mp3` | 4.40 | -19.0 | -3.0 | 33 | 126 | -3.1 | -22.1 |
+| `taunts/taunt_sirens_3.mp3` | 5.20 | -19.0 | -1.9 | 43 | 106 | -3.1 | -22.1 |
+| `taunts/taunt_suitors_1.mp3` | 4.08 | -19.0 | -2.7 | 29 | 151 | -3.1 | -22.1 |
+| `taunts/taunt_suitors_2.mp3` | 4.56 | -19.0 | -1.5 | 37 | 186 | -3.1 | -22.1 |
+| `taunts/taunt_suitors_3.mp3` | 4.32 | -18.8 | -1.0 | 28 | 0 | -3.1 | -21.9 |
 
 <!-- levels:end -->

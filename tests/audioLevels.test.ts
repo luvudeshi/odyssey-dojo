@@ -131,6 +131,10 @@ test("with the limiter, a peak over the ceiling lowers the limit and the gain ne
 
 test("playback gain follows the audio code: voice as it is, effects through their level and the master, stops and music levelled first", () => {
   expect(playbackDb("athena/call_jab.mp3", 0.1, 0.9)).toBeCloseTo(0);
+  expect(playbackDb("narration/homer_before_circe.mp3", 0.1, 0.9)).toBeCloseTo(0);
+  // A taunt is spoken at 0.7 of the voice volume, wherever its clip lives.
+  expect(playbackDb("taunts/taunt_circe_1.mp3", 0.1, 0.9)).toBeCloseTo(20 * Math.log10(0.7));
+  expect(playbackDb("athena/taunt_polyphemus_1.mp3", 0.1, 0.9)).toBeCloseTo(20 * Math.log10(0.7));
   expect(playbackDb("sfx/enemyHit.mp3", 0.1, 0.9)).toBeCloseTo(20 * Math.log10(0.5));
   expect(playbackDb("sfx/opening.mp3", 0.1, 0.9)).toBeCloseTo(20 * Math.log10(0.25));
   // A stop event is brought to RMS 0.12 and then halved, unless its peak would pass 0.9.
@@ -147,7 +151,8 @@ test("the median, the groups and the out-of-line list", () => {
   expect(median([4, 1, 3, 2])).toBe(2.5);
   expect(median([])).toBeNaN();
   expect(groupOf("athena/win.mp3")).toBe("athena");
-  expect(groupOf("athena/homer_win.mp3")).toBe("athena (Homer and Polyphemus)");
+  expect(groupOf("athena/homer_win.mp3")).toBe("athena (Homer)");
+  expect(groupOf("athena/taunt_polyphemus_2.mp3")).toBe("athena (Polyphemus)");
   expect(groupOf("stops/circe/ambience.mp3")).toBe("stops (ambience)");
   expect(groupOf("stops/circe/wand.mp3")).toBe("stops (events)");
   const clips = [

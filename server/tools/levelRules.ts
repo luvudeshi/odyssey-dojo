@@ -41,6 +41,8 @@ const STOP_EVENT = { gain: 0.5, loudness: 0.12, peak: 0.9 };
 const STOP_AMBIENCE = { gain: 0.16, loudness: 0.08, peak: 2 };
 /** settings/store.ts: the default music volume. Effects and voice default to 1. */
 const MUSIC_VOLUME = 0.7;
+/** voice.ts: TAUNT_VOLUME. A monster's taunt is spoken on its own channel, under Athena's calls. */
+const TAUNT_VOLUME = 0.7;
 
 export interface Measure {
   /** The file under public/audio, such as "athena/call_jab.mp3". */
@@ -88,7 +90,7 @@ export function isMoveCall(path: string): boolean {
 /** The group a clip is compared within and listed under in the doc. */
 export function groupOf(path: string): string {
   const folder = path.split("/")[0] ?? "";
-  if (folder === "athena") return targetFor(path) === ATHENA_TARGET_LUFS ? "athena" : "athena (Homer and Polyphemus)";
+  if (folder === "athena" && targetFor(path) !== ATHENA_TARGET_LUFS) return nameOf(path).startsWith("taunt_") ? "athena (Polyphemus)" : "athena (Homer)";
   if (folder === "stops") return nameOf(path) === "ambience" ? "stops (ambience)" : "stops (events)";
   return folder;
 }
@@ -101,7 +103,7 @@ export function playbackDb(path: string, rms: number, peak: number): number {
     const raised = rms > 0 ? Math.min(MAX_LEVEL, loudness / rms) : 1;
     return peak > 0 ? Math.min(raised, ceiling / peak) : raised;
   };
-  let gain = 1;
+  let gain = name.startsWith("taunt_") && targetFor(path) !== null ? TAUNT_VOLUME : 1;
   if (folder === "sfx") gain = (SFX_LEVELS[name] ?? 1) * SFX_MASTER;
   if (folder === "music") gain = level(MUSIC_LOUDNESS[name] ?? rms, Number.POSITIVE_INFINITY) * MUSIC_GAIN * MUSIC_VOLUME;
   if (folder === "stops") {
