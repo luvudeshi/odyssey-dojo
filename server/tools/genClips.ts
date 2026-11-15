@@ -60,20 +60,8 @@ interface Track {
   readonly seconds: number;
 }
 
-/** One clip per music scene in src/audio/music.ts. Prompts describe the sound only: no artist, film, game or existing piece. */
+/** The two stings. The menu, fight and boss loops are CC BY tracks by Shane Ivers (CREDITS.md), so they are not made here. Prompts describe the sound only: no artist, film, game or existing piece. */
 const MUSIC: Readonly<Record<string, Track>> = {
-  menu: {
-    kind: "ambience",
-    prompt:
-      "Ambience inside a huge stone sea cave: water drips echoing off the rock, a low wind drone through the tunnels, surf rolling outside the cave mouth. Continuous and even, no music, no voices",
-    seconds: 30,
-  },
-  fight: {
-    kind: "music",
-    prompt:
-      "Instrumental battle music with an ancient Greek feel, for a fight against a giant in a cave. Driving frame drums and low war drums at a steady fast tempo, a plucked lyre ostinato, a shrill aulos reed melody, a low drone underneath. Tense and heroic. Full intensity from the first beat to the last, with no intro, no outro and no fade out, so it can loop. No vocals.",
-    seconds: 48,
-  },
   win: {
     kind: "music",
     prompt:

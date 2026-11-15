@@ -68,7 +68,7 @@ Athena, Homer and the monsters speak with ElevenLabs. We generated every clip ah
 - **Athena** calls every move and every phase. Her voice is Sarah, on model `eleven_v4`.
 - **Homer** narrates before and after each stop. His voice is George.
 - **Polyphemus** has his own taunts, in the voice of Callum, and the other monsters have theirs.
-- **Sound effects and music** came from the same account: one clip for each fight event, plus a menu, fight, win and loss track.
+- **Sound effects and the win and loss stings** came from the same account: one clip for each fight event. The menu and battle music are three CC BY 4.0 tracks by Shane Ivers.
 
 We ran each clip through speech to text afterward. The check heard `call_knee` as "Me", so we generated that clip again. `[confirm: whether the team entered the ElevenLabs track]`
 
@@ -88,7 +88,7 @@ Before the style menu, a webcam player gets a god scan. A snapshot goes to our E
 | 3D | three.js, React Three Fiber, drei, postprocessing |
 | Pose tracking | MediaPipe Tasks Vision (PoseLandmarker, runs in the browser) |
 | Server | Node.js, Express (optional) |
-| AI | Google Gemini (god scan), ElevenLabs (voice, sound effects, music) |
+| AI | Google Gemini (god scan), ElevenLabs (voice, sound effects, stings) |
 | Tests | Vitest, headless browser runs |
 | Art | Poly Haven (CC0 skies and textures), Quaternius (CC0 models), shapes built in code |
 
@@ -125,4 +125,4 @@ Before the style menu, a webcam player gets a god scan. A snapshot goes to our E
 
 Play it at `[confirm: live demo URL]`. Pick a stop and the fight starts.
 
-*Credits: skies and textures from [Poly Haven](https://polyhaven.com) (CC0). Hero and Polyphemus models by Quaternius (CC0). Voices, sound effects and music generated with ElevenLabs. Pose tracking by Google MediaPipe (Apache License 2.0). The full list is in `CREDITS.md`.*
+*Credits: skies and textures from [Poly Haven](https://polyhaven.com) (CC0). Hero and Polyphemus models by Quaternius (CC0). Voices, sound effects and stings generated with ElevenLabs. Music: "The Paladin's Underworld", "Passage Of Arms" and "The Fall Of Heroes" by Shane Ivers (https://www.silvermansound.com), CC BY 4.0. Pose tracking by Google MediaPipe (Apache License 2.0). The full list is in `CREDITS.md`.*
