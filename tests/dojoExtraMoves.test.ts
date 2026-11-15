@@ -300,7 +300,7 @@ test("practice judges an extra move and gives the move's own tip, or asks for th
 });
 
 test("the Dojo's styles name real moves, have one short line each, and are not the game's styles", () => {
-  expect(EXTRA_STYLES.map((style) => style.name)).toEqual(["Taekwondo", "Self-defense basics", "Muay Thai", "Karate basics"]);
+  expect(EXTRA_STYLES.map((style) => style.name)).toEqual(["Taekwondo kicks", "Self-defense basics", "Muay Thai", "Karate basics"]);
   const ids = EXTRA_STYLES.map((style) => style.id);
   expect(new Set(ids).size).toBe(ids.length);
   for (const style of EXTRA_STYLES) {
@@ -316,7 +316,7 @@ test("the Dojo's styles name real moves, have one short line each, and are not t
     expect(dojoMovesDoc, style.id).toContain(`| ${style.name} (\`${style.id}\`) | ${style.line} |`);
   }
   const strikesOf = (id: string): readonly string[] => EXTRA_STYLES.find((style) => style.id === id)?.strikes ?? [];
-  expect(strikesOf("taekwondo")).toEqual(expect.arrayContaining(["front_kick", "roundhouse_kick", "side_kick", "knee"]));
+  expect(strikesOf("taekwondo_kicks")).toEqual(expect.arrayContaining(["front_kick", "roundhouse_kick", "side_kick", "knee"]));
   expect(strikesOf("self_defense")).toEqual(expect.arrayContaining(["palm_heel", "elbow_strike", "knee", "hammer_fist", "wrist_release"]));
   // Every extra move is trained by at least one style.
   for (const move of EXTRA_MOVES) expect(EXTRA_STYLES.some((style) => style.strikes.includes(move.id)), move.id).toBe(true);
