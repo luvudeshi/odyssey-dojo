@@ -17,3 +17,7 @@
 }
 .calibration-guide span { background: var(--st-abyss); padding: 0 0.5rem; }
 .calibration-guide[data-ok="true"] { border: 3px solid var(--st-ink); color: var(--st-ink); box-shadow: 0 0 14px var(--st-bronze); }
+/* The side column is as wide as its button, so the button stays off the camera frame and the panel's edge. */
+.flow.menu.calibration .calibration-panel { grid-template-columns: auto minmax(14rem, max-content); }
+/* The words beside the picture already say what the camera sees: the caption under it does not say it again. */
+.calibration-cam .camera-state { display: none; }
