@@ -64,6 +64,8 @@ test("a spending route called through the dev proxy, as the game does in npm run
   expect((await fetch(`${dev}/api/level`, LEVEL)).status).toBe(200);
   expect((await fetch(`${dev}/api/health`)).status).toBe(200);
   expect((await fetch(`${dev}/api/portrait/x`)).status).not.toBe(403);
+  // The host's page makes its room this way.
+  expect((await fetch(`${dev}/api/rooms`, { method: "POST" })).status).toBe(200);
 });
 
 test("a tunnel request that reached the dev server instead keeps its headers through the proxy, and is refused", async () => {
@@ -72,12 +74,14 @@ test("a tunnel request that reached the dev server instead keeps its headers thr
     const response = await fetch(`${dev}/api/level`, { ...LEVEL, headers: { ...LEVEL.headers, ...header } });
     expect(response.status, JSON.stringify(header)).toBe(403);
   }
-  expect((await fetch(`${dev}/api/rooms`, { method: "POST", headers: { "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW" } })).status).toBe(200);
+  // Only what a guest needs in a room answers. This 404 is the room route's own "no such room"; making a room is refused.
+  expect((await fetch(`${dev}/api/rooms/ZZZZ/join`, { method: "POST", headers: { "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW" } })).status).toBe(404);
+  expect((await fetch(`${dev}/api/rooms`, { method: "POST", headers: { "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW" } })).status).toBe(403);
 });
 
 test("with xfwd turned on the same proxy would be refused, so vite.config.ts must leave it off", async () => {
   const proxy = await repoProxy(await listenApp());
   const dev = await listenVite(Object.fromEntries(Object.entries(proxy).map(([path, rule]) => [path, { ...rule, xfwd: true }])));
   expect((await fetch(`${dev}/api/level`, LEVEL)).status).toBe(403);
-  expect((await fetch(`${dev}/api/health`)).status).toBe(200);
+  expect((await fetch(`${dev}/api/rooms`, { method: "POST" })).status).toBe(403);
 });
