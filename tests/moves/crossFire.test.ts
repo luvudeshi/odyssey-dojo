@@ -34,8 +34,6 @@ const LEFT: Record<string, string> = {
   "aegis_push>spear_thrust": "a thrust with the hands close; the hand spacing that splits them needs a real trace",
   "aegis_push>double_palm": "the same motion by design",
   "swift_dash>dodge_right": "a dash is a fast side step, and a side step is a dodge, by design",
-  "moon_arrow>cross": GOD,
-  "moon_arrow>chain_punch": GOD,
   "sun_burst>knife_hand": GOD,
 };
 
@@ -49,7 +47,7 @@ const OUTSIDE: readonly string[] = [
 /** In-scope pairs that fired before #191 (or, for thunderbolt>uppercut, before the lenient-strikes PR) and were separated. */
 const FIXED: readonly string[] = [
   "cross>uppercut", "double_palm>rising_palm", "chain_punch>rising_palm", "block>uppercut", "block>rising_palm",
-  "moon_arrow>uppercut", "sun_burst>spear_thrust",
+  "moon_arrow>uppercut", "sun_burst>spear_thrust", "moon_arrow>cross", "moon_arrow>chain_punch",
 ];
 
 test("the table is 26 by 26: every move in the registry, once, with a performance", () => {
