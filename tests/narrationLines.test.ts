@@ -127,12 +127,11 @@ test("every taunt is one of that monster's own taunts, word for word", () => {
   }
 });
 
-test("every monster but Scylla has two or three spoken taunts, each different", () => {
+test("every monster has two or three spoken taunts, each different", () => {
   for (const enemy of ENEMIES) {
     const ids = tauntIds(enemy.id);
-    // Polyphemus's four were recorded first. Scylla's file has one taunt, so she has one clip until it has more:
-    // that part of issue #86 is open. Once her file has three, record them and make her range [2, 3].
-    const [least, most] = enemy.id === "polyphemus" ? [4, 4] : enemy.id === "scylla" ? [1, 3] : [2, 3];
+    // Polyphemus's four were recorded first. Every other monster has two or three, Scylla too since her file got three.
+    const [least, most] = enemy.id === "polyphemus" ? [4, 4] : [2, 3];
     expect(ids.length, enemy.id).toBeGreaterThanOrEqual(least);
     expect(ids.length, enemy.id).toBeLessThanOrEqual(most);
     // Numbered from 1 with no gaps, so a picked id always has a line.
