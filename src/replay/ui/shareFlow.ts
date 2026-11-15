@@ -12,8 +12,10 @@ import { uploadReplay } from "../upload";
 import type { ReplayLinks } from "../upload";
 
 export interface ShareFight {
-  /** The god from the scan. Null when the scan was skipped: the card is then of Odysseus himself. */
+  /** A god, when there is one. Null: the card is of `hero`, or of Odysseus himself when that is omitted. */
   readonly god: Pick<GodReveal, "god" | "epithet"> | null;
+  /** The hero the player fought as. Names the card when there is no god; omitted, the card is of Odysseus himself. */
+  readonly hero?: string | undefined;
   readonly won: boolean;
   readonly enemyName: string;
   /** The enemy's title, e.g. "The Cyclops of the Cave". */
@@ -28,12 +30,13 @@ export type CardWords = Omit<GodCardData, "portrait" | "qr">;
 
 export function cardWords(fight: ShareFight, hasQr = false): CardWords {
   const god = fight.god === null ? null : GODS[fight.god.god];
+  const other = fight.hero !== undefined && fight.hero !== "Odysseus";
   const style = fight.style.trim() === "" ? "" : `Fighting style: ${fight.style.trim()} · `;
   return {
-    godName: god?.name ?? "Odysseus",
+    godName: god?.name ?? fight.hero ?? "Odysseus",
     // Odysseus gives himself this title when he shouts his name to Polyphemus (Odyssey 9.504).
-    epithet: fight.god?.epithet ?? "sacker of cities",
-    domain: god?.domain ?? "King of Ithaca",
+    epithet: fight.god?.epithet ?? (other ? "hero of the Odyssey" : "sacker of cities"),
+    domain: god?.domain ?? (other ? "Fighter at the dojo" : "King of Ithaca"),
     enemyName: fight.enemyName,
     fightTitle: fight.fightTitle,
     score: Number.isFinite(fight.score) ? fight.score : 0,

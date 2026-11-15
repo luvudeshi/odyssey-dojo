@@ -74,6 +74,7 @@ export const ERROR_TEXT: Readonly<Record<AccountError, string>> = {
   name_taken: "That hero name is taken. Pick another, or sign in.",
   wrong_name_or_password: "Wrong name or password.",
   slow_down: "Too many tries. Wait a minute, then try again.",
+  signups_closed: "No new accounts can be made right now. If you have one, sign in. Your progress is kept in this browser.",
   unavailable: "Accounts are not available right now. Your progress is kept in this browser.",
   signed_out: "You are signed out. Sign in again.",
   too_big: "The save is too big to send.",

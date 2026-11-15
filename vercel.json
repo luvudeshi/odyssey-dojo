@@ -1,0 +1,26 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "sed -i 's/\r$//' scripts/*.sh && npm ci --no-audit --no-fund",
+  "build": { "env": { "VITE_ROOMS_POLL": "1" } },
+  "buildCommand": "npm run build && test -s dist/mediapipe/pose_landmarker_lite.task && test -d dist/mediapipe/wasm",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://api.odysseydojo.club/api/:path*" },
+    { "source": "/replays/:path*", "destination": "https://api.odysseydojo.club/replays/:path*" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/api/:path*",
+      "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "0" }]
+    },
+    {
+      "source": "/replays/:path*",
+      "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "0" }]
+    }
+  ]
+}

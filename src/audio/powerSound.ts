@@ -39,7 +39,7 @@ export const POWER_DELAY: Readonly<Partial<Record<string, number>>> = {
   artemis: 0.26,
   apollo: 0.2,
 };
-/** With no god (keyboard play or a skipped scan) Athena lends her power, as the banner says (LENDER in src/ai/power/powerPrompt.ts). */
+/** With no god (every fight now) Athena lends her power, as the banner says (LENDER in src/ai/power/powerPrompt.ts). */
 export const NO_GOD_SOUND = "athena";
 /** A clip that failed to load is asked for again no more often than this. */
 const RETRY_MS = 10_000;
