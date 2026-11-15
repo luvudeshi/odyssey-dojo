@@ -3,7 +3,7 @@ import { Group, Vector3 } from "three";
 import type { Object3D } from "three";
 import { createBodyTracker } from "../src/render/hero/track/BodyTracker";
 import type { BodyTracker } from "../src/render/hero/track/BodyTracker";
-import { trackShare } from "../src/render/hero/track/blend";
+import { HURT_FLOOR, trackShare } from "../src/render/hero/track/blend";
 import { OneEuro } from "../src/render/hero/track/filter";
 import { bendJoint, clampAngle, segmentDir } from "../src/render/hero/track/math";
 import { STEP_LIMIT } from "../src/render/hero/track/targets";
@@ -144,7 +144,7 @@ describe("smoothing and clamps", () => {
 describe("the clip comes back for the short moments that need it", () => {
   test("hurt dips the body's share to nothing mid-hit and returns", () => {
     expect(trackShare({ sinceHurt: 99, won: false, lost: false }, 0.5)).toBe(1);
-    expect(trackShare({ sinceHurt: 0.25, won: false, lost: false }, 0.5)).toBeCloseTo(0, 5);
+    expect(trackShare({ sinceHurt: 0.25, won: false, lost: false }, 0.5)).toBeCloseTo(HURT_FLOOR, 5);
     expect(trackShare({ sinceHurt: 0.01, won: false, lost: false }, 0.5)).toBeGreaterThan(0.9);
     expect(trackShare({ sinceHurt: 0.49, won: false, lost: false }, 0.5)).toBeGreaterThan(0.9);
   });

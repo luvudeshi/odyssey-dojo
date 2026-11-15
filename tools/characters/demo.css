@@ -1,0 +1,10 @@
+/* The characters demo page only. */
+html, body, #root { height: auto; min-height: 100%; }
+body.demo-dark { background: #15100e; color: #f6eedc; }
+.demo { padding: 0.5rem 1rem 2rem; }
+.demo-done { min-height: 1.5em; text-align: center; margin: 0.4rem 0; }
+.demo-stage { display: flex; flex-wrap: wrap; gap: 1.2rem; justify-content: center; align-items: flex-start; }
+.demo-stage .demo-canvas { width: min(34rem, 100%) !important; height: 40rem !important; flex: none; }
+.demo-side { max-width: 22rem; }
+.demo-side h2 { margin: 0 0 0.3rem; text-transform: uppercase; letter-spacing: 0.12em; }
+.demo-side button { min-width: 8rem; }

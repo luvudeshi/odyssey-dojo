@@ -4,7 +4,7 @@ import { JOINT, distance2d, joint, latest, recent, shoulderWidth } from "../../p
 import { armOut, bodyWidth } from "../handSignals";
 
 /** How far out to its own side of the shoulder the wrist must be, in 3D shoulder widths (0.35 m on a 0.4 m adult). */
-const WIDE = 0.875;
+export const WIDE = 0.875;
 
 /** True when the arm is straight out to its own side, not forward. */
 function wide(frame: PoseFrame, side: "left" | "right", baseline: Baseline | null): boolean {

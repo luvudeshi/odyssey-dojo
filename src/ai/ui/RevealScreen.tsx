@@ -1,6 +1,6 @@
 // The god scan screen: one picture of the player, then the god hiding in them. Mount it and wait for onDone.
 // Works with no camera, no server and no network: each missing piece only shortens the path to the reveal.
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PoseFrame } from "../../core/types";
 import { JOINT } from "../../pose/signals";
 import type { PoseTracker } from "../../pose/tracker";
@@ -10,6 +10,7 @@ import { renderPortrait } from "../gods/portrait";
 import { clothingTint } from "../gods/tint";
 import { revealGod } from "../revealGod";
 import type { GodReveal } from "../revealGod";
+import { Button, Panel, PebbleHeading, installGround } from "../../ui/pebble";
 import "./reveal.css";
 
 type Step =
@@ -129,14 +130,15 @@ export function RevealScreen(props: {
 
   if (step.kind === "ask") {
     return (
-      <main className="menu reveal">
+      <Frame title="Which god hides in you?">
         <p className="reveal-kicker">In the Odyssey the gods walk among mortals in disguise.</p>
-        <h1>Which god hides in you?</h1>
         {tracker ? (
           <>
             <p>Strike a pose worthy of Olympus. The oracle reads your stance and your colours.</p>
-            <button onClick={() => { setStep({ kind: "pose", left: COUNTDOWN_SECONDS }); }}>Reveal my god</button>
-            <button className="reveal-quiet" onClick={() => { scan(null); }}>Cast the lot instead (no picture)</button>
+            <div className="reveal-buttons">
+              <Button primary onClick={() => { setStep({ kind: "pose", left: COUNTDOWN_SECONDS }); }}>Reveal my god</Button>
+              <Button className="reveal-quiet" onClick={() => { scan(null); }}>Cast the lot instead (no picture)</Button>
+            </div>
             <p className="reveal-small">
               One picture is taken and sent to Google Gemini to choose your god. It is not saved. With no network, the
               choice is made on this laptop.
@@ -145,41 +147,37 @@ export function RevealScreen(props: {
         ) : (
           <>
             <p>No camera, so the lots are shaken in a bronze helmet, as Odysseus&apos;s crew cast them.</p>
-            <button onClick={() => { scan(null); }}>Cast the lot</button>
+            <div className="reveal-buttons"><Button primary onClick={() => { scan(null); }}>Cast the lot</Button></div>
           </>
         )}
-      </main>
+      </Frame>
     );
   }
 
   if (step.kind === "pose") {
     return (
-      <main className="menu reveal">
-        <h1>Strike your pose</h1>
+      <Frame title="Strike your pose">
         <div className="reveal-preview" ref={preview} />
         <div className="reveal-count" key={step.left}>{step.left}</div>
-      </main>
+      </Frame>
     );
   }
 
   if (step.kind === "reading") {
     return (
-      <main className="menu reveal">
-        <h1 className="reveal-pulse">The oracle is reading you</h1>
+      <Frame title="The oracle is reading you" titleClass="reveal-pulse">
         <p>A god stirs behind the disguise.</p>
-      </main>
+      </Frame>
     );
   }
 
   const { reveal, portrait } = step;
   const god = GODS[reveal.god];
   return (
-    <main className="menu reveal" style={{ ["--god" as string]: god.accent }}>
-      <p className="reveal-kicker">A god walks among us in disguise</p>
+    <Frame title={god.name} titleClass="reveal-name" accent={god.accent} kicker="A god walks among us in disguise">
       <div className={`reveal-portrait${portrait === null ? " reveal-empty" : ""}`}>
         {portrait !== null && <img src={portrait} alt="" />}
       </div>
-      <h1 className="reveal-name">{god.name}</h1>
       <p className="reveal-epithet">{reveal.epithet}</p>
       <p className="reveal-domain">{god.domain}</p>
       <p className="reveal-reason">{reveal.reason}</p>
@@ -187,7 +185,21 @@ export function RevealScreen(props: {
         <strong>{god.power.name}</strong> is yours: {god.power.blurb}
       </p>
       <p className="reveal-small">{GODS[reveal.rivalGod].name} has seen you, and sends monsters against you.</p>
-      <button onClick={() => { onDone(reveal); }}>Begin the journey</button>
+      <div className="reveal-buttons"><Button primary onClick={() => { onDone(reveal); }}>Begin the journey</Button></div>
+    </Frame>
+  );
+}
+
+/** One pebble panel on the dark ground; the title is the page's h1, set in stones. */
+function Frame(props: { title: string; titleClass?: string; accent?: string; kicker?: string; children: ReactNode }) {
+  useEffect(() => { installGround(); }, []);
+  return (
+    <main className="reveal" style={props.accent === undefined ? undefined : { ["--god" as string]: props.accent }}>
+      <Panel ornament className="reveal-panel">
+        {props.kicker !== undefined && <p className="reveal-kicker">{props.kicker}</p>}
+        <PebbleHeading as="h1" className={props.titleClass ?? ""} text={props.title} px={props.title.length <= 12 ? 52 : props.title.length > 22 ? 32 : 40} tone="ochre" />
+        {props.children}
+      </Panel>
     </main>
   );
 }
