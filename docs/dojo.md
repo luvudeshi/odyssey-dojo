@@ -12,8 +12,8 @@ Every number here that is not a detector's own is a first guess. Nothing has bee
 
 ## What the player sees
 
-1. **Opened with no style chosen** (from the title screen): five buttons, one per fighting style, each listing
-   its strikes. Opened with a style, this step is skipped.
+1. **The setup step**, before every session: the style, the moves and the tries at each. See "Choosing what to
+   practise" below.
 2. **For each move**, three tries (`reps`, default 3). A full style is its strikes, then block, duck and both
    dodges: 6 to 8 moves, about two minutes.
    - **Watch the outline** (2 s before the first try of a move, 1 s before the others): on the left a large
@@ -23,11 +23,49 @@ Every number here that is not a detector's own is a first guess. Nothing has bee
      runs down. It ends early, 0.3 s after the move is counted.
    - **The grade** (1.2 s): the word in large letters, the points earned, and one tip.
 3. **Training done**: the total out of the most possible, the highlights (best move, how many of each grade,
-   the level) and a **Work on** list, then **Train again** and **Done**.
+   the level) and a **Work on** list, then **Train again**, **Change moves** and **Done**.
 
 Keys: on your turn the move's own key (the one the fight uses, shown on screen with no camera) or Space makes
 the move; Space or Enter leaves a grade early; Escape quits. Reduced motion: the outline is shown as numbered
 still poses and the grade does not animate.
+
+## Choosing what to practise
+
+Before every session a setup step asks what to train. It is its own component, `src/coach/ui/DojoSetup.tsx`, and
+the lists behind it are in `src/coach/catalog.ts` (pure, tested in `tests/dojoCatalog.test.ts`).
+
+- **Fighting style**: one button per style. The game's five come first, then the styles only the dojo has
+  (`src/coach/extra`, see `docs/dojo-moves.md`). The style can be changed here; it does not have to be chosen in
+  Story mode first. A style passed to the screen is the one selected at the start.
+- **Moves**: a list of checkboxes in four groups (`dojoMenu`). Each move is in one group only.
+  - *The style's strikes*, ticked at the start.
+  - *Kicks and knees*: front kick, knee, and the dojo's roundhouse, side and low kick. They need the whole body in
+    view, and the list says so. A style's own kicks stay in its own group, with the same note.
+  - *Defends*: block, duck, both dodges (ticked at the start), high block and low block.
+  - *More moves*: every strike of every other style. A god's power move is never on the list.
+- **Select all** and **Clear**, and a line that says how many moves are ticked.
+- **Tries at each move**: 1, 3 or 5.
+- **Start training** is off until at least one move is ticked. The session trains exactly the ticked moves, in
+  the order the list shows them.
+
+**Change moves** (beside Quit during a session, and on the end screen) goes back to this step with the same
+ticks. The last choice is kept in this browser under `odyssey-dojo.training` and comes back the next time; a
+browser that will not store it just starts from the style's usual list.
+
+All of it works from the keyboard: Tab moves between the buttons and boxes, Space ticks, Enter presses a button,
+the arrow keys change the number of tries, Escape leaves.
+
+A move only the dojo knows is trained like any other. The move lookup is `dojoMoveOf`, the outline is
+`dojoGuideFor`, the live checklist reads `DOJO_MEASURES`, and a missed try gets the move's own tip
+(`dojoJudgeRep`, `dojoTipFor`). None of these are used by the fights.
+
+## The strip of moves
+
+Along the bottom of a session a strip shows every move of the session in order (`src/coach/ui/DojoTrack.tsx`,
+from `trackOf` in `src/coach/dojo.ts`). A finished move has a tick with its best grade and its points, the
+current move is marked **Now**, the rest are **Next**. At the left it says how many are done ("2 of 6 done").
+It is one row: with many moves it scrolls sideways and keeps the current move in view. It stops short of the
+player's picture in the corner.
 
 ## Grades and points
 
@@ -120,9 +158,9 @@ try copied from the outline, one sloppy, one missed, so every grade and the work
 ```tsx
 <Dojo
   tracker={tracker}        // the game's PoseTracker, or null for keyboard training
-  style={style}            // optional: left out or null, the screen asks which style
-  moves={["jab", "block"]} // optional: default is the style's strikes, then the four defends
-  reps={3}                 // optional
+  style={style}            // optional: the style the setup step starts on
+  moves={["jab", "block"]} // optional: the moves ticked at the start
+  reps={3}                 // optional: the tries at each move at the start
   onDone={(summary) => {}} // the player pressed Done; summary.points, .workOn, .level, .reps
   onQuit={() => {}}        // optional: Quit / Back button and Escape
   keyboard={false}         // optional: show the key for each move; default true exactly when tracker is null
@@ -135,6 +173,8 @@ first move.
 
 ## Not tested
 
+- The setup step and the strip of moves were looked at in headless Chrome at 1280 x 720 on the keyboard only.
+  No screen reader was tried, and no real camera.
 - No real body and no real camera: every frame in the tests and on the demo page is made up.
 - The line on what the session changes was looked at on the demo page only, not inside the game.
 - The thresholds above (0.6, 0.58, 0.82) and the timings are first guesses.
