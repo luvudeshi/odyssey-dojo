@@ -18,7 +18,7 @@ import type { Accounts, Statement } from "../lib/accounts";
 import type { Db } from "../lib/db";
 import { FIGHTS_OVERALL, FIGHTS_PER_ACCOUNT, FIGHTS_PER_ACCOUNT_HOUR, HALL_CACHE_MS, HALL_READS_PER_ADDRESS, createHeroLimits } from "../lib/heroLimits";
 import { COMBO_MAX, FIGHT_BODY_BYTES, SCORE_MAX, SECONDS_MAX, SECONDS_MIN, parseFightBody } from "../lib/heroRules";
-import { ACTIVITY_BUCKETS, ACTIVITY_MINUTES, BOARD_SIZE, RETRY_MS, createHeroes, heroSchemaSql, heroTables } from "../lib/heroes";
+import { ACTIVITY_BUCKETS, ACTIVITY_MINUTES, BOARD_SIZE, RETRY_MS, columnstoreSql, createHeroes, heroSchemaSql, heroTables } from "../lib/heroes";
 import type { Hall, Heroes } from "../lib/heroes";
 import { isAccountPath, isHeroesPath, isOpenPath, isTunnelPath, mayAnswer, readsOwnBody } from "../lib/localOnly";
 import { MINUTE_MS, THIS_MACHINE } from "../lib/roomLimits";
@@ -407,8 +407,11 @@ interface Door {
 
 const HALL_ROW = { tonight: "[]", ever: "[]", stops: "[]", activity: JSON.stringify(Array.from({ length: ACTIVITY_BUCKETS }, () => 0)), last_hour: 0, fights_ever: "0" };
 
-/** Answers the question about the extension with `timescale`, a reading of the hall with `hall`, and everything else with one row. */
-function door(options: { timescale?: boolean; hall?: unknown; fail?: (text: string) => boolean } = {}): Door {
+/**
+ * Answers the question about the extension with `timescale`, the question about the columnstore setting with
+ * `grouped` (true: an older table, still grouped by account), a reading of the hall with `hall`, and everything else with one row.
+ */
+function door(options: { timescale?: boolean; grouped?: boolean; hall?: unknown; fail?: (text: string) => boolean } = {}): Door {
   const asked: Door["asked"] = [];
   return {
     asked,
@@ -416,6 +419,7 @@ function door(options: { timescale?: boolean; hall?: unknown; fail?: (text: stri
       asked.push({ text, params });
       if (options.fail?.(text)) return Promise.reject(new Unavailable());
       if (text.includes("pg_extension")) return Promise.resolve(options.timescale === false ? [] : [{ n: 1 }]);
+      if (text.includes("hypertable_columnstore_settings")) return Promise.resolve(options.grouped === true ? [{ n: 1 }] : []);
       if (text.includes("time_bucket_gapfill")) return Promise.resolve(["hall" in options ? options.hall : HALL_ROW]);
       return Promise.resolve([{ n: 1 }]);
     },
@@ -429,6 +433,9 @@ test("the table names take the accounts' prefix, and a prefix that is not a name
   const schema = heroSchemaSql("t1_");
   expect(schema).toHaveLength(3);
   expect(schema[0]?.text).toMatch(/create table if not exists t1_fights[\s\S]*references t1_accounts \(id\) on delete cascade[\s\S]*tsdb\.hypertable/);
+  // Old fights are ordered by time in the columnstore and not grouped by account, which was measured to make them larger.
+  expect(schema[0]?.text).toContain("tsdb.segmentby = '', tsdb.orderby = 'at desc'");
+  expect(schema.map(({ text }) => text).join(" ")).not.toContain("segmentby = 'account_id'");
   expect(schema[1]?.text).toMatch(/create materialized view if not exists t1_fights_hourly[\s\S]*timescaledb\.continuous[\s\S]*time_bucket\(interval '1 hour', at\)[\s\S]*from t1_fights/);
   expect(schema[2]).toMatchObject({ params: ["t1_fights_hourly"] });
   expect(schema[2]?.text).toMatch(/add_continuous_aggregate_policy\(\$1::regclass[\s\S]*if_not_exists => true/);
@@ -442,13 +449,44 @@ test("the tables are made once, before the first fight, and every value goes apa
   expect(await heroes.record(ACCOUNT_ID, nasty)).toBe(true);
   expect(await heroes.record(ACCOUNT_ID, nasty)).toBe(true);
   expect(made.asked.map((ask) => ask.text.trim().split(/\s+/).slice(0, 3).join(" "))).toEqual([
-    "select 1 as", "create table if", "create materialized view", "select add_continuous_aggregate_policy($1::regclass, start_offset", "insert into fights", "insert into fights",
+    "select 1 as", "create table if", "create materialized view", "select add_continuous_aggregate_policy($1::regclass, start_offset", "select 1 as", "insert into fights", "insert into fights",
   ]);
-  const insert = made.asked[4];
+  // The fifth is the question about the columnstore setting. A table made now is not grouped, so nothing is changed.
+  expect(made.asked[4]).toMatchObject({ params: ["fights"] });
+  expect(made.asked[4]?.text).toContain("hypertable_columnstore_settings");
+  const insert = made.asked[5];
   expect(insert?.params).toEqual(["2026-11-15T06:23:45.678Z", ACCOUNT_ID, nasty.hero, "polyphemus", true, 1234, "boxer", null, 61.5, null]);
   for (const ask of made.asked) for (const value of [nasty.hero, ACCOUNT_ID, "polyphemus", "1234"]) expect(ask.text).not.toContain(value);
   // The row is made from the account's own row, so an id that is no account writes nothing.
   expect(insert?.text).toMatch(/from accounts a where a\.id = \$2::uuid/);
+});
+
+test("a fights table from before, still grouped by account in the columnstore, is set right once at start-up, and a failure of that is no reason to have no hall", async () => {
+  const { check, set } = columnstoreSql("t1_");
+  expect(check).toMatchObject({ params: ["t1_fights"] });
+  expect(check.text).toMatch(/hypertable_columnstore_settings[\s\S]*hypertable = \$1::regclass[\s\S]*segmentby/);
+  expect(set).toEqual({ text: "alter table t1_fights set (timescaledb.segmentby = '', timescaledb.orderby = 'at desc')", params: [] });
+  const alters = (made: Door): number => made.asked.filter((ask) => ask.text.startsWith("alter table")).length;
+
+  const log = captureLog();
+  const old = door({ grouped: true });
+  const heroes = createHeroes(old.statement);
+  expect((await heroes.hall()).tonight).toEqual([]);
+  expect(await heroes.record(ACCOUNT_ID, { ...FIGHT, hero: null })).toBe(true);
+  expect(old.asked.filter((ask) => ask.text.startsWith("alter table")).map((ask) => ask.text)).toEqual(["alter table fights set (timescaledb.segmentby = '', timescaledb.orderby = 'at desc')"]);
+  expect(log.lines.filter((line) => line.includes("heroes_columnstore_set"))).toHaveLength(1);
+
+  // A table made now: asked, and left alone.
+  const fresh = door();
+  await createHeroes(fresh.statement).hall();
+  expect(alters(fresh)).toBe(0);
+
+  // The question fails, or the change does: one line in the log, and the hall is there all the same.
+  for (const failing of ["hypertable_columnstore_settings", "alter table"]) {
+    const broken = door({ grouped: true, fail: (text) => text.includes(failing) });
+    expect((await createHeroes(broken.statement).hall()).tonight, failing).toEqual([]);
+  }
+  expect(log.lines.filter((line) => line.includes("heroes_columnstore_not_set"))).toHaveLength(2);
 });
 
 test("on a Postgres without TimescaleDB there is no hall: one log line, no statement tried, and it is not asked again", async () => {
