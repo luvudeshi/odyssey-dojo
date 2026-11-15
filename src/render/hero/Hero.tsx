@@ -1,5 +1,6 @@
-// The player's body in the scene. Without ?hero=<id> it is the bronze pose-driven figure, unchanged. With it, an
-// animated GLB hero plays clips for each action and the bronze figure becomes a faint ghost of the live webcam pose.
+// The player's body in the scene: the spartan, an animated GLB hero that plays clips for each action. The bronze
+// pose-driven figure stands in while the GLB loads (or if it fails) and becomes a faint ghost of the live webcam pose.
+import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
@@ -10,10 +11,11 @@ import { battle, nowSeconds } from "../battle";
 import { ErrorBoundary } from "../ErrorBoundary";
 import { RiggedModel } from "../models/RiggedModel";
 import { HOME_Z, PlayerFigure } from "../PlayerFigure";
-import { HERO_CANDIDATES } from "./candidates";
 import type { HeroCandidate } from "./candidates";
+import { candidate as spartan } from "./defs/spartan";
 import { chooseHeroPose, decideHeroPose } from "./heroClips";
-import type { HeroInput } from "./heroClips";
+import { newInput, readInput } from "./heroInput";
+import type { MutableInput } from "./heroInput";
 
 const GHOST_OFFSET: readonly [number, number, number] = [-0.9, 0, 0.2];
 /** Smaller than the hero so the whole body stays in frame beside it. */
@@ -23,8 +25,6 @@ const GHOST_OPACITY = 0.25;
 const STALE_SECONDS = 0.5;
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
-
-type MutableInput = { -readonly [K in keyof HeroInput]: HeroInput[K] };
 
 function isMesh(node: Object3D): node is Mesh {
   return (node as { isMesh?: boolean }).isMesh === true;
@@ -41,18 +41,6 @@ function tinter(tint: HeroCandidate["tint"]): (root: Object3D) => void {
   };
 }
 
-function readInput(out: MutableInput, now: number): HeroInput {
-  const phase = battle.state?.phase;
-  out.held = battle.held;
-  out.struckMove = battle.struckMove;
-  out.sinceStrike = now - battle.struckAt;
-  out.sinceHurt = now - battle.playerHitAt;
-  out.won = phase?.kind === "won";
-  out.lost = phase?.kind === "lost";
-  out.finisherMove = phase?.kind === "finisher" ? phase.move : null;
-  return out;
-}
-
 /** Mounts only once the GLB has loaded (it sits inside the Suspense), so the bronze figure covers the wait. */
 function Ready({ readyRef }: { readyRef: RefObject<boolean> }) {
   useEffect(() => {
@@ -64,7 +52,7 @@ function Ready({ readyRef }: { readyRef: RefObject<boolean> }) {
 
 function GlbHero({ candidate, ready }: { candidate: HeroCandidate; ready: RefObject<boolean> }) {
   const group = useRef<Group>(null);
-  const input = useRef<MutableInput>({ held: new Set(), struckMove: "", sinceStrike: Infinity, sinceHurt: Infinity, won: false, lost: false, finisherMove: null });
+  const input = useRef<MutableInput>(newInput());
   const prepare = useMemo(() => {
     const tint = tinter(candidate.tint);
     return (root: Object3D): void => { tint(root); candidate.prepare?.(root); };
@@ -146,9 +134,9 @@ function GhostedHero({ candidate, poseRef }: { candidate: HeroCandidate; poseRef
   );
 }
 
+// Fetched at import, so the spartan is usually ready the moment a fight starts.
+useGLTF.preload(spartan.url);
+
 export function Hero({ poseRef }: { poseRef: RefObject<PoseFrame | null> }) {
-  const id = new URLSearchParams(window.location.search).get("hero");
-  const candidate = id ? HERO_CANDIDATES.get(id) : undefined;
-  if (!candidate) return <PlayerFigure poseRef={poseRef} />;
-  return <GhostedHero candidate={candidate} poseRef={poseRef} />;
+  return <GhostedHero candidate={spartan} poseRef={poseRef} />;
 }
