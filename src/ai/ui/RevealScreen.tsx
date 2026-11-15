@@ -2,6 +2,7 @@
 // Works with no camera, no server and no network: each missing piece only shortens the path to the reveal.
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PoseFrame } from "../../core/types";
+import { characterLineForGod, handPicked } from "../../characters/godCharacter";
 import { JOINT } from "../../pose/signals";
 import type { PoseTracker } from "../../pose/tracker";
 import { emblemPortrait, firstPortrait } from "../gods/emblem";
@@ -198,6 +199,7 @@ export function RevealScreen(props: {
       <p className="reveal-power">
         <strong>{god.power.name}</strong> is yours: {god.power.blurb}
       </p>
+      <p className="reveal-character">{characterLineForGod(reveal.god, handPicked())}</p>
       <p className="reveal-small">{GODS[reveal.rivalGod].name} has seen you, and sends monsters against you.</p>
       <div className="reveal-buttons"><Button primary onClick={() => { onDone(reveal); }}>Begin the journey</Button></div>
     </Frame>
