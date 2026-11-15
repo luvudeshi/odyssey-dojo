@@ -15,6 +15,7 @@ import { Boulder } from "./effects/Boulder";
 import { HitEffects } from "./effects/HitEffects";
 import { DefendBurst } from "./effects/DefendBurst";
 import { GuardShield } from "./effects/GuardShield";
+import { PowerStrike } from "./effects/power/PowerStrike";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { finisherSpot } from "./strikeReach";
@@ -105,6 +106,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
               </mesh>
             )}
           </MonsterRig>
+          <PowerStrike />
           <CameraRig />
           <Hero poseRef={poseRef} />
           <GuardShield />

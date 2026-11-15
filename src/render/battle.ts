@@ -2,6 +2,7 @@
 // where the hero stands, and the camera shake. It is filled from combat state and only read by the scene,
 // so no fight rule depends on it. Times are in seconds on the performance.now() clock.
 // One fight is on screen at a time, so this is a module-level store like effects/pulse.ts.
+import type { GodId } from "../ai/gods/gods";
 import type { CombatInput, CombatState } from "../core/types";
 import { MONSTER_CHEST } from "./effects/events";
 import type { Vec3 } from "./effects/events";
@@ -38,6 +39,14 @@ export interface Battle {
   /** When the last defend counted and which one ("block", "duck", "dodge_left"...), for the shield and the burst. */
   defendedAt: number;
   defendedMove: string;
+  /** When the divine power last fired, which god's it was, and the weak spot it was aimed at (rig space; null for the chest). */
+  powerAt: number;
+  powerGod: GodId | null;
+  powerSpot: Vec3 | null;
+  /** How far the monster rig has moved off its mark (sway, lunge, recoil), so effects aimed at a weak spot follow it. Written by MonsterRig. */
+  rigX: number;
+  rigY: number;
+  rigZ: number;
   /** The fighting style in play, set by FightScreen. resetBattle leaves it: the style outlives one fight. */
   styleId: string;
 }
@@ -46,7 +55,7 @@ export const battle: Battle = {
   state: null, enemyHitAt: -Infinity, playerHitAt: -Infinity, phaseAt: -Infinity, wonAt: -Infinity,
   lostAt: -Infinity, heroX: 0, heroZ: 0, reachAt: -Infinity, hitSpot: null, reachX: 0, reachY: 0, reachZ: 0,
   shakeX: 0, shakeY: 0, held: new Set(), struckMove: "", struckAt: -Infinity, strikes: 0, styleId: "",
-  defendedAt: -Infinity, defendedMove: "",
+  defendedAt: -Infinity, defendedMove: "", powerAt: -Infinity, powerGod: null, powerSpot: null, rigX: 0, rigY: 0, rigZ: 0,
 };
 
 export function resetBattle(target: Battle = battle): void {
@@ -54,8 +63,15 @@ export function resetBattle(target: Battle = battle): void {
     state: null, enemyHitAt: -Infinity, playerHitAt: -Infinity, phaseAt: -Infinity, wonAt: -Infinity,
     lostAt: -Infinity, heroX: 0, heroZ: 0, reachAt: -Infinity, hitSpot: null, reachX: 0, reachY: 0, reachZ: 0,
     shakeX: 0, shakeY: 0, held: new Set<string>(), struckMove: "", struckAt: -Infinity, strikes: 0,
-    defendedAt: -Infinity, defendedMove: "",
+    defendedAt: -Infinity, defendedMove: "", powerAt: -Infinity, powerGod: null, powerSpot: null, rigX: 0, rigY: 0, rigZ: 0,
   });
+}
+
+/** The divine power fired from state `from` (the phase it was thrown in): note when, whose, and where it is aimed. */
+export function stampPower(target: Battle, god: GodId, now: number, from: CombatState): void {
+  target.powerAt = now;
+  target.powerGod = god;
+  target.powerSpot = from.phase.kind === "strike" ? from.phase.weakSpot.position : null;
 }
 
 export function nowSeconds(): number {
