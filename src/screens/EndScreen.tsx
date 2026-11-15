@@ -1,9 +1,11 @@
 // Content for the end-of-fight overlay: the moves learned and where to go next.
 import { useEffect } from "react";
 import { MOVES } from "../moves/registry";
+import { narrateResult } from "./hookups";
 
 export function EndPanel(props: {
   won: boolean;
+  enemyId: string;
   mastery: Readonly<Record<string, number>>;
   /** Called once when the panel appears, so the flow records the result. */
   onShown: () => void;
@@ -11,7 +13,8 @@ export function EndPanel(props: {
   onMap: () => void;
   onStyle: () => void;
 }) {
-  const { onShown } = props;
+  const { onShown, enemyId, won } = props;
+  useEffect(() => narrateResult(enemyId, won), [enemyId, won]);
   useEffect(() => { onShown(); }, [onShown]);
   const learned = Object.entries(props.mastery)
     .filter(([, count]) => count > 0)
