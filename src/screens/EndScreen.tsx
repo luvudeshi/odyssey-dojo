@@ -1,9 +1,11 @@
 // Content for the end-of-fight overlay: the moves learned and where to go next.
 import { useEffect } from "react";
 import { MOVES } from "../moves/registry";
+import { narrateResult } from "./hookups";
 
 export function EndPanel(props: {
   won: boolean;
+  enemyId: string;
   mastery: Readonly<Record<string, number>>;
   /** Called once when the panel appears, so the flow records the result. */
   onShown: () => void;
@@ -11,13 +13,29 @@ export function EndPanel(props: {
   onMap: () => void;
   onStyle: () => void;
 }) {
-  const { onShown } = props;
+  const { onShown, enemyId, won } = props;
+  useEffect(() => narrateResult(enemyId, won), [enemyId, won]);
   useEffect(() => { onShown(); }, [onShown]);
   const learned = Object.entries(props.mastery)
     .filter(([, count]) => count > 0)
     .map(([id, count]) => ({ name: MOVES.get(id)?.name ?? id, count }));
   return (
     <>
+      <div className="vase-scene" aria-hidden="true">
+        {props.won ? (
+          <>
+            <i className="laurel" />
+            <i className="ship" />
+            <i className="laurel flip" />
+          </>
+        ) : (
+          <>
+            <i className="palmette" />
+            <i className="owl" />
+            <i className="palmette" />
+          </>
+        )}
+      </div>
       <p>{props.won ? "The way onward is open." : "The gods turn their faces away. Rise and try again."}</p>
       <div className="learned">
         <h2>Moves learned</h2>
@@ -26,8 +44,8 @@ export function EndPanel(props: {
         )}
       </div>
       {!props.won && <button autoFocus onClick={props.onRetry}>Fight again</button>}
-      <button autoFocus={props.won} onClick={props.onMap}>{props.won ? "Back to the map" : "Map"}</button>
-      <button onClick={props.onStyle}>Change style</button>
+      <button className={props.won ? "" : "quiet"} autoFocus={props.won} onClick={props.onMap}>{props.won ? "Back to the map" : "Map"}</button>
+      <button className="quiet" onClick={props.onStyle}>Change style</button>
     </>
   );
 }

@@ -44,7 +44,7 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
       <h1>Stand still, arms down</h1>
       <p className="prompt-word">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
       <p className="notice">{hint ? hint.charAt(0).toUpperCase() + hint.slice(1) : "Hold it..."}</p>
-      <button onClick={onSkip}>Use keyboard instead</button>
+      <button className="quiet" onClick={onSkip}>Use keyboard instead</button>
     </div>
   );
 }

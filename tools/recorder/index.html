@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pose recorder</title>
+    <style>
+      body { margin: 0; padding: 16px; background: #14110d; color: #f2e6c9; font: 16px/1.4 system-ui, sans-serif; }
+      h1 { margin: 0 0 4px; font-size: 20px; }
+      p { margin: 0 0 12px; color: #c9b98f; max-width: 640px; }
+      .stage { position: relative; width: 640px; max-width: 100%; aspect-ratio: 4 / 3; background: #000; }
+      .stage video, .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .stage video { transform: scaleX(-1); object-fit: cover; }
+      #count { position: absolute; inset: 0; display: grid; place-items: center; font-size: 120px; font-weight: 700; text-shadow: 0 0 12px #000; pointer-events: none; }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 12px 0; }
+      label { display: grid; gap: 2px; font-size: 13px; color: #c9b98f; }
+      select, input, button { font: inherit; padding: 6px 10px; border-radius: 4px; border: 1px solid #6b5a36; background: #241e15; color: inherit; }
+      button { background: #b8792b; color: #14110d; font-weight: 700; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      #status { min-height: 24px; }
+      #log { margin: 0; padding: 0; list-style: none; font-size: 14px; }
+      #log .good { color: #9fd08a; }
+      #log .bad { color: #ef9a7a; }
+    </style>
+  </head>
+  <body>
+    <h1>Pose recorder</h1>
+    <p>Pick a move, stand still through the countdown, then make the move once. Three seconds are saved as a file. Put the file in <code>tests/fixtures/poses/</code>.</p>
+    <div class="stage">
+      <video id="video" muted playsinline></video>
+      <canvas id="skeleton" width="640" height="480"></canvas>
+      <div id="count"></div>
+    </div>
+    <div class="row">
+      <label>Move <select id="move"></select></label>
+      <label>Person <input id="person" value="someone" size="12" /></label>
+      <button id="record" disabled>Record</button>
+    </div>
+    <div id="status">Starting the camera…</div>
+    <ul id="log"></ul>
+    <script type="module" src="./recorder.ts"></script>
+  </body>
+</html>

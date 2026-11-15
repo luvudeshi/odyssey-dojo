@@ -21,6 +21,10 @@ export interface Baseline {
   readonly centerX: number;
   readonly shoulderY: number;
   readonly shoulderWidth: number;
+  /** Shoulder to shoulder on the 3D body, in metres: the ruler for 3D distances. Left out by code that has no 3D points. */
+  readonly shoulderWidth3d?: number;
+  /** Middle of the shoulders to middle of the hips on the 3D body, in metres: the ruler for 3D heights. */
+  readonly torsoLength3d?: number;
 }
 
 /** About one second of frames, oldest first. */
@@ -177,7 +181,7 @@ export type CombatEvent =
   | { readonly type: "defended"; readonly attack: EnemyAttack }
   | { readonly type: "playerHit"; readonly attack: EnemyAttack; readonly damage: number }
   | { readonly type: "opening"; readonly weakSpot: WeakSpot; readonly move: string }
-  | { readonly type: "enemyHit"; readonly move: string; readonly damage: number; readonly quality: number }
+  | { readonly type: "enemyHit"; readonly move: string; readonly damage: number; readonly quality: number; readonly together?: true }
   | { readonly type: "phaseChanged"; readonly index: number; readonly name: string }
   | { readonly type: "finished"; readonly move: string }
   | { readonly type: "powerUnleashed"; readonly damage: number }

@@ -1,5 +1,6 @@
-import type { MoveDef, PoseFrame, PoseHistory } from "../../core/types";
-import { JOINT, armOut, distance2d, elbowAngle, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import type { Baseline, MoveDef, PoseFrame, PoseHistory } from "../../core/types";
+import { JOINT, distance2d, elbowAngle, joint, latest, recent, shoulderWidth } from "../../pose/signals";
+import { armOut } from "../handSignals";
 
 type Side = "left" | "right";
 
@@ -10,17 +11,17 @@ function handToShoulder(frame: PoseFrame, side: Side): number {
   return distance2d(wrist, joint(frame.image, left ? JOINT.leftShoulder : JOINT.rightShoulder)) / shoulderWidth(frame);
 }
 
-function drawn(frame: PoseFrame, bow: Side, pull: Side): boolean {
-  return armOut(frame, bow) && handToShoulder(frame, pull) < 0.6 && elbowAngle(frame, pull) < 100;
+function drawn(frame: PoseFrame, bow: Side, pull: Side, baseline: Baseline | null): boolean {
+  return armOut(frame, bow, baseline) && handToShoulder(frame, pull) < 0.6 && elbowAngle(frame, pull) < 100;
 }
 
 function released(history: PoseHistory, bow: Side, pull: Side): boolean {
   const frame = latest(history);
   // The string hand has to clear its shoulder by more than the draw allows, so a shaky draw is not a release.
-  if (!frame || !armOut(frame, bow) || handToShoulder(frame, pull) < 0.75) return false;
+  if (!frame || !armOut(frame, bow, history.baseline) || handToShoulder(frame, pull) < 0.75) return false;
   let since: number | null = null;
   for (const old of recent(history, 500)) {
-    if (!drawn(old, bow, pull)) {
+    if (!drawn(old, bow, pull, history.baseline)) {
       since = null;
     } else {
       since ??= old.t;
