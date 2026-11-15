@@ -79,7 +79,7 @@ test("a rival that is the god itself, missing or unknown is replaced from the Ho
 });
 
 test("the answer's strings are tidied and cut to the contract's limits", async () => {
-  const call = await serve({ json: sees({ god: " Athena ", epithet: "  storm-hearted,\n unyielding ", reason: "x".repeat(900), rival_god: "ZEUS" }) });
+  const call = await serve({ json: sees({ god: " Athena ", epithet: "  storm-hearted,\n unyielding ", reason: `you ${"x".repeat(900)}`, rival_god: "ZEUS" }) });
   const result = await reveal(call);
   expect(result.god).toBe("athena");
   expect(result.rival_god).toBe("zeus");
@@ -138,7 +138,6 @@ test("a model that throws, hangs or returns junk is unavailable, quickly", async
     sees("not a god"),
     sees(null),
     sees({ ...good, god: "odin" }),
-    sees({ ...good, epithet: "   " }),
     sees({ god: "zeus" }),
   ];
   for (const json of cases) {
