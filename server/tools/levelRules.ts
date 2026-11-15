@@ -1,6 +1,6 @@
 // The rules levelClips.ts works by: which clips are voice, what is out of tolerance, how a clip is fixed, and the
 // tables in docs/audio-levels.md. Pure: no files and no ffmpeg, so the tests run it. The doc explains every number.
-import { CUE_CLIPS, CUE_LOUDNESS, CUE_PEAK, DEFEND_GAIN, UNLOCK_CLIP, UNLOCK_GAIN } from "../../src/audio/cues";
+import { CUE_CLIPS, CUE_LOUDNESS, CUE_PEAK, cueGain } from "../../src/audio/cues";
 
 /** Athena's own lines are brought to this loudness. It is the median of her clips as they were first made. */
 export const ATHENA_TARGET_LUFS = -15.5;
@@ -50,7 +50,11 @@ const POWER = { gain: 0.7, loudness: 0.13, peak: 0.9 };
 const MUSIC_VOLUME = 0.7;
 /** voice.ts: TAUNT_VOLUME. A monster's taunt is spoken on its own channel, under Athena's calls. */
 const TAUNT_VOLUME = 0.7;
-/** The unlock chime and the defend sounds (src/audio/cues.ts). They are in the effects folder but are levelled when they load. */
+/**
+ * The unlock chime, the defend sounds and the two sounds of a phase change (src/audio/cues.ts). They are in the effects
+ * folder but are levelled when they load. The phase horn drops to less than half after 0.3 s (PHASE_TAIL), which the
+ * numbers here leave out: they give the level it comes in at.
+ */
 const isCue = (path: string): boolean => path.split("/")[0] === "sfx" && CUE_CLIPS.includes(nameOf(path));
 
 export interface Measure {
@@ -101,7 +105,7 @@ export function groupOf(path: string): string {
   const folder = path.split("/")[0] ?? "";
   if (folder === "athena" && targetFor(path) !== ATHENA_TARGET_LUFS) return nameOf(path).startsWith("taunt_") ? "athena (Polyphemus)" : "athena (Homer)";
   if (folder === "stops") return nameOf(path) === "ambience" ? "stops (ambience)" : "stops (events)";
-  if (isCue(path)) return "sfx (unlock and defends)";
+  if (isCue(path)) return "sfx (unlock, defends and phase change)";
   return folder;
 }
 
@@ -115,7 +119,7 @@ export function playbackDb(path: string, rms: number, peak: number): number {
   };
   let gain = name.startsWith("taunt_") && targetFor(path) !== null ? TAUNT_VOLUME : 1;
   if (folder === "sfx") gain = (SFX_LEVELS[name] ?? 1) * SFX_MASTER;
-  if (isCue(path)) gain = level(CUE_LOUDNESS, CUE_PEAK) * (name === UNLOCK_CLIP ? UNLOCK_GAIN : DEFEND_GAIN);
+  if (isCue(path)) gain = level(CUE_LOUDNESS, CUE_PEAK) * cueGain(name);
   if (folder === "music") gain = level(MUSIC_LOUDNESS[name] ?? rms, Number.POSITIVE_INFINITY) * MUSIC_GAIN * MUSIC_VOLUME;
   if (folder === "stops") {
     gain = name === "ambience"
