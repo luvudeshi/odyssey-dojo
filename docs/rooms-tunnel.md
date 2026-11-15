@@ -112,7 +112,7 @@ on a QR code on a screen, so treat it as public.
 Reachable through the tunnel:
 
 - The game page and its files.
-- Inside a room, under `/api/rooms/<code>/`: join it, send and receive its messages. A room has a four-letter code and
+- Inside a room, under `/api/rooms/<code>/`: join it, send and receive its messages, leave it. A room has a four-letter code and
   each member a secret token. A message is at most 16 KB and a room ends after 30 minutes without use.
 - `/api/rooms/address`, which gives the address the QR code uses. Through the tunnel that is the tunnel's own address.
 - Replay pages with their card and video, under `/replays/<id>`, for anyone who knows a replay's 10-character id. The
@@ -135,8 +135,8 @@ week. Guests behind one router, such as a venue's Wi-Fi, share one address throu
 
 What is still open to a stranger with the address:
 
-- Take the guest seat of a room whose code they see or guess. The seat is not given back when a guest leaves
-  (`server/lib/rooms.ts`), so the host has to make a new room. This is not fixed here.
+- Take the guest seat of a room whose code they see or guess. The seat is given back when that guest says it is
+  leaving, or 20 seconds after its page stops asking (`server/lib/rooms.ts`).
 - Many addresses together can still try codes faster than one.
 - Watch a replay whose id they know.
 
@@ -315,6 +315,21 @@ on the hosted copy since PR 371) and from the laptop's Wi-Fi address (a proxy on
 `server/tests/publicRooms.test.ts` holds the same rules. Not checked: the real Caddy, Docker and Vercel, so what they
 write in `X-Forwarded-For` comes from their documentation, and a room made and fought through the public site. If the
 Caddyfile ever gets `trusted_proxies`, check the last entry again.
+
+## Leaving a room: `POST /api/rooms/<code>/leave`
+
+A page that only closes is noticed 20 seconds later (`AWAY_MS`), and behind Vercel its stream never closes at all. So a
+member can say it is going: body `{"token":"<its token>"}`, sent with `navigator.sendBeacon` as the page goes. The body
+is read as JSON whatever its label (a beacon sends a string as `text/plain`), up to 1 KB. The answer is
+`200 {"left":true}`. The other member hears `{"type":"peer","joined":false}` at once, as when a stream closes. A guest's
+seat is free at once and its token stops working; the host keeps its seat and token and is back with its next poll.
+Every leave that names no seat (wrong code, room gone, wrong token, a guest leaving twice) gets `404 {"error":"not_in_room"}`.
+Those count with wrong sends and streams (20 a minute for one address, then 429), and every leave counts as a poll.
+It is a room path, so the guard lets it through the tunnel and, with `PUBLIC_ROOMS=1`, through the proxy.
+Checked over HTTP with two long-polling members, flag off (this machine, and with `X-Forwarded-For`) and flag on: the
+host's poll said the guest left 5 ms after the leave and a new join got the seat at once. Without the call, on the
+same script, the new join was refused for 20.9 seconds. `server/tests/roomsLeave.test.ts` holds the rules.
+Not checked: a real browser's beacon, and the call through the real Vercel and Caddy.
 
 ## Known limit: Cloudflare says quick tunnels do not carry event streams
 

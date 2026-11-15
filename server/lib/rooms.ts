@@ -31,6 +31,7 @@ export const POLL_HOLD_MS = 20_000;
 /**
  * A member with no stream open and no poll for this long has gone: the other member is told, and a guest's seat is
  * given back so a new guest can join. A reconnect with the same token inside this time keeps the seat. The host's seat is never given back.
+ * A member that says it is leaving (`leave`) does not wait for this.
  */
 export const AWAY_MS = 20_000;
 /** No I, L or O: a code read aloud or off a screen cannot be mistyped. 23^4 = 279,841 codes; ./roomLimits has the guessing odds. */
@@ -41,7 +42,7 @@ export type RelayMessage = Readonly<Record<string, unknown>>;
 export interface Listener {
   /** `seq` is the message's number at this seat; a stream sends it as the event id. */
   readonly message: (message: RelayMessage, seq: number) => void;
-  /** The room is gone, or this member opened a newer stream. */
+  /** The room is gone, this member opened a newer stream, or it said it is leaving. */
   readonly end: () => void;
 }
 export interface Attached { readonly peerJoined: boolean; readonly detach: () => void }
@@ -282,6 +283,31 @@ export function createRoomStore(now: () => number = Date.now) {
           if (answer) reply(result());
         },
       };
+    },
+    /**
+     * The member says it is going (its page is closing): what AWAY_MS would do, done now. Its stream and its held
+     * poll are ended. A guest's seat is free at once and its token stops working, so it joins as new if it comes
+     * back. The host keeps its seat and its token, as after any other absence, and is here again with its next
+     * stream or poll. The other member hears "peer: false" if it had been told this one was here.
+     * Leaving is not use of the room: a room that both have left can go to the next create.
+     */
+    leave: (code: string, token: string): "left" | Refusal => {
+      const found = seat(code, token);
+      if (typeof found === "string") return found;
+      const { room, self, other } = found;
+      const stream = self.listener;
+      const held = self.poll;
+      const told = self.here;
+      self.listener = null;
+      self.poll = null;
+      self.here = false;
+      self.seenMs = now();
+      if (self !== room.host) room.guest = null;
+      const peer = other();
+      if (told && peer !== null) deliver(peer, peerEvent(false));
+      stream?.end();
+      held?.reply(held.result());
+      return "left";
     },
     /**
      * A message sent while the other member is not connected is "dropped": it is kept for a poll to read, but the sender is told nobody got it.
