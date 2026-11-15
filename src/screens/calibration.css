@@ -17,5 +17,3 @@
 }
 .calibration-guide span { background: var(--st-abyss); padding: 0 0.5rem; }
 .calibration-guide[data-ok="true"] { border: 3px solid var(--st-ink); color: var(--st-ink); box-shadow: 0 0 14px var(--st-bronze); }
-/* The Skip button on the god scan: always in the same corner, above the scan's own content. */
-.pb-btn.scan-skip { position: fixed; top: 24px; right: 26px; z-index: 20; }
