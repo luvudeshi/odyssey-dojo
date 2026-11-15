@@ -2,7 +2,7 @@
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
-import { clipUrl } from "./athenaLines";
+import { clipUrl, phaseLineId } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
@@ -29,8 +29,8 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
     case "playerHit":
       return pick(WARNINGS, random);
     case "phaseChanged":
-      // Index 0 is where the fight starts; only later phases get a line.
-      return event.index > 0 ? `phase_${String(event.index)}` : null;
+      // Index 0 is where the fight starts; only later phases get a line, picked by the phase's own name.
+      return event.index > 0 ? phaseLineId(event.name) : null;
     case "won":
       return "win";
     case "lost":
