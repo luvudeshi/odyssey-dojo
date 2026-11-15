@@ -52,7 +52,7 @@ const SCREEN_TIMEOUT_MS = 15_000;
 const SHOT_CARD = 5;
 const SHOT_AFTER_MS = 500;
 /** The main menu's way in without a webcam: the name of the link under the four cards (src/screens/MainMenu.tsx). */
-const KEYBOARD_LINK = "Play on the keyboard instead";
+const STORY_CARD = /^Story mode/;
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(`--${name}`);
@@ -184,20 +184,21 @@ async function waitForButton(page, texts, what) {
 }
 
 /**
- * Main menu -> "Play on the keyboard instead" -> the style -> this stop on the map -> fight. A stop on the map
+ * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the style -> this stop on the map -> fight. A stop on the map
  * starts its fight at once. Returns the name of the style picked, or null when the map keeps this stop locked (a stop
  * with no 3D model stays locked, see `playable` in flow.ts). `style` null means the first style the screen offers.
  *
- * Nothing here reads a heading or a CSS look. The keyboard link is the button with that name (see MainMenu.tsx), the
+ * Nothing here reads a heading or a CSS look. Story mode is the button whose name starts with that (see MainMenu.tsx), the
  * style card is the button that starts with a style's name, the stop is the button that holds the stop's place or its
  * monster's name: those two texts come from the game's own definitions in src/. A locked stop is a disabled button.
  */
 async function enterFight(page, base, stop, style, styles, query) {
+  // Keyboard play is the "Play with" setting (Account, Settings), so Story mode starts on the keys and asks for no camera.
+  await page.addInitScript(() => { localStorage.setItem("odyssey-dojo.settings", JSON.stringify({ controls: "keyboard" })); });
   await page.goto(`${base}/?stop=${stop.id}${query ? `&${query}` : ""}`);
-  // The main menu: the small link under the four cards. The cards start the webcam, so there is no fallback.
-  const keyboard = page.getByRole("button", { name: KEYBOARD_LINK, exact: true });
-  await keyboard.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the main menu has no "${KEYBOARD_LINK}" button`); });
-  await keyboard.click();
+  const story = page.getByRole("button", { name: STORY_CARD });
+  await story.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("the main menu has no Story mode card"); });
+  await story.click();
 
   const offered = style ? [style] : styles;
   const card = await waitForButton(page, offered.map((one) => one.name), "the style screen");
@@ -499,7 +500,7 @@ ${parts.map(section).join("\n\n")}
 
 ## How to read it
 
-- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu, "${KEYBOARD_LINK}", the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
+- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
 - The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name. The keyboard link on the main menu is found by its name. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).

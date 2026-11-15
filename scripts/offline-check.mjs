@@ -228,15 +228,17 @@ async function playFight(page, log, maxMs) {
   }
 }
 
-/** Main menu -> "Play on the keyboard instead" -> first style -> first stop (its click starts the fight) -> the fight to its end -> back to the map. */
+/** Main menu -> Story mode, with the "Play with" setting on Keyboard -> first style -> first stop (its click starts the fight) -> the fight to its end -> back to the map. */
 async function keyboardPass(browser, base, log, maxMs) {
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   await guard(context, log, "keyboard");
   const page = await context.newPage();
   listen(page, log, "keyboard");
+  // Keyboard play is the "Play with" setting (Account, Settings), so Story mode starts on the keys and asks for no camera.
+  await page.addInitScript(() => { localStorage.setItem("odyssey-dojo.settings", JSON.stringify({ controls: "keyboard" })); });
   log.stage = "title";
   await page.goto(base, { waitUntil: "load" });
-  const keyboard = page.getByRole("button", { name: "Play on the keyboard instead", exact: true });
+  const keyboard = page.getByRole("button", { name: /^Story mode/ });
   await keyboard.waitFor();
   await page.waitForTimeout(1500);
   const fonts = {
