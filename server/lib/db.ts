@@ -113,7 +113,9 @@ function decoded(part: string): string {
 
 /**
  * What the driver is given: the parts of the address one by one, the limits, and how to encrypt. The address's other
- * parameters are not passed on, and with every part named here the driver reads none of them from PG* variables.
+ * parameters are not passed on. The driver still fills what is blank here from the PG* variables of the machine: a
+ * part the address leaves empty (an address with no password takes PGPASSWORD), and PGOPTIONS always, since no
+ * options are named. A Tiger Data string has every part, so on the demo laptop that leaves PGOPTIONS; keep it unset.
  */
 export function poolSettings(url: string, tls: ConnectionOptions | false, limits: { readonly connectMs: number; readonly queryMs: number }): PoolConfig {
   const parsed = new URL(url);
