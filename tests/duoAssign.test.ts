@@ -2,7 +2,7 @@
 // All frames are made up: no camera.
 import { expect, test } from "vitest";
 import type { Landmark } from "../src/core/types";
-import { JOIN_MS, LEAVE_MS, MIN_SHOULDERS, PROMOTE_MS, STOPPED_MS, createSeating } from "../src/duo/assign";
+import { BEHIND, JOIN_MS, LEAVE_MS, MIN_SHOULDERS, PROMOTE_MS, STOPPED_MS, createSeating } from "../src/duo/assign";
 import type { Seats } from "../src/duo/assign";
 import { createDuoCamera } from "../src/duo/duoCamera";
 import { homeOf } from "../src/duo/split";
@@ -137,6 +137,43 @@ test("a body in the background, a body with hidden shoulders and one person foun
     const { out } = run(seating, times(JOINED, () => [body(0.3), extra]));
     expect(out.every((seats) => at(seats.first) === 0.3 && seats.second === null && seats.players === 1)).toBe(true);
   }
+});
+
+test("someone standing well behind the player never joins; a friend a little further back does", () => {
+  const seating = createSeating();
+  // The player's shoulders are 20% of the picture; the one watching from behind, 7%.
+  const { out, t } = run(seating, times(3 * JOINED, () => [body(0.3, 0.5, 0.2), body(0.7, 0.4, 0.07)]));
+  expect(out.every((seats) => at(seats.first) === 0.3 && seats.players === 1)).toBe(true);
+  expect(seating.players(t)).toBe(1);
+  // The player turns the body in a punch and the shoulders are narrow for a moment: the one behind is still not in.
+  const turned = run(seating, [...times(8, () => [body(0.3, 0.5, 0.08), body(0.7, 0.4, 0.07)]), ...times(JOINED, () => [body(0.3, 0.5, 0.2), body(0.7, 0.4, 0.07)])], t);
+  expect(turned.out.every((seats) => seats.players === 1)).toBe(true);
+  // A friend standing a step further back than the player joins as before.
+  seating.reset();
+  const friend = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.2), body(0.7, 0.45, 0.2 * BEHIND + 0.01)]));
+  expect(friend.out.at(-1)?.players).toBe(2);
+});
+
+test("a second player who walks in turned sideways joins once they face the camera, and stays in when they turn", () => {
+  const seating = createSeating();
+  // Narrow shoulders for longer than the join takes: not in yet.
+  const sideways = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.14), body(0.7, 0.5, 0.065)]));
+  expect(sideways.out.every((seats) => seats.players === 1)).toBe(true);
+  const facing = run(seating, times(3, () => [body(0.3, 0.5, 0.14), body(0.7, 0.5, 0.13)]), sideways.t);
+  expect(facing.out.map((seats) => seats.players)).toEqual([2, 2, 2]);
+  // In the fight their shoulders go narrow in a punch, and the hero leans in close: nobody is put out.
+  const punch = run(seating, times(20, () => [body(0.3, 0.5, 0.22), body(0.7, 0.5, 0.065)]), facing.t);
+  expect(punch.out.every((seats) => seats.players === 2)).toBe(true);
+});
+
+test("the hero stepping back from the computer lets the friend behind them in", () => {
+  const seating = createSeating();
+  // The one who pressed the button is still at the computer (shoulders 30% of the picture); the friend waits at 12%.
+  const close = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.3), body(0.7, 0.5, 0.12)]));
+  expect(close.out.at(-1)?.players).toBe(1);
+  // They step back beside the friend: within two seconds both are playing.
+  const back = run(seating, times(60, () => [body(0.3, 0.5, 0.13), body(0.7, 0.5, 0.12)]), close.t);
+  expect(back.out.at(-1)?.players).toBe(2);
 });
 
 test("with three people the two nearest the camera play", () => {
