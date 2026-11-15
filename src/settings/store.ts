@@ -18,7 +18,10 @@ export interface Settings {
 
 export const SETTINGS_KEY = "odyssey-dojo.settings";
 
-export const DEFAULT_SETTINGS: Settings = { controls: "camera", quality: "high", musicVolume: 0.7, sfxVolume: 1, voiceVolume: 1, mirror: true, keyHints: true };
+/** The camera a fight is handed: none while Play with says Keyboard, even if the camera of the session is still running. */
+export const cameraUnder = <T>(controls: Settings["controls"], tracker: T | null): T | null => (controls === "keyboard" ? null : tracker);
+
+export const DEFAULT_SETTINGS: Settings ={ controls: "camera", quality: "high", musicVolume: 0.7, sfxVolume: 1, voiceVolume: 1, mirror: true, keyHints: true };
 
 const volume = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
