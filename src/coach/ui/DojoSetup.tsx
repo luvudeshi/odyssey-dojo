@@ -110,10 +110,8 @@ export function DojoSetup(props: DojoSetupProps) {
             ))}
           </div>
         </fieldset>
-        <div className="dojo-set-foot">
-          <p className="dojo-set-camera">{camera ? "The camera is on: stand where it sees your whole body." : "No camera: you will press a key for each move."}</p>
-          <button type="button" className="set-btn set-btn--primary dojo-set-button dojo-set-start" autoFocus disabled={picked.length === 0} onClick={begin}>Start training</button>
-        </div>
+        <p className="dojo-set-camera">{camera ? "The camera is on: stand where it sees your whole body." : "No camera: you will press a key for each move."}</p>
+        <button type="button" className="set-btn set-btn--primary dojo-set-button dojo-set-start" autoFocus disabled={picked.length === 0} onClick={begin}>Start training</button>
       </section>
     </div>
   );
