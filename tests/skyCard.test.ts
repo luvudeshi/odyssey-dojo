@@ -1,0 +1,44 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { keyLabel } from "../src/hud/Hud";
+import { SkyPromptCard } from "../src/hud/sky/SkyPromptCard";
+import { MOVES } from "../src/moves/registry";
+
+function move(id: string) {
+  const m = MOVES.get(id);
+  if (!m) throw new Error(`no move ${id}`);
+  return m;
+}
+
+describe("SkyPromptCard at every mastery level", () => {
+  for (const successes of [0, 2, 6]) {
+    for (const id of ["hook", "block", "dodge_left"]) {
+      it(`${id} at ${String(successes)} successes shows the word, the key and the timer`, () => {
+        const m = move(id);
+        const html = renderToStaticMarkup(createElement(SkyPromptCard, { move: m, target: "t", successes, left: 0.5 }));
+        expect(html).toContain(m.prompt);
+        expect(html).toContain(`<kbd>${keyLabel(m.key)}</kbd>`);
+        expect(html).toContain('role="meter"');
+        expect(html).toContain('aria-valuenow="50"');
+        expect(html.includes("HOLD")).toBe(m.kind === "defend");
+        expect(html.includes("stick")).toBe(successes < 2);
+      });
+    }
+  }
+});
+
+describe("SkyPromptCard kinds", () => {
+  it("tells DEFEND, STRIKE and FINISH apart by tag word and shape class", () => {
+    const render = (id: string, finisher: boolean) => renderToStaticMarkup(createElement(SkyPromptCard, { move: move(id), target: "t", successes: 0, left: 1, finisher }));
+    const defend = render("dodge_left", false), strike = render("hook", false), finish = render("hook", true);
+    expect(defend).toContain("DEFEND");
+    expect(defend).toContain("sky-card--defend");
+    expect(strike).toContain("STRIKE");
+    expect(strike).toContain("sky-card--strike");
+    expect(finish).toContain("FINISH");
+    expect(finish).toContain("sky-card--finish");
+    expect(finish).toContain("sky-card__burst");
+    expect(strike).not.toContain("sky-card__burst");
+  });
+});
