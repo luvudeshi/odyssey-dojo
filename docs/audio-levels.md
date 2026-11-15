@@ -279,7 +279,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | athena | 50 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
 | athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
-| music | 5 | -14.5 | -11.0 | -9.8 | 4.7 | -26.8 (-30.8 to -23.1) |
+| music | 5 | -16.4 | -11.0 | -9.8 | 6.6 | -26.8 (-30.5 to -23.1) |
 | narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
 | power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
 | sfx (unlock, defends and phase change) | 7 | -41.1 | -23.2 | -10.7 | 30.4 | -21.1 (-25.5 to -17.2) |
@@ -294,7 +294,7 @@ None.
 
 ### Out of line
 
-- `music/menu.mp3`: -4.0 LU from the median of music at the listener
+- `music/menu.mp3`: -3.6 LU from the median of music at the listener
 - `music/win.mp3`: +3.7 LU from the median of music at the listener
 - `power/hermes.mp3`: -3.1 LU from the median of power at the listener
 - `sfx/phaseChanged.mp3`: -4.4 LU from the median of sfx (unlock, defends and phase change) at the listener
@@ -395,7 +395,7 @@ None.
 | `music/boss.mp3` | 139.57 | -12.6 | 1.3 | 15 | 602 | -14.1 | -26.7 |
 | `music/fight.mp3` | 128.05 | -10.2 | 0.9 | 25 | 772 | -17.3 | -27.5 |
 | `music/loss.mp3` | 7.55 | -9.8 | -1.4 | 206 | 1275 | -17.0 | -26.8 |
-| `music/menu.mp3` | 156.06 | -14.5 | -0.1 | 448 | 2367 | -16.3 | -30.8 |
+| `music/menu.mp3` | 201.06 | -16.4 | -0.2 | 22 | 1316 | -14.1 | -30.5 |
 | `music/win.mp3` | 6.03 | -11.0 | -1.0 | 24 | 1757 | -12.1 | -23.1 |
 
 ### narration

@@ -7,6 +7,7 @@
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
 import { setPowerSound, sharedAudioContext } from "./sfx";
+import { tapClip } from "./soundTap";
 import { stopClipLevel } from "./stopAudio";
 
 const CLIP_DIR = "/audio/power";
@@ -158,6 +159,7 @@ export function playPowerSound(): boolean {
     const level = context.createGain();
     level.gain.value = clip.level * POWER_GAIN * unit(getSettings().sfxVolume);
     source.connect(level).connect(context.destination);
+    tapClip(level);
     const delay = Object.hasOwn(POWER_DELAY, held.god) ? (POWER_DELAY[held.god] ?? 0) : 0;
     const now = context.currentTime;
     source.start(Number.isFinite(now) && delay > 0 ? now + delay : 0, clip.offset);

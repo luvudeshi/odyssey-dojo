@@ -183,4 +183,4 @@ Play it at `[confirm: live demo URL]`. Open the Training Dojo first.
 
 *Sources: martial arts participation from the Sports & Fitness Industry Association's 2024 report, as cited by [Gymdesk](https://gymdesk.com/blog/martial-arts-industry-statistics). The ten sources behind the move lines are in `docs/moves.md`.*
 
-*Credits: skies and textures from [Poly Haven](https://polyhaven.com) (CC0). Hero and Polyphemus models by Quaternius (CC0). Voices, sound effects and stings generated with ElevenLabs. Music: "The Paladin's Underworld", "Passage Of Arms" and "The Fall Of Heroes" by Shane Ivers (https://www.silvermansound.com), CC BY 4.0. Pose tracking by Google MediaPipe (Apache License 2.0). The full list is in `CREDITS.md`.*
+*Credits: skies and textures from [Poly Haven](https://polyhaven.com) (CC0). Hero and Polyphemus models by Quaternius (CC0). Voices, sound effects and stings generated with ElevenLabs. Music: "The Rise Of Heroes", "Passage Of Arms" and "The Fall Of Heroes" by Shane Ivers (https://www.silvermansound.com), CC BY 4.0. Pose tracking by Google MediaPipe (Apache License 2.0). The full list is in `CREDITS.md`.*

@@ -8,6 +8,7 @@ import { getSettings, subscribeSettings } from "../settings/store";
 import type { LoopPoints } from "./music";
 import { clipLevel, seamLoop } from "./music";
 import { sharedAudioContext } from "./sfx";
+import { tapSound } from "./soundTap";
 import { tabHidden } from "./tab";
 import { watchVoice } from "./voice";
 import { stopAmbience, stopClipFor, stopClipKey, stopClips } from "./stopSounds";
@@ -285,9 +286,11 @@ function createRig(): Rig | null {
     appliedTarget = ambienceGain(applied.music, speaking, paused);
     ambienceBus.gain.value = appliedTarget;
     ambienceBus.connect(context.destination);
+    tapSound(ambienceBus);
     const eventBus = context.createGain();
     eventBus.gain.value = EVENT_GAIN * applied.sfx;
     eventBus.connect(context.destination);
+    tapSound(eventBus);
     const active = { context, ambienceBus, eventBus };
     context.addEventListener("statechange", () => {
       sync(active);
