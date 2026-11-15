@@ -67,7 +67,19 @@ Added later the same day: six clips in `public/audio/power`, one for each god, m
 - **At the listener they sit between -22.0 and -16.7 LUFS, median -18.9.** The usual power sound they replace (`sfx/powerUnleashed`) is at -20.4, a hit on the enemy (`sfx/enemyHit`) at -19.9, the finishing blow (`sfx/finished`) at -16.7 and Athena at -15.6. So the power is a little over the hit sounds and still under her voice.
 - **None can clip by itself.** Athena's, Hermes's and Zeus's are held by the peak rule, so their loudest sample is 0.63 at the output (0.9 times 0.7). The other three are held by the loudness and peak lower: Artemis's at 0.62, Apollo's at 0.58, Poseidon's at 0.54. A hit sound peaks at 0.24 to 0.45 there.
 - **Hermes's is the quietest, 3.1 LU under the median.** The file peaks at -19.8 dBTP and its loudness is 18 dB under that, so the peak rule stops it at -22.0. Making it louder would take a limiter, and nobody could listen to the result, so it was left.
-- **Two files start late and the game skips that.** `power/zeus.mp3` has 265 ms of silence before the thunder and `power/hermes.mp3` 341 ms. `powerSound.ts` starts each clip at its first sample above -50 dBFS (never more than half a second in), so the sound lands with the power. The lead column below is the file's, not what is heard.
+- **Two files start late and the game skips that.** `power/zeus.mp3` has 265 ms of silence before the thunder and `power/hermes.mp3` 341 ms. `powerSound.ts` starts each clip at its first sample above -50 dBFS (never more than half a second in). The lead column below is the file's, not what is heard.
+- **Each clip is timed to the effect on screen.** The effect winds up for 0.3 s and hits the monster 0.55 to 0.95 s after the power goes off (`POWER_SPAN` in `src/render/effects/power/powerTiming.ts`), so a clip is held back by `POWER_DELAY` until its loud moment is on its beat. `tests/powerSound.test.ts` fails if the effect's times move away from the delays.
+
+| god | loud moment, seconds after the clip's first sound | delay | lands at | the effect's beat |
+|---|---|---|---|---|
+| Zeus | the crack starts at 0.10 (loudest at 0.22) | 0.45 | 0.55 | the bolt hits at 0.55 |
+| Poseidon | loudest at 0.80 (within 6 dB of it from 0.28 to 1.42) | 0.15 | 0.95 | the wave hits at 0.95 |
+| Athena | the clang, 0.00 to 0.04 | 0.70 | 0.70 to 0.74 | the shield hits at 0.75 |
+| Hermes | the rush is loudest from 0.26 to 0.34 | 0.45 | 0.71 to 0.79 | the dash arrives at 0.80 |
+| Artemis | the snap at 0.04 | 0.26 | 0.30 | the arrow leaves at 0.30 and hits at 0.85 |
+| Apollo | loudest at 0.62 (within 6 dB of it from 0.36 to 0.88) | 0.20 | 0.82 | the burst hits at 0.85 |
+
+Nobody has watched and listened to these together: the timing is by the numbers. Artemis's snap is taken for the bowstring because its loudest 20 ms is bright (about 2 kHz), not a low thud; if it sounds like the arrow landing, change her delay to 0.80.
 - **Artemis's clip is half a second of sound and a second of silence.** It is the second of three takes (`server/tools/powerClips.ts` says why). By the numbers it is a sharp snap that dies away in 0.4 s; whether it reads as a bow is for someone to hear.
 - Nobody has listened to any of the six.
 

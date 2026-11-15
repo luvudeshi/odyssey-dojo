@@ -2,7 +2,8 @@
 // The engine's powerUnleashed event does not say whose power it was, so whoever knows the god holds it here for as long
 // as the fight is on screen (the power-ready banner does). sfx.ts asks here first when the event comes; when this plays
 // nothing (no god held, a missing or unloaded clip, audio not running) it plays the usual power sound, so one of the
-// two is heard and never both. Nothing here throws. The audio context is the one the effects use (sfx.ts).
+// two is heard and never both. The clip is timed to the effect on screen (POWER_DELAY). Nothing here throws. The audio
+// context is the one the effects use (sfx.ts).
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
 import { setPowerSound, sharedAudioContext } from "./sfx";
@@ -21,6 +22,22 @@ export const POWER_PEAK = 0.9;
 const SILENCE = 10 ** (-50 / 20);
 /** Never skip more than this: a clip that is quiet for longer is one that swells, not one that starts late. */
 const MAX_SKIP_SECONDS = 0.5;
+/**
+ * How long after the power goes off each god's clip starts, in seconds. The effect on screen winds up for 0.3 s and
+ * hits the monster 0.55 to 0.95 s in (POWER_SPAN in src/render/effects/power/powerTiming.ts), so each clip is held
+ * back until its loud moment lands on the beat it belongs to: the thunder as the bolt hits, the shield's clang as it
+ * hits, the wave's and the blaze's loudest on their hit, the rush of wind as the dash arrives, and the bowstring as
+ * the arrow leaves at the end of the wind-up. docs/audio-levels.md has where each clip's loud moment is. A god not
+ * listed starts at once. tests/powerSound.test.ts fails if the effect's times move away from these.
+ */
+export const POWER_DELAY: Readonly<Partial<Record<string, number>>> = {
+  zeus: 0.45,
+  poseidon: 0.15,
+  athena: 0.7,
+  hermes: 0.45,
+  artemis: 0.26,
+  apollo: 0.2,
+};
 /** A clip that failed to load is asked for again no more often than this. */
 const RETRY_MS = 10_000;
 
@@ -139,7 +156,9 @@ export function playPowerSound(): boolean {
     const level = context.createGain();
     level.gain.value = clip.level * POWER_GAIN * unit(getSettings().sfxVolume);
     source.connect(level).connect(context.destination);
-    source.start(0, clip.offset);
+    const delay = Object.hasOwn(POWER_DELAY, held.god) ? (POWER_DELAY[held.god] ?? 0) : 0;
+    const now = context.currentTime;
+    source.start(Number.isFinite(now) && delay > 0 ? now + delay : 0, clip.offset);
     return true;
   } catch (error) {
     log("warn", "power_sound.playFailed", error);
