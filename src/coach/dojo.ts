@@ -3,7 +3,7 @@
 // ("result"). At the end: the total, the best move, and what to work on with one line on how. Frames and a clock in,
 // state out: no screen here. The screen is ./ui/Dojo. docs/dojo.md has the rules in plain words.
 // Every number is a first guess, not yet tuned on a real body.
-import type { FightingStyle, MoveDef, PoseFrame, PoseHistory } from "../core/types";
+import type { EnemySpec, FightingStyle, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import { MOVES } from "../moves/registry";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
 import type { Assessment, Focus, SkillLevel, StepResult } from "./contract";
@@ -11,7 +11,7 @@ import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
 import type { Grade, GradeTier } from "./grade";
 import { KEYBOARD_REP, PRACTICE_TIPS, judgeRep, summarise } from "./practice";
 import type { RepResult } from "./practice";
-import { AVERAGE_BELOW, BEGINNER_BELOW, STRONG_FROM } from "./warmup";
+import { AVERAGE_BELOW, BEGINNER_BELOW, STRONG_FROM, tuneFor } from "./warmup";
 
 /** Repetitions of each move. Three, not practice's ten: a whole session is about two minutes. */
 export const DOJO_REPS = 3;
@@ -382,4 +382,50 @@ export function assessmentFrom(session: { readonly reps: readonly DojoRep[]; rea
     .filter((report) => mean(session.reps.filter((rep) => rep.moveId === report.moveId).map((rep) => SKILL_VALUE[rep.grade.tier])) >= STRONG_FROM)
     .map((report) => report.moveId);
   return { level: summary.level, focus, strong, habits: [], steps };
+}
+
+/** What a session changes in the fights: the warning before an attack against the usual (1.25 is a quarter more), and the defends the monsters ask for more often. */
+export interface Tuning {
+  readonly warning: number;
+  readonly more: readonly string[];
+}
+
+/** The words for the defends in the tuning line, in the order they are said. Both dodges are one word. */
+const DEFEND_WORDS: readonly (readonly [string, string])[] = [["block", "block"], ["duck", "duck"], ["dodge_left", "dodge"], ["dodge_right", "dodge"]];
+
+/**
+ * What `tuneFor` does to these enemies for this assessment, read off its own output and not off its rules: the
+ * warning is all the tuned warning times over all the plain ones, and a defend is in `more` when an attack it stops
+ * got a heavier weight on any enemy. Hand it the assessment the game keeps (`assessmentFrom` of the session).
+ */
+export function tuningOf(assessment: Assessment, enemies: readonly EnemySpec[]): Tuning {
+  let plainMs = 0;
+  let tunedMs = 0;
+  const raised = new Set<string>();
+  for (const enemy of enemies) {
+    const tuned = tuneFor(enemy, assessment);
+    enemy.attacks.forEach((attack, index) => {
+      const now = tuned.attacks[index] ?? attack;
+      plainMs += attack.telegraphMs;
+      tunedMs += now.telegraphMs;
+      if ((now.weight ?? 1) > (attack.weight ?? 1)) raised.add(attack.counter);
+    });
+  }
+  const more = [...new Set(DEFEND_WORDS.filter(([id]) => raised.has(id)).map(([, word]) => word))];
+  return { warning: plainMs > 0 ? tunedMs / plainMs : 1, more };
+}
+
+/** One plain line for the end screen: what this session changes in the fights. */
+export function tuningLine(assessment: Assessment, enemies: readonly EnemySpec[]): string {
+  const { warning, more } = tuningOf(assessment, enemies);
+  const percent = Math.round((warning - 1) * 100);
+  const pace = percent > 0
+    ? `Monsters will swing slower for you: ${String(percent)}% more warning before every attack.`
+    : percent < 0
+      ? `Monsters will swing faster for you: ${String(-percent)}% less warning before every attack.`
+      : "Monsters will fight at the usual pace.";
+  if (more.length === 0) return pace;
+  const last = more[more.length - 1] ?? "";
+  const list = more.length === 1 ? last : `${more.slice(0, -1).join(", ")} or ${last}`;
+  return `${pace} Expect more attacks you have to ${list}.`;
 }

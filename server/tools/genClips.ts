@@ -9,6 +9,8 @@
 //   npx tsx server/tools/genClips.ts stops           each later stop's ambience and monster sounds
 //                                                    -> public/audio/stops/<enemy id>/<clip>.mp3
 //                                                    (--only=<enemy id>/<clip> makes just that one; --max=<n> caps the calls)
+//   npx tsx server/tools/genClips.ts power           each god's power     -> public/audio/power/<god id>.mp3
+//                                                    (--only=<god id> makes just that one)
 // Existing clips are kept (add --force to redo them). Each folder's index.json lists what exists.
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -20,6 +22,7 @@ import type { AiClients } from "../ai/types";
 import { forcedMonsterVoice, forcedVoice, pickMonsterVoice, pickVoice } from "../ai/voices";
 import { loadConfig } from "../env";
 import { withTimeout } from "../lib/timeout";
+import { POWER_CLIPS } from "./powerClips";
 import { STOP_AMBIENCE_FORMAT, STOP_CLIP_MAX_BYTES, STOP_CLIPS } from "./stopClips";
 
 interface Line {
@@ -300,7 +303,31 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error("usage: genClips.ts voices | athena | story | sfx | music | stops [--force]");
+  if (command === "power") {
+    const folder = join(PUBLIC, "power");
+    mkdirSync(folder, { recursive: true });
+    const only = flags.filter((flag) => flag.startsWith("--only=")).map((flag) => flag.slice("--only=".length));
+    const unknown = only.filter((god) => !Object.hasOwn(POWER_CLIPS, god));
+    if (unknown.length > 0) throw new Error(`no such power clip: ${unknown.join(", ")}`);
+    for (const [god, { prompt, seconds }] of Object.entries(POWER_CLIPS)) {
+      if (only.length > 0 && !only.includes(god)) continue;
+      const target = join(folder, `${god}.mp3`);
+      if (existsSync(target) && !force) continue;
+      try {
+        const bytes = await withTimeout(60000, (signal) => sound({ prompt, seconds, signal }));
+        writeFileSync(target, bytes);
+        log("info", "clip_written", { id: god, bytes: bytes.length });
+      } catch (error) {
+        log("warn", "clip_failed", { id: god, error: error instanceof Error ? error.message : String(error) });
+        // A refused key, a spent quota or a malformed request fails the same way for every clip, so stop spending calls.
+        if (error instanceof ElevenLabsError && (REFUSED.has(error.httpStatus) || error.httpStatus === 422 || error.httpStatus === 429)) throw error;
+      }
+    }
+    writeIndex(folder);
+    return;
+  }
+
+  throw new Error("usage: genClips.ts voices | athena | story | sfx | music | stops | power [--force]");
 }
 
 main().catch((error: unknown) => {

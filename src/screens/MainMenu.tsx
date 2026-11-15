@@ -1,8 +1,10 @@
-// The main menu: Story mode (the quest map), the Training Dojo and the Account, as three cards under the logo.
+// The main menu: Story mode (the quest map), Multiplayer (rooms), the Training Dojo and the Account, as four cards under the logo.
 // Story mode and the dojo start the webcam; the small link under the cards plays on the keyboard instead.
+// Behind them: the storm in Scylla's strait (MenuScene).
 import type { ReactNode } from "react";
 import { speakLine } from "../audio/voice";
 import { Button, Logo, Panel } from "../ui/pebble";
+import { MenuScene } from "./MenuScene";
 
 const SHIP = (
   <>
@@ -16,6 +18,14 @@ const SHIELD = (
     <circle cx="32" cy="32" r="24" />
     <circle cx="32" cy="32" r="15" />
     <path d="M22 41 L32 20 L42 41" />
+  </>
+);
+const PAIR = (
+  <>
+    <circle cx="22" cy="20" r="9" />
+    <circle cx="44" cy="22" r="8" />
+    <path d="M6 54 C6 40 13 34 22 34 C31 34 38 40 38 54" />
+    <path d="M40 36 C51 34 58 42 58 54" />
   </>
 );
 const LAUREL = (
@@ -42,6 +52,7 @@ export function MainMenu(props: {
   problem: string;
   onStory: () => void;
   onKeyboard: () => void;
+  onMultiplayer: () => void;
   onTraining: () => void;
   onAccount: () => void;
 }) {
@@ -49,14 +60,16 @@ export function MainMenu(props: {
   const keyboard = (): void => { speakLine("homer_title"); props.onKeyboard(); };
   return (
     <Panel as="main" ornament className="menu menu--title">
-      <h1 className="sr-only">Odyssey Fighter</h1>
-      <Logo height={Math.min(220, Math.max(140, Math.round(window.innerHeight * 0.27)))} />
+      <MenuScene />
+      <h1 className="sr-only">Odyssey Dojo</h1>
+      <Logo height={Math.min(250, Math.max(130, Math.round(window.innerHeight * 0.22)))} />
       <p className="verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
       <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Your body is the controller.</p>
       <nav className="menu-cards" aria-label="Main menu">
         <Card primary icon={SHIP} name="Story mode" line="The road home to Ithaca, fought with your body" onClick={story} />
-        <Card icon={SHIELD} name="Training Dojo" line="Learn each move and get a grade for every try" onClick={props.onTraining} />
-        <Card icon={LAUREL} name="Account" line="Your name, achievements, friends and settings" onClick={props.onAccount} />
+        <Card icon={PAIR} name="Multiplayer" line="Host a room or join a friend's" onClick={props.onMultiplayer} />
+        <Card icon={SHIELD} name="Training Dojo" line="Learn each move, graded on every try" onClick={props.onTraining} />
+        <Card icon={LAUREL} name="Account" line="Your name, achievements and settings" onClick={props.onAccount} />
       </nav>
       <button className="menu-link" onClick={keyboard}>Play on the keyboard instead</button>
       <p className="notice">{props.notice}</p>

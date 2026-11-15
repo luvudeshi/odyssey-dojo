@@ -1,11 +1,12 @@
-// Join a room: type the four letters, or arrive from a link with the code filled in.
-import { useRef, useState } from "react";
+// Join a room, inside the Multiplayer screen's join card: type the four letters, or arrive from a scanned link with the
+// code filled in.
+import { useEffect, useRef, useState } from "react";
 import { createGuestLink } from "../net/guest";
 import type { GuestLink } from "../net/guest";
 import { cleanCode, joinRoom, openRoom } from "../net/transport";
 import { startTracker } from "../pose/tracker";
 import type { PoseTracker } from "../pose/tracker";
-import { Button, Panel, PebbleHeading } from "../ui/pebble";
+import { Button } from "../ui/pebble";
 import { browserDeps } from "./roomNet";
 import { MODE_TEXT, ROOM_MESSAGES, guestMode } from "./roomUrl";
 import type { GuestMode } from "./roomUrl";
@@ -24,13 +25,18 @@ export interface Joined {
   readonly tracker: PoseTracker | null;
 }
 
-export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined) => void; onBack: () => void }) {
+export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined) => void }) {
   const [code, setCode] = useState(cleanCode(props.initialCode).slice(0, 4));
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
   const mode = detectMode();
   const left = useRef(false);
   const gone = (): boolean => left.current;
+  // The screen was left while a join or the camera prompt was pending: that join must not pull the player into a room.
+  useEffect(() => {
+    left.current = false;
+    return () => { left.current = true; };
+  }, []);
 
   const join = async (useCamera: boolean): Promise<void> => {
     if (busy || code.length !== 4) return;
@@ -55,14 +61,13 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
   };
 
   return (
-    <Panel as="main" ornament className="menu room">
-      <PebbleHeading as="h1" text="Join a room" px={60} tone="ochre" />
+    <div className="room">
       <label htmlFor="room-code">Four letters from your friend</label>
       <input
         id="room-code"
         className="room-input"
         value={code}
-        autoFocus
+        autoFocus={props.initialCode !== ""}
         autoCapitalize="characters"
         autoComplete="off"
         spellCheck={false}
@@ -78,7 +83,6 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
       {mode === "camera" && (
         <Button disabled={busy || code.length !== 4} onClick={() => { void join(false); }}>Join with the keyboard</Button>
       )}
-      <Button onClick={() => { left.current = true; props.onBack(); }}>Back</Button>
-    </Panel>
+    </div>
   );
 }
