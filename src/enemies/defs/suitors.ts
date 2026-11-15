@@ -11,13 +11,13 @@ export const enemy: EnemySpec = {
   order: 4,
   place: "The great hall, Ithaca",
   book: 22,
-  hp: 520,
+  hp: 460,
   strikeWindowMs: 2000,
   attacks: [
-    { id: "spear_left", name: "Thrown spear", telegraphMs: 1400, damage: 11, counter: "dodge_right" },
-    { id: "spear_right", name: "Thrown spear", telegraphMs: 1400, damage: 11, counter: "dodge_left" },
-    { id: "ox_hoof", name: "Flung ox-hoof", telegraphMs: 1500, damage: 10, counter: "duck" },
-    { id: "sword_rush", name: "Sword rush", telegraphMs: 1600, damage: 15, counter: "block" },
+    { id: "spear_left", name: "Thrown spear", telegraphMs: 1400, damage: 8, counter: "dodge_right" },
+    { id: "spear_right", name: "Thrown spear", telegraphMs: 1400, damage: 8, counter: "dodge_left" },
+    { id: "ox_hoof", name: "Flung ox-hoof", telegraphMs: 1500, damage: 6, counter: "duck" },
+    { id: "sword_rush", name: "Sword rush", telegraphMs: 1600, damage: 11, counter: "block" },
   ],
   phases: [
     // They still think you are a beggar: scraps from the table.
