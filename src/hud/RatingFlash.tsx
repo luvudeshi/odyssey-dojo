@@ -5,6 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CombatEvent } from "../core/types";
 import { rating } from "../pose/quality";
 import { battle, nowSeconds } from "../render/battle";
+import { RiftPlate } from "./sky/rift/RiftPlate";
 import { noteTogether } from "./TogetherFlash";
 
 const SHOW_MS = 700;
@@ -76,5 +77,11 @@ export function RatingFlash() {
       window.clearTimeout(timer);
     };
   }, []);
-  return shown && <div className="hb-rating" key={shown.id}>{shown.word}</div>;
+  // Each grade has its own colour and size (top.css reads data-grade), so it reads at a glance; GOOD sits on plain glass.
+  return shown && (
+    <div className="hb-rating" key={shown.id} data-grade={shown.word}>
+      <RiftPlate tone={shown.word === "GOOD" ? "glass" : "lava"} />
+      {shown.word}
+    </div>
+  );
 }
