@@ -82,7 +82,9 @@ export function phaseSlug(name: string): string {
  * The line for a later phase, picked by the phase's own name, so one enemy never hears another's line.
  * A phase with no line gets ANY_PHASE. A phase that happens to be named "1" or "2" does not reach Polyphemus's clips.
  */
-export function phaseLineId(name: string): string {
+export function phaseLineId(name: unknown): string {
+  // Online, the event comes off the network, so a name that is not text gets the generic line and never throws.
+  if (typeof name !== "string") return ANY_PHASE;
   const slug = phaseSlug(name);
   const id = NUMBERED_PHASES.get(slug) ?? `phase_${slug}`;
   return LINE_IDS.has(id) && !/^\d+$/.test(slug) ? id : ANY_PHASE;

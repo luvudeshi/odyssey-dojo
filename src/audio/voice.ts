@@ -145,6 +145,12 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
       }
       finishing = phase?.kind === "finisher";
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
+      // The strike that call asked for has just landed, so it is stale and the phase line may take its place.
+      if (best?.startsWith("phase_") && current?.id.startsWith("call_") && events.some((event) => event.type === "enemyHit")) {
+        current.stop();
+        current = null;
+        onSpeaking(false);
+      }
       if (best !== null) speak(best);
     },
     playing: () => current?.id ?? null,
