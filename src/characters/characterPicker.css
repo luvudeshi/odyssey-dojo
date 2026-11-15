@@ -1,0 +1,50 @@
+/* The character chooser. Colours come from the theme's tokens, pebble names first, then the pottery names, then a
+   plain value, so it reads on either theme and on a page with no theme at all. Cards carry their own dark ground. */
+.character-picker {
+  --cp-ground: var(--pb-ground, var(--ink, #170d08));
+  --cp-ground-2: var(--pb-ground-2, #2a1c14);
+  --cp-text: var(--pb-text, var(--white, #f1e6cf));
+  --cp-dim: var(--pb-text-dim, #d3c7ad);
+  --cp-mark: var(--pb-ochre-light, var(--clay-light, #e9a15f));
+  --cp-focus: var(--pb-focus, var(--white, #f6eedc));
+  --cp-line: var(--bw-line, 2px);
+  width: min(78rem, 100%); margin: 0 auto; padding: 1rem; text-align: center;
+  font-family: var(--pb-font-body, var(--font-display, Optima, "Gill Sans", "Trebuchet MS", sans-serif));
+}
+.character-picker h2 { margin: 0 0 0.3rem; font-size: clamp(1.5rem, 3.4vw, 2.6rem); letter-spacing: var(--track-wide, 0.14em); text-transform: uppercase; line-height: 1.1; }
+.character-picker .character-hint { margin: 0 0 1rem; font-size: 1.05rem; }
+
+.character-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.8rem; }
+
+/* The page's own button rules (width, capitals, hover colours) are for menu buttons; a card undoes them. */
+.character-picker button.character-card {
+  display: flex; flex-direction: column; align-items: stretch; min-width: 0; min-height: 15rem; margin: 0; padding: 0 0 0.9rem;
+  font: inherit; letter-spacing: normal; text-transform: none; text-align: center; cursor: pointer;
+  color: var(--cp-text); background: var(--cp-ground); border: var(--cp-line) solid var(--cp-ground); border-radius: var(--pb-radius, 0);
+  box-shadow: 0 0 0 1px var(--cp-mark); opacity: 0.86; transition: transform 0.12s, opacity 0.12s, box-shadow 0.12s;
+}
+.character-picker button.character-card:hover:not(:disabled) { color: var(--cp-text); background: var(--cp-ground-2); opacity: 1; box-shadow: 0 0 0 2px var(--cp-mark); }
+.character-picker button.character-card:active:not(:disabled) { color: var(--cp-text); background: var(--cp-ground-2); transform: none; }
+.character-picker button.character-card.chosen { opacity: 1; background: var(--cp-ground-2); box-shadow: 0 0 0 4px var(--cp-mark); transform: translateY(-4px); }
+.character-picker button.character-card:focus-visible { outline: 3px solid var(--cp-focus); outline-offset: 6px; }
+
+.character-card .character-preview { display: block; width: 100%; aspect-ratio: 3 / 4; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 38%, #5b4a3d 0%, #2b211b 62%, #17110e 100%); }
+.character-swatch { display: flex; height: 0.5rem; }
+.character-swatch i { flex: 1; }
+.character-name { margin: 0.7rem 0.5rem 0.2rem; font-size: 1.35rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cp-mark); }
+.character-line { margin: 0 0.7rem; font-size: 0.98rem; line-height: 1.3; color: var(--cp-dim); }
+
+.character-picker button.character-done { margin: 1.2rem 0 0; min-height: 3.2rem; box-shadow: 0 0 0 1px var(--cp-mark); }
+.character-picker button.character-done:focus-visible { outline: 3px solid var(--cp-focus); outline-offset: 4px; }
+
+/* Narrow screens and phones: the cards scroll sideways, each still big enough to press. */
+@media (max-width: 860px) {
+  .character-cards { grid-template-columns: repeat(5, minmax(11rem, 1fr)); overflow-x: auto; padding: 0.6rem 0.4rem 1rem; scroll-snap-type: x proximity; }
+  .character-picker button.character-card { scroll-snap-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character-picker button.character-card { transition: none; }
+  .character-picker button.character-card.chosen { transform: none; }
+}
