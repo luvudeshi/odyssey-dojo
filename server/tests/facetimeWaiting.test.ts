@@ -12,7 +12,7 @@ import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Config } from "../env";
 import {
-  CHERT_ROOM, LIST_PARTICIPANTS_PATH, LIST_ROOMS_PATH, NOTE_MAX_AGE_MS, WAITING_ROOM, findChertRoom, mintLookupToken, readRoomFile, readRoomNote, roomFilePath,
+  CHERT_ROOM, DOCTOR_ROOM, LIST_PARTICIPANTS_PATH, LIST_ROOMS_PATH, NOTE_MAX_AGE_MS, WAITING_ROOM, findChertRoom, mintLookupToken, readRoomFile, readRoomNote, roomFilePath,
 } from "../lib/chertWaitingRoom";
 import type { LivekitConfig } from "../lib/facetimeEnv";
 import { readToken } from "../lib/facetimeToken";
@@ -65,9 +65,9 @@ function fakeLivekit(rooms: readonly FakeRoom[], options: { roomsStatus?: number
 describe("the agent's note", () => {
   test("a good note names the waiting room", () => {
     const text = JSON.stringify({ room: WARM, caller: null, ready: false, at: at(30_000) });
-    expect(readRoomNote(text, NOW)).toEqual({ kind: "room", room: { room: WARM, caller: null, ready: false, source: "file" } });
+    expect(readRoomNote(text, NOW)).toEqual({ kind: "room", room: { room: WARM, caller: null, ready: false, source: "file", seated: false } });
     const call = JSON.stringify({ room: WARM, caller: CALLER, ready: true, at: at(1000) });
-    expect(readRoomNote(call, NOW)).toEqual({ kind: "room", room: { room: WARM, caller: CALLER, ready: true, source: "file" } });
+    expect(readRoomNote(call, NOW)).toEqual({ kind: "room", room: { room: WARM, caller: CALLER, ready: true, source: "file", seated: false } });
   });
 
   test("no file, a file that is not the note, and a note that says the room is over all name no room", async () => {
@@ -119,7 +119,7 @@ describe("what the agent writes (scripts/chert/room-note.mjs)", () => {
     // The old room's job ends after the new one has begun. The first agent wrote "no room" here.
     note = noteAfter(note, { room: "chert-warm-OLD", over: true }, NOW + 301_000);
     expect(note).toMatchObject({ room: "chert-warm-NEW", caller: null, ready: false });
-    expect(readRoomNote(JSON.stringify(note), NOW + 302_000)).toEqual({ kind: "room", room: { room: "chert-warm-NEW", caller: null, ready: false, source: "file" } });
+    expect(readRoomNote(JSON.stringify(note), NOW + 302_000)).toEqual({ kind: "room", room: { room: "chert-warm-NEW", caller: null, ready: false, source: "file", seated: false } });
   });
 
   test("during a call the next waiting room is entered too: the note names the call until it is over", () => {
@@ -128,7 +128,7 @@ describe("what the agent writes (scripts/chert/room-note.mjs)", () => {
     note = noteAfter(note, { room: "chert-warm-NEXT" }, NOW + 2000);
     expect(note).toMatchObject({ room: "chert-warm-CALL", caller: CALLER, ready: false });
     note = noteAfter(note, { room: "chert-warm-CALL", caller: CALLER, ready: true }, NOW + 4000);
-    expect(readRoomNote(JSON.stringify(note), NOW + 5000)).toEqual({ kind: "room", room: { room: "chert-warm-CALL", caller: CALLER, ready: true, source: "file" } });
+    expect(readRoomNote(JSON.stringify(note), NOW + 5000)).toEqual({ kind: "room", room: { room: "chert-warm-CALL", caller: CALLER, ready: true, source: "file", seated: false } });
     note = noteAfter(note, { room: "chert-warm-CALL", over: true }, NOW + 60_000);
     expect(note).toMatchObject({ room: "chert-warm-NEXT", caller: null, ready: false });
   });
@@ -164,10 +164,10 @@ describe("asking LiveKit", () => {
       { name: "odyssey-dojo-0123456789ab", created: 800, people: [AGENT] },
       { name: "someone-elses-room", created: 900, people: [AGENT] },
     ]);
-    expect(await findChertRoom({ fetch: livekit.fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: { room: WARM, caller: null, ready: false, source: "livekit" } });
-    // Only reads, and only about Chert's rooms: the game's own rooms and anyone else's are not even looked into.
+    expect(await findChertRoom({ fetch: livekit.fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: { room: WARM, caller: null, ready: false, source: "livekit", seated: false } });
+    // Only reads, and only about Chert's call rooms: the game's own rooms, anyone else's and chert doctor's are not even looked into.
     expect([...new Set(livekit.asked.map((each) => each.path))].sort()).toEqual([LIST_PARTICIPANTS_PATH, LIST_ROOMS_PATH]);
-    expect(livekit.asked.filter((each) => each.path === LIST_PARTICIPANTS_PATH).map((each) => each.body.room).sort()).toEqual(["chert-doctor-AbCd1234", "chert-warm-EMPTY", "chert-warm-NOAGENT", "chert-warm-OLD", WARM].sort());
+    expect(livekit.asked.filter((each) => each.path === LIST_PARTICIPANTS_PATH).map((each) => each.body.room).sort()).toEqual(["chert-warm-EMPTY", "chert-warm-NOAGENT", "chert-warm-OLD", WARM].sort());
     for (const each of livekit.asked) {
       expect(each.claims.sub).toBeUndefined();
       expect(each.claims.video).toEqual(each.path === LIST_ROOMS_PATH ? { roomList: true } : { roomAdmin: true, room: each.body.room });
@@ -179,13 +179,37 @@ describe("asking LiveKit", () => {
       { name: "chert-warm-NEXT", created: 900, people: [AGENT] },
       { name: WARM, created: 400, metadata: READY, people: [AGENT, { identity: CALLER, kind: "STANDARD" }] },
     ];
-    expect(await findChertRoom({ fetch: fakeLivekit(rooms).fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: { room: WARM, caller: CALLER, ready: true, source: "livekit" } });
+    expect(await findChertRoom({ fetch: fakeLivekit(rooms).fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: { room: WARM, caller: CALLER, ready: true, source: "livekit", seated: false } });
     // A call that found no waiting room is put in chert-<operation id>.
     const cold: FakeRoom[] = [{ name: "chert-0b9c2f6e-7a41", created: 950, metadata: '{"chert_call":"0b9c2f6e"}', people: [{ identity: "agent-AJ_x", kind: 4 }, { identity: CALLER }] }];
-    expect(await findChertRoom({ fetch: fakeLivekit(cold).fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: { room: "chert-0b9c2f6e-7a41", caller: CALLER, ready: false, source: "livekit" } });
+    expect(await findChertRoom({ fetch: fakeLivekit(cold).fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: { room: "chert-0b9c2f6e-7a41", caller: CALLER, ready: false, source: "livekit", seated: false } });
     // The same room with no caller yet is not waited in: only chert-warm rooms are.
     const early: FakeRoom[] = [{ name: "chert-0b9c2f6e-7a41", created: 950, people: [AGENT] }];
     expect(await findChertRoom({ fetch: fakeLivekit(early).fetcher, now: () => NOW }, config)).toEqual({ ok: true, room: null });
+  });
+
+  test("a chert doctor room is never named, even with the agent and a caller in it, by LiveKit or by the note", async () => {
+    const doctor: FakeRoom[] = [{ name: "chert-doctor-AbCd1234", created: 950, metadata: READY, people: [AGENT, { identity: CALLER }] }];
+    const livekit = fakeLivekit(doctor);
+    expect(await findChertRoom({ fetch: livekit.fetcher, now: () => NOW }, config, AGENT_IDENTITY)).toEqual({ ok: true, room: null });
+    expect(livekit.asked.map((each) => each.path)).toEqual([LIST_ROOMS_PATH]);
+    // With a real waiting room beside it, that one is named.
+    const both = fakeLivekit([...doctor, { name: WARM, created: 400, people: [AGENT] }]);
+    expect(await findChertRoom({ fetch: both.fetcher, now: () => NOW }, config, AGENT_IDENTITY)).toMatchObject({ ok: true, room: { room: WARM, caller: null } });
+    expect(DOCTOR_ROOM.test("chert-doctor-AbCd1234")).toBe(true);
+    expect(DOCTOR_ROOM.test(WARM) || DOCTOR_ROOM.test("chert-0b9c2f6e-7a41")).toBe(false);
+    expect(readRoomNote(JSON.stringify({ room: "chert-doctor-AbCd1234", caller: CALLER, ready: true, at: at(0) }), NOW)).toEqual({ kind: "none", why: "bad_name" });
+  });
+
+  test("a room the game is in already says so: a second window must not take the seat", async () => {
+    const held: FakeRoom[] = [{ name: WARM, created: 400, people: [AGENT, { identity: AGENT_IDENTITY, kind: "STANDARD" }] }];
+    expect(await findChertRoom({ fetch: fakeLivekit(held).fetcher, now: () => NOW }, config, AGENT_IDENTITY)).toEqual({ ok: true, room: { room: WARM, caller: null, ready: false, source: "livekit", seated: true } });
+    // On a call too: the game and the caller are both in the room.
+    const onCall: FakeRoom[] = [{ name: WARM, created: 400, metadata: READY, people: [AGENT, { identity: AGENT_IDENTITY }, { identity: CALLER }] }];
+    expect(await findChertRoom({ fetch: fakeLivekit(onCall).fetcher, now: () => NOW }, config, AGENT_IDENTITY)).toEqual({ ok: true, room: { room: WARM, caller: CALLER, ready: true, source: "livekit", seated: true } });
+    // The agent and the caller are not the game.
+    const free: FakeRoom[] = [{ name: WARM, created: 400, people: [AGENT, { identity: CALLER }] }];
+    expect(await findChertRoom({ fetch: fakeLivekit(free).fetcher, now: () => NOW }, config, AGENT_IDENTITY)).toMatchObject({ ok: true, room: { seated: false } });
   });
 
   test("no room at all is an answer; LiveKit refusing or not answering is not", async () => {
@@ -225,7 +249,7 @@ describe("GET /api/facetime/waiting", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     const body = await response.json() as Record<string, unknown>;
-    expect(body).toEqual({ url: ENV.LIVEKIT_URL, token: expect.any(String) as string, room: WARM, identity: AGENT_IDENTITY, caller: null, ready: false, line: null, source: "livekit" });
+    expect(body).toEqual({ url: ENV.LIVEKIT_URL, token: expect.any(String) as string, room: WARM, identity: AGENT_IDENTITY, caller: null, ready: false, seated: false, line: null, source: "livekit" });
     // Join, publish and subscribe in this one room, for ten minutes. No right to list, make, change or close a room.
     const seconds = Math.floor(NOW / 1000);
     expect(readToken(String(body.token), ENV.LIVEKIT_API_SECRET)).toEqual({
@@ -241,6 +265,15 @@ describe("GET /api/facetime/waiting", () => {
   test("a call that is coming in says who and whether FaceTime is up", async () => {
     const { get } = await serve({ rooms: [{ name: WARM, created: 400, metadata: READY, people: [AGENT, { identity: CALLER }] }, { name: "chert-warm-NEXT", created: 500, people: [AGENT] }] });
     expect(await (await get()).json()).toMatchObject({ room: WARM, caller: CALLER, ready: true });
+  });
+
+  test("a room a window of the game is in already is still named, and marked as held", async () => {
+    const { get } = await serve({ rooms: [{ name: WARM, created: 400, people: [AGENT, { identity: AGENT_IDENTITY }] }] });
+    expect(await (await get()).json()).toMatchObject({ room: WARM, seated: true });
+    server?.close();
+    // The note cannot know who is in the room.
+    const fromNote = await serve({ livekit: { down: true }, note: JSON.stringify({ room: WARM, caller: null, ready: false, at: at(0) }) });
+    expect(await (await fromNote.get()).json()).toMatchObject({ room: WARM, seated: false, source: "file" });
   });
 
   test("with no room: null and a plain reason, and no token", async () => {

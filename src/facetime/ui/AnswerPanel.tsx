@@ -25,11 +25,21 @@ export interface Answering {
 }
 
 /**
+ * Whether the idle card asks the server if a call can come in. Not once it has been offered, not while waiting
+ * (the answerer asks then), not on a card that never answers, and not on a server with no room settings (`rooms`
+ * false): there the Multiplayer screen is as it was before answering, with no request sent over and over.
+ */
+export function asksForOffer(known: { readonly offered: boolean; readonly on: boolean; readonly never: boolean; readonly rooms: boolean }): boolean {
+  return known.rooms && !known.offered && !known.on && !known.never;
+}
+
+/**
  * The card's hold on the page's answerer. `answerer` and `waiting` are the page's own by default
  * (answerBrowser.ts and the game's server); tests pass theirs. `null`: this card does not answer calls at all
  * (a card that was given a session of its own, as the loopback page's is: the page's answerer runs the page's session).
+ * `rooms`: the server has its room settings (the status route's `standIn`); without them nothing is asked.
  */
-export function useAnswering(given?: { readonly answerer?: Answerer; readonly waiting?: () => Promise<Waiting> } | null): Answering {
+export function useAnswering(given?: { readonly answerer?: Answerer; readonly waiting?: () => Promise<Waiting> } | null, rooms = true): Answering {
   const never = given === null;
   const [answerer, setAnswerer] = useState<Answerer | null>(given?.answerer ?? null);
   const [offer, setOffer] = useState<{ readonly offered: boolean; readonly line: string | null }>({ offered: false, line: null });
@@ -50,7 +60,7 @@ export function useAnswering(given?: { readonly answerer?: Answerer; readonly wa
   const on = state.phase !== "off";
 
   // Until a room has been seen once, and while not waiting already, the server is asked now and then.
-  const settled = offer.offered || on || never;
+  const settled = !asksForOffer({ offered: offer.offered, on, never, rooms });
   useEffect(() => {
     if (settled) return;
     let gone = false;
@@ -106,6 +116,18 @@ export function answeredLine(call: CallState): string | null {
   if (call.phase === "dialing" || call.phase === "ringing") return "A FaceTime call is coming in. Connecting...";
   if (call.phase === "bridge_ready") return "The call is connected. Athena is greeting your friend.";
   return null;
+}
+
+/**
+ * Whether the card offers "Start the fight": "go" to press it, "wait" to show it greyed, "none" to leave it out.
+ * A dialled call shows it greyed from the dial, as before. An answered call leaves it out until the call is live
+ * (the ready sign, or the fallback greeting): FaceTime is still connecting for some nine seconds after the caller
+ * comes in, and on the first real call the button stood there all that time as if the fight could start.
+ */
+export function startOffer(call: CallState, answered: boolean): "go" | "wait" | "none" {
+  if (call.phase === "greeted" || call.phase === "playing") return "go";
+  if (answered) return "none";
+  return call.phase === "dialing" || call.phase === "ringing" || call.phase === "bridge_ready" ? "wait" : "none";
 }
 
 /** The card while waiting, with no call on: the number to call and the live state. */

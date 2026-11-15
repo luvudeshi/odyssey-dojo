@@ -2,6 +2,7 @@
 //   GET /api/facetime/waiting   the room `chert dev` keeps ready for the next call (or the room of a call that is
 //                               coming in), and a token for the game's own seat in it; { room: null, reason } when
 //                               there is none. `line` is the number to call, when FACETIME_LINE_NUMBER is set.
+//                               `seated` is true when a window of the game is in that room already.
 // This machine only, like every FaceTime route (it is not an open path in lib/localOnly): the token is a seat in
 // the call's room. Nothing here rings a phone, spends a minute, or makes, changes or deletes a room.
 // The room is Chert's. The game joins it and leaves it; it never closes it (POST /api/facetime/hangup refuses it).
@@ -49,7 +50,7 @@ export function registerFaceTimeWaiting(router: Router, deps: FaceTimeWaitingDep
       return;
     }
     const { config } = found;
-    const looked = await findChertRoom({ fetch: deps.fetch, now: deps.now }, config);
+    const looked = await findChertRoom({ fetch: deps.fetch, now: deps.now }, config, AGENT_IDENTITY);
     let room: WaitingRoom | null;
     if (looked.ok) room = looked.room;
     else {
@@ -71,7 +72,7 @@ export function registerFaceTimeWaiting(router: Router, deps: FaceTimeWaitingDep
       apiKey: config.livekitKey, apiSecret: config.livekitSecret, identity: AGENT_IDENTITY, name: "Odyssey Dojo",
       room: room.room, ttlSeconds: TOKEN_TTL_S, nowSeconds: Math.floor(deps.now() / 1000),
     });
-    response.json({ url: config.livekitUrl, token, room: room.room, identity: AGENT_IDENTITY, caller: room.caller, ready: room.ready, line, source: room.source });
+    response.json({ url: config.livekitUrl, token, room: room.room, identity: AGENT_IDENTITY, caller: room.caller, ready: room.ready, seated: room.seated, line, source: room.source });
   });
 }
 

@@ -6,7 +6,9 @@
 //  - `chert dev` keeps a waiting room ready before any call, with the game's silent agent in it, and replaces it
 //    every five minutes and after every call. The server says which room it is (GET /api/facetime/waiting).
 //  - The call comes into that room as a participant named chert-bridge-<call id>.
-//  - The room takes two people beside the agent: the game and the caller. So one game tab waits, never two.
+//  - The room takes two people beside the agent: the game and the caller. So one game tab waits, never two: a
+//    second one that joined would take the first one's seat. The server says when the seat is held (`seated`), and
+//    a window that is not in the room yet then stays out.
 //  - Sound may come from one participant only, and the picture from that same one. Nothing is published while
 //    waiting: the picture and the one sound track go out when the caller is in the room, as Chert's own starter does.
 //  - The room is the call service's. The game joins and leaves it and never closes it. Leaving a waiting room makes
@@ -41,13 +43,18 @@ export const SAME_ROOM_AFTER_MS = 10_000;
 
 export const NO_SERVER = "The game's server did not answer.";
 export const NOT_JOINED = "The game could not join the call's waiting room.";
+export const SEAT_HELD = "Another window of the game is in the call's room. Only one can be: close this one, or stop the wait in the other.";
 export const SEAT_TAKEN = "Another window of the game is waiting for the call. Only one can: close the other, then wait here again.";
 /** LiveKit's reason for dropping a participant because another joined under the same name (DisconnectReason.DUPLICATE_IDENTITY). */
 export const DUPLICATE_IDENTITY = "2";
 
 /** What GET /api/facetime/waiting says. */
 export type Waiting =
-  | { readonly room: string; readonly url: string; readonly token: string; readonly caller: string | null; readonly ready: boolean; readonly line: string | null }
+  | {
+    readonly room: string; readonly url: string; readonly token: string; readonly caller: string | null; readonly ready: boolean; readonly line: string | null;
+    /** True when a window of the game is in the room already (the server saw the game's name there). */
+    readonly seated?: boolean;
+  }
   /** There is no room to wait in, and why, in plain words. */
   | { readonly room: null; readonly reason: string; readonly line: string | null }
   /** The server could not tell (it did not answer, or could not ask). What is known so far still stands. */
@@ -73,7 +80,7 @@ export function createWaitingApi(fetcher: typeof fetch = (url, init) => fetch(ur
     const line = typeof fields.line === "string" && fields.line !== "" ? fields.line : null;
     if (!ok) return { room: undefined, reason: typeof fields.message === "string" ? fields.message : NO_SERVER, line };
     if (typeof fields.room === "string" && typeof fields.url === "string" && typeof fields.token === "string") {
-      return { room: fields.room, url: fields.url, token: fields.token, caller: typeof fields.caller === "string" ? fields.caller : null, ready: fields.ready === true, line };
+      return { room: fields.room, url: fields.url, token: fields.token, caller: typeof fields.caller === "string" ? fields.caller : null, ready: fields.ready === true, line, seated: fields.seated === true };
     }
     if (fields.room === null) return { room: null, reason: typeof fields.reason === "string" ? fields.reason : "", line };
     return { room: undefined, reason: NO_SERVER, line };
@@ -288,6 +295,13 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
       }
       askAt = soon();
       if (avoid !== null && found.room === avoid.room && lastNow < avoid.until) return;
+      if (found.seated === true) {
+        // Another window of the game sits in that room under this game's name. Joining would throw it out, and
+        // with it the call it may be on. So this one stays out, says why, and asks again: it joins when the seat is free.
+        askAt = lastNow + LOOK_EVERY_MS;
+        if (state.reason !== SEAT_HELD) set({ reason: SEAT_HELD });
+        return;
+      }
       void join(found);
     });
   };

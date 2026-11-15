@@ -28,6 +28,11 @@ export const WAITING_ROOM = /^chert-warm-[A-Za-z0-9_-]{1,64}$/;
  * in them and no caller: those are never joined.)
  */
 export const CHERT_ROOM = /^chert-[A-Za-z0-9_-]{1,94}$/;
+/**
+ * `chert doctor` checks the setup in rooms named chert-doctor-<id>, with the agent in them. No call is ever in one,
+ * so such a room is never named and no seat is signed for it, whoever is in it.
+ */
+export const DOCTOR_ROOM = /^chert-doctor-/;
 /** The FaceTime call's own participant in the room. */
 export const CALLER_PREFIX = "chert-bridge-";
 /** `chert dev` replaces a waiting room after five minutes and LiveKit closes it at seven, and a trial call lasts five: an older note is about a room that is gone. */
@@ -46,6 +51,11 @@ export interface WaitingRoom {
   readonly ready: boolean;
   /** Who said so: LiveKit itself, or the agent's note. */
   readonly source: "livekit" | "file";
+  /**
+   * True when the game is in the room already: a window of the game holds the seat. A second window that joined
+   * would take the seat from the first, and end the call the first is on. The note cannot know, so it says false.
+   */
+  readonly seated: boolean;
 }
 
 /** `room: null` means LiveKit was asked and there is no such room. Not ok means it could not be asked. */
@@ -74,12 +84,12 @@ export function readRoomNote(text: string, nowMs: number): RoomNote {
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return { kind: "none", why: "unreadable" };
   const { room, caller, ready, at } = parsed as Record<string, unknown>;
   if (room === null || room === undefined || room === "") return { kind: "none", why: "no_room" };
-  if (typeof room !== "string" || !CHERT_ROOM.test(room)) return { kind: "none", why: "bad_name" };
+  if (typeof room !== "string" || !CHERT_ROOM.test(room) || DOCTOR_ROOM.test(room)) return { kind: "none", why: "bad_name" };
   const written = typeof at === "string" ? Date.parse(at) : Number.NaN;
   if (!Number.isFinite(written) || nowMs - written > NOTE_MAX_AGE_MS || written - nowMs > NOTE_AHEAD_MS) return { kind: "none", why: "stale" };
   const who = typeof caller === "string" && caller.startsWith(CALLER_PREFIX) && caller.length <= 200 ? caller : null;
   if (who === null && !WAITING_ROOM.test(room)) return { kind: "none", why: "bad_name" };
-  return { kind: "room", room: { room, caller: who, ready: ready === true, source: "file" } };
+  return { kind: "room", room: { room, caller: who, ready: ready === true, source: "file", seated: false } };
 }
 
 export async function readRoomFile(path: string, nowMs: number, read: (path: string) => Promise<string> = (file) => readFile(file, "utf8")): Promise<RoomNote> {
@@ -146,9 +156,10 @@ const isAgent = (kind: unknown): boolean => kind === "AGENT" || kind === 4;
 
 /**
  * Asks LiveKit which of Chert's rooms the game should be in: one that has our agent in it, a room with a caller
- * before a waiting room, and the newest of several.
+ * before a waiting room, and the newest of several. `game` is the name the game sits under in a room: when someone
+ * of that name is in the room already, the answer says so (`seated`).
  */
-export async function findChertRoom(deps: LookupDeps, config: LivekitConfig): Promise<Lookup> {
+export async function findChertRoom(deps: LookupDeps, config: LivekitConfig, game?: string): Promise<Lookup> {
   const listed = await ask(deps, config, LIST_ROOMS_PATH, {});
   if (!listed.ok) return listed;
   const rooms = records(listed.body.rooms)
@@ -158,7 +169,7 @@ export async function findChertRoom(deps: LookupDeps, config: LivekitConfig): Pr
       created: (Number(each.creation_time_ms ?? each.creationTimeMs ?? 0) || 0) || (Number(each.creation_time ?? each.creationTime ?? 0) || 0) * 1000,
       metadata: typeof each.metadata === "string" ? each.metadata : "",
     }))
-    .filter((each) => CHERT_ROOM.test(each.name))
+    .filter((each) => CHERT_ROOM.test(each.name) && !DOCTOR_ROOM.test(each.name))
     .sort((a, b) => b.created - a.created)
     .slice(0, MAX_LOOKED_AT);
   const looked = await Promise.all(rooms.map(async (each) => ({ each, who: await ask(deps, config, LIST_PARTICIPANTS_PATH, { room: each.name }, each.name) })));
@@ -173,7 +184,8 @@ export async function findChertRoom(deps: LookupDeps, config: LivekitConfig): Pr
     const people = records(who.body.participants);
     if (!people.some((person) => isAgent(person.kind))) continue;
     const caller = people.map((person) => person.identity).find((identity): identity is string => typeof identity === "string" && identity.startsWith(CALLER_PREFIX)) ?? null;
-    const found: WaitingRoom = { room: each.name, caller, ready: bridgeReady(each.metadata), source: "livekit" };
+    const seated = game !== undefined && people.some((person) => person.identity === game);
+    const found: WaitingRoom = { room: each.name, caller, ready: bridgeReady(each.metadata), source: "livekit", seated };
     // Newest first: the first room with a caller wins, else the first that is waiting.
     if (caller !== null) return { ok: true, room: found };
     if (WAITING_ROOM.test(each.name)) waiting ??= found;
