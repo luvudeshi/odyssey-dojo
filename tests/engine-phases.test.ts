@@ -89,6 +89,8 @@ test("two players landing together double the damage, one alone does not", () =>
   expect(100 - both.state.enemyHp).toBe(24);
   expect(100 - solo.state.enemyHp).toBe(12);
   expect(100 - oneP.state.enemyHp).toBe(12);
+  expect(both.events[0]).toMatchObject({ together: true });
+  expect(solo.events[0]).not.toHaveProperty("together");
 });
 
 test("finisher flow: zero hp enters finisher, only the move wins, timeout re-prompts", () => {
@@ -135,4 +137,19 @@ test("1000 seeded random fights stay sane and terminate", () => {
     }
     expect(["won", "lost"]).toContain(s.phase.kind);
   }
+});
+
+test("a strike that crosses a phase threshold pauses 3000 ms; one that does not pauses 700 ms", () => {
+  const crossed = step(opening(enemy, defend(enemy, 60, 0, 1)), enemy, style, hit(0.5, 0), 16).state;
+  expect(crossed.phase).toEqual({ kind: "recover", msLeft: 3000 });
+  const same = step(opening(enemy, defend(enemy, 100, 0, 1)), enemy, style, hit(0.5, 0), 16).state;
+  expect(same.phaseIndex).toBe(0);
+  expect(same.phase).toEqual({ kind: "recover", msLeft: 700 });
+});
+
+test("the fight reaches the next defend only after the longer pause", () => {
+  const crossed = step(opening(enemy, defend(enemy, 60, 0, 1)), enemy, style, hit(0.5, 0), 16).state;
+  const early = step(crossed, enemy, style, idle, 2999).state;
+  expect(early.phase.kind).toBe("recover");
+  expect(step(early, enemy, style, idle, 1).state.phase.kind).toBe("defend");
 });

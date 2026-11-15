@@ -2,7 +2,7 @@
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
-import { clipUrl } from "./athenaLines";
+import { clipUrl, isPhaseLine, phaseLineId } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
@@ -10,6 +10,8 @@ const WARNINGS = ["warn_1", "warn_2", "warn_3"] as const;
 const INDEX_URL = "/audio/athena/index.json";
 /** Longer than any line: a clip that neither ends nor fails is given up on after this. */
 const MAX_CLIP_MS = 15000;
+/** How loud a monster's taunt is next to Athena: a little under her, so her call stays clear on top of it. */
+export const TAUNT_VOLUME = 0.7;
 
 function pick(ids: readonly [string, ...string[]], random: () => number): string {
   return ids[Math.floor(random() * ids.length)] ?? ids[0];
@@ -27,8 +29,8 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
     case "playerHit":
       return pick(WARNINGS, random);
     case "phaseChanged":
-      // Index 0 is where the fight starts; only later phases get a line.
-      return event.index > 0 ? `phase_${String(event.index)}` : null;
+      // Index 0 is where the fight starts; only later phases get a line, picked by the phase's own name.
+      return event.index > 0 ? phaseLineId(event.name) : null;
     case "won":
       return "win";
     case "lost":
@@ -39,26 +41,33 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
   }
 }
 
-/** Tiers of urgency, lowest first: praise and warnings, fight start and phase changes, calls, the result. */
+/** Tiers of urgency, lowest first: praise and warnings, fight start and Homer, calls, phase changes, the result. */
 const SHORT = 0;
 const MOMENT = 1;
 const CALL = 2;
-const RESULT = 3;
+const PHASE = 3;
+const RESULT = 4;
 
 function urgency(id: string): number {
   if (id === "win" || id === "loss") return RESULT;
+  // A phase line comes once or twice a fight and the calls never stop, so it outranks them or it is never heard.
+  if (isPhaseLine(id)) return PHASE;
   if (id.startsWith("call_")) return CALL;
-  // Homer's lines sit with the phase lines; a monster's taunt is as easily talked over as praise.
-  return id === "fight_start" || id.startsWith("phase_") || id.startsWith("homer_") ? MOMENT : SHORT;
+  // Homer's lines sit with the fight start; a taunt sent to this voice is as easily talked over as praise.
+  return id === "fight_start" || id.startsWith("homer_") ? MOMENT : SHORT;
 }
 
 /** Whether a new line cuts off the one playing. Otherwise the new line is skipped. */
 function interrupts(next: string, playing: string): boolean {
   const tier = urgency(next);
   // The engine emits nothing after the result, so a call or fight start heard over it belongs to the next fight.
-  if (urgency(playing) === RESULT) return tier === CALL || next === "fight_start";
-  // A newer call always wins: the one playing is for a beat that has already passed.
-  return tier === CALL || tier > urgency(playing);
+  const held = urgency(playing);
+  if (held === RESULT) return tier === CALL || next === "fight_start";
+  // A new fight's first line is not kept out by the last fight's phase line (a retry from the pause menu).
+  if (held === PHASE && next === "fight_start") return true;
+  // A newer call beats an older one, whose beat has passed, and a newer phase line beats an older one. A call does not
+  // beat a phase line, which is heard to its end: the call is dropped, not queued, and the prompt card shows the move.
+  return tier > held || (tier === held && (tier === CALL || tier === PHASE));
 }
 
 export interface VoiceDeps {
@@ -89,19 +98,19 @@ export interface Voice {
   dispose(): void;
 }
 
-/** Told true when a line starts and false when the voice falls quiet. */
-let onSpeaking: (speaking: boolean) => void = () => undefined;
+/** Told true when a line starts and false when that voice falls quiet. `who` is set for a voice that was given a name. */
+let onSpeaking: (speaking: boolean, who?: string) => void = () => undefined;
 
 /**
  * Lets one listener (the music) know when a line is being spoken, so it can dip under it.
- * This assumes the app has a single Voice (the shared one below): with two, one falling quiet would report silence
- * while the other still speaks.
+ * A second Voice must give `createVoice` a name of its own, as the monsters' channel below does: two voices under one
+ * name would report silence when one falls quiet while the other still speaks.
  */
-export function watchVoice(listener: (speaking: boolean) => void): void {
+export function watchVoice(listener: (speaking: boolean, who?: string) => void): void {
   onSpeaking = listener;
 }
 
-export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
+export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voice {
   let current: { readonly id: string; stop: () => void } | null = null;
   let disposed = false;
   let finishing = false;
@@ -115,10 +124,10 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
     const free = (): void => {
       if (current !== line) return;
       current = null;
-      onSpeaking(false);
+      onSpeaking(false, who);
     };
     current = line;
-    onSpeaking(true);
+    onSpeaking(true, who);
     try {
       line.stop = deps.play(id, free);
     } catch (error) {
@@ -143,21 +152,22 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
         const call = `call_${phase.move}`;
         wanted.push(deps.available(call) ? call : anyCall(call, "strike"));
       }
-      finishing = phase?.kind === "finisher";
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
       if (best !== null) speak(best);
+      // A phase line holding the voice keeps the finisher's call out, so the call is tried again until it is spoken.
+      finishing = phase?.kind === "finisher" && urgency(current?.id ?? "") !== PHASE;
     },
     playing: () => current?.id ?? null,
     stop(id) {
       if (current?.id !== id) return;
       current.stop();
       current = null;
-      onSpeaking(false);
+      onSpeaking(false, who);
     },
     dispose() {
       disposed = true;
       current?.stop();
-      if (current) onSpeaking(false);
+      if (current) onSpeaking(false, who);
       current = null;
     },
   };
@@ -230,25 +240,59 @@ export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   return { available: (id) => clips.has(id), play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume })), random: Math.random };
 }
 
+/** The same clips at `gain` times the volume, through audio elements that no other voice's line stops. */
+function quieter(deps: VoiceDeps, gain: number): VoiceDeps {
+  if (typeof Audio === "undefined") return deps;
+  return { ...deps, play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain })) };
+}
+
 // Created with the module so the clip indexes are loaded before the first fight starts.
-const shared = createVoice(browserDeps(STORY_INDEX_URLS));
+const sharedDeps = browserDeps(STORY_INDEX_URLS);
+const shared = createVoice(sharedDeps);
+
+const monsters = createVoice(quieter(sharedDeps, TAUNT_VOLUME), "taunt");
+/** True from the frame a fight is won or lost until the next fight begins. No taunt starts meanwhile. */
+let fightOver = false;
+
+/**
+ * The monsters' own channel: a taunt plays over Athena's calls and is not cut by them, and it never holds her voice.
+ * One taunt at a time: a second one asked for while the first plays is refused. So is any taunt once the fight is over.
+ */
+export const tauntVoice: Pick<Voice, "speak" | "playing" | "stop"> = {
+  speak: (id) => !fightOver && monsters.speak(id),
+  playing: () => monsters.playing(),
+  stop: (id) => {
+    monsters.stop(id);
+  },
+};
 
 export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): void {
+  if (events.some((event) => event.type === "won" || event.type === "lost")) {
+    // The monster falls silent when the fight ends, so the result lines are heard clean. A taunt still waiting is refused.
+    fightOver = true;
+    const taunt = monsters.playing();
+    if (taunt !== null) monsters.stop(taunt);
+  } else if (events.length > 0) {
+    // The engine emits nothing after the result, so these events are a new fight's.
+    fightOver = false;
+  }
   shared.handle(events, phase);
 }
 
 /** For lines no combat event triggers, such as "fight_start" or Homer's "homer_title". */
 export function speakLine(id: string): boolean {
+  if (id === "fight_start") fightOver = false;
   return shared.speak(id);
 }
 
 /**
- * Has the monster taunt the player, if it has a taunt recorded and the voice is free. Works for every stop of the quest.
- * In the frame a phase changes, Athena's phase line cuts this off: there, use speakMonsterTaunt in storyVoice.ts.
+ * Has the monster taunt the player on its own channel, at once, if it has a taunt recorded, is not already taunting and
+ * the fight is not over. Works for every stop of the quest. speakMonsterTaunt in storyVoice.ts waits for Athena's phase
+ * line first and says when the taunt is over; the fight screen uses that one.
  */
 export function speakTaunt(enemyId: string): boolean {
   const id = pickTaunt(enemyId, Math.random);
-  return id !== null && shared.speak(id);
+  return id !== null && tauntVoice.speak(id);
 }
 
 /** The line the shared voice is speaking now, or null. */
