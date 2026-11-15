@@ -289,7 +289,9 @@ export function createRoomStore(now: () => number = Date.now) {
      * poll are ended. A guest's seat is free at once and its token stops working, so it joins as new if it comes
      * back. The host keeps its seat and its token, as after any other absence, and is here again with its next
      * stream or poll. The other member hears "peer: false" if it had been told this one was here.
-     * Leaving is not use of the room: a room that both have left can go to the next create.
+     * A guest's leave is not use of the room. A host's leave is: the room it left is covered for the same grace as a
+     * room whose host just asked (a public server gives AWAY_MS), so a host whose page reloads finds its room there.
+     * Without a grace, a room that both have left can go to the owner's next create at once.
      */
     leave: (code: string, token: string): "left" | Refusal => {
       const found = seat(code, token);
@@ -302,7 +304,8 @@ export function createRoomStore(now: () => number = Date.now) {
       self.poll = null;
       self.here = false;
       self.seenMs = now();
-      if (self !== room.host) room.guest = null;
+      if (self === room.host) room.activeMs = now();
+      else room.guest = null;
       const peer = other();
       if (told && peer !== null) deliver(peer, peerEvent(false));
       stream?.end();
