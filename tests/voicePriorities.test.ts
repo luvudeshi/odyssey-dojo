@@ -10,6 +10,7 @@ import { enemy as polyphemus } from "../src/enemies/defs/polyphemus";
 const LENGTH: Readonly<Record<string, number>> = {
   call_cross: 2040, call_uppercut: 2190, call_block: 1880, call_dodge_right: 1490,
   phase_1: 1720, phase_2: 2430, taunt_polyphemus_1: 3240, win: 3320, loss: 3790, praise_1: 1410, warn_1: 1150,
+  fight_start: 2350, call_stake_thrust: 2770,
 };
 
 function attack(counter: string): CombatEvent {
@@ -22,6 +23,8 @@ function opening(move: string): CombatEvent {
 }
 const hit: CombatEvent = { type: "enemyHit", move: "cross", damage: 12, quality: 1 };
 const phaseTwo: CombatEvent = { type: "phaseChanged", index: 1, name: "The Club" };
+const phaseThree: CombatEvent = { type: "phaseChanged", index: 2, name: "Blinded" };
+const isAthena = (clip: string): boolean => !clip.startsWith("taunt_");
 
 /** Loads the audio modules afresh over stand-in audio elements that end on their own after the clip's real length. */
 async function startFight() {
@@ -114,7 +117,7 @@ afterEach(() => {
 
 test("a phase line takes the voice from a call and is heard to its end, and Athena's calls resume after it", async () => {
   const { started, ended, cut } = await replay();
-  const athena = started.filter((clip) => !clip.startsWith("taunt_"));
+  const athena = started.filter(isAthena);
   // The dodge call at 800 ms arrived while the phase line was playing, so it was dropped, not queued.
   expect(athena).toEqual(["call_cross@0", "phase_1@100", "call_uppercut@2500", "call_block@3200"]);
   expect(cut).toEqual(["call_cross@100", "call_uppercut@3200"]);
@@ -171,6 +174,51 @@ test("a won or lost fight silences the taunt in that frame, so the result line i
     await vi.advanceTimersByTimeAsync(5000);
     expect(ended, result).toEqual([`${line}@${String(500 + (LENGTH[line] ?? 0))}`]);
     expect([...dipFor], result).toEqual([]);
+    // The same in one frame: the taunt is asked for before playVoice, as the fight screen does, and is cut at once.
+    const last = await startFight();
+    last.frame([hit, phaseTwo, { type: result }]);
+    expect(last.started, result).toEqual([`taunt_polyphemus_1@${String(Date.now())}`, `${line}@${String(Date.now())}`]);
+    expect(last.cut, result).toEqual([`taunt_polyphemus_1@${String(Date.now())}`]);
+    await vi.advanceTimersByTimeAsync(5000);
     vi.setSystemTime(0);
   }
+});
+
+test("a second phase change replaces the first phase line, and a taunt asked for again joins the one playing", async () => {
+  const { frame, started, ended, cut, taunts } = await startFight();
+  frame([hit, phaseTwo]);
+  await vi.advanceTimersByTimeAsync(720);
+  frame([hit, phaseThree]);
+  await vi.advanceTimersByTimeAsync(3000);
+  // Athena does not finish the stale line: the newer one cuts it and is heard to its end.
+  expect(started).toEqual(["taunt_polyphemus_1@0", "phase_1@0", "phase_2@720"]);
+  expect(cut).toEqual(["phase_1@720"]);
+  expect(ended).toEqual(["phase_2@3150", "taunt_polyphemus_1@3240"]);
+  // The dice picked the taunt already playing, so the second request joined it: heard once, and both resolve true.
+  expect(taunts).toEqual([true, true]);
+});
+
+test("the finisher's call is spoken once the phase line ends, when the finisher begins in the frame the phase changes", async () => {
+  const { voice, started } = await startFight();
+  const finisher = { kind: "finisher", move: "stake_thrust", msLeft: 6000, totalMs: 6000 } as const;
+  voice.playVoice([hit, phaseThree], finisher);
+  for (let ms = 0; ms < 5000; ms += 100) {
+    await vi.advanceTimersByTimeAsync(100);
+    voice.playVoice([], finisher);
+  }
+  // Not at 6000 ms, when the finisher's window runs out, and only once.
+  expect(started).toEqual(["phase_2@0", "call_stake_thrust@2500"]);
+});
+
+test("a retry soon after a phase change opens with fight_start, and the new fight's first call is spoken", async () => {
+  const { voice, story, frame, started, cut } = await startFight();
+  frame([hit, phaseThree]);
+  await vi.advanceTimersByTimeAsync(300);
+  // Leaving the old fight, then the new fight screen's first line.
+  story.stopStory();
+  expect(voice.speakLine("fight_start")).toBe(true);
+  await vi.advanceTimersByTimeAsync(1500);
+  frame([attack("block")]);
+  expect(started.filter(isAthena)).toEqual(["phase_2@0", "fight_start@300", "call_block@1800"]);
+  expect(cut).toEqual(["taunt_polyphemus_1@300", "phase_2@300", "fight_start@1800"]);
 });
