@@ -8,6 +8,8 @@ export const TOGETHER_MS = 400;
 /** State goes out about 15 times a second; a frame with events goes out at once. */
 export const STATE_EVERY_MS = 66;
 const MAX_WAITING = 16;
+/** A room is removed 30 minutes after its last send; a "keep" every 5 minutes lets a quiet room live while the host is open. */
+export const KEEP_EVERY_MS = 5 * 60_000;
 
 interface Waiting {
   readonly strike: Strike;
@@ -44,6 +46,8 @@ export function createHostLink(transport: RoomTransport): HostLink {
   let lastSentAt = -Infinity;
   let unsent: CombatEvent[] = [];
   let ended = false;
+
+  const keep = setInterval(() => { void transport.send({ type: "keep" }); }, KEEP_EVERY_MS);
 
   transport.onMessage((message) => {
     if (message.type === "peer") here = message.joined;
@@ -93,6 +97,7 @@ export function createHostLink(transport: RoomTransport): HostLink {
       void transport.send({ type: "stop" });
     },
     close() {
+      clearInterval(keep);
       transport.close();
     },
   };
