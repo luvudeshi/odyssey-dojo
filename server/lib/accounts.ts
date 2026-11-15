@@ -5,9 +5,10 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { log } from "../../src/core/log";
-import { createGate, createKnownSessions } from "./accountLimits";
+import { SIGNUPS_PER_DAY, SIGNUPS_PER_HOUR, createGate, createKnownSessions } from "./accountLimits";
 import type { Gate } from "./accountLimits";
 import { nameKey, saveSchema } from "./accountRules";
+import { publicAccounts } from "./localOnly";
 import type { Save } from "./accountRules";
 import { failureCode } from "./db";
 import type { Db } from "./db";
@@ -34,6 +35,9 @@ export const RETRY_MS = 15_000;
 export const STATUS_CACHE_MS = 5_000;
 /** Queries that must fail one after another, with none working between them, before the database is believed gone. One slow query is not an outage. */
 export const FAILURES_TO_GIVE_UP = 3;
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const PREFIX = /^(?:[a-z][a-z0-9_]{0,30})?$/;
@@ -132,6 +136,25 @@ export function statementsOf(accounts: object): Statement | null {
   return doors.get(accounts) ?? null;
 }
 
+/**
+ * Runs one piece of database work. The routes pass the strangers' gate here (STRANGERS_AT_ONCE in ./accountLimits),
+ * so a place at it is held for statements only. The password hash between them waits at its own gate and holds no
+ * place: however many slow sign-ins arrive, the two places are free again as soon as a statement has its answer.
+ */
+export type Reach = <T>(work: () => Promise<T>) => Promise<T>;
+const direct: Reach = (work) => work();
+
+/** How many accounts there may be. Only tests change these, to reach a cap with a handful of accounts. */
+export interface Caps {
+  /** Accounts in all. */
+  readonly total: number;
+  /** Places of `total` no stranger can take. */
+  readonly keptForThisMachine: number;
+  /** Accounts made in the last hour and the last 24 hours, past which a stranger makes no more. This machine is not held by these. */
+  readonly perHour: number;
+  readonly perDay: number;
+}
+
 export interface Signed {
   readonly token: string;
   readonly name: string;
@@ -145,10 +168,18 @@ export interface Stored {
 export interface Accounts {
   /** Whether the database answers. Never throws. Asked at most once every STATUS_CACHE_MS. */
   readonly available: () => Promise<boolean>;
-  /** `name` is already cleaned (accountName). `urgent` is this machine: it waits for a hash however long the line is, and may use the places kept for it. */
-  readonly signUp: (name: string, password: string, urgent?: boolean) => Promise<Signed | "name_taken" | "full">;
-  /** Null for an unknown name and for a wrong password alike, after the same work. */
-  readonly signIn: (name: string, password: string, urgent?: boolean) => Promise<Signed | null>;
+  /**
+   * `name` is already cleaned (accountName). `urgent` is this machine: it waits for a hash however long the line is,
+   * may use the places kept for it, and is not held by the accounts made this hour or today. `reach` runs the
+   * statements (see Reach); the hash runs outside it. "full": the database holds as many accounts as it may.
+   * "closed": as many were made in the last hour or day as strangers may make; the database is asked, so this holds
+   * after a restart and with a second server on the same database. Only with PUBLIC_ACCOUNTS=1 (AccountsOptions.isPublic):
+   * without it the hour and the day are not asked for and "closed" is never the answer. With it a taken name is also
+   * answered before the hash; without it the hash comes first, as it always did.
+   */
+  readonly signUp: (name: string, password: string, urgent?: boolean, reach?: Reach) => Promise<Signed | "name_taken" | "full" | "closed">;
+  /** Null for an unknown name and for a wrong password alike, after the same work. `reach` as for signUp. */
+  readonly signIn: (name: string, password: string, urgent?: boolean, reach?: Reach) => Promise<Signed | null>;
   readonly signOut: (token: string) => Promise<void>;
   /** The id of the account a token belongs to, or null when the token is unknown or its session has run out. */
   readonly accountOf: (token: string) => Promise<string | null>;
@@ -168,10 +199,15 @@ export interface AccountsOptions {
   /** A table name prefix, for tests. */
   readonly prefix?: string;
   readonly gate?: Gate;
+  /** Replaces the caps on accounts, for tests. */
+  readonly caps?: Partial<Caps>;
+  /** What publicAccounts() says (./localOnly), asked at each sign-up. Off, sign-up asks the database what it always asked and nothing else. */
+  readonly isPublic?: () => boolean;
 }
 
 // What the database gives back is checked like anything else that comes from outside.
-const countRow = z.object({ n: z.coerce.number().int().min(0) });
+const count = z.coerce.number().int().min(0);
+const countRow = z.object({ n: count, hour: count.default(0), day: count.default(0) });
 const idRow = z.object({ id: z.string().min(1).max(64) });
 const accountRow = z.object({
   id: z.string().min(1).max(64),
@@ -191,6 +227,10 @@ const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
 export function createAccounts(open: () => Promise<Db | null>, options: AccountsOptions = {}): Accounts {
   const now = options.now ?? Date.now;
   const gate = options.gate ?? createGate();
+  const isPublic = options.isPublic ?? publicAccounts;
+  const caps: Caps = {
+    total: MAX_ACCOUNTS, keptForThisMachine: ACCOUNTS_KEPT_FOR_THIS_MACHINE, perHour: SIGNUPS_PER_HOUR, perDay: SIGNUPS_PER_DAY, ...options.caps,
+  };
   const t = tables(options.prefix);
   const schema = schemaSql(options.prefix);
   // Sign-in does the same work for a name nobody has: a hash against this salt, which never matches.
@@ -291,17 +331,31 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       return checking;
     },
 
-    signUp: async (name, password, urgent = false) => {
-      const [count] = rowsOf(countRow, await run(`select count(*)::int as n from ${t.accounts}`, []));
+    signUp: async (name, password, urgent = false, reach = direct) => {
+      const asked = now();
+      // Asked of the database and not of this server's memory: what a restart forgot, or another server made, is counted too.
+      const open = isPublic();
+      const [found] = rowsOf(countRow, await reach(() => (open ? run(
+        `select count(*)::int as n,
+          count(*) filter (where created_at > $1::timestamptz)::int as hour,
+          count(*) filter (where created_at > $2::timestamptz)::int as day
+        from ${t.accounts}`,
+        [iso(asked - HOUR_MS), iso(asked - DAY_MS)],
+      ) : run(`select count(*)::int as n from ${t.accounts}`, []))));
       // The last places are kept for this machine (`urgent`), so strangers cannot fill the database to the brim.
-      if (count === undefined || count.n >= MAX_ACCOUNTS - (urgent ? 0 : ACCOUNTS_KEPT_FOR_THIS_MACHINE)) return "full";
+      if (found === undefined || found.n >= caps.total - (urgent ? 0 : caps.keptForThisMachine)) return "full";
+      if (open && !urgent && (found.hour >= caps.perHour || found.day >= caps.perDay)) return "closed";
+      // With the setting on, a taken name is found by its key before any hash is spent on it, so a stranger cannot keep the
+      // one hash line busy with names that exist. Two sign-ups of a new name at once both pass here: the insert below decides.
+      if (open && (await reach(() => run(`select 1 as taken from ${t.accounts} where name_key = $1::text limit 1`, [nameKey(name)]))).length > 0) return "name_taken";
       const salt = randomBytes(SALT_BYTES);
+      // No place at the strangers' gate is held while this waits its turn and runs.
       const hash = await gate(() => hashPassword(password, salt), urgent);
       const token = makeToken();
       const at = now();
       // One statement makes the account and its first session, so there is never an account half made.
       // A name that is taken makes neither, and no row comes back.
-      const made = await run(
+      const made = await reach(() => run(
         `with made as (
           insert into ${t.accounts} (id, name, name_key, pass_hash, salt, created_at)
           values ($1::uuid, $2::text, $3::text, decode($4::text, 'hex'), decode($5::text, 'hex'), $6::timestamptz)
@@ -312,27 +366,30 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
         select decode($7::text, 'hex'), made.id, $6::timestamptz, $8::timestamptz from made
         returning account_id::text as id`,
         [randomUUID(), name, nameKey(name), hash.toString("hex"), salt.toString("hex"), iso(at), tokenHash(token), iso(at + SESSION_MS)],
-      );
+      ));
       return made.length === 0 ? "name_taken" : { token, name };
     },
 
-    signIn: async (name, password, urgent = false) => {
-      const found = rowsOf(accountRow, await run(
+    signIn: async (name, password, urgent = false, reach = direct) => {
+      const found = rowsOf(accountRow, await reach(() => run(
         `select id::text as id, name, encode(pass_hash, 'hex') as pass_hash, encode(salt, 'hex') as salt from ${t.accounts} where name_key = $1::text`,
         [nameKey(name)],
-      ))[0];
+      )))[0];
       const salt = found === undefined ? nobody.salt : Buffer.from(found.salt, "hex");
       const expected = found === undefined ? nobody.hash : Buffer.from(found.pass_hash, "hex");
+      // No place at the strangers' gate is held while this waits its turn and runs.
       const right = await gate(() => verifyPassword(password, salt, expected), urgent);
       if (found === undefined || !right) return null;
       const token = makeToken();
       const at = now();
-      await makeRoom(found.id, iso(at));
-      await run(
-        `insert into ${t.sessions} (token_hash, account_id, created_at, expires_at)
-        values (decode($1::text, 'hex'), $2::uuid, $3::timestamptz, $4::timestamptz)`,
-        [tokenHash(token), found.id, iso(at), iso(at + SESSION_MS)],
-      );
+      await reach(async () => {
+        await makeRoom(found.id, iso(at));
+        await run(
+          `insert into ${t.sessions} (token_hash, account_id, created_at, expires_at)
+          values (decode($1::text, 'hex'), $2::uuid, $3::timestamptz, $4::timestamptz)`,
+          [tokenHash(token), found.id, iso(at), iso(at + SESSION_MS)],
+        );
+      });
       return { token, name: found.name };
     },
 

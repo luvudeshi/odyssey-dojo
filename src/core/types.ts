@@ -66,6 +66,8 @@ export interface MoveDef {
   readonly teaches?: string;
   /** 0..1: how sure we are the player is doing this move right now. */
   detect(history: PoseHistory): number;
+  /** A looser reading used only while this move is the one the prompt asks for; the history holds only frames since the prompt had been up for a moment. */
+  detectAsked?: (history: PoseHistory) => number;
   /** 0..1: how well a strike that just fired was thrown (speed, extension, aim). Left out: 0.7. */
   quality?(history: PoseHistory): number;
 }

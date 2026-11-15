@@ -53,5 +53,6 @@ test("without the switch the link opens the stream as before", () => {
   const link = openRoom({ ...relay.deps, pollOnly: false }, { code: "ABCD", token: "t" });
   link.close();
   expect(relay.streams.length).toBe(1);
-  expect(relay.asked).toEqual([]);
+  // It never polled; the one call is the link saying it left as it closed.
+  expect(relay.asked).toEqual(["/api/rooms/ABCD/leave"]);
 });
