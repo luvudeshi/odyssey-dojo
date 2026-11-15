@@ -1,9 +1,11 @@
 // Smoke run: builds the game, serves it with `vite preview`, and plays every stop from start to end by keyboard
 // in a headless browser. Prints one line per fight (result, seconds, console errors) and writes docs/smoke.md.
 //
-//   node scripts/smoke.mjs [--no-build] [--stops=polyphemus,scylla] [--styles=all|boxer,karate] [--cap=240] [--no-write]
+//   node scripts/smoke.mjs [--no-build | --dev] [--stops=polyphemus,scylla] [--styles=all|boxer,karate] [--cap=240] [--no-write]
 //                          [--port=4393] [--query=ghost=1] [--shots=<folder>]
 //
+// --dev serves the source through vite's dev server instead of building (for a machine where a build is too heavy;
+// the pages then run React's development build, so the built game is still the last word).
 // --styles=all plays every stop with every fighting style (6 stops by 5 styles is 30 fights); a comma list of style
 // ids plays those; left out, each stop is played once with the first style on the style screen.
 // --query adds its text to the page address (for a switch such as ghost=1); --shots saves one picture per fight,
@@ -47,7 +49,7 @@ const POLL_TIMEOUT_MS = 10_000;
 /** Time after the result overlay for late errors to show up. */
 const AFTER_MS = 1000;
 /** How long each screen on the way into a fight may take to come up. */
-const SCREEN_TIMEOUT_MS = 15_000;
+const SCREEN_TIMEOUT_MS = process.argv.includes("--dev") ? 45_000 : 15_000;
 /** With --shots: the picture is taken on this prompt card of the fight, once it has been up this long. */
 const SHOT_CARD = 5;
 const SHOT_AFTER_MS = 500;
@@ -138,7 +140,7 @@ function build() {
 
 async function waitForServer(url, server) {
   for (let i = 0; i < 100; i += 1) {
-    if (server.exitCode !== null) throw new Error("vite preview stopped before it answered");
+    if (server.exitCode !== null) throw new Error("vite stopped before it answered");
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -146,7 +148,7 @@ async function waitForServer(url, server) {
     }
     await new Promise((next) => setTimeout(next, 200));
   }
-  throw new Error(`vite preview did not answer at ${url}`);
+  throw new Error(`vite did not answer at ${url}`);
 }
 
 function glArgs() {
@@ -524,7 +526,7 @@ ${parts.map(section).join("\n\n")}
 
 ## How to read it
 
-- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the character screen ("Fight as ...", the character already chosen), the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
+- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the character screen ("Fight as ...", the character already chosen), the style, then the open stop on the map. The click on the stop plays the boss cutscene, which ends by itself, and then the fight starts. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
 - The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name. The keyboard link on the main menu is found by its name. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).
@@ -540,6 +542,7 @@ ${parts.map(section).join("\n\n")}
 node scripts/smoke.mjs
 node scripts/smoke.mjs --styles=all
 node scripts/smoke.mjs --no-build --stops=polyphemus --styles=boxer,karate --cap=120 --no-write
+node scripts/smoke.mjs --dev --no-write
 \`\`\`
 
 For Edge, or both browsers one after the other, set \`FPS_CHANNEL\` first:
@@ -549,7 +552,7 @@ FPS_CHANNEL=msedge node scripts/smoke.mjs --styles=all
 FPS_CHANNEL=chrome,msedge node scripts/smoke.mjs --styles=all
 \`\`\`
 
-\`--port=4393\` serves the build on that port (a free one is picked otherwise). \`--query=ghost=1\` adds that to the page address. \`--shots=<folder>\` saves one picture per fight, taken while the fifth prompt card is up.
+\`--port=4393\` serves the build on that port (a free one is picked otherwise). \`--dev\` builds nothing and serves the source through vite's dev server, for a machine where a build is too heavy; the pages then run React's development build, so the built game is still the last word. \`--query=ghost=1\` adds that to the page address. \`--shots=<folder>\` saves one picture per fight, taken while the fifth prompt card is up.
 
 It needs Chrome (or Edge) and Playwright. Playwright is not a dependency of this repo: if \`node_modules\` has none, set \`FPS_PLAYWRIGHT\` to a playwright-core folder (\`.../node_modules/playwright-core\`). \`FPS_GL=swiftshader\` forces software GL, \`FPS_MACHINE\` names the machine. These are the same variables \`scripts/fps.mjs\` reads.
 `;
@@ -606,13 +609,13 @@ async function main() {
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
   try {
-    if (!flag("no-build")) {
+    if (!flag("no-build") && !flag("dev")) {
       say("Building...");
       await build();
     }
     const port = option("port", "") ? Number(option("port", "")) : await freePort();
     const base = `http://127.0.0.1:${String(port)}`;
-    server = vite(["preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
+    server = vite([...(flag("dev") ? [] : ["preview"]), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
     await waitForServer(base, server);
     const flags = glArgs();
     const parts = [];

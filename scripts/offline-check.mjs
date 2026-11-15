@@ -3,7 +3,10 @@
 // keyboard fight against Polyphemus by reading the prompt card. No AI server is started: the /api proxy is
 // pointed at a closed port, so those calls fail the way they do when the server is down.
 //
-//   node scripts/offline-check.mjs [--no-build] [--no-camera] [--camera-seconds=75] [--max-seconds=240] [--json=<file>]
+//   node scripts/offline-check.mjs [--no-build | --dev] [--no-camera] [--camera-seconds=75] [--max-seconds=240] [--json=<file>]
+//
+// --dev serves the source through vite's dev server instead of building (for a machine where a build is too heavy).
+// The proxy is pointed at the same closed port. The built game is still the last word.
 //
 // Exit codes: 0 pass. 1 a request tried to leave localhost, or the page threw. 2 the check could not do its
 // job (no accepted defend or strike, the fight did not end, the pose tracker did not start, a screen was missing).
@@ -20,7 +23,7 @@ import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { build, preview } from "vite";
+import { build, createServer as createViteServer, preview } from "vite";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const VIEWPORT = { width: 1280, height: 720 };
@@ -418,24 +421,26 @@ function verdict(log, fight, camera, crash) {
 async function main() {
   const chromium = loadChromium();
   const maxMs = Number(option("max-seconds", "240")) * 1000;
-  if (!flag("no-build")) {
+  const dev = flag("dev");
+  if (!flag("no-build") && !dev) {
     say("Building...");
     await build({ root: ROOT, logLevel: "error" });
   }
-  const missing = POSE_FILES.filter((file) => !existsSync(join(ROOT, "dist", file)));
+  const missing = POSE_FILES.filter((file) => !existsSync(join(ROOT, dev ? "public" : "dist", file)));
   if (!flag("no-camera") && missing.length > 0) throw new CheckError(`the build has no pose files (${missing.join(", ")}): run make setup once with a network connection, or pass --no-camera`);
   const port = await freePort();
   const closed = `http://127.0.0.1:${String(await freePort())}`;
   const base = `http://127.0.0.1:${String(port)}`;
   // `vite preview` takes the dev proxy from vite.config.ts. Pointing it at a closed port keeps a server that
   // happens to be running on this machine out of the test: /api answers 502, as it does with the server down.
-  const server = await preview({ root: ROOT, logLevel: "silent", preview: { host: "127.0.0.1", port, strictPort: true, proxy: { "/api": closed, "/replays": closed } } });
+  const options = { host: "127.0.0.1", port, strictPort: true, proxy: { "/api": closed, "/replays": closed } };
+  const server = dev ? await (await createViteServer({ root: ROOT, logLevel: "silent", server: options })).listen() : await preview({ root: ROOT, logLevel: "silent", preview: options });
   const channel = process.env.FPS_CHANNEL ?? "chrome";
   const log = { t0: Date.now(), stage: "title", fightAt: null, firstPromptAt: null, requests: [], console: [], pageErrors: [] };
   let browser = null;
   try {
     browser = await chromium.launch({ headless: true, args: browserArgs(), ...(channel ? { channel } : {}) });
-    say(`Serving dist at ${base} with no AI server. Browser: ${channel || "chromium"} ${browser.version()}, headless.`);
+    say(`Serving ${dev ? "the source through vite dev" : "dist"} at ${base} with no AI server. Browser: ${channel || "chromium"} ${browser.version()}, headless.`);
     say("Every request that is not localhost or 127.0.0.1 is aborted and listed.");
     let fight = null;
     let camera = null;

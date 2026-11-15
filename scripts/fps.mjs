@@ -1,7 +1,10 @@
 // Frame rate check: builds the game, serves it with `vite preview`, opens every stop in headless Chrome
 // and samples requestAnimationFrame in the fight at each quality level. Prints a table and writes docs/perf.md.
 //
-//   node scripts/fps.mjs [--no-build] [--no-headroom] [--seconds=10] [--stops=polyphemus,scylla] [--no-write]
+//   node scripts/fps.mjs [--no-build | --dev] [--no-headroom] [--seconds=10] [--stops=polyphemus,scylla] [--no-write]
+//
+// --dev serves the source through vite's dev server instead of building: React's development build, so the numbers
+// are a little lower than a player's, and the built game is still the last word.
 //
 // Two passes: one as a player sees it (headless Chrome caps at 60 fps), one with the cap off to show the headroom.
 //
@@ -99,7 +102,7 @@ function build() {
 
 async function waitForServer(url, server) {
   for (let i = 0; i < 100; i += 1) {
-    if (server.exitCode !== null) throw new Error("vite preview stopped before it answered");
+    if (server.exitCode !== null) throw new Error("vite stopped before it answered");
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -107,7 +110,7 @@ async function waitForServer(url, server) {
     }
     await new Promise((next) => setTimeout(next, 200));
   }
-  throw new Error(`vite preview did not answer at ${url}`);
+  throw new Error(`vite did not answer at ${url}`);
 }
 
 function glArgs(uncapped) {
@@ -485,13 +488,13 @@ async function main() {
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
   try {
-    if (!flag("no-build")) {
+    if (!flag("no-build") && !flag("dev")) {
       say("Building...");
       await build();
     }
     const port = await freePort();
     const base = `http://127.0.0.1:${String(port)}`;
-    server = vite(["preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
+    server = vite([...(flag("dev") ? [] : ["preview"]), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
     await waitForServer(base, server);
     const capped = await runPass(chromium, base, stops, seconds, false, () => TARGET_FPS);
     // With the cap off a scene cannot be drawn slower than with it on, so a row that is has been disturbed.
