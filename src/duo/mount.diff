@@ -1,5 +1,5 @@
 diff --git a/src/App.tsx b/src/App.tsx
-index 6e65f80..71ae241 100644
+index cfd8583..0812e8c 100644
 --- a/src/App.tsx
 +++ b/src/App.tsx
 @@ -16,6 +16,7 @@ import { characterFromScan, confirmCharacter } from "./characters/godCharacter";
@@ -20,7 +20,7 @@ index 6e65f80..71ae241 100644
    // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
    const [god, setGod] = useState<GodReveal | null>(null);
 diff --git a/src/hud/CameraView.tsx b/src/hud/CameraView.tsx
-index f11a69b..d667087 100644
+index 4671d5e..dc5e789 100644
 --- a/src/hud/CameraView.tsx
 +++ b/src/hud/CameraView.tsx
 @@ -4,6 +4,7 @@
@@ -112,23 +112,23 @@ index 6fb6864..2e6fb52 100644
            <DefendBurst />
            {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
 diff --git a/src/screens/Multiplayer.tsx b/src/screens/Multiplayer.tsx
-index c6d38d0..2f09dff 100644
+index ae7add2..f17edbf 100644
 --- a/src/screens/Multiplayer.tsx
 +++ b/src/screens/Multiplayer.tsx
-@@ -4,6 +4,7 @@
- // (RoomHost). Rooms need the game's own server (/api/rooms).
+@@ -2,6 +2,7 @@
+ // as sea-glass panels in one row: host a room, or join one by its code (a scanned link fills the code in). Opening a
+ // room turns the whole screen into the room (RoomHost). Rooms need the game's own server (/api/rooms).
  import { useProfile } from "../account/store";
- import { Icon } from "../account/ui/icons";
 +import { DuoCard } from "../duo/ui/DuoCard";
  import { FaceTimeCard } from "../facetime/ui/FaceTimeCard";
  import type { HostLink } from "../net/host";
- import { useEffect } from "react";
-@@ -65,6 +66,8 @@ export function Multiplayer(props: {
+ import { Button } from "../ui/pebble";
+@@ -53,6 +54,8 @@ export function Multiplayer(props: {
                <p>Scanned a friend's QR code? The code is already filled in.</p>
                <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
              </section>
 +            {/* Two players on this computer's one camera (src/duo): no room and no server. */}
 +            <DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
              {/* The FaceTime call: drawn only when the server has it set up (the card returns nothing otherwise, and the
-                 slab hides with it). It comes after the join card so the room code box stays the first text box. */}
-             <div className="mp-card mp-card--call">
+                 panel hides with it). It comes after the join card so the room code box stays the first text box. */}
+             <div className="set-panel mp-card mp-card--call">
