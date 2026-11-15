@@ -5,6 +5,7 @@ import { fallbackLevel } from "../../src/ai/fallbacks";
 import { repairLevel } from "../../src/ai/repair";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
+import { createRedactor } from "../lib/redact";
 import { withTimeout } from "../lib/timeout";
 import { levelPrompt } from "../prompts";
 import { wireSchema } from "../schema";
@@ -12,6 +13,8 @@ import { wireSchema } from "../schema";
 const SCHEMA = wireSchema(LevelSpecSchema);
 
 export const register: Register = (router, { ai, config }) => {
+  const why = createRedactor([config.geminiKey, config.elevenLabsKey]);
+
   router.post("/api/level", async (request, response) => {
     const parsed = LevelRequestSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -33,7 +36,7 @@ export const register: Register = (router, { ai, config }) => {
       if (level === null) log("warn", "level_unusable", { phrase: parsed.data.phrase });
       answer(level === null ? { level: base, source: "fallback" } : { level, source: "ai" });
     } catch (error) {
-      log("warn", "level_failed", error);
+      log("warn", "level_failed", why(error));
       answer({ level: base, source: "fallback" });
     }
   });

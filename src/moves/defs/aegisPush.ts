@@ -4,17 +4,17 @@ import { JOINT, clamp01, elbowAngle, joint, latest, recent } from "../../pose/si
 import { SHOULDER_HEIGHT, bodyWidth, torsoLength, wristGap } from "../handSignals";
 
 /** The widest the hands may be in the picture, in shoulder widths. Wider is a spear thrust, not a push from the chest. */
-const MAX_GAP = 0.9;
+export const MAX_GAP = 0.9;
 
 // The two below are in 3D shoulder widths, so a child's shorter arms count the same as an adult's. How far above
 // or below its shoulder a hand may be and still be up is SHOULDER_HEIGHT, in 3D torso lengths.
 /** A hand nearer the chest than this is not pushed out yet (0.2 m on a 0.4 m adult). */
 const CHEST_REACH = 0.5;
 /** The reach of a full push (0.5 m on a 0.4 m adult). */
-const FULL_REACH = 1.25;
+export const FULL_REACH = 1.25;
 
 /** How far the wrist is in front of its shoulder, in 3D shoulder widths. World z is negative toward the camera. */
-function reach(frame: PoseFrame, side: "left" | "right", baseline: Baseline | null): number {
+export function reach(frame: PoseFrame, side: "left" | "right", baseline: Baseline | null): number {
   const width = bodyWidth(frame, baseline);
   if (width === 0) return 0;
   const left = side === "left";
@@ -31,7 +31,7 @@ function handsUp(frame: PoseFrame, baseline: Baseline | null): boolean {
 }
 
 /** True when both hands are close to the chest with the elbows bent. */
-function atChest(frame: PoseFrame, baseline: Baseline | null): boolean {
+export function atChest(frame: PoseFrame, baseline: Baseline | null): boolean {
   if (!handsUp(frame, baseline)) return false;
   if (reach(frame, "left", baseline) >= CHEST_REACH || reach(frame, "right", baseline) >= CHEST_REACH) return false;
   return elbowAngle(frame, "left") < 110 && elbowAngle(frame, "right") < 110;
