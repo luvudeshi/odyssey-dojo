@@ -417,28 +417,41 @@ test("a finished fight never changes again and sends no more events", () => {
   expect(randomFights().broken.finished).toEqual([]);
 });
 
-test("the same seed and inputs always give the same result, and a step never edits the state it is given", () => {
-  MATCHUPS.forEach((matchup, matchupIndex) => {
-    for (const seed of seedsFor(matchupIndex).slice(0, EDGE_SEEDS.length + 2)) {
+/**
+ * One test per matchup, so the time limit is per matchup and does not shrink as enemies and styles are added. The
+ * fights are the same as when this was one test: every matchup, its first five seeds, each played four times. Alone
+ * a matchup takes about a tenth of a second; the limit is for a machine with every core busy.
+ */
+const REPLAY_TIMEOUT_MS = 120_000;
+const REPLAYED_SEEDS = EDGE_SEEDS.length + 2;
+
+test.each(MATCHUPS.map((matchup, matchupIndex) => ({ matchup, matchupIndex, name: `${matchup.enemy.id} vs ${matchup.style.id}` })))(
+  "the same seed and inputs always give the same result, and a step never edits the state it is given: $name",
+  ({ matchup, matchupIndex, name }) => {
+    const seeds = seedsFor(matchupIndex).slice(0, REPLAYED_SEEDS);
+    expect(seeds.length, name).toBe(REPLAYED_SEEDS);
+    for (const seed of seeds) {
       const frames: Frame[] = [];
       const first: string[] = [];
       randomFight(matchup, seed, (_before, frame, after) => {
         frames.push(frame);
         first.push(JSON.stringify(after));
       });
+      expect(first.length, name).toBeGreaterThan(0);
       // The matchup and seed alone must be enough to play the same fight again, as a failure message promises.
       const fromSeed: string[] = [];
       randomFight(matchup, seed, (_before, _frame, after) => {
         fromSeed.push(JSON.stringify(after));
       });
-      const label = `${matchup.enemy.id} vs ${matchup.style.id}, seed ${String(seed)}: first step that differs`;
+      const label = `${name}, seed ${String(seed)}: first step that differs`;
       for (const again of [fromSeed, replay(matchup, seed, frames), replay(matchup, seed, frames)]) {
         expect(again.length, label).toBe(first.length);
         expect(again.findIndex((result, index) => result !== first[index]), label).toBe(-1);
       }
     }
-  });
-});
+  },
+  REPLAY_TIMEOUT_MS,
+);
 
 test("a step that throws is reported with the matchup, seed and step it happened on", () => {
   for (const { enemy, style } of MATCHUPS.slice(0, 1)) {

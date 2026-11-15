@@ -19,7 +19,8 @@ afterEach(() => { close?.(); close = null; rmSync(dataDir, { recursive: true, fo
 async function serve(ai: Partial<AiClients>): Promise<(json: unknown) => Promise<Response>> {
   const config: Config = {
     port: 0, geminiKey: null, elevenLabsKey: null, dataDir, publicBaseUrl: null, distDir: "/nonexistent",
-    timeouts: { levelMs: 80, revealMs: 80, portraitMs: 80, speechMs: 80 },
+    // The route now takes its limit from here. One fake below takes 100 ms to speak, so the limit sits well above that.
+    timeouts: { levelMs: 80, revealMs: 80, portraitMs: 80, speechMs: 2000 },
   };
   const app = await createApp({ config, ai: { ...NO_AI, ...ai } });
   const server = app.listen(0, "127.0.0.1");
@@ -37,12 +38,12 @@ test("a line is spoken with the right voice, then served from the cache without 
   const calls: string[] = [];
   const call = await serve({
     voices: () => Promise.resolve(voices),
-    speech: ({ text, voiceId }) => { calls.push(`${voiceId}:${text}`); return Promise.resolve(Buffer.from("mp3-bytes")); },
+    speech: ({ text, voiceId }) => { calls.push(`${voiceId}:${text}`); return Promise.resolve(Buffer.from("ID3 made-up mp3 bytes")); },
   });
   const first = await call({ text: "Sing, Muse.", voice: "homer" });
   expect(first.status).toBe(200);
   expect(first.headers.get("content-type")).toContain("audio/mpeg");
-  expect(Buffer.from(await first.arrayBuffer()).toString()).toBe("mp3-bytes");
+  expect(Buffer.from(await first.arrayBuffer()).toString()).toBe("ID3 made-up mp3 bytes");
   expect((await call({ text: "Sing, Muse.", voice: "homer" })).status).toBe(200);
   expect((await call({ text: "Sing, Muse.", voice: "monster" })).status).toBe(200);
   expect(calls).toEqual(["v2:Sing, Muse.", "v3:Sing, Muse."]);
@@ -66,13 +67,13 @@ test("two requests for the same new line at the same moment make one speech call
       calls += 1;
       await new Promise((resolve) => setTimeout(resolve, 100));
       if (fail) throw new Error("quota");
-      return Buffer.from("mp3-bytes");
+      return Buffer.from("ID3 made-up mp3 bytes");
     },
   });
   const line = { text: "Nobody is my name.", voice: "homer" };
   const both = await Promise.all([call(line), call(line)]);
   expect(both.map((response) => response.status)).toEqual([200, 200]);
-  for (const response of both) expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("mp3-bytes");
+  for (const response of both) expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("ID3 made-up mp3 bytes");
   expect(calls).toBe(1);
 
   fail = true;

@@ -1,15 +1,18 @@
-// The sky over the Sirens' sea, built in code (so there is no file to fail): a gradient dome from a hot, hazy
-// horizon to deep blue, flat-shaded clouds and blue islands on the horizon. `dim` (0..1) darkens and sours it as
+// The sky over the Sirens' sea, built in code (so there is no file to fail): a gradient dome from a glowing rose-gold
+// horizon to deep indigo, with the low sun over the sea, flat-shaded sunset clouds and dusky islands on the horizon. `dim` (0..1) darkens and sours it as
 // the fight turns sinister.
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { BackSide, BufferGeometry, Color, Float32BufferAttribute, IcosahedronGeometry, MeshBasicMaterial, SphereGeometry } from "three";
+import { BackSide, BufferGeometry, Color, Float32BufferAttribute, IcosahedronGeometry, MeshBasicMaterial, SphereGeometry, Vector3 } from "three";
 import type { Mesh } from "three";
 import { merge, mulberry, part } from "../../monsters/sirens/geo";
 
-const HORIZON = new Color("#fbe9c4");
-const MID = new Color("#9fd2f0");
-const ZENITH = new Color("#3d86d8");
+const HORIZON = new Color("#f4a98a");
+const MID = new Color("#b9849f");
+const ZENITH = new Color("#37376f");
+const SUN_GLOW = new Color("#ffd29a");
+/** Where the sun sits: low over the sea, ahead of the camera and a little to the right. */
+const SUN_DIR = new Vector3(0.3, 0.07, -1).normalize();
 
 function domeGeometry(): BufferGeometry {
   const dome = new SphereGeometry(400, 24, 16);
@@ -20,6 +23,8 @@ function domeGeometry(): BufferGeometry {
     const up = Math.max(0, position.getY(i) / 400);
     if (up < 0.22) c.copy(HORIZON).lerp(MID, up / 0.22);
     else c.copy(MID).lerp(ZENITH, Math.min(1, (up - 0.22) / 0.6));
+    const toSun = Math.max(0, new Vector3(position.getX(i), position.getY(i), position.getZ(i)).normalize().dot(SUN_DIR));
+    c.lerp(SUN_GLOW, toSun ** 24 * 0.9 + toSun ** 6 * 0.25);
     c.toArray(colors, i * 3);
   }
   dome.setAttribute("color", new Float32BufferAttribute(colors, 3));
@@ -36,7 +41,7 @@ function cloudGeometry(): BufferGeometry {
     const cy = 40 + random() * 60;
     for (let b = 0; b < 5; b++) {
       const size = 14 + random() * 14;
-      parts.push(part(new IcosahedronGeometry(1, 1), b % 2 === 0 ? "#ffffff" : "#eef3fb", [cx + (b - 2) * size * 0.9, cy + random() * 4, cz + (random() - 0.5) * 8], [0, 0, 0], [size, size * 0.42, size * 0.8]));
+      parts.push(part(new IcosahedronGeometry(1, 1), b % 2 === 0 ? "#ffcdb0" : "#d89cae", [cx + (b - 2) * size * 0.9, cy + random() * 4, cz + (random() - 0.5) * 8], [0, 0, 0], [size, size * 0.42, size * 0.8]));
     }
   }
   return merge(parts);
@@ -47,7 +52,7 @@ function isleGeometry(): BufferGeometry {
   const random = mulberry(4);
   const parts: BufferGeometry[] = [];
   for (const [x, z, s] of [[-120, -190, 46], [-40, -230, 70], [70, -210, 54], [150, -170, 38], [215, -120, 44]] as const) {
-    parts.push(part(new IcosahedronGeometry(1, 1), "#8fb3c9", [x, 0, z], [0, random() * 3, 0], [s * 1.6, s * (0.18 + random() * 0.12), s * 0.8]));
+    parts.push(part(new IcosahedronGeometry(1, 1), "#6d5a86", [x, 0, z], [0, random() * 3, 0], [s * 1.6, s * (0.18 + random() * 0.12), s * 0.8]));
   }
   return merge(parts);
 }
@@ -67,7 +72,7 @@ export function Sky({ dim }: { dim: { current: number } }) {
     Object.values(materials).forEach((m) => { m.dispose(); });
   }, [geometries, materials]);
   const clouds = useRef<Mesh>(null);
-  const sour = useMemo(() => new Color("#9a7aa6"), []);
+  const sour = useMemo(() => new Color("#6a4f8c"), []);
   useFrame((_, delta) => {
     const d = dim.current;
     materials.dome.color.setRGB(1, 1, 1).lerp(sour, d * 0.75);
