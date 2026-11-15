@@ -1,15 +1,15 @@
 // One camera for the whole session: started once when the player picks the webcam, then shared by every calibration
-// and fight, so nothing between fights can lose it. A browser pauses a <video> that leaves the page, and every trip
-// from a fight to the map takes the camera panel (and the video in it) away, so the next calibration saw a frozen
-// picture and no body. check() plays it again. If the stream ends, or no picture arrives for STALL_MS while the video
-// is on screen, the camera is restarted once; failing again leaves it "failed" until the player asks for it.
+// and fight, so nothing between fights can lose it. The tracker mends its own stalls (it presses play again and
+// reopens the camera within about 5 s); if pictures still have not come back after STALL_MS, this restarts the whole
+// tracker once, and failing again leaves it "failed" until the player asks for the camera.
 import { log } from "../core/log";
 import { watchCameraFrames } from "./freshFrame";
 import type { PoseTracker } from "./tracker";
 
 export type CameraStatus = "off" | "starting" | "live" | "restarting" | "failed";
 
-export const STALL_MS = 2000;
+/** Past the tracker's own recovery (a revive at 1.5 s, a camera reopen at the second revive 3 s later). */
+export const STALL_MS = 8000;
 
 export interface CameraSession {
   /** Starts the camera, or starts it again after a failure. Resolves to the one tracker every screen shares. */
@@ -22,11 +22,6 @@ export interface CameraSession {
 }
 
 const hidden = (): boolean => typeof document !== "undefined" && document.hidden;
-
-function ended(video: HTMLVideoElement): boolean {
-  const source = video.srcObject;
-  return source !== null && "getVideoTracks" in source && source.getVideoTracks().some((track) => track.readyState === "ended");
-}
 
 export function createCameraSession(open: () => Promise<PoseTracker>): CameraSession {
   let state: CameraStatus = "off";
@@ -92,14 +87,6 @@ export function createCameraSession(open: () => Promise<PoseTracker>): CameraSes
     return attempt;
   };
 
-  const restart = (why: string): void => {
-    log("warn", "camera_restart", why);
-    release();
-    if (retried) { set("failed"); return; }
-    retried = true;
-    launch("restarting").catch((error: unknown) => { log("warn", "camera_restart_failed", error); });
-  };
-
   const session: CameraSession = {
     start() {
       if (pending) return pending;
@@ -118,10 +105,7 @@ export function createCameraSession(open: () => Promise<PoseTracker>): CameraSes
       return () => { listeners.delete(listener); };
     },
     check(now) {
-      if (state !== "live" || !current) return;
-      const element = current.video;
-      if (ended(element)) { restart("ended"); return; }
-      if (element.paused) element.play().catch((error: unknown) => { log("warn", "camera_play_failed", error); });
+      if (state !== "live") return;
       if (frames !== seen) {
         // A new picture: the camera works, and a later failure may be restarted again.
         seen = frames;
@@ -129,9 +113,14 @@ export function createCameraSession(open: () => Promise<PoseTracker>): CameraSes
         retried = false;
         return;
       }
-      // No frame counter, off screen or in a hidden tab, pictures are not expected: the clock does not run.
-      if (!uncount || !element.isConnected || hidden() || since === null) { since = now; return; }
-      if (now - since > STALL_MS) restart("stalled");
+      // Without a frame counter, or in a hidden tab, pictures are not expected: the clock does not run.
+      if (!uncount || hidden() || since === null) { since = now; return; }
+      if (now - since <= STALL_MS) return;
+      log("warn", "camera_restart", "no picture");
+      release();
+      if (retried) { set("failed"); return; }
+      retried = true;
+      launch("restarting").catch((error: unknown) => { log("warn", "camera_restart_failed", error); });
     },
   };
   return session;
