@@ -22,6 +22,7 @@ import { STYLES } from "../styles/registry";
 import { Button, WaveBorder, installGround } from "../ui/pebble";
 import "./endPanel.css";
 import type { Joined } from "./RoomJoin";
+import { forgetSeat, tabStore } from "./seatStore";
 
 interface Fight { readonly enemyId: string; readonly styleId: string; readonly seed: number }
 
@@ -127,12 +128,17 @@ export function GuestFight(props: { joined: Joined; onOver: () => void; onLeave:
     return () => { window.clearInterval(timer); };
   }, [link]);
 
+  // The host left, so the room is gone: a reload must not try that seat again.
+  const hostGone = sawHost && !link.hostHere();
+  useEffect(() => { if (hostGone) forgetSeat(tabStore()); }, [hostGone]);
+
   const leave = (): void => {
+    forgetSeat(tabStore());
     link.close();
     tracker?.stop();
     props.onLeave();
   };
-  if (sawHost && !link.hostHere()) return <Notice line="The host left the room." onLeave={leave} button="Back to the start" />;
+  if (hostGone) return <Notice line="The host left the room." onLeave={leave} button="Back to the start" />;
   if (link.stopped()) return <Notice line="The host ended the fight. Stay here for the next one, or leave." onLeave={leave} button="Leave the room" />;
   if (!fight) return <Notice line={sawHost ? "You are in. Waiting for the host to start." : "Joining..."} onLeave={leave} button="Leave the room" />;
   return <Fighting key={fight.seed} link={link} fight={fight} mode={mode} tracker={tracker} onOver={props.onOver} onLeave={leave} />;
