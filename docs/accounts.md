@@ -1,26 +1,36 @@
-# Accounts on Tiger Data
+# Accounts and the Hall of heroes on Tiger Data
 
-A player can make an account with a hero name and a password. Their progress, achievements, volume settings and character are then saved to the account and come back on another browser. Playing without an account works as before: everything stays in the browser and no network is needed.
+A player can make an account with a hero name and a password. Their progress, achievements, volume settings and character are then saved to the account and come back on another browser. Every fight of a signed-in player also goes into the Hall of heroes, a list of the best scores. Playing without an account works as before: everything stays in the browser and no network is needed.
 
-The database is Tiger Data, the sponsor's hosted Postgres. The server reaches it with one connection string, `DATABASE_URL`.
+The database is Tiger Data, the sponsor's hosted Postgres with TimescaleDB. The server reaches it with one connection string, `DATABASE_URL`.
+
+In a hurry: "Set it up on the demo laptop" is next. A sponsor judge wants "What Tiger Data does for the game".
 
 ## Where this stands
 
-- Built: the six routes, the rules, the limits, the database code, the browser's sync and merge, the sign-in form.
-- **It runs against the real Tiger Data service** (free plan, PostgreSQL 18.6). The driver is `pg` 8.23.1, pinned in `package.json` with the lockfile. The 15 database tests pass there, and the two-browser walk under "What was run against the real database" was done on it.
-- The sign-in form is not on the Account page yet. `src/screens/Account.tsx` is the lead's file; the two lines are in the PR. Until they land nothing imports the sync, so the game makes no account request at all.
-- The "Hall of heroes" list is not built yet.
+- Built: the six account routes and the two of the hall, the rules, the limits, the database code, the browser's sync and merge, the sign-in dialog and the board of the hall.
+- **It runs against the real Tiger Data service** (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0). The driver is `pg` 8.23.1, pinned in `package.json` with the lockfile. The 25 database tests pass there, and the two-browser run under "What was run against the real database" was done on it.
+- **Neither the sign-in nor the hall is on the Account page until the lead adds four lines** to `src/screens/Account.tsx` (his file; the lines are in the PR). Until then nothing imports the sync or the hall, so the game makes no account request at all and sends no fight.
+- The service luvudeshi made already holds the five real objects: `accounts`, `sessions`, `saves`, the hypertable `fights` and the continuous aggregate `fights_hourly`. They are empty.
 
 ## Set it up on the demo laptop
 
-Today the demo laptop runs the server with no keys at all. With nothing done, accounts are off and the Account page says so.
+Today the demo laptop runs the server with no keys at all. With nothing done, accounts are off, the Account page says so, and the game plays as before.
 
-1. **Make a Tiger Data service** (free plan, no card) at the Tiger Data console. Copy its connection string. It looks like `postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require`. For the demo laptop, luvudeshi sends his string to Toyeshh directly.
-2. **Put the string in `.env`** at the repo root, alone on one line: `DATABASE_URL=postgres://...`. Never commit `.env`. Never paste the string in an issue, a PR, a chat or a test.
-3. **Install the driver:** `npm ci`. It is `pg` 8.23.1, in `package.json`.
-4. **Restart the server** (`npm run server`). The first line it logs has `"accounts":true`, which only means the variable is set.
-5. **Check it:** `curl http://localhost:8787/api/account/status` answers `{"available":true}`. The three tables are made at that first request, which took half a second here. The log says `accounts_ready`.
-6. **Make the demo's hero names first**, on the laptop itself, before the tunnel is opened. There is no email and no reset, so a name belongs to whoever takes it first.
+1. **Get the code and the driver.** `git pull`, then `npm install` in the repo root. That installs `pg` 8.23.1, the one new package.
+2. **Put one line in `.env`** at the repo root (make the file if there is none). luvudeshi sends the string to Toyeshh privately. The whole line, with nothing after it:
+   ```
+   DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require
+   ```
+   Never commit `.env`. Never paste the string in an issue, a PR, a chat or a test. A string of your own works too: make a free service at the Tiger Data console and copy its connection string. The tables are made by the server at its first request.
+3. **Restart the server** the way you start it (`npm run dev:all`, `npm start` or `npm run server`). The first line it logs has `"accounts":true`, which only means the variable is set.
+4. **Check it.** In a second terminal (`curl.exe` in Windows PowerShell):
+   ```
+   curl http://localhost:8787/api/account/status
+   ```
+   It must answer `{"available":true}`. The first answer takes about half a second and the log says `accounts_ready`. Then `curl http://localhost:8787/api/heroes` answers a JSON object that starts with `{"at":` and the log says `heroes_ready`.
+5. **Look at the Account page** (with the lead's four lines in). Bottom right, above the buttons: "Saved in this browser only." and a **Sign in** button beside "Open settings". Under the right wall: a **Hall of heroes** button. If the line says "Accounts are not available here." there is no database: see the table below.
+6. **Make the demo's hero names first**, on the laptop itself, before the tunnel is opened. Sign in, win one fight, open the Hall of heroes: the hero is on the podium. There is no email and no reset, so a name belongs to whoever takes it first.
 
 If it answers `{"available":false}`, the server log says why, in one line:
 
@@ -66,16 +76,18 @@ The limits on the connection: 4 connections at most (a free service has no poole
 
 ## What the Account page shows
 
-The sign-in form is one line and one button in the Hero card. The name and password are asked in a dialog.
+The Account page is the hall of the hero, one scene. The account part is one line of words and one button. The line sits bottom right, above the row of buttons on the floor. The button is the first in that row. The name and password are asked in a dialog.
 
-| State | The Hero card says |
-| --- | --- |
-| No database, the database is down, or the server cannot be reached | "Saved in this browser only. Accounts are not available here." |
-| Signed out | "Saved in this browser only." and the button "Sign in or create account". |
-| The dialog | Hero name, Password, "Sign in", "Create account", "Back". Under them, what went wrong, in plain words. |
-| Signed in | "Signed in as *name*." then "Saved to your account.", "Saving..." or "Not sent yet. Kept in this browser.", and "Sign out". |
+| State | The line says | The button |
+| --- | --- | --- |
+| No database, the database is down, or the server cannot be reached | "Saved in this browser only. Accounts are not available here." | none, and no Hall of heroes button |
+| Signed out | "Saved in this browser only." | "Sign in" |
+| The dialog | Hero name, Password, "Sign in", "Create account", "Back". Under them, what went wrong, in plain words. | |
+| Signed in | "Signed in as *name*." then "Saved to your account.", "Saving..." or "Not sent yet. Kept in this browser." | "Sign out" |
 
-- Signed out, the game asks the server nothing until the Account page opens. Then it asks once whether accounts are on.
+The **Hall of heroes** button stands under the right wall, beside the count of trophies. It opens the board in a dialog (see "The hall of heroes"). It is there whenever the server has accounts, signed in or not.
+
+- Signed out, the game asks the server nothing until the Account page opens. Then it asks once whether accounts are on, and when they are, once for the hall. With accounts off the hall is never asked for.
 - Signed in, the save is fetched when the game starts and each time the Account page opens. It is sent 1.5 seconds after a fight or a change.
 - "Not sent yet" is sent again on the next change, when the Account page opens, and when the game next starts. Nothing keeps knocking on a server that is down.
 - Signing out keeps the progress in the browser.
@@ -83,11 +95,16 @@ The sign-in form is one line and one button in the Hero card. The name and passw
 
 ## What is stored
 
-Three tables, made with `create table if not exists`:
+Three tables for the accounts, made with `create table if not exists`:
 
 - `accounts`: an id, the hero name, the name's key (unique), the password hash and its salt, when it was made.
 - `sessions`: the SHA-256 of a session token, the account, when it was made, when it runs out.
 - `saves`: one JSON document per account, and when it was written.
+
+And two for the hall (see "The hall of heroes"):
+
+- `fights`: one row a finished fight of a signed-in player: when, the account, the hero name, the stop, won or lost, the score, the style, the god, the seconds, the best combo.
+- `fights_hourly`: worked out from `fights` by the database, per hero and hour.
 
 Never stored: the password, the session token, an email or anything else about the person.
 
@@ -95,7 +112,7 @@ Never stored: the password, the session token, an email or anything else about t
 - **Token:** 32 random bytes. The browser gets it once, at sign-up or sign-in, keeps it in `localStorage` under `odyssey-dojo.session`, and sends it as `Authorization: Bearer <token>`. There is no cookie. A session lasts 30 days. An account keeps 5 sessions; one more ends the oldest.
 - **Save:** `{ version: 1, profile, settings, character, achievements? }`. The profile and the settings are whole objects, stored and given back as they came. The server checks size and shape only: 32 KB in all, 200 keys an object, 200 entries a list, 3 levels deep, 200 characters a text, numbers within a million million. So a field added to the profile later needs no change on the server and is never dropped. The browser reads the profile back through `parseProfile` and the settings through `parseSettings`. The server never acts on what is in a save.
 
-To delete an account by hand: `delete from accounts where name_key = lower('The Name');`. Its sessions and its save go with it.
+To delete an account by hand: `delete from accounts where name_key = lower('The Name');`. Its sessions, its save and its fights go with it.
 
 ## How two browsers stay the same
 
@@ -116,7 +133,7 @@ Limits of this, worth knowing:
 Read this if you have 30 seconds. Tiger Data is the game's memory in two ways.
 
 1. **Accounts.** A hero name, a password and one saved game per player, in plain Postgres tables. Sign in on any browser and the road home is where you left it.
-2. **The hall of heroes.** Every finished fight of a signed-in player is one row in a time series. The Account page shows the best scores tonight and of all time, how many fights were fought this hour, a line of the last six hours and which monster fell most. All of it comes from **one statement, one round trip, about 45 ms** on a free service, and the database is asked at most once in five seconds however many people look.
+2. **The hall of heroes.** Every finished fight of a signed-in player is one row in a time series. The board on the Account page shows the best scores tonight and of all time, how many fights were fought this hour, a line of the last six hours and which monster fell most. All of it comes from **one statement, one round trip, about 45 ms** on a free service, and the database is asked at most once in five seconds however many people look.
 
 What is used, and why each earns its place:
 
@@ -176,7 +193,7 @@ What this is not: at tonight's size (a few hundred fights) plain Postgres would 
 
 - **When a fight is written.** A signed-in player finishes a fight (won or lost) on the road. The browser sends it in the background once, after the profile has it. The result screen never waits for it and never shows an error from it. Signed out, a fight sends nothing.
 - **What is written.** When (the server's clock), whose (the account of the session), the hero name on the player's screen, the stop, won or lost, the score, the fighting style, the god the scan found (if any), how many seconds the fight took and the best combo.
-- **What the hall shows.** The best score of each hero in the last 24 hours and of all time, ten each: a podium for the first three, a list to ten, the reader's own row marked "You". Under it: fights this hour (or in all), fights per ten minutes over six hours, and the stop beaten most tonight. It is read when the Account page opens and every ten seconds while that page is in front. With accounts off there is no hall and the page is as it was.
+- **What the hall shows.** The best score of each hero in the last 24 hours and of all time, ten each: a podium for the first three, a list to ten, the reader's own row marked "You". Under it: fights this hour (or in all), fights per ten minutes over six hours, and the stop beaten most tonight. It is read once when the Account page opens (to learn whether there is a hall), again when the board is opened, and every ten seconds while the board is open and the tab is in front. With accounts off there is no hall, no button, and nothing is asked.
 - **A tie** goes to the hero who fought first.
 
 Two routes (`server/routes/heroes.ts`):
@@ -211,15 +228,15 @@ Things to know:
 - `delete from fights where ...` by hand leaves the hours already written down in `fights_hourly` until `call refresh_continuous_aggregate('fights_hourly', null, null);`. Deleting the account needs nothing more.
 - Only fights on the road are sent (what `recordFight` is given). The guest of a room and the Training Dojo send nothing.
 - The god is sent only when `src/App.tsx` passes it to `recordFight` (one line, the lead's file, in the PR). Without it the god is empty and everything else works.
+- The board needs the sign-in part on the same page: `HallOfHeroes` learns from the account's state whether the server has accounts, and `AccountSignIn` is what asks for that state when the page opens.
 
 Not checked for the hall:
 
-- The real `fights` and `fights_hourly` (no prefix) have not been made yet. The tests and the pictures used tables under a prefix of their own, since dropped. The first start of the server with this code makes the real ones.
 - Nothing that takes a day or more: a chunk moving to the columnstore, a fight deleted out of a chunk that is already there, the refresh policy over many hours. The policy was seen to run once, right after it was made.
-- The tunnel. The two paths were called with a tunnel's headers on a loopback socket, not through a real one.
-- A camera fight and the god in a row: the keyboard fight that was played in headless Chrome has no god.
-- Two real browser profiles looking at one hall.
-- Where the hall sits on the Account page is the lead's call. The pictures were taken with one line added to `src/screens/Account.tsx`, not committed.
+- The real tunnel. The two paths were called with a tunnel's headers on a loopback socket, not through a real one.
+- A camera fight and the god in a row: every fight played here was on the keyboard, which has no god.
+- More than two heroes on the real board. The board with ten rows was looked at with a made-up answer in the browser, not with ten real accounts.
+- Where the button and the board sit on the Account page is the lead's call. The pictures were taken with the four lines added to `src/screens/Account.tsx`, not committed.
 
 ## The routes
 
@@ -242,7 +259,7 @@ Details that are easy to miss:
 
 ## What a stranger can do, and what bounds it
 
-The public tunnel reaches `/api`. `server/lib/localOnly.ts` opens exactly these five paths to it and nothing else under `/api/account/`. **Another device on the Wi-Fi is refused (403)**: the server speaks plain HTTP there, and a password must not cross the venue's network in the clear. Through the tunnel it travels inside HTTPS. The numbers are in `server/lib/accountLimits.ts` and `server/lib/accounts.ts`.
+The public tunnel reaches `/api`. `server/lib/localOnly.ts` opens exactly these five paths to it, the two of the hall (`POST /api/account/fights`, `GET /api/heroes`), and nothing else under `/api/account/`. **Another device on the Wi-Fi is refused (403)**: the server speaks plain HTTP there, and a password must not cross the venue's network in the clear. Through the tunnel it travels inside HTTPS. The numbers are in `server/lib/accountLimits.ts` and `server/lib/accounts.ts`.
 
 Two rules keep one stranger from locking the others out:
 
@@ -301,31 +318,51 @@ What stands in for what, so nobody takes it for the real thing:
 - `server/tests/accountRoute.test.ts` uses an `Accounts` object with fixed answers, to check the order in which the routes count, refuse and ask. It stores no account and no save.
 - The browser tests (`tests/account*.test.ts`) use a made-up `fetch` that answers the six routes from memory (`tests/helpers/accountKit.ts`). It checks nothing a real server would.
 
-None of these is a database, and none proves a statement. **The database tests talk to a real Postgres:**
+None of these is a database, and none proves a statement.
+
+The hall of heroes has two files of the same kind:
 
 ```
-TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.ts
+npx vitest run server/tests/heroes.test.ts tests/accountHeroes.test.ts
 ```
 
-- Use a Tiger Data string, or a Postgres on this machine (`postgres://USER@localhost:5432/DBNAME`; a local address needs no `sslmode`).
-- To run them on the service in `.env` without the string ever being on a command line or in the shell's history:
+- `server/tests/heroes.test.ts` (20 tests, no database): what a fight must look like, the limits, who may reach the two paths, the order in which the routes count and ask, and the hall's own code. Its stand-ins: an `Accounts` and a `Heroes` object with fixed answers, and a made-up statement function that answers from a list. None is a database.
+- `tests/accountHeroes.test.ts` (9 tests, a made-up `fetch`): no request when signed out, one request a fight when signed in, what is sent, the fight's clock, and the hall as the browser reads it.
+
+### The database tests
+
+**These talk to a real database:** `server/tests/accountsDb.test.ts` (15 tests) and `server/tests/heroesDb.test.ts` (10 tests).
+
+```
+TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.ts server/tests/heroesDb.test.ts
+```
+
+- To run them on the service in `.env` without the string ever being on a command line or in the shell's history (one line):
   ```
-  node --env-file=.env -e "process.env.TEST_DATABASE_URL = process.env.DATABASE_URL; require('node:child_process').spawnSync('npx', ['vitest', 'run', 'server/tests/accountsDb.test.ts'], { stdio: 'inherit', shell: process.platform === 'win32' })"
+  node --env-file=.env -e "process.env.TEST_DATABASE_URL = process.env.DATABASE_URL; require('node:child_process').spawnSync('npx', ['vitest', 'run', 'server/tests/accountsDb.test.ts', 'server/tests/heroesDb.test.ts'], { stdio: 'inherit', shell: process.platform === 'win32' })"
   ```
-- Each run makes its own three tables under a random prefix and drops them at the end, so it can share a database with the game and with another run. Three runs in a row and two runs at once left no table and no index behind, and the real tables were not touched.
-- A run takes about 21 s against Tiger Data from here: 15 tests, most of the time is password hashes.
-- **Without `TEST_DATABASE_URL` these 15 tests are skipped**, as the owner allowed.
+- `accountsDb` runs on a Tiger Data string or on a Postgres on this machine (`postgres://USER@localhost:5432/DBNAME`; a local address needs no `sslmode`). `heroesDb` needs TimescaleDB, so a plain local Postgres will not do for it.
+- Each run makes its own tables (and its own hypertable and continuous aggregate) under a random prefix, `t` and ten hex digits, and drops them at the end. So a run can share the database with the game and with another run. The tests check that nothing with their prefix is left. The real tables are not touched.
+- Both files together take about 21 s against Tiger Data from here. Most of the time is password hashes.
+- **Without `TEST_DATABASE_URL` these 25 tests are skipped**, as the owner allowed.
+- What the 10 of the hall cover: the hypertable, the aggregate and its policy as the service lists them; a fight written with the session's account; nobody writing as somebody else; the ten best in order with a tie; tonight against all time, before and after a refresh of the aggregate; the 36 buckets of the activity line; the limit of four a minute; an account deleted.
 
 ## What was run against the real database
 
-All of it on the Tiger Data service, from luvudeshi's Mac, on the built game (`vite build`, served by `vite preview`, with the server beside it).
+All of it on the Tiger Data service (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0), from luvudeshi's Mac, on the branch with `main` (93d4587) merged in and the lead's four lines applied locally.
 
-- **The 15 database tests:** pass, three runs in a row (21.1 s, 21.0 s, 21.9 s) and two at once.
-- **Two browser profiles in headless Chrome, keyboard play.** In the first: create an account, move the music volume from 70 to 35, win a fight at Polyphemus, see "Saved to your account.", sign out. In the second, with nothing stored: sign in with the name in capitals. The hero name, 1 fight, 1 win, the best score, 6 of 23 achievements, the cleared stop and the volume 35 were there, and that browser kept its own "Play with: Keyboard". A second win there, then sign-in again on the first: 2 fights and 2 wins on both.
+- **The 25 database tests:** pass, three runs in a row (20.8 s, 21.1 s, 21.3 s). Afterwards no test table and no test index was left.
+- **Two browser profiles in headless Chrome, 1280 x 720, keyboard play, on the built game** (`vite build`, served by `vite preview`, the real server beside it):
+  - In the first: create an account, move the music volume from 70 to 35, win a fight at Polyphemus (score 2190). The win sent one `POST /api/account/fights` (201) and the save. The Account page said "Saved to your account.", and the Hall of heroes showed the hero with 2,190 at Polyphemus, marked "You", under Tonight and under All time. Sign out: the progress stayed.
+  - In the second, with nothing stored: the hall, signed out, showed the same hero and score with nobody marked. Sign in with the name in capitals: the hero name, 1 fight, 1 win, the best score, 6 of 23 trophies, the cleared stop (ticked on the map) and the volume 35 were there, and that browser kept its own "Play with: Keyboard". The hall now marked the row "You". A second win there, then sign-in again on the first: 2 fights and 2 wins on both, one row for the hero in the hall, and the hall's count of fights this hour two higher.
+  - Both signed out at the end. No page error and no console error other than the refused sign-ins. The server logged `server_listening`, `accounts_ready`, `heroes_ready` and nothing else.
 - **Refusals, as the player reads them:** a wrong password ("Wrong name or password."), a taken name ("That hero name is taken. Pick another, or sign in."), and from a visitor through the tunnel ten wrong tries answered 401 and the eleventh 429 ("Too many tries. Wait a minute, then try again."). The right password from that address then waited too; the laptop's own browser still got in.
-- **Sign-in through the tunnel's headers** (`Cf-Connecting-Ip`, `Cf-Ray`, `X-Forwarded-For` on every request): works, and is counted as a stranger.
-- **No request to `/api/account` before the Account page is opened**, signed out, with the database on, off and silent. A whole fight sends none either.
+- **Through the tunnel's headers** (`Cf-Connecting-Ip`, `Cf-Ray`, `X-Forwarded-For` on every request): sign-in works and is counted as a stranger, and the hall is read with the "You" mark.
+- **No request to `/api/account` or `/api/heroes` before the Account page is opened**, signed out, with the database on, off and silent. A whole fight sends none either. With the database off or silent the Account page asks the status once and never the hall.
+- **The off states:** no `DATABASE_URL`: "Accounts are not available here." after 67 ms. A database port that takes the connection and says nothing: the same after 2.8 s (the limit is 4 s). A port nothing listens on: status `false` in 8 ms, sign-up and the two hall paths 503 in 1 ms. In all three the fight was played, won and kept in the browser.
+- **`npm run preflight -- --offline`:** 3 pass, 1 warn (no AI keys), 0 fail, with and without `DATABASE_URL`.
 - **The built game holds no part of the connection string:** built with the string in the environment, then searched for the host, the user, the password, the database name, "postgres", "DATABASE_URL" and "sslmode". None is in it.
+- The two accounts the runs made, with their saves and their four fights, were deleted afterwards. The tables stay, empty.
 
 How long things take from this Mac (the database is a 40 ms round trip away):
 
@@ -334,33 +371,27 @@ How long things take from this Mac (the database is a 40 ms round trip away):
 | Sign-in (one password hash, three statements) | 0.34 s | 0.63 s |
 | A save written | 0.04 s | 0.35 s |
 | A save read | 0.04 s | about 0.33 s |
+| A fight written to the hall | 0.08 s | 0.32 s |
+| The hall read (from the database / from the server's memory) | 0.045 s / 0.015 s | |
 | Sign-out | 0.04 s | |
 | The first status after a start (connect, make the tables) | 0.5 s | |
 
-A fight is longer than 30 s, so the save after a fight is the slow case: a third of a second, in the background.
+A fight is longer than 30 s, so what is sent after a fight is the slow case: a third of a second, in the background.
 
-One thing this run found that is not in our files: after a sign-in brings cleared stops into a browser, the map does not mark them until the page is loaded again, because `src/App.tsx` reads the profile's cleared stops once at start. Every stop can be played either way. The file is the lead's, so the fix is not in this branch. It is one line, tried here and not committed: on the `QuestMap` in `src/App.tsx`, `cleared={[...new Set([...flow.cleared, ...profile.cleared])]}` in place of `cleared={flow.cleared}`. With it the second browser's map showed the tick at once.
+Two lines in `src/App.tsx` (the lead's file, in the PR, tried here and not committed):
 
-**The hall of heroes** has its own three files:
-
-```
-npx vitest run server/tests/heroes.test.ts tests/accountHeroes.test.ts
-TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/heroesDb.test.ts
-```
-
-- `server/tests/heroes.test.ts` (20 tests, no database): what a fight must look like, the limits, who may reach the two paths, the order in which the routes count and ask, and the hall's own code. Its stand-ins: an `Accounts` and a `Heroes` object with fixed answers, and a made-up statement function that answers from a list. None is a database.
-- `tests/accountHeroes.test.ts` (9 tests, a made-up `fetch`): no request when signed out, one request a fight when signed in, what is sent, the fight's clock, and the hall as the browser reads it.
-- `server/tests/heroesDb.test.ts` (10 tests) talks to a real Tiger Data service. Each run makes its own tables, hypertable and continuous aggregate under a random prefix and drops them at the end. It needs TimescaleDB, so a plain local Postgres will not do. **Without `TEST_DATABASE_URL` these 10 are skipped.**
-- **These 10 have been run against the real Tiger Data service** (PostgreSQL 18.6, TimescaleDB 2.32.0): 10 passed. They cover: the hypertable, the aggregate and its policy as the service lists them; a fight written with the session's account; nobody writing as somebody else; the ten best in order with a tie; tonight against all time, before and after a refresh of the aggregate; the 36 buckets of the activity line; the limit of four a minute; an account deleted.
+- After a sign-in brings cleared stops into a browser, the map does not mark them until the page is loaded again, because `src/App.tsx` reads the profile's cleared stops once at start. Every stop can be played either way. The fix is on the `QuestMap`: `cleared={[...new Set([...flow.cleared, ...profile.cleared])]}` in place of `cleared={flow.cleared}`. With it the second browser's map showed the tick at once.
+- The god of a fight reaches the hall only when `recordFight` is given `godId: god?.god ?? null`. Without it the god is empty and everything else works.
 
 ## Not done, not checked
 
 - A real person on a real phone through the real tunnel. The tunnel was stood in for by its headers.
-- The camera. Every fight in the walk was played on the keyboard.
+- The camera. Every fight in the run was played on the keyboard.
 - A service with a CA-signed certificate, or a CA file that matches: checking was only seen to refuse the free service's self-signed certificate.
 - More than a few players at once against the free service. The limits are tested one request at a time.
 - The demo laptop (Windows). Everything above ran on a Mac.
 - Tiger Data pausing a free service that nobody uses: not seen, and not looked up. If it does, the first request after a pause answers "not available" and the next try 15 s later finds it.
-- `scripts/check-dist.mjs` does not look for `DATABASE_URL` or its value in the built game: the name does not say "secret" and a URL does not look like a key. The lead owns that file. `tests/accountClient.test.ts` scans `src/` for it, and the built game was searched by hand (above).
+- `scripts/check-dist.mjs` does not look for `DATABASE_URL` or its value in the built game: the name does not say "secret" and a URL does not look like a key. The lead owns that file. `tests/accountClient.test.ts` scans `src/` for it, and the built game was searched by a script (above).
+- `make check`, `make ready`, eslint and the full test suite were not run for this branch (the owner's load rule for the night). The account and hall test files were, and both typechecks.
 - The scrypt settings are not stored with the hash. Changing them later needs a column.
 - There is no way to change a password or to end all sessions of an account.
