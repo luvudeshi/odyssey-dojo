@@ -23,7 +23,7 @@ export interface FightResult {
   readonly mastery: Readonly<Record<string, number>>;
 }
 
-export const PROFILE_KEY = "odyssey-fighter.profile";
+export const PROFILE_KEY = "odyssey-dojo.profile";
 export const NAME_MAX = 20;
 export const EMPTY_PROFILE: Profile = { name: "", cleared: [], moves: {}, bestScore: 0, fights: 0, wins: 0 };
 

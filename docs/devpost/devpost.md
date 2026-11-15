@@ -4,7 +4,7 @@
 
 **Built with:** typescript, react, vite, three.js, react-three-fiber, mediapipe, elevenlabs, google-gemini, express, node.js, vitest
 
-**Links:** Demo `[confirm: live demo URL]` · Video `[confirm: demo video URL]` · Repo `[confirm: repo URL, github.com/toyeshhm/odyssey-fighter is private today]`
+**Links:** Demo `[confirm: live demo URL]` · Video `[confirm: demo video URL]` · Repo `[confirm: repo URL, github.com/toyeshhm/odyssey-dojo is private today]`
 
 **Team:** toyeshhm, luvudeshi, tagrawal029, gatik-g
 
@@ -12,11 +12,11 @@
 
 ---
 
-![Odyssey Fighter main menu](docs/devpost/images/menu.jpg)
+![Odyssey Dojo main menu](docs/devpost/images/menu.jpg)
 
 Odysseus did not beat Polyphemus by being stronger. He waited for the Cyclops to fall asleep, then drove a sharpened olive stake into his one eye. It was a plan and a single move, done at the right moment.
 
-**Odyssey Fighter** is a browser game where your body is the controller. A webcam reads your jab, hook, block, duck and dodge. You fight six stops of Odysseus's road home, and Athena coaches you out loud while you do it.
+**Odyssey Dojo** is a browser game where your body is the controller. A webcam reads your jab, hook, block, duck and dodge. You fight six stops of Odysseus's road home, and Athena coaches you out loud while you do it.
 
 ## Inspiration
 
@@ -39,13 +39,13 @@ That is what a coach does. We wanted a player to stand up, throw a real jab, and
 - **A god scan names your patron.** A snapshot goes to Gemini and comes back as an Olympian with one divine power. Defends fill a power ring at the bottom of the screen, and a god gesture spends it.
 - **Fight together.** Host a room and a friend joins by code or QR code. Throw the same strike together and it does double damage.
 - **Every move has a key.** The whole game plays on a keyboard, with no camera.
-- **A main menu with Story mode, a Training Dojo and an Account page** for your hero name, achievements, friends and settings. `[confirm: not on origin/main when this was written]`
+- **A main menu with Story mode, Multiplayer, a Training Dojo and an Account page.** Multiplayer hosts a room with a code and a QR code, or joins one. Account keeps your hero name, achievements and settings.
 
 ![A strike lands: the hero leaps to Polyphemus's eye and the game rates the hit GOOD](docs/devpost/images/leap-strike.jpg)
 
 ![The quest map: six stops from Troy to Ithaca](docs/devpost/images/quest-map.jpg)
 
-![The Account page: hero name, achievements, friends and settings](docs/devpost/images/account.jpg)
+![The Account page: hero name, achievements and settings](docs/devpost/images/account.jpg)
 
 ## How we built it
 

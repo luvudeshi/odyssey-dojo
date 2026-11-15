@@ -57,7 +57,7 @@ export function replayMeta(words: CardWords): ReplayMeta {
 
 export function cardFileName(godName: string): string {
   const slug = godName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `odyssey-fighter-${slug === "" ? "card" : slug}.png`;
+  return `odyssey-dojo-${slug === "" ? "card" : slug}.png`;
 }
 
 /** True when the upload would send this card: it has been painted, and it is not too big for the server. */

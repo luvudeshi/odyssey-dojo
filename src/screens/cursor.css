@@ -1,0 +1,7 @@
+/* Menu screens only (main menu, Account, Multiplayer, style select, quest map): a bronze spear tip stands in for the
+   system arrow and turns gold over anything that can be clicked. The click point is the tip, at 1 1. The fight keeps the
+   system cursor: none of these panels is on screen during one. Both pictures are small enough for Vite to inline. */
+:root:has(.menu--title, .menu--account, .menu--rooms, .menu--style, .menu--map) { cursor: url("./cursor/spear.svg") 1 1, auto; }
+:root:has(.menu--title, .menu--account, .menu--rooms, .menu--style, .menu--map) :is(button, a[href], label, select, summary, input) { cursor: url("./cursor/spear-hot.svg") 1 1, pointer; }
+:root:has(.menu--title, .menu--account, .menu--rooms, .menu--style, .menu--map) :is(button, select, input):disabled { cursor: url("./cursor/spear.svg") 1 1, default; }
+:root:has(.menu--title, .menu--account, .menu--rooms, .menu--style, .menu--map) input:is([type="text"], :not([type])):enabled { cursor: text; }
