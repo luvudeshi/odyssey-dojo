@@ -14,14 +14,15 @@ export const enemy: EnemySpec = {
   hp: 315,
   strikeWindowMs: 2300,
   attacks: [
+    // The song is what they do; a swoop is half as likely as the song in any phase that has it (docs/balance.md).
     { id: "song", name: "The song", telegraphMs: 1900, damage: 5, counter: "block" },
-    { id: "swoop_left", name: "Swoop", telegraphMs: 1500, damage: 3, counter: "dodge_right" },
-    { id: "swoop_right", name: "Swoop", telegraphMs: 1500, damage: 3, counter: "dodge_left" },
+    { id: "swoop_left", name: "Swoop", telegraphMs: 1500, damage: 3, counter: "dodge_right", weight: 0.5 },
+    { id: "swoop_right", name: "Swoop", telegraphMs: 1500, damage: 3, counter: "dodge_left", weight: 0.5 },
     { id: "talons", name: "Talon dive", telegraphMs: 1500, damage: 3, counter: "duck" },
   ],
   phases: [
-    // The wind drops and the sea goes flat. Only the song, and it is slow.
-    { name: "The Calm", belowHp: 1, attackIds: ["song"], telegraphScale: 1.2 },
+    // The wind drops and the sea goes flat. The song is slow, and now and then one of them drifts out for a look.
+    { name: "The Calm", belowHp: 1, attackIds: ["song", "swoop_left"], telegraphScale: 1.2 },
     // They leave the meadow to fetch you.
     { name: "The Song", belowHp: 0.7, attackIds: ["song", "swoop_left", "swoop_right"], telegraphScale: 1 },
     // Close enough to see what the meadow is made of.
@@ -36,6 +37,8 @@ export const enemy: EnemySpec = {
     { id: "throat", label: "a singing throat", position: [0, 3.26, 0.6], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "front_kick", "uppercut"] },
     { id: "wing", label: "an open wing", position: [-1.5, 3.05, 0.5], moves: ["hook", "overhead_strike", "knife_hand", "hammer_fist", "rising_palm"] },
   ],
+  // He does not kill them: the ship goes by. The crew lean on the oars, both hands and one long push.
+  finisher: "double_palm",
   taunts: [
     "Come closer, Odysseus, pride of the Achaeans. Stay your ship and hear us.",
     "No one rows past until he has heard the sweetness of our song.",
