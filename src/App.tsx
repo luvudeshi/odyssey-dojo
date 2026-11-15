@@ -35,7 +35,6 @@ import { narrateIntro } from "./screens/hookups";
 import { MenuOrMuse as MainMenu } from "./ai/ui/museDoor"; // The main menu (screens/MainMenu), or the Muse's fight in its place when the address has ?ai=1.
 import { QuestMap } from "./screens/QuestMap";
 import { Cutscene } from "./screens/cutscene/Cutscene";
-import { LOOK } from "./ui/lookSwitch";
 import { Multiplayer } from "./screens/Multiplayer";
 import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
@@ -65,7 +64,7 @@ export function App() {
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
-  // Look C: the face-off before a fight. `at` is when it began; the fight is dispatched at hand over and the overlay then fades out on top of it.
+  // The face-off before a fight. `at` is when it began; the fight is dispatched at hand over and the overlay then fades out on top of it.
   const [cut, setCut] = useState<{ readonly index: number; readonly at: number } | null>(null);
 
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
@@ -74,6 +73,7 @@ export function App() {
   // The character shown in the picker (the scan's, or the stored one), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
   const [characterPicked, setCharacterPicked] = useState(false);
+  const [confirmed, setConfirmed] = useState<CharacterId | null>(null);
   // Writes to the profile through `change` and shows whatever that unlocked.
   const noting = (change: () => void): void => {
     const before = achievements(getProfile(), ENEMIES);
@@ -93,12 +93,14 @@ export function App() {
   const cutHandOver = (): void => {
     if (!cut || cutHanded.current) return;
     cutHanded.current = true;
+    const next = ENEMIES[cut.index];
+    if (next) stopIntro.current = narrateIntro(next.id); // Homer speaks when the fight starts, not over the face-off.
     dispatch({ type: "enter", index: cut.index, seed: Date.now() });
   };
   const cutSkip = (): void => { if (cut && !cutHanded.current) setCut({ ...cut, at: performance.now() - 4300 }); };
   const cutGone = (): void => { setCut(null); };
   const cutName = cut ? (ENEMIES[cut.index]?.name ?? "") : "";
-  const cutView = cut && LOOK === "c" ? (
+  const cutView = cut ? (
     <Cutscene enemyId={ENEMIES[cut.index]?.id ?? ""} bossName={cutName} heroName={profile.name || "Odysseus"} startedAt={cut.at} onSkip={cutSkip} onHandOver={cutHandOver} onGone={cutGone} />
   ) : null;
 
@@ -213,21 +215,25 @@ export function App() {
   }
 
   if (flow.screen === "style" && tracker && !scanned) {
-    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} />;
+    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} onBack={() => { dispatch({ type: "toTitle" }); }} />;
   }
 
   // After the scan, before the style: the five characters, with the god's one already chosen.
   if (flow.screen === "style" && !characterPicked) {
     return (
-      <main className="menu">
-        <CharacterPicker value={character} onChange={setCharacter} onDone={(id) => { setCharacter(confirmCharacter(id)); setCharacterPicked(true); }} />
-      </main>
+      <CharacterPicker
+        value={character}
+        onChange={setCharacter}
+        onDone={(id) => { setCharacter(confirmCharacter(id)); setConfirmed(id); setCharacterPicked(true); }}
+        // Opened from "Change character": back to the style choice with the old character. First visit: back to the menu.
+        onBack={() => { if (confirmed === null) { dispatch({ type: "toTitle" }); } else { setCharacter(confirmed); setCharacterPicked(true); } }}
+      />
     );
   }
 
   if (flow.screen === "style") {
     return (
-      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} />
+      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} onBack={() => { dispatch({ type: "toTitle" }); }} />
     );
   }
 
@@ -239,10 +245,8 @@ export function App() {
         cleared={flow.cleared}
         open={(index) => CAN_PLAY[index] ?? false}
         onEnter={(index) => {
-          const next = ENEMIES[index];
-          if (next) stopIntro.current = narrateIntro(next.id);
-          if (LOOK === "c") { cutHanded.current = false; setCut({ index, at: performance.now() }); return; }
-          dispatch({ type: "enter", index, seed: Date.now() });
+          cutHanded.current = false;
+          setCut({ index, at: performance.now() });
         }}
         onStyle={() => { dispatch({ type: "changeStyle" }); }}
         onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}

@@ -3,7 +3,6 @@
 // Timing is all in timing.ts; this file only turns a Frame into CSS variables. Any key, click or tap skips it.
 import { useEffect, useRef } from "react";
 import { playPhaseHorn } from "../../audio/sfx";
-import { CUT_AT } from "../../ui/lookSwitch";
 import { BOSS_CARDS } from "./bosses";
 import { frameAt, HANDOVER_MS, REDUCED_HANDOVER_MS, REDUCED_TOTAL_MS, SLAM_MS, TOTAL_MS, type Frame } from "./timing";
 import "./cutscene.css";
@@ -44,14 +43,12 @@ export function Cutscene({ enemyId, bossName, heroName, startedAt, onSkip, onHan
     const handAt = reduced ? REDUCED_HANDOVER_MS : HANDOVER_MS;
     const endAt = reduced ? REDUCED_TOTAL_MS : TOTAL_MS;
     const tick = (): void => {
-      const ms = CUT_AT ?? performance.now() - startedAt;
+      const ms = performance.now() - startedAt;
       const el = root.current;
       if (el) for (const [key, value] of Object.entries(vars(frameAt(ms, reduced)))) el.style.setProperty(key, value);
-      if (CUT_AT === null) {
-        if (!horn && !reduced && ms >= SLAM_MS && ms < SLAM_MS + 400) { horn = true; playPhaseHorn(); }
-        if (!handed && ms >= handAt) { handed = true; calls.current.onHandOver(); }
-        if (ms >= endAt) { calls.current.onGone(); return; }
-      }
+      if (!horn && !reduced && ms >= SLAM_MS && ms < SLAM_MS + 400) { horn = true; playPhaseHorn(); }
+      if (!handed && ms >= handAt) { handed = true; calls.current.onHandOver(); }
+      if (ms >= endAt) { calls.current.onGone(); return; }
       raf = requestAnimationFrame(tick);
     };
     tick();
@@ -60,7 +57,6 @@ export function Cutscene({ enemyId, bossName, heroName, startedAt, onSkip, onHan
 
   // Any key, click or tap skips. The key never reaches the fight: it is stopped here, and its release is stopped for a moment after.
   useEffect(() => {
-    if (CUT_AT !== null) return undefined;
     // Browser shortcuts (Cmd, Ctrl, Alt) pass through.
     const skip = (event: KeyboardEvent): void => { if (event.metaKey || event.ctrlKey || event.altKey) return; event.preventDefault(); event.stopImmediatePropagation(); calls.current.onSkip(); };
     const swallow = (event: Event): void => { event.stopImmediatePropagation(); };
