@@ -22,11 +22,11 @@
 .camera-frame canvas { z-index: 2; position: absolute; inset: 0; width: 100%; height: 100%; }
 .camera-view figcaption {
   position: absolute; inset: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; align-content: flex-end; gap: 4px 6px; padding: 8px 10px;
-  font: 700 10px/1.3 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline);
+  font: 700 18px/1.3 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline);
 }
 .camera-tag {
   padding: 2px 9px; border: 2px solid var(--pb-lead); border-radius: 6px; background: var(--pb-dusk); white-space: nowrap;
-  letter-spacing: 0.16em; font-size: 10px; line-height: 1.2;
+  letter-spacing: 0.06em; font-size: 18px; line-height: 1.2;
 }
 .camera-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--pb-ochre); box-shadow: 0 0 0 1.5px var(--pb-outline); }
 .camera-state { padding: 1px 6px; border-radius: 5px; background: rgba(13, 10, 9, 0.78); color: var(--pb-ochre-light); white-space: nowrap; }
@@ -40,3 +40,40 @@
   color: var(--pb-ochre-light); white-space: nowrap;
 }
 .camera-move:empty { display: none; }
+
+/* In the fight the panel wears the Obsidian Rift's black glass (src/hud/sky/rift.css) instead of pebbles: a slab with
+   chipped corners and a cold violet edge, a picture cut to the same corners, and a thread of melt along its foot. All
+   of it is still. The calibration screen keeps the pebble frame above. */
+.fight .camera-view {
+  --cam-cut: 16px;
+  padding: 6px; border: 0; border-radius: 0; box-shadow: none;
+  background: linear-gradient(160deg, #b8a8e8, #4a4062 40%, #1a1622 70%, #8a7cc0);
+  clip-path: polygon(var(--cam-cut) 0, 100% 0, 100% calc(100% - var(--cam-cut)), calc(100% - var(--cam-cut)) 100%, 0 100%, 0 var(--cam-cut));
+}
+.fight .camera-view::before { /* the glass, inside a 1.5px violet edge */
+  inset: 1.5px; padding: 0; border-radius: 0; z-index: 0; -webkit-mask: none; mask: none;
+  background: linear-gradient(160deg, #2c2538, #0d0b12 30%, #1a1622 55%, #09080c 78%, #231d2e);
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+.fight .camera-view::after { /* the melt along the foot (--rift-lava, baked once in rift/lava.ts) */
+  content: ""; position: absolute; left: 22%; right: 20%; bottom: 1.5px; height: 3px; z-index: 1; pointer-events: none;
+  background: var(--rift-lava, linear-gradient(90deg, #8a1804, #ffcc3a, #ff8410, #8a1804)) repeat-x left center / 160px 100%;
+  clip-path: polygon(0 50%, 5% 0, 95% 0, 100% 50%, 95% 100%, 5% 100%);
+}
+.fight .camera-frame {
+  z-index: 1; border-radius: 0; background: linear-gradient(#1a1622, #07060a);
+  clip-path: polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px);
+}
+.fight .camera-tag { border: 1.5px solid #8a7cc0; border-radius: 0; background: #0d0b12; color: #ece4ff; }
+.fight .camera-view:has(.camera-state[data-on="false"]) .camera-tag { border-color: #ff6a14; }
+
+/* The guest's own camera (GuestFight.tsx holds the tracker's video here): a small mirrored tile in the camera panel's corner. */
+.fight > .preview { position: absolute; left: 20px; bottom: 20px; z-index: 30; width: clamp(10rem, 16.7vw, 15rem); aspect-ratio: 4 / 3; overflow: hidden; border: 2px solid #8a7cc0; background: #07060a; pointer-events: none; }
+.fight > .preview video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fight > .preview.mirror video { transform: scaleX(-1); }
+
+/* Keyboard play has no picture to show: the panel shrinks to a chip that says so and offers the camera. */
+.fight .camera-view--keys { width: auto; max-width: 15rem; padding: 6px; }
+.fight .camera-view--keys .camera-frame, .fight .camera-view--keys .camera-tag, .fight .camera-view--keys .camera-dot { display: none; }
+.fight .camera-view--keys figcaption { position: relative; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 12px; }
+.fight .camera-view--keys .camera-state { padding: 0; background: none; }
