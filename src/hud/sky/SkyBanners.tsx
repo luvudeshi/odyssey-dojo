@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import type { EnemySpec } from "../../core/types";
 import { RatingFlash } from "../RatingFlash";
+import { MissFlash } from "../MissFlash";
 import { TogetherFlash } from "../TogetherFlash";
 import { RiftPlate } from "./rift/RiftPlate";
 
@@ -58,6 +59,7 @@ export function SkyFlashes({ two }: { two: boolean }) {
   return (
     <>
       <RatingFlash />
+      <MissFlash />
       <TogetherFlash two={two} />
     </>
   );

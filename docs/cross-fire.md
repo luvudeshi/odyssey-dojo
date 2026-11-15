@@ -25,15 +25,15 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 
 | done \ read | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 jab | cat | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 2 cross | cat | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 1 jab | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 2 cross | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 3 hook | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 4 uppercut | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 5 spear_thrust | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 6 overhead_strike | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
-| 7 reverse_punch | cat | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 8 knife_hand | cat | cat | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
+| 6 overhead_strike | . | . | . | cat | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
+| 7 reverse_punch | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 8 knife_hand | . | cat | . | cat | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | cat | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
 | 10 double_palm | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
 | 11 chain_punch | cat | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 12 rising_palm | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
@@ -43,14 +43,14 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 | 16 duck | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . |
 | 17 dodge_left | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . |
 | 18 dodge_right | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . |
-| 19 thunderbolt | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
-| 20 trident_sweep | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . |
+| 19 thunderbolt | . | . | . | cat | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
+| 20 trident_sweep | . | . | cat | . | cat | . | . | cat | . | cat | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . |
 | 21 aegis_push | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
 | 22 swift_dash | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | cat | . | . | . | . |
 | 23 moon_arrow | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . |
-| 24 sun_burst | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . |
+| 24 sun_burst | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . |
 | 25 jump | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . |
-| 26 stake_thrust | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | cat |
+| 26 stake_thrust | . | . | . | . | cat | . | cat | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | cat |
 
 Every cell is the same at all three sizes: the detectors measure in shoulder widths and torso lengths, and
 body size does not move any of these pairs.
@@ -63,14 +63,18 @@ styles (a karate reverse punch reading as a boxer's cross) are never asked of th
 fight, and the fight only counts the strike it asked for.
 
 Before this issue 15 such pairs fired. Seven were fixed then, and an eighth (thunderbolt read as uppercut) by the
-lenient-strikes PR; seven are left and pinned.
+lenient-strikes PR; seven are left and pinned. The moon arrow's cross and chain punch reads went away when a punch had to
+be in front of the shoulder.
 
-Jab and cross are a ninth and tenth pair left on purpose. By the owner's ruling a reasonable attempt must count
-every time, so both read a straight punch on either hand: a player told to jab often throws the strong hand. A
-straight punch therefore fires both, which costs nothing, because the fight counts only the strike it asked for.
-The prompt card still shows the jab on the left and the cross on the right. For the same reason the karate reverse
-punch and knife hand, which already read as a cross, now read as a jab too; those are two styles' strikes and
-never asked of one player.
+Jab and cross are distinct again, by the owner's later ruling: the jab is the left hand and the cross the right, so a
+right-hand punch reads as a cross only. The karate reverse punch, knife hand and the chain punch still read as a cross
+(and the chain punch as a jab); those are two styles' strikes and never asked of one player.
+
+The loosened gates (the lenient-moves PR) let the god gestures read as ordinary strikes too: the trident sweep as a
+hook, spear thrust, knife hand, double palm and chain punch; the sun burst
+as a knife hand; the thunderbolt as an uppercut again. A god gesture is done on purpose with the power ring full, the
+fight spends the power on it, and the extra reads only count if one of them is also the prompted strike, so they are
+pinned in `LEFT` rather than guarded. The MISS flash ignores a frame in which a power move was thrown.
 
 ## Fixed
 
@@ -140,7 +144,7 @@ pinned in the same test (`OUTSIDE`) so a change shows up.
 
 | Done | Also read as | Why |
 |---|---|---|
-| reverse punch, knife hand | jab, cross | The right arm is punched out fast. The cross does not look at the left hand's hip, or at where the right hand started, and the jab reads either hand too. |
+| reverse punch, knife hand | cross | The right arm is punched out fast. The cross does not look at the left hand's hip, or at where the right hand started, and the jab reads either hand too. |
 | chain punch | jab, cross | A chain punch is a jab and then a cross. |
 | double palm | spear thrust | Both arms snapped straight; see aegis push above. |
 | stake thrust | aegis push | The stake's grip at the chest is the push's start, and the arms end straight. The stake is only asked for as the Polyphemus finisher. |

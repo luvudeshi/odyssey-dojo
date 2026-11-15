@@ -279,3 +279,63 @@ test("the component shows the instruction and the time bar; the card has no chec
     expect(three).toEqual(liveChecks(move, null).checks.slice(0, 3));
   }
 });
+
+// With no pose (keyboard mode) no side is ahead, so the checklist has to pick one itself: the one the move's own
+// instruction and figure show. The cross once listed the jab's left arm under "right fist out".
+// "right behind it" (the chain punch's hint) is not a side.
+const SIDE_WORD = /\b(left|right)\b(?! behind)/gi;
+/** The sides a text names, in the order it names them. */
+const sidesNamed = (text: string): string[] => [...new Set([...text.matchAll(SIDE_WORD)].map((found) => found[0].toLowerCase()))];
+/** The side the checklist is about: the one its first row that names a side names. */
+function leadSide(move: MoveDef): string | undefined {
+  return liveChecks(move, null).checks.flatMap((check) => sidesNamed(check.label))[0];
+}
+
+test("with no pose, a checklist that names a side names the one the move's instruction names", () => {
+  let checked = 0;
+  for (const move of ALL) {
+    for (const nothing of [null, EMPTY_HISTORY]) {
+      const rows = liveChecks(move, nothing, null).checks.map((check) => check.label);
+      const lead = rows.flatMap(sidesNamed)[0];
+      if (lead === undefined) continue;
+      // The short line over the figure, and the longer hint on the prompt card.
+      for (const said of [guide(move).how, move.hint]) {
+        const named = sidesNamed(said);
+        if (named.length !== 1) continue;
+        expect(lead, `${move.id}: "${said}" but the checklist is ${rows.join(" / ")}`).toBe(named[0]);
+        checked += 1;
+      }
+    }
+  }
+  // The jab, the cross and the other one-handed moves are all in it.
+  expect(checked).toBeGreaterThanOrEqual(12);
+  expect(leadSide(moveOf("jab"))).toBe("left");
+  expect(leadSide(moveOf("cross"))).toBe("right");
+  expect(liveChecks(moveOf("cross"), null).checks.map((check) => check.label)).not.toEqual(liveChecks(moveOf("jab"), null).checks.map((check) => check.label));
+});
+
+test("with no pose, the checklist of a move drawn with one limb names that limb's side", () => {
+  const sideOfEnd = (end: string): string | undefined => /^(left|right)/.exec(end)?.[1];
+  let checked = 0;
+  for (const move of ALL) {
+    const drawn = [...new Set(guide(move).moving.map(sideOfEnd))];
+    const lead = leadSide(move);
+    if (drawn.length !== 1 || drawn[0] === undefined || lead === undefined) continue;
+    const rows = liveChecks(move, null).checks.map((check) => check.label);
+    checked += 1;
+    if (move.id === "moon_arrow") {
+      // The limb drawn moving is the string hand; the list leads with the bow arm, which is the other one.
+      expect(lead, rows.join(" / ")).not.toBe(drawn[0]);
+      expect(rows).toContain(`Let go: drop ${drawn[0]} hand`);
+    } else {
+      expect(lead, `${move.id} is drawn with the ${drawn[0]} but the checklist is ${rows.join(" / ")}`).toBe(drawn[0]);
+    }
+  }
+  // Jab, cross, hook, uppercut, rising palm, hammer fist, overhead strike, thunderbolt, knife hand, moon arrow, front kick, knee.
+  expect(checked).toBeGreaterThanOrEqual(12);
+  // The chain punch is drawn with both: left first, then right. The list is of the second punch, with the left one before it.
+  const chain = liveChecks(moveOf("chain_punch"), null).checks.map((check) => check.label);
+  expect(guide(moveOf("chain_punch")).how).toBe("Left punch, then right punch");
+  expect(chain).toContain("Left punch goes first");
+  expect(chain).not.toContain("Right punch goes first");
+});

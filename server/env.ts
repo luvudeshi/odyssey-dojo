@@ -20,6 +20,17 @@ export interface Config {
   readonly publicBaseUrl: string | null;
   /** The built game, served by this server when it exists. */
   readonly distDir: string;
+  /**
+   * The Tiger Data (Postgres) connection string for accounts, from DATABASE_URL. Null or left out: accounts are off and
+   * the game keeps everything in the browser as before. It holds a password: never log it or send it anywhere (lib/db.ts).
+   */
+  readonly databaseUrl?: string | null;
+  /**
+   * A file of CA certificates the database's certificate must chain to, from DATABASE_CA_FILE. Null or left out:
+   * `sslmode=require` encrypts without checking the certificate. Tiger Data signs with a CA of its own: with that CA
+   * in this file the service is checked in full (lib/db.ts; docs/accounts.md, set-up step 3).
+   */
+  readonly databaseCaFile?: string | null;
   readonly timeouts: {
     readonly levelMs: number;
     /** The whole god scan, both attempts included. */
@@ -82,6 +93,8 @@ export function loadConfig(root: string = process.cwd()): Config {
       return fixedUrl ?? tunnelAddress(dataDir);
     },
     distDir: resolve(root, "dist"),
+    databaseUrl: value("DATABASE_URL"),
+    databaseCaFile: value("DATABASE_CA_FILE"),
     timeouts: TIMEOUTS,
   };
 }

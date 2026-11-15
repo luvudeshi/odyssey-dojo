@@ -114,6 +114,14 @@ export function loadCharacter(storage: CharacterStorage | null = browserStorage(
   }
 }
 
+const savedListeners = new Set<() => void>();
+
+/** Calls the listener after every saveCharacter, so the choice can be sent on to the player's account. */
+export function subscribeCharacter(listener: () => void): () => void {
+  savedListeners.add(listener);
+  return () => { savedListeners.delete(listener); };
+}
+
 /** Stores the choice and returns what was stored. An unknown id stores the default. A storage that throws is ignored. */
 export function saveCharacter(id: string, storage: CharacterStorage | null = browserStorage()): CharacterId {
   const safe = characterById(id).id;
@@ -122,5 +130,6 @@ export function saveCharacter(id: string, storage: CharacterStorage | null = bro
   } catch {
     // A full or blocked storage only means the choice is not remembered next time.
   }
+  savedListeners.forEach((listener) => { listener(); });
   return safe;
 }

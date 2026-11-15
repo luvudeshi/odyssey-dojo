@@ -139,11 +139,11 @@ Shoulders 0.6 of the picture wide, hips below the picture and unseen.
 | defend | size of the move | counts | shoulders end at (across, down) | what it trips |
 |---|---|---|---|---|
 | block | as performed | yes (1.00) | 0.50, 0.65 | - |
-| duck | just enough to count (0.45 widths) | yes (0.75) | 0.50, 0.92 | - |
+| duck | just enough to count (0.45 widths) | yes (0.82) | 0.50, 0.92 | - |
 | duck | as performed (0.75 widths) | yes (1.00) | 0.50, 1.10 | a shoulder is out of the bottom of the picture |
-| dodge_left | just enough to count (0.45 widths) | yes (0.90) | 0.23, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
+| dodge_left | just enough to count (0.45 widths) | yes (1.00) | 0.23, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
 | dodge_left | as performed (0.75 widths) | yes (1.00) | 0.05, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
-| dodge_right | just enough to count (0.45 widths) | yes (0.90) | 0.77, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
+| dodge_right | just enough to count (0.45 widths) | yes (1.00) | 0.77, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
 | dodge_right | as performed (0.75 widths) | yes (1.00) | 0.95, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
 
 "Counts" here is the detector alone, fed the made-up position of a shoulder that has left the picture. On a
