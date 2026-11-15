@@ -221,6 +221,19 @@ test("the checklist is all met on the frame a clean performance fires, and not w
   }
 });
 
+// Jab and cross read on either hand. The card still draws the left jab and the right cross, but a punch with the
+// other hand counts, so its checklist must not show a failed check.
+test("a punch with the other hand meets every check on the jab and the cross cards", () => {
+  for (const [id, thrown] of [["jab", "cross"], ["cross", "jab"]] as const) {
+    const frames = sequence(PERFORMANCES[thrown] ?? []);
+    const fired = countedOn(moveOf(id), frames)[0];
+    if (fired === undefined) throw new Error(`${id} did not fire on the ${thrown}'s performance`);
+    const at = liveChecks(moveOf(id), histories(frames)[fired] ?? null);
+    expect(at.matched, id).toBe(true);
+    expect(at.checks.every((check) => check.met && check.progress === 1), id).toBe(true);
+  }
+});
+
 test("with no frames the checklist is the list of what to do, all unmet, and nothing throws", () => {
   for (const move of ALL) {
     for (const nothing of [null, EMPTY_HISTORY]) {
@@ -238,22 +251,28 @@ test("with no frames the checklist is the list of what to do, all unmet, and not
   expect(liveChecks(duck, ducked, null).matched).toBe(false);
 });
 
-test("the component shows the instruction, the time bar and the checklist: three rows on the card, four and the name when larger", () => {
+test("the component shows the instruction and the time bar; the card has no checklist rows, larger sizes have four and the name", () => {
   for (const id of ["jab", "block", "front_kick"]) {
     const move = moveOf(id);
     const card = renderToStaticMarkup(createElement(MoveGuide, { move, history: () => null, msLeft: 1500, msTotal: 3000 }));
     expect(card).toContain("move-guide card");
     expect(card).toContain(guide(move).how);
     expect(card).toContain("mg-time-fill");
-    expect(card.match(/<li[ >]/g)?.length).toBe(3);
-    expect(card).toContain(liveChecks(move, null).checks[0]?.label);
+    expect(card.match(/<li[ >]/g)).toBeNull();
+    expect(card).not.toContain("mg-checks");
+    expect(card).not.toContain("mg-match");
+    expect(card.match(/class="mg-how"/g)?.length).toBe(1);
+    expect(card).not.toContain(liveChecks(move, null).checks[0]?.label);
     expect(card).toContain("mg-lit");
     const large = renderToStaticMarkup(createElement(MoveGuide, { move, history: () => null, size: "large" }));
     expect(large).toContain(`>${move.name}</h2>`);
     expect(large.match(/<li[ >]/g)?.length).toBe(4);
+    const medium = renderToStaticMarkup(createElement(MoveGuide, { move, history: () => null, size: "medium" }));
+    expect(medium.match(/<li[ >]/g)?.length).toBe(4);
+    expect(medium).toContain("mg-match-number");
     expect(large).not.toContain("mg-time-fill");
   }
-  // Three rows at most on the card, for every move, and still the ones that matter first.
+  // liveChecks still takes a row limit of three, for every move, and still the ones that matter first.
   for (const move of ALL) {
     const three = liveChecks(move, null, null, 3).checks;
     expect(three.length, move.id).toBeLessThanOrEqual(3);
