@@ -10,6 +10,7 @@ import { holdPowerSound } from "../../audio/powerSound";
 import { speakPowerReady } from "../../audio/voice";
 import { log } from "../../core/log";
 import type { GodId } from "../gods/gods";
+import { RiftPlate } from "../../hud/sky/rift/RiftPlate";
 import { READY_START, champion, isPowerKey, missed, nextCheckIn, powerLive, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
 import type { PowerPrompt } from "./powerPrompt";
 import "./powerReady.css";
@@ -125,6 +126,7 @@ export function PowerReady(props: PowerReadyProps) {
     <div className={`power-ready power-ready--live power-ready--${prompt.god}${keys ? " power-ready--keys" : ""}${look}`} style={style} role="status" aria-live="polite">
       <div className="power-ready__frame">
         <div className="power-ready__edge">
+          <RiftPlate tone="lava" />
           <div className="power-ready__plate">
             <div className="power-ready__title">{prompt.title}</div>
             <div className="power-ready__move">{prompt.move}</div>

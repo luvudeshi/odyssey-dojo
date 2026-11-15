@@ -1,51 +1,48 @@
 /* The "power is ready" banner (PowerReady.tsx). Every rule sits under the .power-ready root with two classes, so the
    theme's own rules cannot reach in and nothing here leaks out. Colours: the god's accent (--power-ready-accent, set
-   inline) and the theme's --ink and --white, each with a fallback. Only transform and opacity are animated. */
+   inline) and the theme's --ink and --white, each with a fallback. The banner stands on a slab of the Obsidian Rift's
+   black glass with a lava seam (src/hud/sky/rift/RiftPlate.tsx, its own sheet). Only transform and opacity are
+   animated, and nothing that moves has a filter. */
 .power-ready.power-ready--live {
-  /* Bottom centre, on the lower edge of the fight: a wide plate two lines tall, so it stays under the hero's feet (he
-     stands just left of the middle, feet at about 86% of the height) and far below the prompt card. The camera panel
-     (bottom left) ends before it starts. --power-ready-bottom lifts it over a power chip at the bottom centre (the
-     pebble HUD's .hb-power needs 62px); --power-ready-left and -right narrow the strip it is centred in. */
+  /* On the lower edge of the fight: a wide plate two lines tall, far below the prompt card. --power-ready-left and
+     -right narrow the strip it is centred in: the Obsidian Rift HUD (src/hud/sky/top.css) sets them to the strip right of
+     the power disc, so the player's crescent and number stay in view. --power-ready-bottom lifts it. */
   position: absolute; left: var(--power-ready-left, 0px); right: var(--power-ready-right, 0px); bottom: var(--power-ready-bottom, clamp(10px, 1.6vh, 18px)); z-index: 6;
   display: flex; justify-content: center; margin: 0; padding: 0; pointer-events: none;
-  font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: center; line-height: 1;
+  font-family: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif; text-align: center; line-height: 1;
   color: var(--white, #f2e4c8); transition: opacity 0.15s ease-out;
+  container-type: inline-size; /* the type below follows the width of this strip, so a long move name still fits beside the disc */
 }
 .power-ready.power-ready--live * { box-sizing: border-box; pointer-events: none; }
 
-/* The glow is one fixed shadow; the pulse scales the whole plate a little. */
+/* The pulse scales the whole plate a little; the glass has no filter, so the scale is the compositor's alone. */
 .power-ready .power-ready__frame {
-  position: relative; max-width: min(calc(100% - 16px), 900px);
-  filter: drop-shadow(0 0 12px var(--power-ready-accent, #ffd9a0)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+  position: relative; max-width: min(calc(100% - 8px), 900px);
   animation: power-ready-in 0.35s ease-out both, power-ready-pulse 1.3s ease-in-out 0.35s infinite;
   will-change: transform, opacity;
 }
-/* A six-sided plate with pointed ends, as the star-chart HUD's plates are: an accent rim around a dark ground. */
-.power-ready .power-ready__edge {
-  padding: 3px; background: var(--power-ready-accent, #ffd9a0);
-  clip-path: polygon(26px 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 26px 100%, 0 50%);
-}
+/* The glass slab is drawn behind the words (the RiftPlate at z-index -1 inside this isolated box). */
+.power-ready .power-ready__edge { position: relative; isolation: isolate; }
 /* Wide, not tall: whose power and the move's name on the left, how to throw it on the right. */
 .power-ready .power-ready__plate {
-  display: grid; grid-template-columns: auto auto; grid-template-areas: "title how" "move how"; align-items: center; column-gap: clamp(14px, 1.4vw, 22px);
-  padding: 8px clamp(32px, 2.8vw, 46px) 9px; background: var(--ink, #17110d);
-  clip-path: polygon(25px 0, calc(100% - 25px) 0, 100% 50%, calc(100% - 25px) 100%, 25px 100%, 0 50%);
+  display: grid; grid-template-columns: auto auto; grid-template-areas: "title how" "move how"; align-items: center; column-gap: clamp(10px, 1vw, 22px);
+  padding: 10px clamp(18px, 1.6vw, 40px) 12px;
 }
 
 .power-ready .power-ready__title {
-  grid-area: title; font-size: clamp(13px, 1.2vw, 19px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;
+  grid-area: title; font-size: clamp(18px, 1.3vw, 21px); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: normal; max-width: 14em; text-wrap: balance;
   color: var(--power-ready-accent, #ffd9a0);
 }
 .power-ready .power-ready__move {
-  grid-area: move; margin-top: 3px; font-size: clamp(30px, 2.9vw, 48px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  grid-area: move; margin-top: 4px; font-size: clamp(22px, min(2.5vw, 4cqi), 42px); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8); text-shadow: 0 2px 0 var(--ink, #17110d);
 }
 .power-ready .power-ready__how {
-  grid-area: how; max-width: 14.5em; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(18px, 1.72vw, 27px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
+  grid-area: how; max-width: clamp(11em, 40cqi, 14.5em); padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
+  font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
   color: var(--white, #f2e4c8);
 }
-.power-ready .power-ready__or { font-size: 0.85em; opacity: 0.9; white-space: nowrap; }
+.power-ready .power-ready__or { opacity: 0.9; white-space: nowrap; }
 .power-ready .power-ready__key {
   all: unset; display: inline-block; min-width: 1.5em; padding: 0.1em 0.4em; margin: 0 0.1em; vertical-align: 0.06em;
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
@@ -59,7 +56,7 @@
 .power-ready .power-ready__edge { transition: opacity 0.12s ease-out; }
 .power-ready .power-ready__wait {
   grid-area: how; visibility: hidden; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(18px, 1.72vw, 27px); font-weight: 700; line-height: 1.2; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; white-space: normal; max-width: clamp(11em, 40cqi, 14.5em);
   color: var(--white, #f2e4c8);
 }
 .power-ready.power-ready--waiting .power-ready__frame { animation-play-state: running, paused; }
@@ -70,13 +67,13 @@
 .power-ready.power-ready--queued .power-ready__how { transition: none; }
 .power-ready.power-ready--queued .power-ready__wait { transition: none; }
 /* Keyboard play: the key is the instruction, so it is nearly as large as the move's name. */
-.power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2.6vw, 40px); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.power-ready.power-ready--keys .power-ready__how { font-size: clamp(22px, 2.2vw, 34px); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 
 /* The champion plate, while the meter is filling: two short lines just right of the power ring (src/hud/powerCircle.css:
    centred, clamp(76px, 6.6vw, 108px) wide, on the same bottom offset), as tall as the ring so it sits level with it.
    Still: no animation. It stops well short of the prompt card on the right edge. */
 .power-ready.power-ready--champion {
-  position: absolute; left: calc(50% + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px)); bottom: clamp(10px, 1.6vh, 18px); z-index: 6;
+  position: absolute; left: calc(50% + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px)); bottom: clamp(18px, 2.6vh, 28px); z-index: 6;
   display: flex; align-items: center; height: clamp(76px, 6.6vw, 108px); margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: left; line-height: 1;
   color: var(--white, #f2e4c8);
@@ -87,11 +84,11 @@
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
 }
 .power-ready .power-ready__of {
-  font-size: clamp(10px, 0.86vw, 13px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  font-size: 18px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8);
 }
 .power-ready .power-ready__god {
-  margin-top: 4px; font-size: clamp(17px, 1.6vw, 25px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  margin-top: 4px; font-size: clamp(18px, 1.6vw, 25px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0);
 }
 
