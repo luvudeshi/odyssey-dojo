@@ -8,7 +8,7 @@ Lines are short on purpose. A call must fit inside the fastest telegraph (1.1 s)
 
 A phase line is picked by the phase's own name, not its number (`phaseLineId` in `src/audio/athenaLines.ts`). The name is slugged: "The Meadow of Bones" plays `phase_the_meadow_of_bones`. Polyphemus's two clips keep their old ids: "The Club" plays `phase_1` and "Blinded" plays `phase_2`. A later phase with no line of its own plays `phase_any`, which names no one. To give a new phase a line, add a row with the id `phase_<slug of its name>` and generate the clip. Phase lines are at most 5 words and tell the fighter what to do about the attack that phase adds.
 
-A phase line is spoken when the strike that changes the phase lands. If the call for that strike is still playing, the call is cut so the phase line can start (`createVoice` in `src/audio/voice.ts`). The next defense call then cuts the phase line. With the engine's 0.7 s pause after a strike, only the first 0.7 s of the line is heard, so each line starts with what is new ("Her wand!", "Six heads!"). A phase change made by a god power is not announced while a call is playing.
+A phase line is spoken when the phase changes. It takes the voice from a call that is playing and is heard to its end; see Who is heard below. Each line starts with what is new ("Her wand!", "Six heads!").
 
 The script lives in `src/audio/athenaLines.ts`. This table must match it exactly; `tests/athenaLines.test.ts` fails if they differ. Ids are fixed: clips are named after them.
 
@@ -61,6 +61,17 @@ The script lives in `src/audio/athenaLines.ts`. This table must match it exactly
 | `phase_eurymachus` | The Suitors' second phase, Eurymachus: he draws his sword and rushes you | His sword is out! Guard! |
 | `phase_the_volley` | The Suitors' third phase, The Volley: spears thrown from both sides | A volley of spears! Dodge! |
 | `phase_any` | The fight enters a later phase that has no line of its own | It changes! Watch the wind-up. |
-| `fight_start` | The fight begins | I am with you, Odysseus! |
+| `fight_start` | The fight begins | I am with you! |
 | `win` | You win the fight | The monster falls! Onward, Odysseus! |
 | `loss` | You lose the fight | Rise, Odysseus. Ithaca still waits for you. |
+
+## Who is heard
+
+Athena speaks one line at a time. `src/audio/voice.ts` ranks the lines, most urgent first: the result (`win`, `loss`), a phase line, a call, `fight_start`, then praise and warnings.
+
+- A phase line takes the voice, even from a call, and holds it to its end (1.7 to 2.85 seconds). Calls, warnings and praise that arrive while it plays are dropped, not queued. The prompt card shows the move anyway. So the first defense call after a phase change is never spoken (it comes 0.7 seconds after the hit), and often the first strike call is not either; the prompt card is the only cue for them.
+- Three things do take the voice from a phase line: the result, a newer phase line, and `fight_start` (a retry from the pause menu). The finisher's call is not dropped under a phase line: it is spoken as soon as the line ends.
+- A newer call replaces an older call. The result replaces everything.
+- Praise is almost never heard, and we left it that way. It starts only when the voice is free, and the call for a strike is usually still playing when the strike lands. When praise does start, the next call comes 0.7 seconds after the hit and cuts it, and the praise clips take 1.0 to 1.2 seconds to say.
+- A monster's taunt is not on Athena's voice. It has a channel of its own. It waits for a phase line to end, then plays under her calls: see `docs/narration-lines.md`.
+- `fight_start` is short so that it ends by itself. The first attack is called 1.5 seconds into every fight (`INTRO_MS` in `src/combat/engine.ts`) and that call cuts whatever she is saying. The clip is 1.28 seconds long, counted from its MP3 frames, and `tests/athenaLines.test.ts` fails if it reaches 1.3. The line was "I am with you, Odysseus!" before (2.35 seconds), and the first call cut it 1.59 seconds in, in the fight we replayed in headless Chrome. The new clip was generated as 1.65 seconds with 0.3 seconds of silence at the end; the last 14 frames were dropped with `ffmpeg -t 1.24 -c copy`, which does not re-encode. The cut falls where the voice is 18 dB under its level in the body of the line (-36 dB against -18 dB).

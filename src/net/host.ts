@@ -26,6 +26,8 @@ export interface HostLink {
   takeInput(local: CombatInput, nowMs: number): CombatInput;
   /** Call after every `step`. Sends the state when it is due, and always when something happened. */
   publish(state: CombatState, events: readonly CombatEvent[], nowMs: number): void;
+  /** The host left the fight (quit to the map): tells the guest, so it is not left on a frozen frame. */
+  stop(): void;
   close(): void;
 }
 
@@ -85,6 +87,10 @@ export function createHostLink(transport: RoomTransport): HostLink {
         ended = true;
         void transport.send({ type: "end", won: state.phase.kind === "won" });
       }
+    },
+    stop() {
+      ended = true;
+      void transport.send({ type: "stop" });
     },
     close() {
       transport.close();

@@ -1,7 +1,7 @@
 // Server settings, read once from the environment (and from .env at the repo root when it exists).
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { log } from "../src/core/log";
+import { loadEnvFile } from "./lib/envFile";
 
 const DEFAULT_PORT = 8787;
 
@@ -38,8 +38,7 @@ export function parsePort(raw: string | null): number {
 }
 
 export function loadConfig(root: string = process.cwd()): Config {
-  const envFile = resolve(root, ".env");
-  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  loadEnvFile(resolve(root, ".env"));
   return {
     // Not PORT: hosts and dev tools set that for the web page, and the two must not collide.
     port: parsePort(value("AI_SERVER_PORT")),
