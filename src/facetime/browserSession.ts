@@ -27,6 +27,11 @@ function frameShape(): FrameShape {
   return new URLSearchParams(window.location.search).get("ftframe") === "landscape" ? "landscape" : "portrait";
 }
 
+/** ?ftvoice=on sends the host's microphone to the phone and plays the friend's voice here. Off by default: see startSound. */
+export function twoWayVoice(): boolean {
+  return new URLSearchParams(window.location.search).get("ftvoice") === "on";
+}
+
 export function browserDeps(): SessionDeps {
   return {
     api: createFaceTimeApi(),
@@ -34,8 +39,12 @@ export function browserDeps(): SessionDeps {
     startPicture: () => startCompositor(frameShape()),
     // The game's one stream (src/audio/soundOut.ts) is what goes to the phone, and it is closed with the call.
     startSound: () => {
-      const sound = startCallAudio({ gameSound: gameSoundStream });
-      return { ...sound, stop() { sound.stop(); stopGameSoundStream(); } };
+      // With the phone in the same room as this computer (a demo), the two voices make a loop: this computer's
+      // microphone hears the phone's speaker and sends it back, and the phone's microphone hears these speakers and
+      // is played on them again. So the voices are off unless the address says ?ftvoice=on (a friend far away).
+      const voices = twoWayVoice();
+      const sound = startCallAudio({ gameSound: gameSoundStream, microphone: voices });
+      return { ...sound, hear(track: MediaStreamTrack | null) { if (voices) sound.hear(track); }, stop() { sound.stop(); stopGameSoundStream(); } };
     },
     watchFriend: async (track) => createRemotePlayer(track, await mediapipeDetector()),
     poseReader: () => createPoseInput(MOVES),
