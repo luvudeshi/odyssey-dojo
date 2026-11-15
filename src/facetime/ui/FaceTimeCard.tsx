@@ -52,7 +52,8 @@ export function FaceTimeCard(props: {
   const [number, setNumber] = useState("");
   const [, setBeat] = useState(0);
   const askStatus = props.status;
-  const answering = useAnswering(props.answering);
+  // A card that was handed a session (the loopback page) does not answer: the page's answerer runs the page's own session.
+  const answering = useAnswering(props.answering ?? (props.session ? null : undefined));
 
   useEffect(() => {
     if (session) return;

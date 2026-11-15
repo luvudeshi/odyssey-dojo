@@ -26,20 +26,22 @@ export interface Answering {
 
 /**
  * The card's hold on the page's answerer. `answerer` and `waiting` are the page's own by default
- * (answerBrowser.ts and the game's server); tests and the demo page pass theirs.
+ * (answerBrowser.ts and the game's server); tests pass theirs. `null`: this card does not answer calls at all
+ * (a card that was given a session of its own, as the loopback page's is: the page's answerer runs the page's session).
  */
-export function useAnswering(given?: { readonly answerer?: Answerer; readonly waiting?: () => Promise<Waiting> }): Answering {
+export function useAnswering(given?: { readonly answerer?: Answerer; readonly waiting?: () => Promise<Waiting> } | null): Answering {
+  const never = given === null;
   const [answerer, setAnswerer] = useState<Answerer | null>(given?.answerer ?? null);
   const [offer, setOffer] = useState<{ readonly offered: boolean; readonly line: string | null }>({ offered: false, line: null });
   const ask = given?.waiting;
 
   useEffect(() => {
-    if (answerer) return;
+    if (answerer || never) return;
     let gone = false;
     // Loaded here and not at the top, as the session is: it brings the room's code, which a menu does not need.
     void import("../answerBrowser").then((module) => { if (!gone) setAnswerer(module.faceTimeAnswerer()); });
     return () => { gone = true; };
-  }, [answerer]);
+  }, [answerer, never]);
 
   const state = useSyncExternalStore(
     (listener) => answerer?.subscribe(listener) ?? (() => undefined),
@@ -48,7 +50,7 @@ export function useAnswering(given?: { readonly answerer?: Answerer; readonly wa
   const on = state.phase !== "off";
 
   // Until a room has been seen once, and while not waiting already, the server is asked now and then.
-  const settled = offer.offered || on;
+  const settled = offer.offered || on || never;
   useEffect(() => {
     if (settled) return;
     let gone = false;
