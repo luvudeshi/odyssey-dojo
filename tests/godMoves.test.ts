@@ -270,7 +270,8 @@ interface Gesture {
    * - overhead_strike is the right-hand thunderbolt and hammer_fist the left-hand one: the same motion by design.
    * - aegis_push is a spear thrust with the palms close together, and double_palm is the same push by design.
    * - arms flung wide used to count as a spear thrust; since #191 both wrists out past their own sides do not.
-   * - hook reads any bent left arm crossing the body at shoulder height.
+   * - hook used to read any bent left arm crossing the body at shoulder height; since the lenient-strikes PR it
+   *   needs the elbow lifted up and out and kept bent all the way, and the chest-high sweep's lower arm is not.
    * - knife_hand reads the right arm alone: across the body at chest height or above, then straight out to the
    *   right. That is the right arm of a chest-high sweep to the right; a belly-high sweep starts too low for it.
    * - uppercut and rising_palm share risingHand (handSignals.ts), which reads a hand brought up from the waist
@@ -291,7 +292,7 @@ const GESTURES: readonly Gesture[] = [
     how: "left to right at chest height",
     poses: sweep(CHEST),
     at: 13,
-    also: ["hook", "knife_hand"],
+    also: ["knife_hand"],
   },
   { move: "aegis_push", how: "both palms", poses: aegisPush, at: 8, also: ["double_palm", "spear_thrust"] },
   { move: "swift_dash", how: "to the right", poses: swiftDash, at: 2, also: ["dodge_right"] },
