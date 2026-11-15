@@ -532,9 +532,25 @@ async function sendCode(page) {
   return answer.typing ? { refused: answer.alert } : { refused: null };
 }
 
+/**
+ * At phone width the game opens with a full-screen notice, "Open this on a laptop" (src/ui/phone/PhoneNotice.tsx).
+ * A phone player presses "Continue anyway", and so does the guest. A page with no notice (an older build) goes on.
+ */
+async function passPhoneNotice(page) {
+  const notice = page.getByRole("dialog", { name: "Open this on a laptop" });
+  // The notice and the main menu come up together; whichever shows first, the notice is then either there or not.
+  await notice.or(page.getByRole("navigation", { name: "Main menu" })).first().waitFor({ timeout: SCREEN_MS }).catch(() => undefined);
+  await page.waitForTimeout(300);
+  if (!(await notice.isVisible())) return "";
+  await notice.getByRole("button", { name: "Continue anyway" }).click({ timeout: SCREEN_MS });
+  await notice.waitFor({ state: "detached", timeout: SCREEN_MS });
+  return "phone notice passed with Continue anyway";
+}
+
 /** Main menu -> Multiplayer -> the four letters, typed into the join card. */
 async function guestTypesCode(page, base, code) {
   await page.goto(base);
+  const passed = await passPhoneNotice(page);
   const how = await press(page, "open Multiplayer", MULTIPLAYER_CARD);
   const input = page.locator('main input[maxlength="4"], main input').first();
   await input.waitFor({ timeout: SCREEN_MS });
@@ -543,7 +559,7 @@ async function guestTypesCode(page, base, code) {
   if (typed !== code) throw new Error(`the code box reads "${typed}" after typing "${code.toLowerCase()}"`);
   const answer = await sendCode(page);
   if (answer.refused !== null) throw new Error(`refused: "${answer.refused}"`);
-  return how ? `the Multiplayer shield was ${how}` : "";
+  return [passed, how ? `the Multiplayer shield was ${how}` : ""].filter(Boolean).join(", ");
 }
 
 /** Runs in the page: which screen the host is on after "Start", and on the style screen the line under its title. */
@@ -758,6 +774,7 @@ async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCam
         const started = Date.now();
         let words = "";
         await guest.goto(`${base}/?room=${room.code}`);
+        await passPhoneNotice(guest);
         for (;;) {
           const answer = await sendCode(guest);
           if (answer.refused === null) break;
