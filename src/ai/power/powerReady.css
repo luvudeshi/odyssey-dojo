@@ -11,6 +11,7 @@
   display: flex; justify-content: center; margin: 0; padding: 0; pointer-events: none;
   font-family: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif; text-align: center; line-height: 1;
   color: var(--white, #f2e4c8); transition: opacity 0.15s ease-out;
+  container-type: inline-size; /* the type below follows the width of this strip, so a long move name still fits beside the disc */
 }
 .power-ready.power-ready--live * { box-sizing: border-box; pointer-events: none; }
 
@@ -33,12 +34,12 @@
   color: var(--power-ready-accent, #ffd9a0);
 }
 .power-ready .power-ready__move {
-  grid-area: move; margin-top: 4px; font-size: clamp(26px, 2.5vw, 42px); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
+  grid-area: move; margin-top: 4px; font-size: clamp(24px, min(2.5vw, 4.4cqi), 42px); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8); text-shadow: 0 2px 0 var(--ink, #17110d);
 }
 .power-ready .power-ready__how {
-  grid-area: how; max-width: 14.5em; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(16px, 1.5vw, 24px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
+  grid-area: how; max-width: clamp(11em, 40cqi, 14.5em); padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
+  font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
   color: var(--white, #f2e4c8);
 }
 .power-ready .power-ready__or { font-size: 0.85em; opacity: 0.9; white-space: nowrap; }
@@ -55,7 +56,7 @@
 .power-ready .power-ready__edge { transition: opacity 0.12s ease-out; }
 .power-ready .power-ready__wait {
   grid-area: how; visibility: hidden; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(16px, 1.5vw, 24px); font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8);
 }
 .power-ready.power-ready--waiting .power-ready__frame { animation-play-state: running, paused; }

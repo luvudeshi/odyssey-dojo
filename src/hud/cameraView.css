@@ -66,3 +66,8 @@
 }
 .fight .camera-tag { border: 1.5px solid #8a7cc0; border-radius: 0; background: #0d0b12; color: #ece4ff; }
 .fight .camera-view:has(.camera-state[data-on="false"]) .camera-tag { border-color: #ff6a14; }
+
+/* The guest's own camera (GuestFight.tsx holds the tracker's video here): a small mirrored tile in the camera panel's corner. */
+.fight > .preview { position: absolute; left: 20px; bottom: 20px; z-index: 30; width: clamp(10rem, 16.7vw, 15rem); aspect-ratio: 4 / 3; overflow: hidden; border: 2px solid #8a7cc0; background: #07060a; pointer-events: none; }
+.fight > .preview video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.fight > .preview.mirror video { transform: scaleX(-1); }

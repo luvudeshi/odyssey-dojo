@@ -6,7 +6,7 @@
 .sky-hud {
   /* The player's crescent: anchored like the power disc (bottom, offset from the centre), under the hero's feet.
      The x offset is to the crescent's middle; the bottom is to the foot of its 240 x 60 box. Both zoom with the HUD. */
-  --fg-cres-x: -180px;
+  --fg-cres-x: -204px;
   --fg-cres-bottom: 44px;
   --fg-tile: 240px;
 }
@@ -24,7 +24,7 @@
   -webkit-text-stroke: 0.8px #2a0602; filter: drop-shadow(0 0 6px rgba(255, 90, 10, 0.7)) drop-shadow(0 2px 2px #000); /* static text: drawn once */
 }
 .sky-hud .fg-boss__phase { justify-self: end; font: 700 14px/1 var(--rift-font); letter-spacing: 0.14em; text-transform: uppercase; color: var(--rift-violet); text-shadow: 0 2px 3px #000, 0 0 2px #000; }
-.sky-hud .fg-boss__bar { position: relative; display: flex; align-items: center; height: 56px; margin-top: 4px; }
+.sky-hud .fg-boss__bar { position: relative; display: flex; align-items: center; height: 56px; margin-top: 10px; }
 .sky-hud .fg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 /* glass blades at both ends */
