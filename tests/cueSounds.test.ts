@@ -6,7 +6,7 @@ import { groupOf, playbackDb } from "../server/tools/levelRules";
 import type { DecodedClip } from "../src/audio/cues";
 import {
   CUE_CLIPS, CUE_LOUDNESS, CUE_PEAK, cueLevel, DEFEND_CLIPS, DEFEND_GAIN, defendClip, defendKind, leadSilence, listedCues,
-  prepareCue, UNLOCK_CLIP, UNLOCK_GAIN,
+  PHASE_CLIP, PHASE_DRUM_CLIP, prepareCue, UNLOCK_CLIP, UNLOCK_GAIN,
 } from "../src/audio/cues";
 import { stopClipLevel } from "../src/audio/stopAudio";
 import type { CombatEvent } from "../src/core/types";
@@ -16,8 +16,8 @@ import { burstKind } from "../src/render/effects/defendTiming";
 
 const RATE = 44100;
 const FOLDER = "public/audio/sfx";
-/** No clip here may be bigger than this on disk: they are a second or less. */
-const MAX_BYTES = 24_000;
+/** No clip here may be bigger than this on disk: the longest, the two sounds of a phase change, are a second and a half. */
+const MAX_BYTES = 30_000;
 
 /** A clip of `seconds` at one steady size, after `lead` seconds of silence. */
 function tone(size: number, seconds: number, lead = 0): Float32Array {
@@ -39,7 +39,8 @@ describe("which sound a defend gets", () => {
     expect(defendClip("jump")).toBe("defendJump");
     for (const other of ["jab", "", "Block", "dodge", "__proto__", "constructor"]) expect(defendClip(other), other).toBeNull();
     expect(new Set(Object.values(DEFEND_CLIPS)).size).toBe(4);
-    expect(CUE_CLIPS).toEqual([UNLOCK_CLIP, ...Object.values(DEFEND_CLIPS)]);
+    // The two sounds of a phase change are levelled the same way (tests/phaseSting.test.ts).
+    expect(CUE_CLIPS).toEqual([UNLOCK_CLIP, ...Object.values(DEFEND_CLIPS), PHASE_CLIP, PHASE_DRUM_CLIP]);
   });
 
   test("every defend move in the game, and every attack's counter, has a sound, split the way the bursts are", () => {
@@ -105,7 +106,7 @@ describe("how loud a clip is played", () => {
     expect(playbackDb("sfx/defendBlock.mp3", 0.06, 0.9)).toBeCloseTo(20 * Math.log10(DEFEND_GAIN));
     expect(playbackDb("sfx/unlock.mp3", 0.06, 0.3)).toBeCloseTo(20 * Math.log10(2 * UNLOCK_GAIN));
     expect(playbackDb("sfx/defended.mp3", 0.06, 0.3)).toBeCloseTo(20 * Math.log10(0.8 * 0.5));
-    for (const name of CUE_CLIPS) expect(groupOf(`sfx/${name}.mp3`), name).toBe("sfx (unlock and defends)");
+    for (const name of CUE_CLIPS) expect(groupOf(`sfx/${name}.mp3`), name).toBe("sfx (unlock, defends and phase change)");
     expect(groupOf("sfx/defended.mp3")).toBe("sfx");
     expect(groupOf("stops/circe/unlock.mp3")).toBe("stops (events)");
   });

@@ -1,12 +1,16 @@
 // Combat sound: plays a clip file from public/audio/sfx when index.json lists one, else the built-in synthesised clip.
 // To add a real clip, drop <type>.mp3 into public/audio/sfx and add "<type>" to index.json there.
-// The same folder holds the chime for an unlocked achievement (playUnlock) and one sound for each kind of defend, which
-// a "defended" event plays in place of its own clip (cues.ts names them).
+// The same folder holds the chime for an unlocked achievement (playUnlock), one sound for each kind of defend, which
+// a "defended" event plays in place of its own clip, and the war horn a change of phase sounds over its drum hit
+// (cues.ts names them all and says how loud each is).
 import { log } from "../core/log";
 import type { CombatEvent } from "../core/types";
 import { getSettings } from "../settings/store";
-import type { Cue } from "./cues";
-import { DEFEND_GAIN, defendClipFor, listedCues, prepareCue, UNLOCK_CLIP, UNLOCK_GAIN } from "./cues";
+import type { Cue, CueShape } from "./cues";
+import {
+  CUE_CLIPS, DEFEND_GAIN, defendClipFor, isPhaseChange, listedCues, PHASE_CLIP, PHASE_DRUM_CLIP, PHASE_DRUM_GAIN, PHASE_GAIN,
+  PHASE_SHAPE, prepareCue, UNLOCK_CLIP, UNLOCK_GAIN,
+} from "./cues";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
 import { tabHidden, watchTab } from "./tab";
@@ -52,7 +56,7 @@ const EVENTS: Readonly<Record<CombatEvent["type"], true>> = {
 const EVENT_TYPES = Object.keys(EVENTS) as CombatEvent["type"][];
 const SYNTHESISED: ReadonlySet<string> = new Set(SFX_TYPES);
 const clips = new Map<string, AudioBuffer>();
-/** The unlock chime and the defend sounds that have loaded, by clip name (cues.ts). */
+/** The unlock chime, the defend sounds and the two phase sounds that have loaded, by clip name (cues.ts). */
 const cues = new Map<string, Cue<AudioBuffer>>();
 const synths = new Map<string, AudioBuffer>();
 /** Synthesised clips that are partly rendered. */
@@ -93,7 +97,8 @@ async function loadClips(context: AudioContext): Promise<void> {
     if (!response.ok) return;
     const index: unknown = await response.json();
     await Promise.all([
-      ...listedClips(index).map((type) => loadClip(context, type)),
+      // A clip of cues.ts is loaded once, as a cue: the phase change's drum hit is both an event's clip and one of those.
+      ...listedClips(index).filter((type) => !CUE_CLIPS.includes(type)).map((type) => loadClip(context, type)),
       ...listedCues(index).map((name) => loadCue(context, name)),
     ]);
   } catch (error) {
@@ -186,15 +191,29 @@ function unit(value: number): number {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
 }
 
-/** Plays one of the clips of cues.ts, levelled and from its first sound. Returns false when it is not loaded or will not start. */
-function startCue({ context }: Player, name: string | null, gain: number): boolean {
+/**
+ * Plays one of the clips of cues.ts, levelled and from its first sound. With a `shape` it starts at that gain and
+ * drops to the shape's tail after its hold. Returns false when it is not loaded or will not start.
+ */
+function startCue({ context }: Player, name: string | null, gain: number, shape?: CueShape): boolean {
   try {
     const cue = name === null ? undefined : cues.get(name);
     if (!cue) return false;
     const source = context.createBufferSource();
     source.buffer = cue.buffer;
     const level = context.createGain();
-    level.gain.value = cue.level * gain * unit(getSettings().sfxVolume);
+    const full = cue.level * gain * unit(getSettings().sfxVolume);
+    level.gain.value = full;
+    if (shape) {
+      // A browser that will not take the shape still plays the clip, at its starting gain throughout.
+      try {
+        const now = context.currentTime;
+        level.gain.setValueAtTime(full, now);
+        level.gain.setTargetAtTime(full * shape.tail, now + shape.holdSeconds, shape.fallSeconds);
+      } catch (error) {
+        log("warn", "sfx.shapeFailed", error);
+      }
+    }
     source.connect(level).connect(context.destination);
     source.start(0, cue.offset);
     return true;
@@ -210,6 +229,8 @@ function start(player: Player, event: CombatEvent): void {
   try {
     // A defend sounds like what was done: a dodge, a block, a duck or a jump. With no clip for it, the usual sound below.
     if (event.type === "defended" && startCue(player, defendClipFor(event), DEFEND_GAIN)) return;
+    // A change of phase lands on a drum hit, levelled so that it is heard. The horn over it is started by playEvent.
+    if (event.type === "phaseChanged" && startCue(player, PHASE_DRUM_CLIP, PHASE_DRUM_GAIN)) return;
     // An event with neither a clip file nor a synthesised design stays silent.
     const buffer = clips.get(type) ?? (SYNTHESISED.has(type) ? synthBuffer(context, type, Number.POSITIVE_INFINITY) : null);
     if (buffer === null) return;
@@ -257,27 +278,48 @@ export function setPowerSound(next: (() => boolean) | null): void {
   powerSound = next;
 }
 
-export function playEvent(event: CombatEvent): void {
-  const { type } = event;
-  if (!(type in EVENTS)) return;
-  // A hidden tab stays silent, and asking the context to run again there would bring the music back with it.
-  if (tabHidden()) return;
-  if (type === "powerUnleashed" && powerSound?.()) return;
-  if (override?.(event)) return;
-  const active = sharedPlayer();
-  if (!active) return;
+/** Plays now when audio is running. Otherwise asks the browser to start it, and plays only if that came quickly. */
+function whenRunning(active: Player, play: () => void): void {
   if (active.context.state === "running") {
-    start(active, event);
+    play();
     return;
   }
   // Suspended until the browser allows audio. Sounds queued behind a long wait would all fire at once, so those are dropped.
   const asked = performance.now();
   active.context.resume().then(
     () => {
-      if (performance.now() - asked < STALE_MS) start(active, event);
+      if (performance.now() - asked < STALE_MS) play();
     },
     () => undefined,
   );
+}
+
+/**
+ * The horn of a new phase. It sounds whatever else plays for the event: the drum hit, or the stop's own sound (Scylla's
+ * howl, the suitors' jeer), which goes over it. It starts in the frame of Athena's phase line and stops nothing. With
+ * no clip, or no audio, it is silent and the event keeps the sound it had.
+ */
+function playPhaseHorn(): void {
+  const active = sharedPlayer();
+  if (!active) return;
+  whenRunning(active, () => {
+    startCue(active, PHASE_CLIP, PHASE_GAIN, PHASE_SHAPE);
+  });
+}
+
+export function playEvent(event: CombatEvent): void {
+  const { type } = event;
+  if (!(type in EVENTS)) return;
+  // A hidden tab stays silent, and asking the context to run again there would bring the music back with it.
+  if (tabHidden()) return;
+  if (type === "powerUnleashed" && powerSound?.()) return;
+  if (isPhaseChange(event)) playPhaseHorn();
+  if (override?.(event)) return;
+  const active = sharedPlayer();
+  if (!active) return;
+  whenRunning(active, () => {
+    start(active, event);
+  });
 }
 
 /** When the last unlock chime was asked for and let through, by the clock. */

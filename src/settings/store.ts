@@ -4,6 +4,8 @@ import { useSyncExternalStore } from "react";
 import { log } from "../core/log";
 
 export interface Settings {
+  /** How Story mode and the Training Dojo start: the webcam, or the keys with no camera asked for. */
+  readonly controls: "camera" | "keyboard";
   readonly quality: "high" | "low";
   readonly musicVolume: number;
   readonly sfxVolume: number;
@@ -16,7 +18,7 @@ export interface Settings {
 
 export const SETTINGS_KEY = "odyssey-dojo.settings";
 
-export const DEFAULT_SETTINGS: Settings = { quality: "high", musicVolume: 0.7, sfxVolume: 1, voiceVolume: 1, mirror: true, keyHints: true };
+export const DEFAULT_SETTINGS: Settings = { controls: "camera", quality: "high", musicVolume: 0.7, sfxVolume: 1, voiceVolume: 1, mirror: true, keyHints: true };
 
 const volume = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
@@ -32,6 +34,7 @@ export function parseSettings(raw: unknown): Settings {
     log("warn", "settings.corrupt", error);
   }
   return {
+    controls: data.controls === "camera" || data.controls === "keyboard" ? data.controls : d.controls,
     quality: data.quality === "high" || data.quality === "low" ? data.quality : d.quality,
     musicVolume: volume(data.musicVolume, d.musicVolume),
     sfxVolume: volume(data.sfxVolume, d.sfxVolume),
