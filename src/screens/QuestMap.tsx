@@ -5,9 +5,11 @@
 import type { CSSProperties } from "react";
 import type { EnemySpec } from "../core/types";
 import { Button, Panel } from "../ui/pebble";
+import { SetTitle } from "../ui/set/Set";
 import { BronzeDefs, GALLEY } from "./menuShields";
 import "./menuScene.css";
 import "./questMap.css";
+import "../ui/set/screens-end.css";
 
 const W = 1600, H = 900;
 export type Point = readonly [number, number];
@@ -147,12 +149,12 @@ export function QuestMap(props: {
         <div className="menu-scene__rain menu-scene__rain--near" />
       </div>
       <header className="qm-head">
-        <h1 className="qm-title">The Road Home</h1>
-        <p>{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
+        <SetTitle>The Road Home</SetTitle>
+        <p className="set-sub">{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
       </header>
+      <button type="button" className="set-back qm-back-btn" onClick={props.onMenu}>Main menu</button>
       <div className="qm-foot">
         <Button onClick={props.onStyle}>Change style</Button>
-        <Button onClick={props.onMenu}>Main menu</Button>
       </div>
     </Panel>
   );
