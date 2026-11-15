@@ -240,7 +240,7 @@ function standIns(): StandIns {
     written: [], lookups: [], halls: 0, next: "write",
     accounts: {
       available: () => Promise.resolve(true),
-      signUp: never, signIn: never, signOut: never, readSave: never, writeSave: never,
+      signUp: never, signIn: never, signOut: never, readSave: never, writeSave: never, rename: never, changePassword: never,
       accountOf: (token) => {
         made.lookups.push(token);
         return Promise.resolve(known[token] ?? null);

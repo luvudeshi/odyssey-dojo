@@ -7,6 +7,8 @@ import { z } from "zod";
 import { log } from "../../src/core/log";
 import { SIGNUPS_PER_DAY, SIGNUPS_PER_HOUR, createGate, createKnownSessions } from "./accountLimits";
 import type { Gate } from "./accountLimits";
+import { createEdits } from "./accountEdits";
+import type { Edits } from "./accountEdits";
 import { nameKey, saveSchema } from "./accountRules";
 import { publicAccounts } from "./localOnly";
 import type { Save } from "./accountRules";
@@ -165,7 +167,7 @@ export interface Stored {
   readonly updatedAt: string | null;
 }
 
-export interface Accounts {
+export interface Accounts extends Edits {
   /** Whether the database answers. Never throws. Asked at most once every STATUS_CACHE_MS. */
   readonly available: () => Promise<boolean>;
   /**
@@ -280,7 +282,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
    * FAILURES_TO_GIVE_UP failures in a row, also turn the routes off for STATUS_CACHE_MS. A statement that is not
    * `counted` (the hall's, see `doors` below) is never one of those failures: the hall can fail while the accounts work.
    */
-  const run = async (text: string, params: readonly unknown[], counted = true): Promise<unknown[]> => {
+  const run = async (text: string, params: readonly unknown[], counted = true, tolerate?: string): Promise<unknown[]> => {
     if (now() - checkedAt < STATUS_CACHE_MS && !answers) throw new Unavailable();
     const found = await link();
     if (found === null) {
@@ -295,6 +297,14 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       }
       return rows;
     } catch (error) {
+      // An error the caller expects (a unique key hit by a race) is an answer, so the database is up and nothing is logged as a fault.
+      if (tolerate !== undefined && failureCode(error) === tolerate) {
+        if (counted) {
+          failures = 0;
+          believe(true);
+        }
+        return [];
+      }
       log("warn", "accounts_query_failed", failureCode(error));
       if (counted) {
         failures += 1;
@@ -324,7 +334,11 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     );
   };
 
+  const edits = createEdits({
+    run, table: t, gate, known, hash: hashPassword, verify: verifyPassword, tokenHash, saltBytes: SALT_BYTES, rowsOf,
+  });
   const made: Accounts = {
+    ...edits,
     available: () => {
       if (now() - checkedAt < STATUS_CACHE_MS) return Promise.resolve(answers);
       checking ??= run("select 1", []).then(() => true, () => false).finally(() => { checking = null; });
