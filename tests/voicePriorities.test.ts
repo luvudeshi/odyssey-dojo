@@ -12,7 +12,7 @@ const LENGTH: Readonly<Record<string, number>> = {
   call_cross: 2040, call_uppercut: 2190, call_block: 1880, call_dodge_right: 1490,
   phase_1: 1720, phase_2: 2430, phase_any: 2430, taunt_polyphemus_1: 3240, taunt_polyphemus_4: 2690,
   win: 3320, loss: 3790, praise_1: 1410, warn_1: 1150, fight_start: 1280, call_stake_thrust: 2770,
-  call_dodge_left: 1440, warn_3: 1360,
+  call_dodge_left: 1440, warn_3: 1360, call_trident_sweep: 1900,
 };
 
 function attack(counter: string): CombatEvent {
@@ -499,6 +499,19 @@ test("a phase line and the fight's first line do not wait for a warning, and the
   await until(9000);
   expect(started.slice(3)).toEqual(["warn_1@6000", "fight_start@6700"]);
   expect(cut.slice(1)).toEqual(["warn_1@6700"]);
+});
+
+test("the power-ready line does not wait for a warning either, and the waiting call does not follow it", async () => {
+  const { voice, frame, started, ended, cut } = await startFight();
+  frame([struck("block")]);
+  await until(650);
+  frame([attack("block")]);
+  await until(700);
+  expect(voice.speakPowerReady("trident_sweep")).toBe(true);
+  await until(5000);
+  expect(started).toEqual(["warn_1@0", "call_trident_sweep@700"]);
+  expect(cut).toEqual(["warn_1@700"]);
+  expect(ended).toEqual(["call_trident_sweep@2600"]);
 });
 
 test("pausing or leaving the fight during a warning drops the call waiting behind it", async () => {
