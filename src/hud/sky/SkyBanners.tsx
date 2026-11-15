@@ -16,13 +16,22 @@ export function PhaseLine({ index, name }: { index: number; name: string }) {
   return <div className="sk-phase"><small>{roman(index + 1)}</small>{name}</div>;
 }
 
+/**
+ * What the phase line shows after the fight's phase index moves from `last` to `index`: a new phase shows its line, a
+ * move back to 0 (a restart) clears it, and no move keeps what is shown.
+ */
+export function phaseShown(last: number, index: number, shown: number | null): number | null {
+  if (index === last) return shown;
+  return index > 0 ? index : null;
+}
+
 /** Shows the new phase's numeral and name for a moment, like PhaseBanner. Index 0 (the fight's start) is not a change. */
 export function SkyPhase({ enemy, index }: { enemy: EnemySpec; index: number }) {
   const [shown, setShown] = useState<number | null>(null);
   const [last, setLast] = useState(index);
   if (index !== last) {
     setLast(index);
-    setShown(index > 0 ? index : null);
+    setShown(phaseShown(last, index, shown));
   }
   useEffect(() => {
     if (shown === null) return undefined;

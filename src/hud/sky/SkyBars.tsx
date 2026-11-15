@@ -1,5 +1,6 @@
 // The star-chart edge pieces: two health chains with roundel emblems, the hexagonal score plate and the power chip.
-// Plain SVG and CSS only. A lost star flares and goes dark through a CSS animation (see top.css).
+// Every word and number is HTML text on a solid plate, so it stays the same size whatever the bar's width.
+// A lost star flares and goes dark through a CSS animation (see top.css).
 import type { ReactNode } from "react";
 
 const NODES = 12;
@@ -23,17 +24,15 @@ function plate(w: number, h: number): string {
   return `M${String(p)},0 H${String(w - p)} L${String(w)},${String(h / 2)} L${String(w - p)},${String(h)} H${String(p)} L0,${String(h / 2)}Z`;
 }
 
+/** The round emblem at the outer end of a bar, centred on (cx, 34) in a 68-high box. */
 function Roundel(props: { cx: number; children: ReactNode }): ReactNode {
   const { cx } = props;
   return (
-    <g>
+    <svg className="sk-roundel" viewBox={`${String(cx - 34)} 0 68 68`} aria-hidden="true">
       <circle cx={cx} cy={34} r={34} className="sk-roundel__rim" />
       <circle cx={cx} cy={34} r={30} className="sk-roundel__bed" />
-      {Array.from({ length: 18 }, (_, i) => (
-        <circle key={i} cx={cx + 32 * Math.cos((i / 18) * Math.PI * 2)} cy={34 + 32 * Math.sin((i / 18) * Math.PI * 2)} r={1.2} className="sk-roundel__bed" />
-      ))}
       {props.children}
-    </g>
+    </svg>
   );
 }
 
@@ -59,28 +58,33 @@ function EnemyMark(): ReactNode {
   );
 }
 
+/** Star `i` of the chain is lit while health reaches it. At zero health none is. The monster's chain drains toward the centre. */
+export function litStar(i: number, value: number, left: boolean): boolean {
+  const at = (left ? i : NODES - 1 - i) / (NODES - 1);
+  return value > 0 && at <= value + 1e-9;
+}
+
 /** One health chain. `value` is 0 to 1. The player's drains toward the right, the monster's toward the centre (the left). */
 export function SkyBar(props: { label: string; value: number; side: "left" | "right"; readout?: string }): ReactNode {
   const { label, side, readout } = props;
   const value = Math.max(0, Math.min(1, props.value));
   const left = side === "left";
-  const x0 = left ? 96 : 38, x1 = left ? 522 : 464, step = (x1 - x0) / (NODES - 1);
-  const reach = (x1 - x0) * value;
   return (
     <div className={`sk-bar sk-bar--${side}`} role="meter" aria-label={`${label} health`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}>
-      <svg viewBox="0 0 560 80" aria-hidden="true">
-        <g transform={`translate(${left ? "52" : "8"} 6)`}><path d={plate(500, 56)} className="sk-plate" /></g>
-        <text x={left ? 96 : 464} y={29} textAnchor={left ? "start" : "end"} className="sk-label">{label}</text>
-        {readout && <text x={502} y={29} textAnchor="end" className="sk-label sk-label--num">{readout}</text>}
-        <line x1={x0} y1={44} x2={x1} y2={44} className="sk-chain__lost" />
-        <line x1={x0} y1={44} x2={x1} y2={44} className={`sk-chain__kept ${left ? "from-left" : "from-right"}`} style={{ transform: `scaleX(${String(value)})` }} />
-        {Array.from({ length: NODES }, (_, i) => {
-          const at = i * step;
-          const lit = left ? at <= reach + 0.5 : at >= x1 - x0 - reach - 0.5;
-          return <circle key={i} cx={x0 + at} cy={44} r={4.6} className={lit ? "sk-node" : "sk-node sk-node--off"} />;
-        })}
-        {left ? <Roundel cx={36}><PlayerMark /></Roundel> : <Roundel cx={524}><EnemyMark /></Roundel>}
-      </svg>
+      {left ? <Roundel cx={36}><PlayerMark /></Roundel> : <Roundel cx={524}><EnemyMark /></Roundel>}
+      <div className="sk-bar__plate">
+        <div className="sk-bar__row">
+          <span className="sk-bar__name">{label}</span>
+          {readout && <span className="sk-bar__num">{readout}</span>}
+        </div>
+        <svg className="sk-chain" aria-hidden="true">
+          <line x1="0" y1="50%" x2="100%" y2="50%" className="sk-chain__lost" />
+          <line x1="0" y1="50%" x2="100%" y2="50%" className={`sk-chain__kept ${left ? "from-left" : "from-right"}`} style={{ transform: `scaleX(${String(value)})` }} />
+          {Array.from({ length: NODES }, (_, i) => (
+            <circle key={i} cx={`${String((i / (NODES - 1)) * 100)}%`} cy="50%" r={4.6} className={litStar(i, value, left) ? "sk-node" : "sk-node sk-node--off"} />
+          ))}
+        </svg>
+      </div>
     </div>
   );
 }
@@ -93,27 +97,21 @@ export function SkyScore({ score, combo }: { score: number; combo: number }): Re
         <svg viewBox="0 0 190 58" aria-hidden="true"><path d={plate(190, 58)} className="sk-plate" /></svg>
         <span className="sk-score__num">{score}</span>
       </div>
-      {combo > 1 && (
-        <span className="sk-combo">
-          <svg viewBox="0 0 46 14" width="46" height="14" aria-hidden="true"><Spark x={7} y={7} s={6.5} /><Spark x={23} y={7} s={6.5} /><Spark x={39} y={7} s={6.5} /></svg>
-          x{combo} combo
-        </span>
-      )}
+      {combo > 1 && <span className="sk-combo">x{combo} combo</span>}
     </div>
   );
 }
 
 function Moon({ f }: { f: number }): ReactNode {
-  const r = 12, cx = 30, cy = 19, rx = Math.abs(1 - 2 * f) * r;
+  const r = 12, cx = 14, cy = 14, rx = Math.abs(1 - 2 * f) * r;
   const lit = f >= 1 ? <circle cx={cx} cy={cy} r={r} className="sk-moon__lit" /> : (
     <path d={`M${String(cx)},${String(cy - r)} A${String(r)},${String(r)} 0 0 1 ${String(cx)},${String(cy + r)} A${String(rx)},${String(r)} 0 0 ${f > 0.5 ? "1" : "0"} ${String(cx)},${String(cy - r)}Z`} className="sk-moon__lit" />
   );
   return (
-    <>
-      {f >= 1 && <circle cx={cx} cy={cy} r={r + 7} className="sk-moon__halo" />}
+    <svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
       <circle cx={cx} cy={cy} r={r} className="sk-moon__disc" />
       {lit}
-    </>
+    </svg>
   );
 }
 
@@ -124,12 +122,9 @@ export function SkyPower({ power }: { power: number }): ReactNode {
   const full = f >= 1;
   return (
     <div className={`sk-power${full ? " is-full" : ""}`} role="meter" aria-label="Divine power" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(f * 100)}>
-      <svg viewBox="0 0 196 38" aria-hidden="true">
-        <path d={plate(196, 38)} className="sk-plate sk-power__plate" />
-        <Moon f={f} />
-        <text x={52} y={24} className="sk-label sk-label--sm">Power</text>
-        <text x={174} y={24} textAnchor="end" className="sk-label sk-label--sm sk-label--star">{full ? "READY" : `${String(Math.round(f * 100))}%`}</text>
-      </svg>
+      <Moon f={f} />
+      <span>Power</span>
+      <strong>{full ? "READY" : `${String(Math.round(f * 100))}%`}</strong>
     </div>
   );
 }
