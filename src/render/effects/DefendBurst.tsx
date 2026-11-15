@@ -1,7 +1,5 @@
 // A short effect round the hero each time a defend counts (battle.defendedAt/defendedMove, the same moment the HUD chip
-// shows). Block: a soft ring spreading off the shield. Dodge (three versions, ?burst=a|b|c): a, a circular pulse out from
-// him; b, curved afterimage arcs from where he stood; c, the attack's line whiffing past with a dust kick. Duck: a soft
-// whoosh over his head. Jump: a gold pulse on the ground. All of it is soft (additive blending on small generated
+// shows). Block: a soft ring spreading off the shield. Dodge: drawn by dodge/DodgeFx. Duck: a soft whoosh over his head. Jump: a gold pulse on the ground. All of it is soft (additive blending on small generated
 // textures), eased, animated off nowSeconds() every frame, 550 ms, and nothing is drawn with reduced motion.
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
@@ -9,16 +7,15 @@ import { AdditiveBlending, DoubleSide, MeshBasicMaterial, PlaneGeometry } from "
 import type { Mesh, Points, Texture } from "three";
 import { battle, calmMotion, nowSeconds } from "../battle";
 import { HOME_Z } from "../PlayerFigure";
-import { burstFade, burstKind, burstProgress, burstVariant, easeOut } from "./defendTiming";
+import { burstFade, burstKind, burstProgress, easeOut } from "./defendTiming";
 import { SHIELD_FRONT, SHIELD_Y } from "./GuardShield";
 import { createPool, emit, stepPool } from "./sparks";
 import { makeSoftTextures } from "./softTextures";
+import { DodgeFx } from "./dodge/DodgeFx";
 
-const VARIANT = burstVariant(window.location.search);
 const GOLD = 0xffd36b;
 const WHITE = 0xfff4d6;
 const GREEN = 0x9be7a0;
-const SWOOSHES = 3;
 
 function glow(map: Texture, color: number): MeshBasicMaterial {
   return new MeshBasicMaterial({ map, color, transparent: true, opacity: 0, depthWrite: false, blending: AdditiveBlending, fog: false, side: DoubleSide });
@@ -39,15 +36,13 @@ export function DefendBurst() {
       plane: new PlaneGeometry(1, 1),
       ground: glow(tex.ring, GREEN),
       body: glow(tex.ring, GREEN),
-      line: glow(tex.disc, WHITE),
-      swoosh: [glow(tex.swoosh, WHITE), glow(tex.swoosh, GREEN), glow(tex.swoosh, GREEN)],
+      swoosh: glow(tex.swoosh, WHITE),
       pool: createPool(40),
     };
   }, []);
   const ground = useRef<Mesh>(null);
   const body = useRef<Mesh>(null);
-  const line = useRef<Mesh>(null);
-  const swoosh = useRef<(Mesh | null)[]>([]);
+  const swoosh = useRef<Mesh>(null);
   const dust = useRef<Points>(null);
   const seenAt = useRef(-Infinity);
 
@@ -59,63 +54,40 @@ export function DefendBurst() {
     const p = calm ? 1 : burstProgress(now, battle.defendedAt);
     const t = easeOut(p);
     const e = burstFade(p);
-    const dir = battle.defendedMove === "dodge_left" ? -1 : 1;
     const x = battle.heroX + battle.reachX;
     const z = HOME_Z + battle.heroZ + battle.reachZ;
-    const isDodge = kind === "dodge";
 
     if (battle.defendedAt !== seenAt.current && now >= battle.defendedAt) {
       seenAt.current = battle.defendedAt;
-      if (!calm && (isDodge || kind === "jump")) emit(kit.pool, [x - (isDodge ? dir * 0.2 : 0), 0.1, z], kind === "jump" ? 22 : 12, 1.8);
+      if (!calm && kind === "jump") emit(kit.pool, [x, 0.1, z], 22, 1.8);
       kit.ground.color.setHex(kind === "jump" ? GOLD : GREEN);
       kit.body.color.setHex(kind === "block" ? WHITE : GREEN);
     }
 
-    // Flat pulse on the floor: dodge a, jump, and a small one under dodge c's dust.
+    // Flat pulse on the floor: the jump's.
     const g = ground.current;
     if (g) {
-      const big = kind === "jump" || (isDodge && VARIANT === "a");
-      const small = isDodge && VARIANT === "c";
       g.position.set(x, 0.03, z);
-      g.scale.setScalar(big ? 0.7 + 2.6 * t : 0.4 + 1.1 * t);
-      put(g, big ? e * 0.9 : small ? e * 0.45 : 0);
+      g.scale.setScalar(0.7 + 2.6 * t);
+      put(g, kind === "jump" ? e * 0.9 : 0);
     }
 
-    // Upright ring facing the camera: the block ring off the shield, and dodge a's pulse round his body.
+    // Upright ring facing the camera: the block ring off the shield.
     const b = body.current;
     if (b) {
       const block = kind === "block";
-      b.position.set(x, block ? SHIELD_Y + battle.reachY : 1.1, block ? z - SHIELD_FRONT + 0.02 : z - 0.1);
-      b.scale.setScalar(block ? 1.2 + 1.3 * t : 1.3 + 1.7 * t);
-      put(b, block ? e : isDodge && VARIANT === "a" ? e * 0.5 : 0);
+      b.position.set(x, SHIELD_Y + battle.reachY, z - SHIELD_FRONT + 0.02);
+      b.scale.setScalar(1.2 + 1.3 * t);
+      put(b, block ? e : 0);
     }
 
-    // Dodge c: the attack's line whiffs past, a thin bright slash across where he stood.
-    const l = line.current;
-    if (l) {
-      const on = isDodge && VARIANT === "c";
-      l.position.set(x - dir * 0.5, 1.25 + 0.25 * t, z - 0.15);
-      l.rotation.z = dir * 0.55;
-      l.scale.set(0.5 + 2.4 * easeOut(p * 2), 0.09, 1);
-      put(l, on ? burstFade(p) : 0);
-    }
-
-    // Swooshes: dodge b's three afterimage arcs (staggered, each easing from where he stood to where he went), and the duck whoosh.
-    for (let i = 0; i < SWOOSHES; i++) {
-      const m = swoosh.current[i];
-      if (!m) continue;
-      if (isDodge && VARIANT === "b") {
-        const pi = Math.min(1, Math.max(0, (p - i * 0.08) / (1 - i * 0.08)));
-        m.position.set(x - dir * (1.0 - 0.9 * easeOut(pi)), 0.75 + i * 0.33, z - 0.1);
-        m.scale.set(dir * (1.7 - i * 0.2), 0.65, 1);
-        m.rotation.z = 0;
-        put(m, burstFade(pi) * (0.9 - i * 0.12));
-      } else if (kind === "duck" && i === 0) {
-        m.position.set(x - 0.6 + 1.2 * t, 1.95 + battle.reachY, z - 0.05);
-        m.scale.set(1.7, 0.7, 1);
-        m.rotation.z = 0;
-        put(m, e);
-      } else put(m, 0);
+    // The duck whoosh.
+    const m = swoosh.current;
+    if (m) {
+      m.position.set(x - 0.6 + 1.2 * t, 1.95 + battle.reachY, z - 0.05);
+      m.scale.set(1.7, 0.7, 1);
+      m.rotation.z = 0;
+      put(m, kind === "duck" ? e : 0);
     }
 
     const alive = stepPool(kit.pool, dt);
@@ -128,12 +100,10 @@ export function DefendBurst() {
 
   return (
     <>
+      <DodgeFx />
       <mesh ref={ground} visible={false} rotation={[-Math.PI / 2, 0, 0]} geometry={kit.plane} material={kit.ground} />
       <mesh ref={body} visible={false} geometry={kit.plane} material={kit.body} />
-      <mesh ref={line} visible={false} geometry={kit.plane} material={kit.line} />
-      {kit.swoosh.map((material, i) => (
-        <mesh key={i} ref={(m) => { swoosh.current[i] = m; }} visible={false} geometry={kit.plane} material={material} />
-      ))}
+      <mesh ref={swoosh} visible={false} geometry={kit.plane} material={kit.swoosh} />
       <points ref={dust} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[kit.pool.positions, 3]} />

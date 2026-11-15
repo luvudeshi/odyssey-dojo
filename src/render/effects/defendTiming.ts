@@ -19,12 +19,6 @@ export function burstFade(p: number): number {
   return k * k * (3 - 2 * k) * (1 - p) * (1 - p);
 }
 
-/** Which of the dodge versions to draw: ?burst=a, b or c; anything else is a. */
-export function burstVariant(search: string): "a" | "b" | "c" {
-  const v = new URLSearchParams(search).get("burst");
-  return v === "b" || v === "c" ? v : "a";
-}
-
 /** The shield is up only while block is held and the card on screen asks for a block, plus the flash right after that block counts. */
 export function shieldUp(held: ReadonlySet<string>, phase: CombatPhase | undefined, sinceBlock: number): boolean {
   if (!held.has("block")) return false;
