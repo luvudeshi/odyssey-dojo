@@ -111,3 +111,31 @@
   .acc-actions .set-back .acc-btn__icon { display: none; }
   .acc-actions .pb-btn:not(.set-back) { min-height: 52px; }
 }
+
+/* ---------- main menu name plate: obsidian slab, lava rules, a meander border, a palmette at each end ---------- */
+:root:root {
+  .menu--title .menu-plaque {
+    --meander: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M0 11V1h10v8H4V4h3' fill='none' stroke='%23e0a552' stroke-width='1.6'/%3E%3Cpath d='M12 11V1h10v8h-6V4h3' fill='none' stroke='%23e0a552' stroke-width='1.6'/%3E%3C/svg%3E");
+    position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; gap: clamp(14px, 2.4vw, 40px); box-sizing: border-box;
+    width: min(900px, 78vw); margin: 0 auto 0.3rem; padding: 32px clamp(20px, 3vw, 44px) 30px;
+    background: linear-gradient(90deg, transparent, #ff5a10 15%, #ffd27a 50%, #ff5a10 85%, transparent) center top 6px / calc(100% - 16px) 4px no-repeat,
+      linear-gradient(90deg, transparent, #ff5a10 15%, #ffd27a 50%, #ff5a10 85%, transparent) center bottom 6px / calc(100% - 16px) 4px no-repeat,
+      radial-gradient(ellipse at 50% 0%, rgba(255, 150, 60, 0.18), transparent 60%), linear-gradient(#1b1411, #0b0807 55%, #17100c);
+    border: 3px solid #c98f37; border-radius: 6px;
+    box-shadow: 0 0 0 2px #140a04, inset 0 0 0 2px #140a04, inset 0 0 28px rgba(0, 0, 0, 0.8), 0 0 36px rgba(255, 110, 30, 0.32), inset 0 8px 10px -8px rgba(255, 120, 30, 0.7), inset 0 -8px 10px -8px rgba(255, 120, 30, 0.7), 0 14px 28px rgba(0, 0, 0, 0.65);
+  }
+  /* meander strips, with a glowing lava rule on the outer side of each */
+  .menu--title .menu-plaque::before, .menu--title .menu-plaque::after {
+    content: ""; position: absolute; left: 14px; right: 14px; height: 12px; background: var(--meander) left center / auto 12px repeat-x; opacity: 0.9;
+  }
+  .menu--title .menu-plaque::before { top: 16px; }
+  .menu--title .menu-plaque::after { bottom: 16px; }
+  .menu--title .menu-plaque__mark { flex: none; width: clamp(48px, 5.6vw, 84px); height: auto; filter: drop-shadow(0 0 10px rgba(255, 150, 50, 0.55)); }
+  .menu--title .menu-plaque__mark--flip { transform: scaleX(-1); }
+  .menu--title .menu-plaque .set-title {
+    margin: 0; padding: 0; white-space: nowrap; font-size: clamp(52px, 5.8vw, 100px); line-height: 1; letter-spacing: 0.05em;
+    background: linear-gradient(#fffbe0, #ffd978 40%, #e49a35 85%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 3px 0 #1a0d06) drop-shadow(0 0 18px rgba(255, 140, 40, 0.5));
+  }
+  .menu--title .menu-plaque .set-title::before, .menu--title .menu-plaque .set-title::after { content: none; }
+}
