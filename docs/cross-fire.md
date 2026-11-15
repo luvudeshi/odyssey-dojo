@@ -83,9 +83,10 @@ The two `risingHand` rules (`src/moves/handSignals.ts`) are shared by the upperc
 - **Not while the elbow is opening.** A cross thrown from the waist passes chin height with its elbow part
   bent, inside 400 ms of the hand being down: that was an uppercut. `armOpening` (20 degrees in 100 ms) is the
   measure the jab and the cross already use for an arm on its way out. An uppercut's elbow closes or holds.
-- **Not when the other hand has come up too.** If the other wrist rose by half the rising hand's own minimum
-  (0.375 shoulder widths) in the same 450 ms, at any stage of the way, it is a guard going up or the start of a
-  two-handed push. (Before the lenient-strikes PR this was "below the waist inside 400 ms and now above chest
+- **Not when the other hand has come up too.** If the other wrist rose from under the chest (0.4 shoulder widths
+  below the shoulder line) by half the rising hand's own minimum (0.375 shoulder widths) in the same 450 ms, at any
+  stage of the way, it is a guard going up or the start of a two-handed push. The other hand lifted from a guard
+  at the chest to the face is a boxer covering up, and the uppercut still counts. (Before the lenient-strikes PR this was "below the waist inside 400 ms and now above chest
   height", which a looser uppercut fired ahead of.)
 - **The elbow stays low.** Since the lenient-strikes PR an upper arm lifted more than 55 degrees from hanging
   is a punch, not a rising hand: how high the elbow comes is the one feature between the cross and the uppercut.

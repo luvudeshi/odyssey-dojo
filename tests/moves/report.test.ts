@@ -2,6 +2,7 @@
 // The table only describes the detectors, so the last test moves a made-up body about at random and checks
 // that the two never disagree about a frame.
 import { expect, test } from "vitest";
+import { DEFEND_ON } from "../../src/input/poseInput";
 import { MEASURES, readMeasure } from "../../src/moves/measures";
 import { MOVES } from "../../src/moves/registry";
 import { measureTrace, reportText } from "../../tools/recorder/report";
@@ -46,8 +47,8 @@ test("a trace that fires is reported with its frame and every margin, smallest f
   const margins = lines.slice(2).map((line) => line.trim().split(/\s+/)[0]).filter((cell) => cell?.endsWith("%")).map((cell) => parseInt(cell ?? "", 10));
   expect(margins).toEqual([...margins].sort((a, b) => a - b));
 
-  // A defend move fires on the first frame it is held.
-  expect(reportText("block-madeup-1.json", fixture("block-madeup-1.json"), MOVES)).toMatch(/^block-madeup-1\.json: block FIRED on frame 51 of 92/);
+  // A defend move fires on the first frame it is held, from 0.5.
+  expect(reportText("block-madeup-1.json", fixture("block-madeup-1.json"), MOVES)).toMatch(/^block-madeup-1\.json: block FIRED on frame 49 of 92/);
   expect(reportText("idle-madeup-1.json", fixture("idle-madeup-1.json"), MOVES)).toBe("idle-madeup-1.json: idle: nothing fired, as it should");
 });
 
@@ -61,7 +62,7 @@ test("a trace that misses is reported with its closest frame and the first condi
 
   const block = reportText("block-madeup-2.json", fixture("idle-madeup-1.json"), MOVES).split("\n");
   expect(block[0]).toMatch(/block DID NOT FIRE \(peak confidence 0\.00/);
-  expect(block[1]).toBe(`  first failed: guard confidence (1 is both fists within 0.8 shoulder widths of the nose, 0 from 1.3): 0.00, needs >= 0.70 (-100%)`);
+  expect(block[1]).toBe(`  first failed: guard confidence (1 is both fists within 1 shoulder width of the nose, 0.2 below the shoulder line or higher, forearms standing): 0.00, needs >= 0.50 (-100%)`);
 
   expect(reportText("no_such_move-ana-1.json", fixture("idle-madeup-1.json"), MOVES)).toMatch(/there is no move with that name/);
   expect(reportText("jab-ana-1.json", { ...fixture("idle-madeup-1.json"), move: "idle" }, MOVES)).toMatch(/^jab-ana-1\.json: jab DID NOT FIRE/);
@@ -99,7 +100,7 @@ test("the table agrees with the detectors on every frame of made-up motion", () 
   for (const keys of takes) {
     for (const history of histories(sequence(keys))) {
       for (const move of MOVES.values()) {
-        const counts = move.detect(history) >= 0.7;
+        const counts = move.detect(history) >= (move.kind === "defend" ? DEFEND_ON : 0.7);
         const options = MEASURES[move.id] ?? [];
         const says = options.some((option) => option.every((measure) => readMeasure(measure, history).passed));
         if (counts) fired.add(move.id);

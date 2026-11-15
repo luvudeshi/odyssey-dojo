@@ -2,7 +2,7 @@
 // wind-up, and sets off no other move except the overlaps listed with each gesture.
 import { expect, test } from "vitest";
 import type { CombatInput, Landmark, PoseFrame } from "../src/core/types";
-import { createPoseInput } from "../src/input/poseInput";
+import { RELEASE_MS, createPoseInput } from "../src/input/poseInput";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, JOINT, joint, pushFrame } from "../src/pose/signals";
 import { frameAt } from "./poseFixture";
@@ -254,6 +254,8 @@ const sunBurst = [...hold(handsTogether, 8), ...hold(armsWide, 10), ...hold(stan
 // Shoulder height through a hop, in shoulder widths: a small dip, up to 0.3 at frame 5, back down by frame 10.
 const HOP = [0.04, 0.06, -0.05, -0.15, -0.25, -0.3, -0.25, -0.15, -0.03, 0.05, 0.02];
 const hop = HOP.map((rise) => shifted(stand, 0, rise * WIDTH));
+/** The hop reads as held until frame 17; a defend then stays held for RELEASE_MS more (src/input/poseInput.ts). */
+const LET_GO = 20 + Math.ceil(RELEASE_MS / STEP);
 const jump = [...hop, ...hold(stand, 30)];
 
 interface Gesture {
@@ -485,7 +487,7 @@ test("jump is held from the top of a hop until just after landing, then let go",
   const held = heldJump(play(jump));
   expect(held.slice(0, 4)).not.toContain(true);
   expect(held.slice(4, 17)).not.toContain(false);
-  expect(held.slice(20)).not.toContain(true);
+  expect(held.slice(LET_GO)).not.toContain(true);
 });
 
 test.each([5, 10, 15, 25])("a second hop %i frames after the first is held from its top too", (gap) => {
@@ -493,7 +495,7 @@ test.each([5, 10, 15, 25])("a second hop %i frames after the first is held from 
   const second = HOP.length + gap;
   expect(held.slice(4, 17)).not.toContain(false);
   expect(held.slice(second + 4, second + 17)).not.toContain(false);
-  expect(held.slice(second + 20)).not.toContain(true);
+  expect(held.slice(second + LET_GO)).not.toContain(true);
 });
 
 test("jump works from the baseline alone after a gap in tracking", () => {
@@ -501,7 +503,7 @@ test("jump works from the baseline alone after a gap in tracking", () => {
   const held = heldJump(play(jump, 2000));
   expect(held.slice(0, 4)).not.toContain(true);
   expect(held.slice(4, 17)).not.toContain(false);
-  expect(held.slice(20)).not.toContain(true);
+  expect(held.slice(LET_GO)).not.toContain(true);
 });
 
 test.each([6, 9, 12, 30, 45, 90])("jump is not held by standing up from a duck over %i frames", (frames) => {

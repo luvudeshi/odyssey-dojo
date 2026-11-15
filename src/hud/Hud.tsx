@@ -54,9 +54,8 @@ export function PromptCard(props: { move: MoveDef; target: string; successes: nu
       <div className="pb-move">{move.prompt}</div>
       {level !== "mini" && <div className="pb-target">{target}</div>}
       {situation && <div className="hb-situation">{situation}</div>}
-      {/* A defend only counts if it is still held when the attack lands. */}
+      {/* No HOLD tag: a defend made once while the attack is coming counts. */}
       <div className="pb-hint">
-        {move.kind === "defend" && <strong className="pb-tag">HOLD</strong>}
         {level === "full" && ` ${move.hint} `}
         {key}
       </div>

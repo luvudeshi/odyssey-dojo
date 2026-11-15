@@ -105,10 +105,11 @@ export function risingHand(history: PoseHistory, side: Side, bentBelow: number):
   if (upperArmLift(frame, side) > ELBOW_LOW || armOpening(history, side) || sweptAcross(history, side)) return false;
   const before = recent(history, RISE_MS);
   if (!before.some((old) => wristRise(old, side) < LOW_START && rise - wristRise(old, side) >= RISE_BY)) return false;
-  // Both hands coming up together, at any stage of the way, is a guard going up.
+  // Both hands coming up together from low, at any stage of the way, is a guard going up. The other hand lifted
+  // from a guard at the chest to the face is a boxer covering up while throwing it, and still counts.
   const other = otherSide(side);
   const otherNow = wristRise(frame, other);
-  return !before.some((old) => otherNow - wristRise(old, other) >= RISE_BY / 2);
+  return !before.some((old) => wristRise(old, other) < LOW_START && otherNow - wristRise(old, other) >= RISE_BY / 2);
 }
 
 export const STRAIGHT = 145;
