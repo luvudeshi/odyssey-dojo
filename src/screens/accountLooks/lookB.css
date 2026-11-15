@@ -1,0 +1,41 @@
+/* Look B, the trireme. Layout rules shared with the other looks are in lookA.css. */
+.lk-b { --lk-body: "Avenir Next Condensed", "Avenir Next", "Futura", "Arial Narrow", sans-serif; --navy: #072a3d; color: var(--navy); background: radial-gradient(ellipse 70% 60% at 50% 45%, #8fe3dd, #3db4c6 55%, #17789a); }
+.lk-b-sea { position: absolute; inset: 0; width: 1440px; height: 800px; overflow: visible; }
+.lk-b-hull { fill: #8a5a2c; stroke: #3a2210; stroke-width: 8; filter: drop-shadow(0 12px 10px #04304a88); }
+.lk-b-deck { fill: url(#lkb-plank); stroke: #5a3418; stroke-width: 4; }
+.lk-b-cap { position: absolute; display: flex; justify-content: space-between; box-sizing: border-box; margin: 0; padding: 0 6px; height: 26px; font: 700 18px "Copperplate", var(--lk-body); letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 3px solid var(--navy); color: var(--navy); }
+.lk-b-tag { position: absolute; width: 114px; min-height: 86px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 4px 5px; border-radius: 10px; cursor: pointer; }
+.lk-b-tag__coin { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; flex: none; }
+.lk-b-tag .lk-b-tag__icon { width: 26px; height: 26px; }
+.lk-b-tag__name { font: 700 19px/1.05 var(--lk-body); text-align: center; }
+.lk-b-tag__name small { display: block; font-size: 19px; color: inherit; white-space: nowrap; }
+.lk-b-tag.is-done { background: #fff4d6; color: #36200c; border: 3px solid #b8862f; box-shadow: 0 5px 0 #8a5a14, 0 8px 14px #04304a66; }
+.lk-b-tag.is-done .lk-b-tag__coin { background: radial-gradient(circle at 35% 30%, #ffe08a, #c98a1c); }
+.lk-b-tag.is-done .lk-b-tag__icon { stroke: #4a2c08; stroke-width: 3.6; }
+.lk-b-tag.is-locked { background: #0b4560d9; color: #e8f8fc; border: 3px dashed #bfe8f0; }
+.lk-b-tag.is-locked .lk-b-tag__coin { border: 2px dashed #9fd3df; }
+.lk-b-tag.is-locked .lk-b-tag__icon { stroke: #bfe8f0; stroke-width: 2.4; stroke-dasharray: 3 5; }
+.lk-b-tag.is-active { transform: translateY(-4px); box-shadow: 0 0 0 4px #fff, 0 10px 18px #04304a88; }
+.lk-b .lk-b-tag:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+.lk-b-deck-ui { position: absolute; left: 124px; width: 1160px; height: 160px; display: flex; align-items: center; justify-content: space-between; gap: 30px; color: #2a1608; }
+.lk-b .lk-name { width: 330px; }
+.lk-b .lk-name span { font: 700 18px "Copperplate", var(--lk-body); letter-spacing: 0.16em; text-transform: uppercase; }
+.lk-b .lk-name input { padding: 2px 4px; font-family: "Copperplate", var(--lk-body); font-weight: 700; color: #2a1608; background: #f4dfb6aa; border: 0; border-bottom: 3px solid #5a3418; border-radius: 4px 4px 0 0; }
+.lk-b .lk-name input::placeholder { color: #6b5230; font-style: italic; }
+.lk-b .lk-name input:focus-visible { outline: 3px solid #072a3d; outline-offset: 2px; }
+.lk-b .lk-stats { gap: 14px; }
+.lk-b .lk-stats div { grid-template-rows: 100px auto; justify-items: center; position: relative; }
+.lk-b .lk-stats dd { grid-row: 1; display: grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; font: 700 30px var(--lk-body); color: #3a2208;
+  background: radial-gradient(circle at 50% 50%, #fff0c0 0 12%, #e8b458 13% 40%, #c88a30 41% 70%, #8a5a14 71% 76%, #e8b458 77%); box-shadow: 0 4px 0 #5a3418, 0 8px 10px #0006; }
+.lk-b .lk-stats dd { align-self: center; }
+.lk-b .lk-stats dt { grid-row: 2; font: 700 18px var(--lk-body); letter-spacing: 0.06em; text-transform: uppercase; color: #2a1608; }
+.lk-b .lk-stats__icon { display: none; }
+.lk-b .lk-detail { width: 380px; }
+.lk-b .lk-detail__tag { font: 700 18px "Copperplate", var(--lk-body); letter-spacing: 0.18em; text-transform: uppercase; color: #6a1f10; }
+.lk-b .lk-detail__name { font: 700 30px/1.05 "Copperplate", var(--lk-body); color: #2a1608; }
+.lk-b .lk-detail__how { font: 600 20px/1.2 var(--lk-body); }
+.lk-b .lk-detail__bar { background: #5a341840; } .lk-b .lk-detail__bar i { background: #6a1f10; }
+.lk-b-foot { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
+.lk-b-foot h1 { display: flex; align-items: baseline; gap: 14px; margin: 0; font: 700 30px "Copperplate", var(--lk-body); color: var(--navy); text-shadow: 0 1px 0 #ffffff80; }
+.lk-b-foot h1 span { font-size: 18px; letter-spacing: 0.26em; text-transform: uppercase; }
+.lk-b-foot h1 b { margin-left: 14px; font: 700 22px var(--lk-body); color: #6a1f10; }

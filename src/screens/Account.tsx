@@ -12,6 +12,8 @@ import { Trophy, type TrophyEvents } from "../account/ui/Trophy";
 import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
 import { Button, installGround } from "../ui/pebble";
+import { LOOK } from "../ui/lookSwitch";
+import { LookScreen } from "./accountLooks/LookScreen";
 import "./account.css";
 
 const GROUP_OF: Readonly<Record<string, string>> = {
@@ -95,6 +97,14 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
   });
   const stats: readonly (readonly [IconName, number, string])[] = [["fights", profile.fights, "Fights"], ["laurel", profile.wins, "Won"], ["star", profile.bestScore, "Best score"]];
   const style = { width: stage.w, height: stage.h, transform: `scale(${String(stage.k)})`, "--extra": `${String(stage.h - 800)}px` } as CSSProperties;
+  if (LOOK) {
+    return (
+      <>
+        <LookScreen look={LOOK} profile={profile} feats={feats} activeId={activeId} setActiveId={setActiveId} onSettings={() => { setSettingsOpen(true); }} onBack={props.onBack} />
+        {settingsOpen && <SettingsPanel onClose={() => { setSettingsOpen(false); }} />}
+      </>
+    );
+  }
   return (
     <main className="menu--account acc-hall">
       <div className="acc-hall__stage" style={style}>

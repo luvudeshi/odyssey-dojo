@@ -1,0 +1,45 @@
+/* Look C, the cave of the Cyclops. Layout rules shared with the other looks are in lookA.css. */
+.lk-c { --lk-body: "Optima", "Gill Sans", "Trebuchet MS", sans-serif; --lk-head: "Herculanum", "Copperplate", "Trajan Pro", serif; --ochre: #f0a84a; --chalk: #f6dfb0; background: #0b0705; color: var(--chalk); }
+.lk-c-rock { position: absolute; left: 0; top: 0; }
+.lk-c-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 46% 60% at 50% 98%, #ff7a1c70, #c8400c28 45%, transparent 75%), radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, #000000b8 100%); }
+.lk-c-top { position: absolute; left: 0; top: 0; width: 1440px; height: 120px; }
+.lk-c-ram { position: absolute; left: 520px; top: 130px; width: 400px; height: 260px; }
+.lk-c > .lk-stage > .lk-core > * { position: absolute; }
+.lk-c-title { left: 520px; top: 10px; width: 400px; margin: 0; text-align: center; font: 400 28px/1.1 var(--lk-head); color: var(--chalk); text-shadow: 0 0 18px #ff8a2a88, 0 2px 0 #000; }
+.lk-c-title span { display: block; font: 700 18px var(--lk-body); letter-spacing: 0.3em; text-transform: uppercase; color: var(--ochre); }
+.lk-c-cap { display: flex; justify-content: space-between; box-sizing: border-box; width: 504px; margin: 0; padding: 0 4px 2px; font: 400 22px var(--lk-head); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ochre);
+  background: linear-gradient(90deg, #f0a84acc, #f0a84a66 70%, transparent) 0 100% / 100% 5px no-repeat; }
+.lk-c-cap b { font: 700 20px var(--lk-body); color: var(--chalk); }
+.lk-c-mark { width: 134px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; background: none; border: 0; cursor: pointer; color: inherit; }
+.lk-c-mark__ring { display: grid; place-items: center; width: 64px; height: 64px; border: 4px solid #f0a84a; border-radius: 58% 42% 55% 45% / 48% 56% 44% 52%; }
+.lk-c-mark .lk-c-mark__icon { width: 40px; height: 40px; stroke: #ffc66e; stroke-width: 3.6; filter: drop-shadow(0 0 6px #ff9a3acc); }
+.lk-c-mark__name { font: 700 19px/1.08 var(--lk-body); text-align: center; color: var(--chalk); text-shadow: 0 1px 3px #000; }
+.lk-c-mark__name small { font-size: 19px; color: var(--ochre); white-space: nowrap; }
+.lk-c-mark.is-done .lk-c-mark__ring { background: radial-gradient(circle, #f0a84a40, transparent 70%); box-shadow: 0 0 18px #ff8a2a66; }
+.lk-c-mark.is-locked .lk-c-mark__ring { border: 3px dashed #7a6652; border-radius: 48% 52% 46% 54% / 55% 45% 55% 45%; }
+.lk-c-mark.is-locked .lk-c-mark__icon { stroke: #8a7660; stroke-width: 2.4; stroke-dasharray: 3 5; filter: none; }
+.lk-c-mark.is-locked .lk-c-mark__name { color: #c4b095; font-weight: 600; }
+.lk-c-mark.is-active .lk-c-mark__ring { box-shadow: 0 0 0 4px #fff3d6, 0 0 26px #ffb03aaa; }
+.lk-c .lk-c-mark:focus-visible { outline: 4px solid #fff3d6; outline-offset: 3px; border-radius: 10px; }
+@media (prefers-reduced-motion: no-preference) { .lk-c-flames { transform-origin: 200px 104px; animation: lkc-flick 700ms ease-in-out infinite alternate; } @keyframes lkc-flick { from { transform: scale(0.96, 0.92); } to { transform: scale(1.03, 1.07); } } }
+.lk-c-count { margin: 0; font: 600 22px/1.15 var(--lk-body); text-align: center; width: 400px; color: var(--chalk); }
+.lk-c-count b { font: 400 64px/1 var(--lk-head); color: var(--ochre); text-shadow: 0 0 20px #ff8a2a88; }
+.lk-c-detail { left: 40px; top: 560px; width: 420px; }
+.lk-c .lk-detail__tag { font: 700 18px var(--lk-body); letter-spacing: 0.2em; text-transform: uppercase; color: var(--ochre); }
+.lk-c .lk-detail__name { font: 400 32px/1.1 var(--lk-head); color: var(--chalk); text-shadow: 0 0 14px #ff8a2a55; }
+.lk-c .lk-detail__how { font: 600 20px/1.25 var(--lk-body); color: #f1e2c4; }
+.lk-c .lk-detail__bar { background: #ffffff30; } .lk-c .lk-detail__bar i { background: var(--ochre); }
+.lk-c-slab { left: 480px; top: 540px; width: 480px; height: 150px; box-sizing: border-box; padding: 12px 24px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #1e1710;
+  clip-path: polygon(2% 8%, 14% 0, 46% 4%, 80% 0, 99% 10%, 100% 82%, 96% 100%, 50% 96%, 10% 100%, 0 88%);
+  background: radial-gradient(ellipse 60% 70% at 30% 20%, #d4c4aa, transparent 70%), linear-gradient(#a99a82, #6e6150); }
+.lk-c .lk-name { align-items: center; width: 100%; }
+.lk-c .lk-name span { font: 700 18px var(--lk-body); letter-spacing: 0.18em; text-transform: uppercase; color: #2a2018; }
+.lk-c .lk-name input { text-align: center; padding: 0; font-family: var(--lk-head); font-weight: 400; color: #1e1710; text-shadow: 0 1px 0 #d9ccb6; background: none; border: 0; }
+.lk-c .lk-name input::placeholder { color: #4a3d2e; font-style: italic; }
+.lk-c .lk-name input:focus-visible { outline: 3px solid #1e1710; outline-offset: 2px; border-radius: 4px; }
+.lk-c .lk-stats { gap: 34px; }
+.lk-c .lk-stats__icon { display: none; }
+.lk-c .lk-stats dd { font: 400 30px/1 var(--lk-head); color: #1e1710; }
+.lk-c .lk-stats dt { font: 700 18px var(--lk-body); letter-spacing: 0.08em; text-transform: uppercase; color: #2a2018; }
+.lk-c-fire { left: 520px; top: 672px; width: 400px; height: 130px; }
+.lk-c-actions { right: 30px; bottom: 16px; }
