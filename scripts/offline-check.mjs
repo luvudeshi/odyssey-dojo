@@ -303,28 +303,32 @@ async function cameraPass(browser, base, log, ms) {
   await page.goto(base, { waitUntil: "load" });
   // The Story mode card starts the webcam. Its name is the card's own name followed by its line of small print.
   await page.getByRole("navigation", { name: "Main menu" }).getByRole("button", { name: /^Story mode/ }).click();
-  // A tracker that starts leads to the god scan; one that fails stays on the main menu, under a card that says why.
+  // The main menu stays up until the camera has started. A tracker that starts leads to the character screen (on a
+  // build that still has the god scan, to the scan first); one that fails stays on the menu, under a card that says why.
   const scan = page.getByRole("button", { name: "Reveal my god" });
+  const character = page.locator("button.character-done");
   const styles = page.getByRole("heading", { name: "Choose your fighting style" });
   const problem = page.locator("main .overlay").filter({ has: page.getByRole("button", { name: "Play on the keyboard" }) });
-  await scan.or(problem).first().waitFor({ timeout: 90_000 });
-  const started = await scan.isVisible();
+  await scan.or(character).or(problem).first().waitFor({ timeout: 90_000 });
+  const scanned = await scan.isVisible();
+  const started = scanned || await character.isVisible();
   const startedAt = Date.now();
   const notice = started ? "" : (await problem.first().locator("p").first().innerText()).trim();
   let god = "";
   let calibration = "";
   let ending = "";
   if (started) {
-    // The scan sends one picture to /api/reveal. No server answers, so the god must be chosen in the browser.
-    await scan.click();
-    const begin = page.getByRole("button", { name: "Begin the journey" });
-    await begin.waitFor({ timeout: 40_000 });
-    // The god's name is laid in pebbles on a canvas: its words are in aria-label (plain text is the fallback).
-    // The screen that names the god carries reveal-name on the page itself now; before, it was on the title.
-    god = (await page.locator("main.reveal.reveal-name h1, main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
-    await begin.click();
-    // The five characters come between the scan and the styles; the one the god chose is taken as it is.
-    await page.locator("button.character-done").click();
+    if (scanned) {
+      // The scan sends one picture to /api/reveal. No server answers, so the god must be chosen in the browser.
+      await scan.click();
+      const begin = page.getByRole("button", { name: "Begin the journey" });
+      await begin.waitFor({ timeout: 40_000 });
+      // The screen that names the god carries reveal-name on the page itself; before the storm restyle it was on the title.
+      god = (await page.locator("main.reveal.reveal-name h1, main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
+      await begin.click();
+    }
+    // The characters come before the styles; the one already chosen is taken as it is.
+    await character.click();
     await styles.waitFor();
     await page.locator("main.menu button.flow-style").first().click();
     await page.locator("button.stop.open").first().filter({ hasText: STOP }).click();
@@ -386,7 +390,7 @@ function report(log, fight, camera, crash) {
   log.pageErrors.forEach((entry) => { say(`    [${entry.pass} ${entry.stage}] ${entry.text}`); });
   if (flag("no-camera")) say("\nCamera pass: skipped (--no-camera)");
   else if (camera) {
-    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, god scan chose "${camera.god}", then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s, on screen at the end: ${camera.ending}` : ""}`);
+    say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, ${camera.god ? `god scan chose "${camera.god}"` : "no god scan on this build"}, then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s, on screen at the end: ${camera.ending}` : ""}`);
     list("pose files asked for, all from localhost", local.filter((entry) => entry.pass === "camera" && entry.path.startsWith("/mediapipe/")));
     list("calls to the AI server in the camera pass (none is running)", local.filter((entry) => entry.pass === "camera" && isApi(entry)));
   } else say("\nCamera pass: not finished");

@@ -204,7 +204,7 @@ async function enterFight(page, base, stop) {
   // The map draws one button per enemy in ladder order; only the one for this stop will do.
   const button = page.locator("button.stop").nth(stop.index);
   if (!(await button.evaluate((element) => element.classList.contains("open")))) return null;
-  // The click starts the fight with no screen in between, so the stop's name is checked on the button itself.
+  // The click starts the fight (after the boss cutscene, where the build has one), so the stop's name is checked on the button itself.
   const label = (await button.textContent()) ?? "";
   if (!label.toLowerCase().includes(stop.name.toLowerCase())) throw new Error(`stop ${String(stop.index + 1)} on the map reads "${label.trim()}" instead of "${stop.name}"`);
   await button.click();
