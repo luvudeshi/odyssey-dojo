@@ -2,10 +2,13 @@
 // a live checklist of what the move's detector is seeing. Drawn with SVG; everything that changes per frame is
 // written straight to the page inside one animation-frame loop, so React renders only when the move changes.
 // The figure and the checklist come from ../guide.
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Baseline, MoveDef, PoseHistory } from "../../core/types";
 import { VIEW, fitView, guideFor, liveChecks, poseAt, toScreen, towardOf } from "../guide";
 import type { Guide, GuideEnd, GuideJoint, ScreenFigure } from "../guide";
+import { isLit } from "../guide3d";
+import { MoveGuide3D } from "./MoveGuide3D";
+import { stage } from "./guideStage";
 import "./moveGuide.css";
 
 export interface MoveGuideProps {
@@ -45,9 +48,7 @@ const TORSO: readonly GuideJoint[] = ["leftShoulder", "rightShoulder", "rightHip
 
 const n = (value: number): string => value.toFixed(1);
 const torsoPoints = (figure: ScreenFigure): string => TORSO.map((name) => `${n(figure.at[name][0])},${n(figure.at[name][1])}`).join(" ");
-/** A limb is lit when its end is the moving one; a leg is one limb whether the move is named for its knee or its foot. */
-const lit = (moving: readonly GuideEnd[], end: GuideEnd): boolean =>
-  moving.some((each) => each === end || (each.slice(0, -4) === end.slice(0, -4) && !each.endsWith("Wrist") && !end.endsWith("Wrist")));
+const lit = isLit;
 
 /** One figure. Every part carries a data attribute so `paint` can move it without React. */
 function Figure(props: { figure: ScreenFigure; moving: readonly GuideEnd[]; view: string; live?: boolean; children?: React.ReactNode }) {
@@ -124,6 +125,10 @@ export function MoveGuide(props: MoveGuideProps) {
   const rowCount = size === "card" ? 3 : 4;
   const guide = useMemo(() => guideFor(move), [move]);
   const still = useReducedMotion();
+  // The card shows a 3D figure on the one shared canvas; the flat SVG is the fallback (no WebGL, lost context, reduced motion, tests).
+  const [lost, setLost] = useState(false);
+  const fail = useCallback(() => { setLost(true); }, []);
+  const solid = size === "card" && !still && !lost && stage.supported();
   const root = useRef<HTMLElement>(null);
   // The newest props, so a parent that re-renders every frame does not restart the loop.
   const latest = useRef({ history, baseline, msLeft, msTotal });
@@ -169,7 +174,7 @@ export function MoveGuide(props: MoveGuideProps) {
     };
     handle = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(handle); };
-  }, [move, guide, still, mirrored, rowCount]);
+  }, [move, guide, still, solid, mirrored, rowCount]);
 
   const first = guide?.keyframes[0];
   const checks = liveChecks(move, null, null, rowCount).checks;
@@ -182,8 +187,8 @@ export function MoveGuide(props: MoveGuideProps) {
     <section ref={root} className={`move-guide ${size} ${move.kind}`} aria-label={`How to do ${move.name}`}>
       {guide && first && (
         <div className={still ? "mg-figure mg-steps" : "mg-figure"}>
-          {guide.keyframes.some((key) => key.toward > 0) && <p className="mg-depth">Bigger = toward the camera</p>}
-          {still
+          {!solid && guide.keyframes.some((key) => key.toward > 0) && <p className="mg-depth">Bigger = toward the camera</p>}
+          {solid ? <MoveGuide3D guide={guide} mirrored={mirrored} onFail={fail} /> : still
             ? steps.map((key, index) => (
               <figure key={key.t}>
                 <Figure figure={screen(key)} moving={guide.moving} view={view} />
