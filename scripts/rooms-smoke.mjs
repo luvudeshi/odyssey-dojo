@@ -28,10 +28,10 @@
 // Both pages go through the Multiplayer shield of the main menu: the host presses "Open a room" on its host card, the
 // guest types the code into its join card. At phone width the menu's four shields overlap, so the guest presses a part
 // of the Multiplayer shield that is not covered (the step's line says so). After "Start" the host goes through the
-// god scan, the character screen ("Fight as ..."), the style screen, the map and calibration.
+// character screen ("Fight as ..."), the style screen (once the camera is up), the map, the boss cutscene and calibration.
 //
 // No real camera is used. "Start" on the host card starts the host's webcam, so the host's page is given Chrome's
-// fake camera (a moving test pattern, nobody in it): the host skips the god scan, and at calibration takes "Use
+// fake camera (a moving test pattern, nobody in it): at calibration the host takes "Use
 // keyboard instead", so it plays on the keyboard. The guest's page is refused the camera, so it gets the touch
 // buttons a phone on plain http gets.
 // --no-host-camera  refuses the host the camera too, as on a laptop with no webcam. Such a host must keep its room
@@ -77,8 +77,6 @@ const SCREEN_MS = process.argv.includes("--dev") ? 45_000 : 15_000;
 const CAMERA_MS = 90_000;
 /** A host with no camera: how long after "Start" the room must still be there (the camera is refused within a second). */
 const NO_CAMERA_MS = 4_000;
-/** How long the host tries the god scan's Skip button before it takes the Esc key instead. */
-const SKIP_MS = 3_000;
 /** How long the guest may take to show what the host shows. */
 const FOLLOW_MS = 8_000;
 /** How long the fight may take to its first hit, on either side. */
@@ -544,35 +542,44 @@ async function guestTypesCode(page, base, code) {
   return how ? `the Multiplayer shield was ${how}` : "";
 }
 
-/** Runs in the page: which screen the host is on after "Start". */
+/** Runs in the page: which screen the host is on after "Start", and on the style screen the line under its title. */
 function readHostScreen() {
   const has = (selector) => Boolean(document.querySelector(selector));
   const text = (selector) => document.querySelector(selector)?.textContent?.trim() ?? "";
   if (has(".fight canvas")) return { at: "fight" };
-  if (has("button.scan-skip") || has("main.reveal")) return { at: "scan" };
   if (has(".character-picker")) return { at: "character" };
   if (has(".calibration")) return { at: "calibration" };
   if (has("button.stop")) return { at: "map" };
-  if (has("main .styles button")) return { at: "style" };
+  if (has("main button.flow-style")) return { at: "style", notice: text("main .notice") };
   if (has('nav[aria-label="Main menu"]')) return { at: "menu", problem: text("main .overlay p") };
   if (has("main.mp, main .rooms")) return { at: "multiplayer" };
   return { at: "other" };
 }
 
+/** The style screen says this while the camera starts, and clears it once the camera is up (startCamera in App.tsx). */
+const STARTING = /starting the camera/i;
+
+/** Where the host's page went, for a step that fails. */
+function hostWhere(screen) {
+  if (screen?.at === "menu") return `is back on the main menu${screen.problem ? `, which says "${screen.problem}"` : ""}`;
+  if (screen?.at === "multiplayer") return "is back on the Multiplayer screen with no room open";
+  return `is on the ${screen?.at ?? "unknown"} screen`;
+}
+
 /**
- * The host's "Start" (live once the friend is in), then the way to the fight: the god scan (skipped), the character
- * already chosen ("Fight as ..."), the first style, the first open stop, calibration ("Use keyboard instead": nobody
- * stands in the test pattern), the fight.
+ * The host's "Start" (live once the friend is in), then the way to the fight: the character already chosen
+ * ("Fight as ..."), the first style once the camera is up, the first open stop, the boss cutscene (it ends by itself),
+ * calibration ("Use keyboard instead": nobody stands in the test pattern), the fight.
  * "Start" is the button right after the room's status line; "Close the room" is live all the time and must not be
  * taken for it.
  *
- * "Start" starts the host's webcam. The character screen shows at once, and the god scan takes its place when the
- * camera is up. A character and a style picked before that would leave the camera to come up in the middle of the
- * fight, so the script waits for the scan. If the camera fails instead, the game leaves that screen: the step then
- * says where the page went.
+ * "Start" starts the host's webcam and shows the character screen at once. While the camera starts, the style screen
+ * says "Starting the camera..." under its title; the line clears when the camera is up. A style and a stop picked
+ * before that would leave the camera to come up in the middle of the fight, so the script waits for the line to clear.
+ * If the camera fails instead, the game leaves for the main menu: the step then says where the page went.
  *
- * A host that is refused the camera (--no-host-camera) gets no scan and no calibration. The room must still be there
- * NO_CAMERA_MS after "Start", with the host on the character screen; from there it plays on the keyboard.
+ * A host that is refused the camera (--no-host-camera) gets no calibration. The room must still be there
+ * NO_CAMERA_MS after "Start", with the host on the style screen; from there it plays on the keyboard.
  */
 async function hostStartsFight(page, hostCamera) {
   const friend = await until(page, () => {
@@ -582,37 +589,30 @@ async function hostStartsFight(page, hostCamera) {
   if (!friend) throw new Error(`the host never saw the guest, the page shows ${await page.evaluate(readWhere)}`);
   await press(page, "start", { selector: 'main:has(img[data-join-url]) [role="status"] + button:enabled', name: /^start/i });
   await page.locator("img[data-join-url]").waitFor({ state: "detached", timeout: SCREEN_MS });
-  const camera = await until(page, readHostScreen, (screen) => screen.at !== "character" && screen.at !== "style" && screen.at !== "other", hostCamera ? CAMERA_MS : NO_CAMERA_MS);
-  if (camera?.at !== "scan" && (hostCamera || camera !== null)) {
-    const where = camera === null ? `still shows ${await page.evaluate(readWhere).catch(() => "nothing")} after ${String(CAMERA_MS / 1000)} s`
-      : camera.at === "menu" ? `is back on the main menu${camera.problem ? `, which says "${camera.problem}"` : ""}`
-      : camera.at === "multiplayer" ? "is back on the Multiplayer screen with no room open"
-      : `is on the ${camera.at} screen`;
-    throw new Error(hostCamera ? `after "Start" the host's camera did not come up: its page ${where}` : `the host has no camera, and after "Start" its page ${where}`);
-  }
-  // A style button is the one with a line of small print under its name (the main menu's cards have one too, but
-  // they sit in a nav).
-  let styleName = "";
-  let enemy = "";
   let character = "";
-  let skipped = "god scan skipped by its button";
   try {
-    // The scan's own Skip button first. When it cannot be pressed (off the page, or covered) the key it names is
-    // used, and the step's line says so: a person who does not know the key has no way to skip.
-    if (camera !== null) {
-      try {
-        await press(page, "skip the god scan", { selector: "button.scan-skip", name: /^skip/i, wait: SKIP_MS });
-      } catch (error) {
-        await page.keyboard.press("Escape");
-        skipped = `god scan skipped with the Esc key, because ${firstLine(error)}`;
-      }
-    }
-    // The five characters come between the scan and the styles; the one already chosen is taken as it is.
+    // The characters come first; the one already chosen is taken as it is.
     const done = page.locator("button.character-done").first();
     await done.waitFor({ timeout: SCREEN_MS });
     character = ((await done.textContent({ timeout: SCREEN_MS })) ?? "").trim().replace(/^fight as /i, "");
     await press(page, "confirm the character", { selector: "button.character-done", name: /^fight as/i });
-    const style = page.locator("main button:has(small):not(nav button)").first();
+  } catch (error) {
+    throw new Error(`after "Start" the host did not get past the character screen, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
+  }
+  // The camera is up when the style screen's line clears, and failed when the page leaves the style screen.
+  const settled = await until(page, readHostScreen, (screen) => screen.at !== "character" && screen.at !== "other" && !(screen.at === "style" && STARTING.test(screen.notice)), hostCamera ? CAMERA_MS : NO_CAMERA_MS);
+  if (hostCamera && settled?.at !== "style") {
+    throw new Error(`after "Start" the host's camera did not come up: its page ${settled === null ? `still says "Starting the camera" after ${String(CAMERA_MS / 1000)} s` : hostWhere(settled)}`);
+  }
+  if (!hostCamera) {
+    // No camera: the line may stay or clear, but the page must still be on the style screen.
+    const now = await page.evaluate(readHostScreen).catch(() => null);
+    if (now?.at !== "style") throw new Error(`the host has no camera, and ${String(NO_CAMERA_MS / 1000)} s after "Start" its page ${hostWhere(now)}`);
+  }
+  let styleName = "";
+  let enemy = "";
+  try {
+    const style = page.locator("main button.flow-style").first();
     await style.waitFor({ timeout: SCREEN_MS });
     styleName = await style.evaluate((element) => (element.querySelector(".menu-shield__name")?.textContent || element.firstChild?.textContent || "").trim(), null, { timeout: SCREEN_MS });
     await style.click({ timeout: SCREEN_MS });
@@ -620,17 +620,17 @@ async function hostStartsFight(page, hostCamera) {
     await stop.waitFor({ timeout: SCREEN_MS });
     // The monster's name is the first text of the stop's name plate; the small print after it is the book.
     enemy = await stop.evaluate((element) => (element.querySelector(".qm-plate, .lbl")?.firstChild?.textContent ?? element.textContent ?? "").trim(), null, { timeout: SCREEN_MS });
-    // The click on the stop starts the fight; with the camera on, calibration comes first.
+    // The click on the stop plays the boss cutscene, then (with the camera on) calibration, then the fight.
     await stop.click({ timeout: SCREEN_MS });
     // Calibration has a "Back" button too (it leaves for the map), so the keyboard button is the one that is not it.
-    if (camera !== null) await press(page, "play on the keyboard at calibration", { selector: ".calibration button:not(.set-back)", name: "Use keyboard instead" });
+    if (hostCamera) await press(page, "play on the keyboard at calibration", { selector: ".calibration button:not(.set-back)", name: "Use keyboard instead" });
     // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
     await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
   } catch (error) {
-    throw new Error(`after "Start" the host did not get from ${camera === null ? "the character screen" : "the god scan"} to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
+    throw new Error(`after "Start" the host did not get from the style screen to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
   }
-  const way = camera === null ? "no camera, so no god scan and no calibration: the room is kept and the host plays on the keyboard" : `fake camera up, ${skipped}`;
-  return `"${friend.notice}", ${way}, character ${character}, style ${styleName}, against ${enemy}${camera === null ? "" : ", keyboard taken at calibration"}`;
+  const way = hostCamera ? "fake camera up" : "no camera, so no calibration: the room is kept and the host plays on the keyboard";
+  return `"${friend.notice}", ${way}, character ${character}, style ${styleName}, against ${enemy}${hostCamera ? ", keyboard taken at calibration" : ""}`;
 }
 
 /**
