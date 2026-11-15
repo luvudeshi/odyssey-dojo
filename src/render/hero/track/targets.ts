@@ -9,6 +9,11 @@ import { clampAngle, frameFromXY, frameFromXZ, segmentDir, toScene, UP } from ".
 
 /** Under this a landmark is a guess: its limb eases back to the clip instead. */
 export const MIN_VISIBILITY = 0.5;
+/** Elbows and wrists count from lower down: at a desk they sit at the picture's edge and read 0.3 to 0.5 while still being right. */
+export const ARM_VISIBILITY = 0.3;
+const ARM_JOINTS: ReadonlySet<number> = new Set([13, 14, 15, 16]);
+/** A joint that drops out keeps its last place this long, so one bad frame does not send its limb back to the clip. */
+export const HOLD_MS = 150;
 const USED = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28] as const;
 /** Elbows and knees do not fold further than this (radians between the two bones). */
 const MAX_FOLD = 2.6;
@@ -26,6 +31,10 @@ const DROP_DEADZONE = 0.03;
 const STEP_DEADZONE = 0.04;
 /** Tracked steps stay inside the arena. */
 export const STEP_LIMIT = 1;
+
+/** The One Euro settings for every landmark coordinate (metres, hip-centred world space). Picked by sweeping recorded webcam poses: the old 2.5 Hz / beta 0.9 lagged a punch by about 30 ms
+ * and was 12 degrees off during fast moves; these keep the same calm at rest and are about 7 degrees off. */
+export const LANDMARK_FILTER = { minCutoff: 1, beta: 5, dCutoff: 1 };
 
 const HEAD_BIAS = new Quaternion().setFromAxisAngle(new Vector3(1, 0, 0), HEAD_PITCH_BIAS);
 
@@ -52,8 +61,9 @@ export class PoseTargets {
   drop = 0;
   calibrated = false;
 
-  private readonly xyz: OneEuro[] = Array.from({ length: 33 * 3 }, () => new OneEuro());
+  private readonly xyz: OneEuro[];
   private readonly seen: boolean[] = new Array<boolean>(33).fill(false);
+  private readonly seenAt: number[] = new Array<number>(33).fill(-Infinity);
   private readonly stepFilter = new OneEuro(1.2, 0.2);
   private readonly dropFilter = new OneEuro(1.2, 0.2);
   private readonly p = Array.from({ length: 33 }, () => new Vector3());
@@ -64,7 +74,8 @@ export class PoseTargets {
   private readonly q = new Quaternion();
   private cal: Calibration = { n: 0, startMs: NaN, hipX: 0, shoulderY: 0, perMetre: 0, worldShoulderY: 0, done: false };
 
-  constructor() {
+  constructor(landmarkFilter: { minCutoff: number; beta: number; dCutoff: number } = LANDMARK_FILTER) {
+    this.xyz = Array.from({ length: 33 * 3 }, () => new OneEuro(landmarkFilter.minCutoff, landmarkFilter.beta, landmarkFilter.dCutoff));
     for (const l of LIMBS) { this.dir[l.key] = new Vector3(0, -1, 0); this.dirOk[l.key] = false; }
   }
 
@@ -77,7 +88,7 @@ export class PoseTargets {
   }
 
   private ok(i: number): boolean {
-    return (this.vis[i] ?? 0) >= MIN_VISIBILITY;
+    return (this.vis[i] ?? 0) >= (ARM_JOINTS.has(i) ? ARM_VISIBILITY : MIN_VISIBILITY);
   }
 
   ingest(frame: PoseFrame): void {
@@ -86,8 +97,14 @@ export class PoseTargets {
       const w = frame.world[i];
       const v = w?.visibility ?? 0;
       this.vis[i] = Number.isFinite(v) ? v : 0;
-      if (!w || !Number.isFinite(w.x + w.y + w.z) || !this.ok(i)) { this.seen[i] = false; for (let k = 0; k < 3; k++) this.xyz[i * 3 + k]?.reset(); continue; }
+      if (!w || !Number.isFinite(w.x + w.y + w.z) || !this.ok(i)) {
+        if (this.seen[i] && frame.t - (this.seenAt[i] ?? -Infinity) <= HOLD_MS) continue;
+        this.seen[i] = false;
+        for (let k = 0; k < 3; k++) this.xyz[i * 3 + k]?.reset();
+        continue;
+      }
       this.seen[i] = true;
+      this.seenAt[i] = frame.t;
       const f = (k: number, value: number): number => this.xyz[i * 3 + k]?.filter(value, t) ?? value;
       toScene({ x: f(0, w.x), y: f(1, w.y), z: f(2, w.z) }, this.p[i] ?? this.a);
     }
