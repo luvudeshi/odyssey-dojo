@@ -1,0 +1,115 @@
+/* Draft round: three looks for the four main menu cards, one block each, switched by ?look= (src/ui/lookSwitch.ts).
+   Shared: the richer icons (menuCardLooks.tsx) and the hidden paint defs. Keep the picked block, delete the others. */
+.menu > .menu-cards .lk-defs, .lk-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+html[data-look] .menu--title .menu-card { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+html[data-look] .menu-card .lk-icon { display: block; width: 92px; height: 92px; margin: 0 auto 8px; flex: none; }
+html[data-look] .lk-icon .l, html[data-look] .lk-icon .s { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+html[data-look] .menu--title .menu-card > span:not(.lk-frame), html[data-look] .menu--title .menu-card > small { position: relative; z-index: 1; }
+
+/* ---- A: forged bronze. A cast plaque with a bevelled bronze rim, rivets, Greek key bands and molten-bronze icons;
+   hover and focus heat it like the Forge Fire bars. ---- */
+html[data-look="a"] .menu--title .menu-card {
+  --lk-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='14'%3E%3Cpath d='M0 13 H5 V1 H19 V10 H9 V5 H14 M14 13 H20' fill='none' stroke='%23d9a052' stroke-width='2'/%3E%3C/svg%3E");
+  padding: 30px 18px 32px; border: 4px solid transparent; border-radius: 12px; color: var(--pb-text);
+  background:
+    radial-gradient(circle at 12px 12px, #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 12px) 12px, #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at 12px calc(100% - 12px), #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #ffe6b0 0 2px, #6b3f17 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(110% 60% at 50% 108%, rgba(255, 122, 26, 0.2), transparent 70%) padding-box,
+    linear-gradient(#2b1b10, #170e08 55%, #0e0805) padding-box,
+    linear-gradient(160deg, #ffe6b0, #d9a052 26%, #8e5522 56%, #3e2109 78%, #b07a3a) border-box;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 214, 150, 0.16), inset 0 2px 0 rgba(255, 230, 180, 0.12);
+  transition: transform 120ms, box-shadow 160ms;
+}
+html[data-look="a"] .menu--title .menu-card::before, html[data-look="a"] .menu--title .menu-card::after {
+  content: ""; position: absolute; left: 24px; right: 24px; height: 12px; background: var(--lk-key) repeat-x center / auto 100%; opacity: 0.85; pointer-events: none;
+}
+html[data-look="a"] .menu--title .menu-card::before { top: 7px; }
+html[data-look="a"] .menu--title .menu-card::after { bottom: 7px; }
+html[data-look="a"] .lk-icon { filter: drop-shadow(0 0 7px rgba(255, 140, 40, 0.3)); }
+html[data-look="a"] .lk-icon .f { fill: url(#lk-bronze); }
+html[data-look="a"] .lk-icon .l { stroke: #d9a052; stroke-width: 3.2; }
+html[data-look="a"] .lk-icon .s { stroke: #2a1406; stroke-width: 2; }
+html[data-look="a"] .lk-icon .e, html[data-look="a"] .lk-icon .h { fill: #2a1406; }
+html[data-look="a"] .menu--title .menu-card .style-card__name { color: #ffd99a; text-shadow: 0 2px 0 #2a1406, 0 0 14px rgba(255, 140, 40, 0.35); }
+html[data-look="a"] .menu--title .menu-card small { color: var(--pb-text); }
+html[data-look="a"] .menu--title .menu-card--primary {
+  border-width: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.55), 0 0 22px rgba(255, 122, 26, 0.3), 0 12px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 214, 150, 0.2);
+}
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) {
+  --lk-key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='14'%3E%3Cpath d='M0 13 H5 V1 H19 V10 H9 V5 H14 M14 13 H20' fill='none' stroke='%23ffb347' stroke-width='2'/%3E%3C/svg%3E");
+  transform: translateY(-4px); border-color: transparent; color: var(--pb-text);
+  background:
+    radial-gradient(circle at 12px 12px, #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 12px) 12px, #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at 12px calc(100% - 12px), #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #fff1c9 0 2px, #8e4a14 2.6px, transparent 3.4px) padding-box,
+    radial-gradient(120% 75% at 50% 112%, rgba(255, 122, 26, 0.5), transparent 72%) padding-box,
+    linear-gradient(#34200f, #1d1008 55%, #120905) padding-box,
+    linear-gradient(160deg, #fff1c9, #ffb347 26%, #e0641e 56%, #7a2a08 80%, #ffb347) border-box;
+  box-shadow: 0 0 0 1px #ffb347, 0 0 30px rgba(255, 122, 26, 0.6), 0 16px 34px rgba(0, 0, 0, 0.6);
+}
+html[data-look="a"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-icon { filter: drop-shadow(0 0 10px rgba(255, 150, 50, 0.75)); }
+
+/* ---- B: pebble mosaic. Each card is a mosaic panel of sea-blue stones in a laid border with the wave scroll on top,
+   and the icons are laid in ochre stones; hover and focus turn the ground terracotta. ---- */
+html[data-look="b"] .menu--title .menu-card {
+  padding: 46px 26px 30px; border: 0; border-radius: 12px; overflow: visible;
+  background: #10181d var(--pebble-dusk) repeat; box-shadow: 0 0 0 2px rgba(8, 5, 4, 0.8), 0 12px 30px rgba(0, 0, 0, 0.6);
+  transition: transform 120ms;
+}
+html[data-look="b"] .menu--title .menu-card::before {
+  content: ""; position: absolute; inset: 17px; border-radius: 5px; pointer-events: none;
+  background: radial-gradient(ellipse 70% 62% at 50% 56%, rgba(9, 7, 6, 0.88) 45%, rgba(9, 7, 6, 0.5) 100%);
+}
+html[data-look="b"] .lk-frame { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+html[data-look="b"] .lk-frame canvas { display: block; }
+html[data-look="b"] .menu-card .lk-icon { position: relative; z-index: 1; }
+html[data-look="b"] .lk-icon .f { fill: url(#lk-pebbles); stroke: #0d0806; stroke-width: 1.4; }
+html[data-look="b"] .lk-icon .l { stroke: #e8dabb; stroke-width: 4.6; stroke-dasharray: 0.1 6.2; }
+html[data-look="b"] .lk-icon .s { stroke: #0d0806; stroke-width: 2.4; }
+html[data-look="b"] .lk-icon .h { fill: #0d0806; }
+html[data-look="b"] .lk-icon .e { fill: #b8553a; stroke: #0d0806; stroke-width: 1.2; }
+html[data-look="b"] .menu--title .menu-card .style-card__name { color: var(--pb-ochre-light); text-shadow: 0 0 3px #000, 0 2px 4px #000; }
+html[data-look="b"] .menu--title .menu-card small { color: var(--pb-text); text-shadow: 0 0 3px #000, 0 1px 3px #000; }
+html[data-look="b"] .menu--title .menu-card--primary { box-shadow: 0 0 0 3px var(--pb-ochre), 0 12px 30px rgba(0, 0, 0, 0.6); }
+html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) {
+  transform: translateY(-4px); color: var(--pb-text);
+  background: #1f0e0b var(--pebble-blood) repeat; box-shadow: 0 0 0 3px var(--pb-terra), 0 0 26px rgba(184, 85, 58, 0.6), 0 16px 34px rgba(0, 0, 0, 0.6);
+}
+html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-frame { filter: brightness(1.25) saturate(1.15); }
+html[data-look="b"] .menu--title .menu-card:is(:hover, :focus-visible) .lk-icon .l { stroke: #fff4dc; }
+
+/* ---- C: black-figure vase. A fired-clay panel with a vase's shoulder, a black meander band above and a band of rays below;
+   the icons are black figures with incised lines and added white. Hover and focus gild the rim. ---- */
+html[data-look="c"] .menu--title .menu-card {
+  padding: 46px 18px 42px; border: 3px solid #140c08; border-radius: 46% 46% 14px 14px / 15% 15% 14px 14px; color: #1b1410;
+  background: radial-gradient(120% 90% at 50% 38%, #e3905a, #cc6d3b 55%, #a24f28);
+  box-shadow: 0 0 0 2px rgba(241, 230, 207, 0.25), 0 14px 30px rgba(0, 0, 0, 0.65), inset 0 -10px 22px rgba(80, 30, 10, 0.35);
+  transition: transform 120ms, box-shadow 160ms;
+}
+html[data-look="c"] .menu--title .menu-card::before {
+  content: ""; position: absolute; left: 9%; right: 9%; top: 18px; height: 16px; pointer-events: none; border-radius: 2px;
+  background: #140c08 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='12'%3E%3Cpath d='M0 11 H4 V1 H15 V8 H7 V4 H11 M11 11 H16' fill='none' stroke='%23d27a46' stroke-width='1.7'/%3E%3C/svg%3E") repeat-x center / auto 12px;
+}
+html[data-look="c"] .menu--title .menu-card::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 24px; pointer-events: none; border-radius: 0 0 11px 11px;
+  background: #140c08 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='24'%3E%3Cpath d='M1 24 L7 6 L13 24 Z' fill='%23cc6d3b'/%3E%3C/svg%3E") repeat-x left bottom / auto 20px;
+}
+html[data-look="c"] .lk-icon .f { fill: #140c08; }
+html[data-look="c"] .lk-icon .l { stroke: #140c08; stroke-width: 3.4; }
+html[data-look="c"] .lk-icon .s { stroke: #d27a46; stroke-width: 1.8; }
+html[data-look="c"] .lk-icon .e { fill: #f1e6cf; }
+html[data-look="c"] .lk-icon .h { fill: #d4733f; }
+html[data-look="c"] .menu--title .menu-card .style-card__name { color: #140c08; text-shadow: 0 1px 0 rgba(255, 220, 180, 0.35); }
+html[data-look="c"] .menu--title .menu-card small { color: #2a140a; font-weight: 600; }
+html[data-look="c"] .menu--title .menu-card--primary { border-color: #140c08; box-shadow: 0 0 0 3px var(--pb-ochre-light), 0 14px 30px rgba(0, 0, 0, 0.65), inset 0 -10px 22px rgba(80, 30, 10, 0.35); }
+html[data-look="c"] .menu--title .menu-card:is(:hover, :focus-visible) {
+  transform: translateY(-4px); border-color: #140c08; color: #1b1410;
+  background: radial-gradient(120% 90% at 50% 38%, #f0a46c, #d97a44 55%, #ad5a2e);
+  box-shadow: 0 0 0 3px #f2c56e, 0 0 30px rgba(242, 197, 110, 0.6), 0 16px 34px rgba(0, 0, 0, 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) { html[data-look] .menu--title .menu-card { transition: none; } }

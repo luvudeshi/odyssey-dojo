@@ -5,6 +5,9 @@ import type { ReactNode } from "react";
 import { speakLine } from "../audio/voice";
 import { Button, Logo, Panel } from "../ui/pebble";
 import { MenuScene } from "./MenuScene";
+import { look } from "../ui/lookSwitch";
+import { LookDefs, PebbleFrame, RICH_ICONS } from "./menuCardLooks";
+import "./menuCardLooks.css";
 
 const SHIP = (
   <>
@@ -35,10 +38,13 @@ const LAUREL = (
   </>
 );
 
-function Card(props: { primary?: boolean; icon: ReactNode; name: string; line?: string; onClick: () => void }) {
+function Card(props: { primary?: boolean; icon: ReactNode; rich: ReactNode; name: string; line?: string; onClick: () => void }) {
   return (
     <button className={`style-card menu-card ${props.primary ? "menu-card--primary" : ""}`} onClick={props.onClick}>
-      <svg className="menu-card__icon" viewBox="0 0 64 64" aria-hidden="true">{props.icon}</svg>
+      {look === "b" && <PebbleFrame />}
+      {look
+        ? <svg className="lk-icon" viewBox="0 0 96 96" aria-hidden="true">{props.rich}</svg>
+        : <svg className="menu-card__icon" viewBox="0 0 64 64" aria-hidden="true">{props.icon}</svg>}
       <span className="style-card__name">{props.name}</span>
       {props.line && <small>{props.line}</small>}
     </button>
@@ -68,10 +74,11 @@ export function MainMenu(props: {
       <p className="verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
       <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Your body is the controller.</p>
       <nav className="menu-cards" aria-label="Main menu">
-        <Card primary icon={SHIP} name="Story mode" line="The road home to Ithaca, fought with your body" onClick={story} />
-        <Card icon={PAIR} name="Multiplayer" line="Host a room or join a friend's" onClick={props.onMultiplayer} />
-        <Card icon={SHIELD} name="Training Dojo" onClick={props.onTraining} />
-        <Card icon={LAUREL} name="Account" line="Your name, achievements and settings" onClick={props.onAccount} />
+        {look && <LookDefs />}
+        <Card primary icon={SHIP} rich={RICH_ICONS.ship} name="Story mode" line="The road home to Ithaca, fought with your body" onClick={story} />
+        <Card icon={PAIR} rich={RICH_ICONS.pair} name="Multiplayer" line="Host a room or join a friend's" onClick={props.onMultiplayer} />
+        <Card icon={SHIELD} rich={RICH_ICONS.shield} name="Training Dojo" onClick={props.onTraining} />
+        <Card icon={LAUREL} rich={RICH_ICONS.laurel} name="Account" line="Your name, achievements and settings" onClick={props.onAccount} />
       </nav>
       <p className="notice">{props.notice}</p>
       {props.problem && (
