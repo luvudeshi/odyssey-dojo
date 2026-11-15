@@ -1,0 +1,24 @@
+/* The FaceTime card on the Multiplayer screen (FaceTimeCard.tsx) and the host's plate during a call (browserSession.ts).
+   The card is an .acc-card.rooms__card like its two neighbours; only what they do not have is here. */
+.ft-card .acc-icon { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.ft-card .ft-form { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: auto; }
+.ft-card .ft-label { align-self: stretch; font: 700 16px var(--pb-font-body); color: var(--pb-text); }
+.ft-card .ft-input { box-sizing: border-box; width: 100%; padding: 8px 12px; font: 700 24px var(--pb-font-body); letter-spacing: 0.04em; text-align: center; color: var(--pb-text); background: var(--pb-ground-deep); border: var(--bw-line, 2px) solid var(--pb-lead); border-radius: var(--pb-radius); }
+.ft-card .ft-input::placeholder { color: var(--pb-text-dim); opacity: 0.7; }
+.ft-card .ft-input:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
+.ft-card .ft-input[aria-invalid="true"] { border-color: var(--pb-ochre); }
+.ft-card .ft-form small { align-self: stretch; min-height: 2.6em; }
+.ft-card .room small { max-width: 26rem; }
+.ft-card .ft-standin { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; }
+.ft-card .ft-standin__link a { color: inherit; font-weight: 700; text-decoration: underline; }
+.ft-card .ft-standin__link a:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
+/* With three cards the row gets a third column on a wide screen; the two-card rule in multiplayer.css still holds below it. */
+@media (min-width: 1100px) { .rooms:has(.ft-card) { grid-template-columns: repeat(3, minmax(0, 1fr)); width: min(84rem, 100%); } }
+
+.ft-plate { position: fixed; top: 10px; left: 12px; z-index: 40; display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 14px; border: 2px solid #c8612f; border-radius: 999px; background: #17110dee; color: #f2e4c8; font: 700 16px/1 "Gill Sans", "Gill Sans MT", "Trebuchet MS", sans-serif; letter-spacing: 0.04em; }
+.ft-plate__time { font-variant-numeric: tabular-nums; color: #ffd9a0; }
+.ft-plate--late { border-color: #ffd9a0; }
+.ft-plate--late .ft-plate__time { color: #ff9d7a; }
+.ft-plate button { font: inherit; color: #17110d; background: #f2e4c8; border: 0; border-radius: 999px; padding: 7px 12px; cursor: pointer; }
+.ft-plate button:hover { background: #ffd9a0; }
+.ft-plate button:focus-visible { outline: 3px solid #ffd9a0; outline-offset: 2px; }
