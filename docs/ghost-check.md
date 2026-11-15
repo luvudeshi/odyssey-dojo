@@ -28,7 +28,7 @@ The numbers on this page are a measurement of the detectors as they are, so they
 | never counts while in the pose | 13 | 16 |
 | sets off some other move while in the pose | 19 of 26 | 12 of 26 |
 
-Between the two runs the detectors changed in #215 (pairs of moves told apart), #242 and #251 (defends), #247 (finisher and god gestures) and #255 (rough Boxer strikes). Those made the detectors easier on a rough attempt at the real move. They did not make the ghost's flat pose count; three moves that used to count for the wrong reason stopped.
+Between the two runs the detectors changed in #215 (pairs of moves told apart), #242 and #251 (defends), #247 (finisher and god gestures) and #255 (rough Boxer strikes). #215 made look-alike moves harder to mix up; the others made the detectors easier on a rough attempt at the real move. None of it made the ghost's flat pose count, and three moves that used to count for the wrong reason stopped.
 
 What changed, move by move:
 
