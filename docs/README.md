@@ -90,7 +90,7 @@ Screenshots taken while building are in [screenshots/](screenshots/).
 | [demo-runbook.md](demo-runbook.md) | What to do, step by step, for the judged demo |
 | [pitch.md](pitch.md) | What to say while a judge plays, and answers to expected questions |
 | [prizes.md](prizes.md) | Each sponsor tool we used and where the proof is |
-| [devpost/](devpost/devpost.md) | The Devpost draft and its images |
+| [devpost/](devpost/devpost.md) | The Devpost draft and its images. Also [without images](devpost/devpost-no-images.md) and [ready to paste](devpost/devpost-paste.md) |
 
 ## Working on the code
 
