@@ -20,6 +20,11 @@ export interface Config {
   readonly publicBaseUrl: string | null;
   /** The built game, served by this server when it exists. */
   readonly distDir: string;
+  /**
+   * The Tiger Data (Postgres) connection string for accounts, from DATABASE_URL. Null or left out: accounts are off and
+   * the game keeps everything in the browser as before. It holds a password: never log it or send it anywhere (lib/db.ts).
+   */
+  readonly databaseUrl?: string | null;
   readonly timeouts: {
     readonly levelMs: number;
     /** The whole god scan, both attempts included. */
@@ -82,6 +87,7 @@ export function loadConfig(root: string = process.cwd()): Config {
       return fixedUrl ?? tunnelAddress(dataDir);
     },
     distDir: resolve(root, "dist"),
+    databaseUrl: value("DATABASE_URL"),
     timeouts: TIMEOUTS,
   };
 }

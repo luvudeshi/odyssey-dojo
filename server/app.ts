@@ -7,6 +7,7 @@ import type { Express, NextFunction, Request, Response, Router } from "express";
 import { log } from "../src/core/log";
 import type { AiClients } from "./ai/types";
 import type { Config } from "./env";
+import type { Accounts } from "./lib/accounts";
 import { isOpenPath, localOnly } from "./lib/localOnly";
 
 export interface Deps {
@@ -14,6 +15,8 @@ export interface Deps {
   readonly ai: AiClients;
   /** Replaces the local-only guard. Only tests set it, to reach the room limits with callers the guard would refuse. */
   readonly guard?: (request: Request, response: Response, next: NextFunction) => void;
+  /** Replaces the accounts made from config.databaseUrl. Only tests set it, to give the tables a prefix and move the clock. */
+  readonly accounts?: Accounts;
 }
 
 export type Register = (router: Router, deps: Deps) => void;
@@ -30,7 +33,7 @@ export async function createApp(deps: Deps): Promise<Express> {
   app.use(deps.guard ?? localOnly);
   // Webcam snapshots arrive as base64 inside JSON, and only the routes this machine alone may call take them.
   // Every path another device or a tunnel can reach skips this parser, so nobody outside can make the server hold
-  // 6 MB: the room relay reads its own, much smaller bodies (routes/rooms.ts). Express matches paths without regard to case.
+  // 6 MB: the room relay and the account routes read their own, much smaller bodies (routes/rooms.ts, routes/account.ts). Express matches paths without regard to case.
   const json = express.json({ limit: "6mb" });
   app.use((request, response, next) => {
     const lower = request.path.toLowerCase();

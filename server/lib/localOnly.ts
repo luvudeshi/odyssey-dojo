@@ -1,7 +1,7 @@
 // The server listens on the whole network so phones can open replay pages, but the routes that spend API credits
 // only answer this machine. The socket's address decides, and a header can only take that away, never grant it:
 // a request that says it was passed on by a proxy or a tunnel is not local, even from a loopback socket.
-// Such a request gets the room paths a guest needs and nothing else under /api/, and its join attempts are counted.
+// Such a request gets the room paths a guest needs, the account paths, and nothing else under /api/, and its join attempts are counted.
 import type { IncomingHttpHeaders } from "node:http";
 import type { NextFunction, Request, Response } from "express";
 
@@ -26,18 +26,29 @@ export function wasRelayed(headers: IncomingHttpHeaders): boolean {
   });
 }
 
-/** True for the API paths any device on the network may call: replays, health, and the online rooms a second laptop joins. None of them spends a key. */
+const ACCOUNT = /^\/api\/account\/(?:status|signup|signin|signout|save)\/?$/;
+
+/**
+ * True for the account paths: a player signs in from any browser, so another device and the tunnel both reach them.
+ * They are named one by one, so a route added under /api/account/ later is closed until it is added here.
+ * None of them spends a key, each reads a small body of its own, and routes/account.ts bounds what a stranger can ask of them.
+ */
+export function isAccountPath(path: string): boolean {
+  return ACCOUNT.test(path);
+}
+
+/** True for the API paths any device on the network may call: replays, health, the online rooms a second laptop joins, and accounts. None of them spends a key. */
 export function isOpenPath(path: string): boolean {
   return path.startsWith("/api/replays/") || path === "/api/health" || path === "/api/health/"
-    || path === "/api/rooms" || path.startsWith("/api/rooms/");
+    || path === "/api/rooms" || path.startsWith("/api/rooms/") || isAccountPath(path);
 }
 
 /**
- * True for the only API paths that answer a request that was passed on: what a guest needs inside a room (join, events, send, address).
- * Making a room is not one of them: that is "/api/rooms" itself, with nothing after it.
+ * True for the only API paths that answer a request that was passed on: what a guest needs inside a room (join, events, send, address)
+ * and the account paths. Making a room is not one of them: that is "/api/rooms" itself, with nothing after it.
  */
 export function isTunnelPath(path: string): boolean {
-  return /^\/api\/rooms\/[^/]/.test(path);
+  return /^\/api\/rooms\/[^/]/.test(path) || isAccountPath(path);
 }
 
 /**
