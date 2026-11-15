@@ -84,9 +84,9 @@ export function BronzeDefs() {
 }
 
 /** One card of the main menu. The name comes first in the button's text, so its accessible name starts with it. */
-export function ShieldCard(props: { primary?: boolean; device: ReactNode; name: string; line?: string; onClick: () => void }) {
+export function ShieldCard(props: { primary?: boolean; device: ReactNode; name: string; line?: string; className?: string; autoFocus?: boolean; onClick: () => void }) {
   return (
-    <button className={`menu-shield ${props.primary ? "menu-shield--primary" : ""}`} onClick={props.onClick}>
+    <button type="button" className={`menu-shield ${props.primary ? "menu-shield--primary" : ""} ${props.className ?? ""}`} autoFocus={props.autoFocus} onClick={props.onClick}>
       <span className="menu-shield__wrap" aria-hidden="true">
         <span className="menu-shield__spear" />
         <span className="menu-shield__aspis">
