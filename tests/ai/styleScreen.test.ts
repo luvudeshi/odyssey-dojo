@@ -248,6 +248,9 @@ test("the card shows the fight the server made, and Fight hands back that fight 
   expect(fight?.enemy.title).toBe(LEVEL.title);
   // It is the made fight, not a quest stop handed back unchanged.
   for (const stop of ENEMIES) expect(fight?.enemy).not.toEqual(stop);
+  // It keeps the id of the quest stop that lends it a model and an arena. So whoever mounts this screen must not
+  // report the fight to the quest as that stop beaten: the quest's "ended" action would mark the real stop as cleared.
+  expect(ENEMIES.map((stop) => stop.id)).toContain(fight?.enemy.id);
   expect(fakes.stopNarration).toHaveBeenCalled();
 });
 
