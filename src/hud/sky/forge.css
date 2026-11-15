@@ -1,0 +1,136 @@
+/* Forge Fire: health as molten bronze in a carved channel (ForgeBars.tsx). Needs the .sky-hud root (tokens.css).
+   Cost rules for a laptop already running pose tracking and a 3D scene: the lava, slag and flame textures are small SVG
+   images the browser rasterises once; nothing runs an SVG filter per frame. Health changes move only clip-path and
+   transform; the flame strip and the sparks loop on transform and opacity. Reduced motion gets a still version. */
+.sky-hud {
+  --fg-cam-w: clamp(10rem, 16.7vw, 15rem); /* the camera panel's width (cameraView.css) */
+  --fg-lintel-h: 64px;
+  --fg-lintel-bottom: calc(20px + var(--fg-cam-w) * 0.75 + 18px); /* just above the panel's pearl rim */
+  --fg-lava: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='24'%3E%3Cfilter id='a' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025 0.3' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .93 0 0 0 0 .55 4 0 0 0 -2.15'/%3E%3C/filter%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025 0.3' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .08 0 0 0 0 0 0 -3.2 0 0 1.25'/%3E%3C/filter%3E%3Crect width='240' height='24' filter='url(%23b)'/%3E%3Crect width='240' height='24' filter='url(%23a)'/%3E%3C/svg%3E");
+  --fg-slag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='16'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.25' numOctaves='3' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .24 0 0 0 0 .2 0 0 0 .9 -.4'/%3E%3C/filter%3E%3Crect width='160' height='16' filter='url(%23n)'/%3E%3Cpath d='M0 8 L9 6 L17 10 L28 7 L36 9 L47 5 L58 9 L66 8 L79 11 L88 7 L99 9 L111 6 L120 10 L133 8 L142 6 L151 9 L160 8 M47 5 L52 1 M99 9 L104 14 M133 8 L137 13' stroke='%23e0501e' stroke-opacity='.8' stroke-width='1.1' fill='none'/%3E%3C/svg%3E");
+  --fg-fire: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='28'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ff7a1e' stop-opacity='0'/%3E%3Cstop offset='.55' stop-color='%23ff9a2e' stop-opacity='.75'/%3E%3Cstop offset='1' stop-color='%23ffe08a'/%3E%3C/linearGradient%3E%3Cfilter id='f' x='0' y='-50%25' width='1' height='2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045 0.16' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='20' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3Crect x='-8' y='10' width='272' height='22' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
+}
+
+/* ---- the channel ---- */
+.sky-hud .fg-channel { --h: 15px; --r: calc(var(--h) / 2); position: relative; isolation: isolate; height: var(--h); border-radius: var(--r); background: #0b0604; box-shadow: 0 0 0 1.5px #0b0604, 0 4px 10px rgba(0, 0, 0, 0.6); }
+.sky-hud .fg-channel::before { /* the bronze lip */
+  content: ""; position: absolute; inset: -4px; z-index: -1; border-radius: calc(var(--r) + 4px);
+  background: linear-gradient(#ffe6b0, #d9a052 30%, #8e5522 62%, #3e2109);
+}
+.sky-hud .fg-channel::after { /* heat glow off the live metal, clipped with it */
+  content: ""; position: absolute; inset: -8px -6px; z-index: -2; border-radius: 12px; background: rgba(255, 122, 26, 0.45);
+  filter: blur(8px); clip-path: inset(-20px calc((1 - var(--kept)) * 100%) -20px -20px);
+}
+.sky-hud .fg-slag, .sky-hud .fg-hot, .sky-hud .fg-metal { position: absolute; inset: 0; border-radius: inherit; }
+.sky-hud .fg-slag { background: var(--fg-slag) repeat-x center / auto 100%, linear-gradient(#2a1f1a, #130c09 50%, #070403); }
+/* The chunk just lost: the hot layer follows the metal down only after a pause, so the loss lingers red-hot. */
+.sky-hud .fg-hot {
+  background: var(--fg-lava) repeat-x center / auto 100%, linear-gradient(#ff7a3a, #e8260c 55%, #8a0c06);
+  clip-path: inset(0 calc((1 - var(--kept)) * 100%) 0 0); transition: clip-path 0.55s ease-in 0.7s;
+}
+.sky-hud .fg-metal {
+  background: var(--fg-lava) repeat-x center / auto 100%, linear-gradient(#fff0a8, #ffcc3a 20%, #ff8410 50%, #d8400a 80%, #861a04);
+  clip-path: inset(-22px calc((1 - var(--kept)) * 100%) 0 0); transition: clip-path 0.18s ease-out;
+}
+.sky-hud .fg-metal::after { content: ""; position: absolute; left: var(--r); right: var(--r); top: 2px; height: max(1.5px, 16%); border-radius: 1px; background: #fff; opacity: 0.6; }
+/* Flames licking off the metal: one pre-drawn strip, scrolled by transform. */
+.sky-hud .fg-flame { position: absolute; left: 0; bottom: 45%; width: calc(100% + 256px); height: 22px; background: var(--fg-fire) repeat-x left bottom / 256px 22px; opacity: 0.85; animation: fg-flow 1.6s linear infinite; }
+@keyframes fg-flow { to { transform: translateX(-256px); } }
+/* The white-hot front and its sparks ride on one transform. */
+.sky-hud .fg-front { position: absolute; inset: 0; z-index: 3; pointer-events: none; transform: translateX(calc((var(--kept) - 1) * 100%)); transition: transform 0.18s ease-out; }
+.sky-hud .fg-glow { position: absolute; right: -3px; top: -35%; width: 6px; height: 170%; border-radius: 50%; background: radial-gradient(#fff6d0 30%, rgba(255, 170, 60, 0) 70%); }
+.sky-hud .fg-spark { position: absolute; right: 0; top: 0; width: 3px; height: 3px; border-radius: 50%; background: #ffd06a; box-shadow: 0 0 4px 1px #ff8a2a; opacity: 0; animation: fg-rise 1.3s ease-out infinite; }
+.sky-hud .fg-spark:nth-child(2) { --dx: 10px; animation-delay: 0s; }
+.sky-hud .fg-spark:nth-child(3) { --dx: 22px; animation-delay: 0.35s; }
+.sky-hud .fg-spark:nth-child(4) { --dx: 4px; animation-delay: 0.7s; }
+.sky-hud .fg-spark:nth-child(5) { --dx: 16px; animation-delay: 1s; }
+@keyframes fg-rise { 0% { opacity: 1; transform: translate(0, 0); } 100% { opacity: 0; transform: translate(var(--dx, 8px), -30px); } }
+
+/* Phase wedges: cast bronze, pointing into the bar at each phase's start. One already passed is cold and dark. */
+.sky-hud .fg-wedge { position: absolute; top: 0; bottom: 0; z-index: 2; width: 2px; margin-left: -1px; background: rgba(40, 12, 4, 0.85); }
+.sky-hud .fg-wedge::before, .sky-hud .fg-wedge::after { content: ""; position: absolute; left: -6px; width: 14px; height: 9px; background: linear-gradient(#ffe6b0, #d9a052 40%, #8e5522); }
+.sky-hud .fg-wedge::before { top: -11px; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.sky-hud .fg-wedge::after { bottom: -11px; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.sky-hud .fg-wedge--passed { background: #000; }
+.sky-hud .fg-wedge--passed::before, .sky-hud .fg-wedge--passed::after { background: linear-gradient(#5a4030, #2a1a10); }
+
+/* ---- the boss bar: alone across the top ---- */
+.sky-hud .fg-boss { position: absolute; top: 8px; left: 50%; width: min(920px, calc(100% - 520px)); min-width: 420px; transform: translateX(-50%); }
+.sky-hud .fg-boss::before { /* a soft dark backdrop so the bronze reads over a bright sky as well as a cave */
+  content: ""; position: absolute; inset: -14px -60px -18px; z-index: -1; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+}
+.sky-hud .fg-boss__row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 12px; padding: 0 44px; }
+.sky-hud .fg-boss__pct { justify-self: start; font: 700 22px/1 var(--sky-display); color: #ffd27a; font-variant-numeric: tabular-nums; text-shadow: 0 2px 3px #000, 0 0 2px #000; }
+.sky-hud .fg-boss__name {
+  white-space: nowrap; margin-right: -0.24em; font: 700 clamp(30px, 3.5vw, 50px)/1.05 var(--sky-display); letter-spacing: 0.24em; text-transform: uppercase;
+  color: transparent; background: linear-gradient(#fff4d6, #f2c072 45%, #b9742c 55%, #6e3a12); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.9)); -webkit-text-stroke: 0.6px #3a1a06;
+}
+.sky-hud .fg-boss__phase { justify-self: end; font: 700 15px/1 var(--sky-label); letter-spacing: 0.14em; text-transform: uppercase; color: #e8cfa0; text-shadow: 0 2px 3px #000, 0 0 2px #000; }
+.sky-hud .fg-boss__bar { display: flex; align-items: center; margin-top: 10px; }
+.sky-hud .fg-boss .fg-channel { flex: 1; }
+.sky-hud .fg-cap { flex: none; width: 40px; height: 44px; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.7)); }
+.sky-hud .fg-cap--left { margin-right: -2px; transform: scaleX(-1); }
+.sky-hud .fg-cap--right { margin-left: -2px; }
+.sky-hud .fg-bronze { fill: #c28640; stroke: #3a1d08; stroke-width: 1.2; }
+.sky-hud .fg-scroll { fill: none; stroke: #d9a052; stroke-width: 4; stroke-linecap: round; }
+.sky-hud .fg-stud { fill: #fff0c0; }
+
+/* ---- the player's lintel, resting on the camera panel at the bottom left ---- */
+.sky-hud .fg-lintel {
+  position: absolute; left: 12px; bottom: var(--fg-lintel-bottom); width: calc(var(--fg-cam-w) + 16px); height: var(--fg-lintel-h); box-sizing: border-box;
+  display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 4px; background: #160b05;
+  box-shadow: 0 0 0 3px #b77a36, 0 0 0 5px #3e2109, inset 0 0 0 1px #000, 0 6px 14px rgba(0, 0, 0, 0.6);
+}
+.sky-hud .fg-medal { flex: none; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(#160b05 0 58%, transparent 60%), radial-gradient(circle at 35% 28%, #f3c887, #a8681f 50%, #4f2b0b); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+.sky-hud .fg-helmet { width: 34px; height: 36px; }
+.sky-hud .fg-helmet__crest { fill: none; stroke: #c3301a; stroke-width: 9; stroke-linecap: round; }
+.sky-hud .fg-helmet__shell { fill: #f2c072; }
+.sky-hud .fg-helmet__slit { fill: none; stroke: #160b05; stroke-width: 3; }
+.sky-hud .fg-lintel__body { flex: 1; min-width: 0; }
+.sky-hud .fg-lintel__row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; white-space: nowrap; }
+.sky-hud .fg-lintel__name { font: 700 15px/1 var(--sky-label); letter-spacing: 0.22em; text-transform: uppercase; color: #f6e4c2; }
+.sky-hud .fg-lintel__num { font: 700 24px/1 var(--sky-display); color: #ffd27a; font-variant-numeric: tabular-nums; }
+.sky-hud .fg-lintel__num small { margin-left: 2px; font-size: 13px; color: #e8cfa0; }
+.sky-hud .fg-lintel .fg-channel { --h: 13px; margin-right: 2px; }
+
+/* ---- score and combo: top right, smaller than the boss ---- */
+.sky-hud .fg-score { position: absolute; top: 10px; right: 20px; display: flex; align-items: center; gap: 12px; }
+.sky-hud .fg-score__text { display: flex; flex-direction: column; align-items: flex-end; }
+.sky-hud .fg-score__text small { font: 700 13px/1 var(--sky-label); letter-spacing: 0.3em; text-transform: uppercase; color: #e8cfa0; text-shadow: 0 2px 3px #000; }
+.sky-hud .fg-score__num {
+  font: 700 40px/1.05 var(--sky-display); font-variant-numeric: tabular-nums; color: transparent;
+  background: linear-gradient(#fff0a8, #ffcc3a 25%, #ff8410 55%, #d8400a); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 5px rgba(255, 138, 42, 0.55)) drop-shadow(0 2px 2px #000);
+}
+.sky-hud .fg-coin {
+  display: grid; place-content: center; width: 64px; height: 64px; border-radius: 50%; text-align: center; color: #3a1a06;
+  background: radial-gradient(circle at 38% 32%, #ffe7b4, #c98a3c 45%, #4a2709);
+  box-shadow: inset 0 0 0 5px rgba(90, 48, 12, 0.5), inset 0 2px 2px rgba(255, 240, 200, 0.8), 0 4px 10px rgba(0, 0, 0, 0.6);
+}
+.sky-hud .fg-coin b { font: 700 26px/1 var(--sky-display); }
+.sky-hud .fg-coin small { font: 700 9px/1.2 var(--sky-label); letter-spacing: 0.2em; text-transform: uppercase; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-hud .fg-flame { animation: none; }
+  .sky-hud .fg-spark { display: none; }
+  .sky-hud .fg-hot, .sky-hud .fg-metal, .sky-hud .fg-front { transition: none; }
+}
+
+/* A phone held upright: the boss bar runs edge to edge and the score drops under it on the right. */
+@media (max-width: 760px) {
+  .sky-hud .fg-boss { top: 6px; width: calc(100% - 16px); min-width: 0; }
+  .sky-hud .fg-boss__row { padding: 0 30px; gap: 6px; }
+  .sky-hud .fg-boss__name { font-size: 22px; letter-spacing: 0.1em; margin-right: -0.1em; }
+  .sky-hud .fg-boss__pct { font-size: 16px; }
+  .sky-hud .fg-boss__phase { font-size: 12px; }
+  .sky-hud .fg-cap { width: 26px; height: 30px; }
+  .sky-hud .fg-score { top: 76px; right: 8px; }
+  .sky-hud .fg-score__num { font-size: 26px; }
+  .sky-hud .fg-coin { width: 44px; height: 44px; }
+  .sky-hud .fg-coin b { font-size: 18px; }
+}
+/* Big screens zoom the whole HUD (top.css), but the camera panel does not grow: undo the zoom on what sits on it. */
+@media (min-width: 1700px) and (min-height: 950px) {
+  .fight > .sky-hud .fg-lintel, .fight > .sky-hud .hb-defend__word { zoom: 0.7407; }
+}
