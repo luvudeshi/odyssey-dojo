@@ -403,3 +403,38 @@ export function punchedJustNow(history: PoseHistory, side: Side): boolean {
   return history.frames.some((old, i) =>
     now - old.t <= FOLLOW_MS && straightPunch({ ...history, frames: history.frames.slice(0, i + 1) }, side) >= 0.7);
 }
+
+/** The loosest "the arm moved" reading, for a prompt that asks for it (see `armMoved`): wrist travel in shoulder widths, then degrees. */
+export const MOVED_WRIST = 0.3;
+export const MOVED_ELBOW = 25;
+export const MOVED_LIFT = 18;
+export const MOVED_MS = 500;
+/** The other arm may move at most this share of what this arm did: both arms rising together is a block, not a jab. */
+const OTHER_SHARE = 0.75;
+
+/** How far this arm has moved on `frame` since `first`, as a share of the least that counts: 1 or more is a clear movement. */
+function armMovedBy(frame: PoseFrame, first: PoseFrame, side: Side): number {
+  const ids = armJoints(side);
+  const bendLift = seen(frame, ids.elbow) && seen(first, ids.elbow)
+    ? Math.max(Math.abs(elbowAngle(frame, side) - elbowAngle(first, side)) / MOVED_ELBOW, Math.abs(upperArmLift(frame, side) - upperArmLift(first, side)) / MOVED_LIFT)
+    : 0;
+  if (!seen(frame, ids.wrist) || !seen(first, ids.wrist)) return bendLift;
+  // Both measures are relative to the shoulder centre, so the whole body shifting in a dodge or a step cancels out.
+  const wrist = Math.hypot(wristOut(frame, side) - wristOut(first, side), wristRise(frame, side) - wristRise(first, side)) / MOVED_WRIST;
+  return Math.max(wrist, bendLift);
+}
+
+/**
+ * 1 when this arm has clearly moved over the last MOVED_MS of the history (the wrist, the elbow bend or the upper arm
+ * lift), on the latest frame and the one before it, and the other arm has moved clearly less; otherwise 0. No direction,
+ * height or speed: only for a prompt that asks for this arm, never as a strike of its own.
+ */
+export function armMoved(history: PoseHistory, side: Side): number {
+  const frames = recent(history, MOVED_MS);
+  const first = frames[0];
+  const now = frames.at(-1);
+  const before = frames.at(-2);
+  if (!first || !now || !before || before === first || shoulderWidth(first) === 0 || shoulderWidth(now) === 0) return 0;
+  const by = (frame: PoseFrame, arm: Side): number => armMovedBy(frame, first, arm);
+  return by(now, side) >= 1 && by(before, side) >= 1 && by(now, otherSide(side)) <= OTHER_SHARE * by(now, side) ? 1 : 0;
+}
