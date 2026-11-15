@@ -28,6 +28,7 @@ import { Scene } from "../render/Scene";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
+import { fallsLine } from "../enemies/wording";
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -158,7 +159,7 @@ export function FightScreen(props: {
       )}
       {over && (
         <div className="overlay">
-          <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
+          <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
           {renderEnd(state.phase.kind === "won", state.score, state.mastery)}
         </div>
