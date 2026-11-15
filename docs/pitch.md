@@ -2,7 +2,7 @@
 
 What the presenter says while one judge plays the Polyphemus fight, what to do when something fails, and answers to the ten questions we expect in the two minutes after. The Devpost text is in [devpost.md](devpost.md).
 
-**How to read this draft.** It was checked against `main` at commit `de77074` (Saturday afternoon). Anything tagged `[pending #N]` is not on `main` yet; N is the issue that will add it. Before judging, go through every tag. If the feature landed, delete the tag. If it did not, say the "Today" line next to it and never the pending one. The button, screen and key names, and which features a screen shows, were checked again against `main` at commit `f1ac86d` (Sunday morning); the fight lengths, word counts and test counts were not.
+**How to read this draft.** It was checked against `main` at commit `de77074` (Saturday afternoon). Anything tagged `[pending #N]` is not on `main` yet; N is the issue that will add it. Before judging, go through every tag. If the feature landed, delete the tag. If it did not, say the "Today" line next to it and never the pending one. The button, screen and key names, and which features a screen shows, were checked again against `main` at commit `f1ac86d` (Sunday morning). The fight lengths, phase times, word counts and test counts were measured again at commit `9f9e5ea`; the fight lengths and phase times come from `scripts/fight-timings.ts` (see below).
 
 The ElevenLabs and Gemini parts (sound, Athena, Homer and the taunts, the god scan, the server) were checked again against `main` at commit `fd14780` and use two more tags. `[if wired]` means the code is on `main` but no game screen calls it yet, so the judge does not see or hear it. `[if built]` means it is not on `main` at all. Treat both like `[pending]`. The file paths and counts behind these parts are in the two sponsor sections of [devpost.md](devpost.md).
 
@@ -21,7 +21,7 @@ The fight lengths and phase times quoted here come from the pacing test's own si
 | Strike quality | The engine scales damage from half to one and a half times by a 0 to 1 quality. GOOD, GREAT or PERFECT flashes after a strike lands | Which moves measure their own quality was not checked again at `f1ac86d` |
 | Arena and hit feel | A torch-lit cave, sparks and a flash where he is hit, a camera shake and a red edge flash when the player is hit. Q switches between high and low graphics, and the choice is saved. The player's own character, chosen on "Choose your character", stands in the scene | Nothing |
 | Sound | One clip per fight event, eleven in all, made ahead of time with the ElevenLabs sound generation API and played from local files by the fight screen. Eight of the eleven also have a sound synthesised in code, which plays if the clip fails to load; the phase change, the finishing blow and the god power have none | Music plays on the menus, in the fight and at the result. Nobody has logged listening to a fight |
-| Athena | A script of 50 short lines, a clip for each made ahead of time with ElevenLabs text to speech. The fight screen plays them: she calls each defense, each strike and the stake, praises a hit, warns after one, and announces each later phase with a line written for that monster, the win and the loss. The next defense call cuts a phase line after about 0.7 s | Her fight start line now plays as the fight opens, and her god-power calls when the meter is full. Her jump call was not checked again. "Defend yourself!" is only a stand-in for a defense with no clip, and every defense has one, so it is not heard either. Nobody has logged listening to a fight |
+| Athena | A script of 50 short lines, a clip for each made ahead of time with ElevenLabs text to speech. The fight screen plays them: she calls each defense, each strike and the stake, praises a hit, warns after one, and announces each later phase with a line written for that monster, the win and the loss. After a strike that changes the phase the engine pauses 3 s (`PHASE_RECOVER_MS`), longer than the longest phase line (2.9 s), so the line plays before the next defense call | Her fight start line now plays as the fight opens, and her god-power calls when the meter is full. Her jump call was not checked again. "Defend yourself!" is only a stand-in for a defense with no clip, and every defense has one, so it is not heard either. Nobody has logged listening to a fight |
 | Homer and the taunts | Four lines for Homer as narrator (title, before Polyphemus, win, loss) and Polyphemus's four taunts, as clips beside Athena's, with tested playback | The screens now play them: one of Homer's opening lines on "Story mode", his line before a stop and at the result, and a taunt at each later phase. The other stops have narration lines too. Nobody has logged hearing them |
 | The route | Six stops, each with a model, on the quest map "The Road Home": Polyphemus, Circe, the Sirens, Scylla, Charybdis, the Suitors. Every stop is open from the start | Nothing |
 | Screens | Main menu (Story mode, Multiplayer, Training Dojo, Account), "Choose your character", "Choose your fighting style", the quest map, a cutscene with the monster's name, a 3-second calibration count, a pause when the player steps out of view, the Esc pause menu, win and loss panel with the score | Nothing |
@@ -68,6 +68,8 @@ So a first-time judge left alone will most likely win, well inside the three min
 
 Spoken words on the main path: 203 today, 209 with the one tagged line in, 225 with the optional rating line as well. At 150 words a minute that is about 80 and 90 seconds of talking. The 150 words said during the fight take about a minute, as long as the test's player's whole fight now, so not every line will fit, and they leave little room to call moves or for Athena's clips. The count is next to each line; keep it honest when you edit.
 
+For the lead: the speech runs about 80 seconds against a fight of about 60 seconds for the test's player, so trim it to fit.
+
 ### 0:00 to 0:20. Step up
 
 **Judge:** stands on the tape. The tab is already on "Choose your fighting style".
@@ -92,9 +94,9 @@ Boxer is the style the pacing test plays, and each of its strikes uses one arm.
 
 Then be quiet for three exchanges. If the judge freezes, read the card to them: "Lean right." If they miss the first one, let it go; the next card teaches the same thing.
 
-**Say after those (24 words):** "Watch the card shrink. After two clean reps the drawing goes. After five it is only a timer, and I will call the move."
+**Say after those (24 words):** "Watch the card shrink. After two clean reps the drawing goes. After five only the name of the move and its timer stay up."
 
-From here on, call any move whose card is only a timer bar (see "When the card is only a bar"). For the test's player the first one arrives about 50 seconds into the fight (39 to 58), close to the stake, and in 13 fights of 30 it never does.
+The word stays on every card, so there is no card without a move to call for; call a move only when the judge is slow to read it (see "When the card is small"). For the test's player the smallest card first shows about 50 seconds into the fight (39 to 58), close to the stake, and in 13 fights of 30 it never does.
 
 ### About 0:40 to 1:00. His bar is under two thirds. The Club
 
@@ -114,7 +116,7 @@ If the judge's own health is under half here, start covering the defense now and
 
 **Say at the sound (24 words):** "Last phase. He is swinging wild, with half the warning you started with. I will cover your defense from the keys. You just hit."
 
-Hold the defense keys from here to the end. Call the strike when the gold card is only a bar.
+Hold the defense keys from here to the end. Call the strike if the judge is slow to read the gold card.
 
 Do not say the phase's name, Blinded, out loud: the stake that blinds him comes after it (see "Open points for the lead"). The screen now shows the name for a moment.
 
@@ -162,13 +164,13 @@ The engine counts a defense if its key is down when the blow lands, whatever els
 
 Say what you are doing: "I will cover your defense from the keys", "I will throw that one for you".
 
-## When the card is only a bar
+## When the card is small
 
-After five clean reps of a move its card is a thin timer bar with no word and no drawing, and his model does not say which move is wanted: the same arm goes up for a club swing and a boulder, and the same ring lights for a jab and a cross. In the simulation about 4 prompts in 10 are bars over a whole fight. Covering the defense from the keys makes it sooner, because a covered defense counts as a clean rep.
+After two clean reps of a move its card drops the drawing and the hint; after five it drops the target line too. The word stays on every card: the move's name, its key and the timer are always there (`promptLevel` in `src/combat/engine.ts`), so the judge can always read what to do. In the simulation about 3 prompts in 100 are at the smallest size over a whole fight for the test's player. Covering the defense from the keys makes it sooner, because a covered defense counts as a clean rep. His model still does not say which move is wanted: the same arm goes up for a club swing and a boulder, and the same ring lights for a jab and a cross.
 
-- Tell the judge early (the "Watch the card shrink" line), then call what you can tell. In The Cave the arm on the right always means "Lean right!". In the last phase the arm on the left always means "Lean left!".
+- Tell the judge early (the "Watch the card shrink" line). If they are slow to read the word, call what you can tell. In The Cave the arm on the right always means "Lean right!". In the last phase the arm on the left always means "Lean left!".
 - Where you cannot tell, hold both candidates from the table above and say "I have that one".
-- Athena calls every defense and every Boxer strike by name ("Duck! Head down!"), so the judge is told even when the card is a bar. This is on `main` but nobody has logged hearing it; check it in the test fight, and keep calling the moves yourself if she is silent.
+- Athena calls every defense and every Boxer strike by name ("Duck! Head down!"), so the judge is told even before they read the card. This is on `main` but nobody has logged hearing it; check it in the test fight, and keep calling the moves yourself if she is silent.
 - `[pending #11, #24]` Each attack gets its own tell and the ghost outline shows the pose, so the judge can read the monster. **Today:** you are the tell.
 
 ## If the camera fails
@@ -264,4 +266,4 @@ These need a change outside this document. They are listed here because the pitc
 4. **Athena's line at the third phase is "He is blind! Stay light!"** (`phase_2` in `src/audio/athenaLines.ts`). She is wired in now, so the judge hears point 3 said out loud before the stake.
 5. **Done in the engine: Athena's phase lines have room.** Each later phase of each of the six monsters has its own line, picked by the phase's name, so only Polyphemus hears "He takes his club!". After a strike that changes the phase the engine now pauses 3 s (`PHASE_RECOVER_MS` in `src/combat/engine.ts`) instead of 0.7 s, and the longest phase clip is 2.9 s (`phase_the_toll.mp3`), so the next defense call should no longer cut the line. Nobody has logged hearing a whole one.
 6. **Done: Homer, the taunts and Athena's fight start line are wired in.** The main menu speaks one of Homer's opening lines (`src/audio/titleLine.ts`), the fight screen calls `speakLine("fight_start")` and `speakMonsterTaunt`, and the map and the result panel call Homer's lines through `src/screens/hookups.ts`.
-7. **One of the pacing test's 30 simulated fights never throws the stake** and runs to the test's ten-minute cap, which lifts the test's average from about 120 seconds to 136. The test still passes, but its average is closer to the 150-second limit than the fights are.
+7. **Done: no simulated fight runs to the cap.** All 30 of the pacing test's fights against Polyphemus throw the stake and are won, the longest in 96 seconds, and the average is 58 seconds, well inside the test's 40 to 150 (`npx tsx scripts/fight-timings.ts`).
