@@ -223,8 +223,9 @@ async function enterFight(page, base, stop, style, styles, query) {
 /**
  * Runs in the page: what the fight shows right now.
  *
- * `over` is the result panel: two or more buttons inside the fight that are not in a dialog (the pause menu and the
- * settings are dialogs). It is a loss when one of them offers the fight again, or when there are three of them.
+ * `over` is the result panel: a layer of the fight that holds two or more buttons outside a dialog (the pause menu
+ * and the settings are dialogs; the camera panel holds one button). It is a loss when one of them offers the fight
+ * again, or when there are three of them.
  *
  * The prompt card is found by structure, so it is the same code for the first HUD (`.prompt.defend`), the pebble card
  * (`.pb-card--defend`) and the star-chart card (`.sky-card--defend`): the nearest box around the key hint (`kbd`), or
@@ -233,10 +234,17 @@ async function enterFight(page, base, stop, style, styles, query) {
 function readHud(words) {
   const fight = document.querySelector(".fight") ?? document.body;
   const clean = (element) => (element?.textContent ?? "").trim();
-  const buttons = [...fight.querySelectorAll("button")].filter((button) => !button.closest('[role="dialog"]'));
-  if (buttons.length >= 2) {
-    const panel = buttons[0].closest(".overlay") ?? buttons[0].parentElement;
-    const heading = panel?.querySelector('h1, [role="heading"], [class*="title"]');
+  // The fight's own children are its layers (scene, HUD, camera panel, overlays): the buttons are grouped by layer.
+  const layers = new Map();
+  for (const button of fight.querySelectorAll("button")) {
+    if (button.closest('[role="dialog"]')) continue;
+    let layer = button;
+    while (layer.parentElement && layer.parentElement !== fight) layer = layer.parentElement;
+    layers.set(layer, [...(layers.get(layer) ?? []), button]);
+  }
+  const [panel, buttons] = [...layers].find(([, list]) => list.length >= 2) ?? [null, []];
+  if (panel) {
+    const heading = panel.querySelector('h1, [role="heading"], [class*="title"]');
     return {
       over: true,
       won: !buttons.some((button) => /again|retry/i.test(clean(button))) && buttons.length < 3,
@@ -496,7 +504,7 @@ ${parts.map(section).join("\n\n")}
 ## How to read it
 
 - Each fight is opened at \`/?stop=<id>\` in a fresh browser context: Keyboard only, the style, the open stop on the map, then the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
-- The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place, the intro button is the one that names the monster. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is two or more buttons inside the fight that are not in a dialog. No heading and no colour is read, so a new look should not break it.
+- The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place, the intro button is the one that names the monster. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).
 - **seconds** is from the fight's canvas appearing to the result panel.
