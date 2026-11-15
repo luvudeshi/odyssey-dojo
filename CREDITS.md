@@ -27,6 +27,7 @@ The cave mouth at dusk (`src/render/arena/cave/`) is built in code: no other fil
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
+| RobotExpressive.glb, by Tomás Laulhé (Quaternius), with changes by Don McCurdy, via the three.js examples | Development test model only, `public/models/dev/RobotExpressive.glb`, shown with `?model=dev` to test the GLB pipeline. Not game art | https://github.com/mrdoob/three.js/tree/r187/examples/models/gltf/RobotExpressive | CC0 |
 
 ## Hero
 
@@ -40,6 +41,7 @@ His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
+| Giant, by Quaternius, via Poly Pizza | `public/models/polyphemus/giant.glb`, Polyphemus | https://poly.pizza/m/BldaiPtyJa | CC0 |
 
 ## The Suitors
 
