@@ -1,27 +1,37 @@
-# Licences: every shipped asset and its credit
+# Licences: every shipped file and its credit
 
-The rules allow only CC0 files, CC BY files with the author credited, and things the team made. This report checks that each file we ship has a credit line that says which of those it is.
+The rules allow only CC0 files, CC BY files with the author credited, and things the team made. That is the rule for art and sound. The game also ships a few bundled software and model files (the pose tracker and the mesh decoder), which carry their own open licence. This report checks that each file under `public/` has a credit line that says which of those it is.
 
 ## Run it
 
 ```bash
+make setup                                 # once: copies the pose tracker into public/mediapipe/
 make credits                               # the table, then the summary; fails when there is a gap
 node scripts/credits-report.mjs --markdown # the same as a markdown table (the report below)
 ```
 
 It needs no server, no keys and no network. It is not part of `make check`, because an asset and its credit can land in separate PRs. Run it before the freeze and before the Devpost goes in.
 
+`public/mediapipe/` is not in git. If `make setup` has not filled it, the report still runs and lists what is there, and prints a note that the folder has no files.
+
 ## What it checks
 
-- It lists every file under `public/models`, `public/hdri`, `public/textures` and `public/audio`, with its size.
+- It lists every file under `public/`, with its size.
 - For each file it looks for a line that names it in `CREDITS.md`, `docs/models.md` or `docs/models/*.md`, and reads the licence from that same line.
+- Each file is in one of two classes. The folder decides, nothing else:
+  - **Bundled software and model files:** everything under `public/draco/` and `public/mediapipe/`. Allowed: Apache-2.0, MIT, and BSD with 2 or 3 clauses. The credit line must also name the author and link to the source, and it must name the file by its exact path. A folder or a `*` pattern is not a credit for these files, so a file added to one of the folders is a gap until it has a line of its own.
+  - **Art and sound:** everything else. Allowed: CC0, CC BY with the author, and made by the team.
+- The two lists do not mix. `MIT` on the credit line of a model, a sound or an icon is reported as not allowed. `CC0`, CC BY or "made by the team" on a file in a software folder is reported as not allowed too, also when the same line names a software licence.
+- The software folders are the list `SOFTWARE_ROOTS` in `scripts/credits-report.mjs`. A new folder of bundled software is checked as art, and so reported, until it is added to that list.
 - A file is a **gap** when:
   - no line names it (`no credit`),
   - the line that names it gives no licence (`no licence on the credit line`),
-  - the licence is not CC0, CC BY or made by the team (`licence not allowed`),
-  - the licence is CC BY but the line does not name the author (`CC BY without an author`).
+  - the licence is not one its class allows (`licence not allowed`),
+  - the licence is CC BY but the line does not name the author (`CC BY without an author`),
+  - it is software and the line does not name the author (`software licence without an author`),
+  - it is software and the line has no link (`software credit without a source link`).
 - Files that are bookkeeping are listed as "not an asset" and are never a gap. The rule is the file name: it starts with a dot (`.gitkeep`), it is `index.json` (the list of clips our generator writes beside them), or it ends in `.md` or `.txt`.
-- A note, not a gap: a model that is credited in a model log but has no row in `CREDITS.md`.
+- Notes, not gaps: a model that is credited in a model log but has no row in `CREDITS.md`, and a software folder that has no files on this machine.
 
 ## How to write a credit line so it is found
 
@@ -32,12 +42,22 @@ One asset per line, with the path and the licence on the same line.
    - a `*` pattern: `public/textures/rock_surface_*` (a `*` does not cross a `/`)
    - a folder with a trailing slash: `public/audio/sfx/` (covers everything under it)
 
-   The pattern and folder forms count only in `CREDITS.md`. A model log has to name the exact file.
-2. **Give the licence on that line.** In a table that has a `Licence` column, that cell is read. On any other line the whole line is read. These are accepted:
+   The pattern and folder forms count only in `CREDITS.md`, and only for art and sound. A model log has to name the exact file, and so does a line for a file in a software folder.
+
+   One line cannot credit the whole folder. `public/` alone names nothing, and neither do `public/*`, `public/**`, `public/*/*` or any other pattern whose first part under `public/` has no letter or digit in it. This holds in bold and italics too (`**public/**`, `*public/*`). `public/*.svg` is read: it names the SVG files at the top of the folder.
+2. **Give the licence on that line.** In a table that has a `Licence` column, that cell is read. On any other line the whole line is read. For art and sound these are accepted:
    - `CC0` (also `CC0 1.0`)
    - `CC BY 4.0`, and the line must also say `by <Author>`, for example `"Cyclops Rig" by DM-913 is licensed under CC BY 4.0`. The author must start with a capital letter, a digit or `@`, and must not start with "the". This is so that "used by the Polyphemus fight" is not taken for an author. A lower-case handle (`by sam_pie`) is reported as a gap: write `by @sam_pie`.
    - `made by the team`, or `generated by the team with <tool>` (also `recorded`, `built` or `drawn by the team`)
-3. Anything else in a `Licence` cell (`MIT`, `unknown`, a tool's terms of service), and any of CC BY-NC, BY-ND, BY-SA, "non-commercial", "royalty-free", "all rights reserved" or "editorial use" anywhere on the line, is reported as not allowed. "not CC0" and "non-CC0" are not read as CC0.
+3. **For a file in a software folder**, these are accepted instead:
+   - `Apache-2.0` (also `Apache 2.0`, `Apache License 2.0` and `Apache License, Version 2.0`)
+   - `MIT`, in capitals
+   - `BSD-2-Clause` or `BSD-3-Clause` (also `BSD 3-Clause`). Plain `BSD` is not read.
+
+   The line must also say `by <Author>`, by the same author rule as CC BY, and carry a link that starts with `http://` or `https://`. End the author's name with a comma or a bracket, or the words after it are read as part of the name. For example:
+
+   `| Draco mesh decoder by Google (the glTF build) | public/draco/draco_decoder.js, public/draco/draco_decoder.wasm | https://github.com/google/draco | Apache-2.0 |`
+4. Anything else in a `Licence` cell (`unknown`, a tool's terms of service, a licence of the other class), and any of CC BY-NC, BY-ND, BY-SA, "non-commercial", "royalty-free", "all rights reserved" or "editorial use" anywhere on the line, is reported as not allowed. "not CC0" and "non-CC0" are not read as CC0, and the same goes for "not Apache-2.0", "not MIT", "non-MIT" and "not BSD-3-Clause". Only those two forms are caught: "not under MIT" is still read as MIT.
 
 Write the path bare or in backticks, starting with `public/`. These are not read, or change the meaning:
 
@@ -51,15 +71,222 @@ When more than one line names a file:
 
 - A line that states a licence always beats a line that states none.
 - Among lines that state a licence, the most specific one decides: the exact path, then a pattern, then a folder. So a folder credit cannot hide a pattern or an exact line that says a file is not allowed, or an exact CC BY row with no author.
-- At the same level a problem wins: not allowed, then CC BY without an author, then an allowed licence. `CREDITS.md` comes before a model log.
+- At the same level a problem wins: not allowed, then no author or no source link, then an allowed licence. `CREDITS.md` comes before a model log.
 
-What it does not do: it does not open the files, check that a URL is real, or check that the licence written down is the true one. It only checks that a credit is written. The author check is a guess from the words on the line: "by Polyphemus" would pass as an author.
+What it does not do: it does not open the files, check that a URL is real, or check that the licence written down is the true one. It only checks that a credit is written. It does not look at a file's type, so a `.wasm` file outside the software folders is checked as art. The author check is a guess from the words on the line: "by Polyphemus" would pass as an author. It does not cover the npm packages that are compiled into the game's JavaScript, only the files under `public/`.
 
 The matching rules are tested in `tests/creditsReport.test.ts`.
 
+## Third report
+
+Run on branch `154-licence-gaps` at `f791c52`, which has `main` at `9578330` merged in, Saturday 6:35 PM, with `public/mediapipe/` filled. This is a snapshot: run `make credits` for the current one.
+
+Other runs on the same tree, for comparison:
+
+- The script of this branch with the `CREDITS.md` of `main` at `9578330`: `154 files, 57.7 MB (57713409 bytes). 147 assets: 134 credited, 13 gaps. 7 not assets.` The 13 were the three Draco files, the five pose tracker files, the four icons and the favicon, all `no credit`. The suitor model had the note of the second report.
+- The script as it is on `main` at `9578330` does not look in those folders. Run on this tree, with this branch's `CREDITS.md`, it said `141 files, 21.2 MB (21163915 bytes). 134 assets: 134 credited, 0 gaps. 7 not assets.`
+- This branch with `public/mediapipe/` moved away, as on a clone where `make setup` has not run: `149 files, 21.9 MB (21930923 bytes). 142 assets: 142 credited, 0 gaps. 7 not assets.`, then a note that `public/mediapipe/` has no files.
+- This branch with an empty `zz_dummy.png` put in `public/draco/` and an empty `zz_dummy.mp3` in `public/mediapipe/wasm/`: `156 files, 57.7 MB (57713409 bytes). 149 assets: 147 credited, 2 gaps. 7 not assets.`, both `no credit`, exit 1. The two files were removed again.
+
+What changed since the second report:
+
+- **The script** walks all of `public/`, not four folders of it, and has the class for bundled software and model files described above. A line can no longer name the whole `public/` folder.
+- **Bundled software:** `CREDITS.md` has a new section. One row names the three Draco files, one names the four files of the pose tracker's runtime, and one names the pose model.
+- **Icons:** `CREDITS.md` has rows for the four files in `public/ui/` and for `public/favicon.svg`.
+- **Models:** the suitor model has its row in `CREDITS.md`, so the note of the second report is gone. The hero and suitor rows link to the pack pages on quaternius.com and on itch.io, which state CC0. The dev robot row spells its author as the three.js README does.
+- **Skies and textures:** each Poly Haven row names the author its page names.
+- **Audio:** 13 new Athena clips came in on `main` (PR #167). The row for `public/audio/athena/` covers them, and that PR updated its text. Not changed here.
+
+- 154 files, 57.7 MB (57713409 bytes). 147 assets: 147 credited, 0 gaps. 7 not assets.
+- Art and sound: 139. Bundled software and model files under their own open licence: 8.
+
+| File | Size | Licence | Credited at |
+|---|---|---|---|
+| `public/audio/.gitkeep` | 0 B | not an asset (dot file) | - |
+| `public/audio/athena/call_aegis_push.mp3` | 33 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_any_defend.mp3` | 24 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_any_strike.mp3` | 23 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_block.mp3` | 31 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_chain_punch.mp3` | 38 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_cross.mp3` | 33 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_dodge_left.mp3` | 24 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_dodge_right.mp3` | 24 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_double_palm.mp3` | 38 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_duck.mp3` | 32 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_front_kick.mp3` | 31 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_hammer_fist.mp3` | 41 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_hook.mp3` | 34 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_jab.mp3` | 32 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_jump.mp3` | 28 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_knee.mp3` | 36 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_knife_hand.mp3` | 33 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_moon_arrow.mp3` | 34 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_overhead_strike.mp3` | 36 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_reverse_punch.mp3` | 38 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_rising_palm.mp3` | 38 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_spear_thrust.mp3` | 33 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_stake_thrust.mp3` | 45 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_sun_burst.mp3` | 41 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_swift_dash.mp3` | 31 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_thunderbolt.mp3` | 34 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_trident_sweep.mp3` | 34 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/call_uppercut.mp3` | 36 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/fight_start.mp3` | 38 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/homer_intro_polyphemus.mp3` | 148 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/homer_loss.mp3` | 95 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/homer_title.mp3` | 72 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/homer_win.mp3` | 75 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/index.json` | 940 B | not an asset (index.json, a list of the clips beside it) | - |
+| `public/audio/athena/loss.mp3` | 61 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_1.mp3` | 28 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_2.mp3` | 39 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_any.mp3` | 39 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_eurymachus.mp3` | 37 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_six_heads.mp3` | 42 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_fig_tree.mp3` | 38 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_meadow_of_bones.mp3` | 36 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_song.mp3` | 34 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_spew.mp3` | 41 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_toll.mp3` | 46 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_volley.mp3` | 42 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_the_wand.mp3` | 36 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/phase_unmasked.mp3` | 34 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/praise_1.mp3` | 23 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/praise_2.mp3` | 24 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/praise_3.mp3` | 23 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/taunt_polyphemus_1.mp3` | 52 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/taunt_polyphemus_2.mp3` | 46 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/taunt_polyphemus_3.mp3` | 79 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/taunt_polyphemus_4.mp3` | 44 KB | Generated by the team with ElevenLabs | CREDITS.md:75 |
+| `public/audio/athena/warn_1.mp3` | 19 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/warn_2.mp3` | 21 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/warn_3.mp3` | 23 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/athena/win.mp3` | 54 KB | Generated by the team with ElevenLabs | CREDITS.md:74 |
+| `public/audio/music/fight.mp3` | 577 KB | Generated by the team with ElevenLabs | CREDITS.md:91 |
+| `public/audio/music/index.json` | 30 B | not an asset (index.json, a list of the clips beside it) | - |
+| `public/audio/music/loss.mp3` | 91 KB | Generated by the team with ElevenLabs | CREDITS.md:93 |
+| `public/audio/music/menu.mp3` | 481 KB | Generated by the team with ElevenLabs | CREDITS.md:90 |
+| `public/audio/music/win.mp3` | 72 KB | Generated by the team with ElevenLabs | CREDITS.md:92 |
+| `public/audio/narration/homer_after_charybdis.mp3` | 102 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_after_circe.mp3` | 129 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_after_polyphemus.mp3` | 117 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_after_scylla.mp3` | 115 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_after_sirens.mp3` | 116 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_after_suitors.mp3` | 140 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_before_charybdis.mp3` | 135 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_before_circe.mp3` | 140 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_before_scylla.mp3` | 125 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_before_sirens.mp3` | 112 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/homer_before_suitors.mp3` | 112 KB | Generated by the team with ElevenLabs | CREDITS.md:76 |
+| `public/audio/narration/index.json` | 248 B | not an asset (index.json, a list of the clips beside it) | - |
+| `public/audio/sfx/defended.mp3` | 14 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/enemyHit.mp3` | 15 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/finished.mp3` | 41 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/index.json` | 124 B | not an asset (index.json, a list of the clips beside it) | - |
+| `public/audio/sfx/lost.mp3` | 49 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/opening.mp3` | 10 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/phaseChanged.mp3` | 25 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/playerHit.mp3` | 12 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/powerUnleashed.mp3` | 33 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/telegraph.mp3` | 17 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/whiffed.mp3` | 9 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/sfx/won.mp3` | 49 KB | Generated by the team with ElevenLabs | CREDITS.md:78 |
+| `public/audio/stops/charybdis/ambience.mp3` | 361 KB | Generated by the team with ElevenLabs | CREDITS.md:125 |
+| `public/audio/stops/charybdis/crash.mp3` | 20 KB | Generated by the team with ElevenLabs | CREDITS.md:128 |
+| `public/audio/stops/charybdis/gulp.mp3` | 27 KB | Generated by the team with ElevenLabs | CREDITS.md:126 |
+| `public/audio/stops/charybdis/hurt.mp3` | 17 KB | Generated by the team with ElevenLabs | CREDITS.md:129 |
+| `public/audio/stops/charybdis/spout.mp3` | 21 KB | Generated by the team with ElevenLabs | CREDITS.md:127 |
+| `public/audio/stops/circe/ambience.mp3` | 361 KB | Generated by the team with ElevenLabs | CREDITS.md:110 |
+| `public/audio/stops/circe/defeat.mp3` | 41 KB | Generated by the team with ElevenLabs | CREDITS.md:114 |
+| `public/audio/stops/circe/hurt.mp3` | 15 KB | Generated by the team with ElevenLabs | CREDITS.md:113 |
+| `public/audio/stops/circe/squeal.mp3` | 20 KB | Generated by the team with ElevenLabs | CREDITS.md:112 |
+| `public/audio/stops/circe/wand.mp3` | 20 KB | Generated by the team with ElevenLabs | CREDITS.md:111 |
+| `public/audio/stops/index.json` | 397 B | not an asset (index.json, a list of the clips beside it) | - |
+| `public/audio/stops/scylla/ambience.mp3` | 361 KB | Generated by the team with ElevenLabs | CREDITS.md:120 |
+| `public/audio/stops/scylla/howl.mp3` | 33 KB | Generated by the team with ElevenLabs | CREDITS.md:124 |
+| `public/audio/stops/scylla/hurt.mp3` | 15 KB | Generated by the team with ElevenLabs | CREDITS.md:123 |
+| `public/audio/stops/scylla/snap.mp3` | 12 KB | Generated by the team with ElevenLabs | CREDITS.md:122 |
+| `public/audio/stops/scylla/snarl.mp3` | 21 KB | Generated by the team with ElevenLabs | CREDITS.md:121 |
+| `public/audio/stops/sirens/ambience.mp3` | 361 KB | Generated by the team with ElevenLabs | CREDITS.md:115 |
+| `public/audio/stops/sirens/hurt.mp3` | 15 KB | Generated by the team with ElevenLabs | CREDITS.md:118 |
+| `public/audio/stops/sirens/note.mp3` | 29 KB | Generated by the team with ElevenLabs | CREDITS.md:116 |
+| `public/audio/stops/sirens/swoop.mp3` | 20 KB | Generated by the team with ElevenLabs | CREDITS.md:117 |
+| `public/audio/stops/sirens/wave.mp3` | 17 KB | Generated by the team with ElevenLabs | CREDITS.md:119 |
+| `public/audio/stops/suitors/ambience.mp3` | 361 KB | Generated by the team with ElevenLabs | CREDITS.md:130 |
+| `public/audio/stops/suitors/hurt.mp3` | 15 KB | Generated by the team with ElevenLabs | CREDITS.md:134 |
+| `public/audio/stops/suitors/jeer.mp3` | 27 KB | Generated by the team with ElevenLabs | CREDITS.md:133 |
+| `public/audio/stops/suitors/sword.mp3` | 17 KB | Generated by the team with ElevenLabs | CREDITS.md:132 |
+| `public/audio/stops/suitors/throw.mp3` | 15 KB | Generated by the team with ElevenLabs | CREDITS.md:131 |
+| `public/audio/taunts/index.json` | 232 B | not an asset (index.json, a list of the clips beside it) | - |
+| `public/audio/taunts/taunt_charybdis_1.mp3` | 79 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_charybdis_2.mp3` | 44 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_charybdis_3.mp3` | 65 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_circe_1.mp3` | 57 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_circe_2.mp3` | 56 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_circe_3.mp3` | 60 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_scylla_1.mp3` | 50 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_sirens_1.mp3` | 93 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_sirens_2.mp3` | 72 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_sirens_3.mp3` | 84 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_suitors_1.mp3` | 66 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_suitors_2.mp3` | 74 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/audio/taunts/taunt_suitors_3.mp3` | 70 KB | Generated by the team with ElevenLabs | CREDITS.md:77 |
+| `public/draco/draco_decoder.js` | 512 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
+| `public/draco/draco_decoder.wasm` | 192 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
+| `public/draco/draco_wasm_wrapper.js` | 58 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:146 |
+| `public/favicon.svg` | 270 B | Drawn by the team | CREDITS.md:59 |
+| `public/hdri/qwantani_dusk_2_puresky_1k.hdr` | 1.2 MB | CC0 | CREDITS.md:18 |
+| `public/hdri/small_cave_1k.hdr` | 1.8 MB | CC0 | CREDITS.md:17 |
+| `public/mediapipe/pose_landmarker_lite.task` | 5.8 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:148 |
+| `public/mediapipe/wasm/vision_wasm_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/mediapipe/wasm/vision_wasm_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/mediapipe/wasm/vision_wasm_module_internal.js` | 337 KB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/mediapipe/wasm/vision_wasm_module_internal.wasm` | 14.7 MB | Bundled software: Apache-2.0, by Google | CREDITS.md:147 |
+| `public/models/dev/RobotExpressive.glb` | 464 KB | CC0 | CREDITS.md:30 |
+| `public/models/hero/spartan.glb` | 758 KB | CC0 | CREDITS.md:36 |
+| `public/models/polyphemus/giant.glb` | 246 KB | CC0 | CREDITS.md:44 |
+| `public/models/suitors/suitor.glb` | 2.5 MB | CC0 | CREDITS.md:50 |
+| `public/textures/rock_surface_diff_1k.jpg` | 886 KB | CC0 | CREDITS.md:19 |
+| `public/textures/rock_surface_nor_gl_1k.jpg` | 1.2 MB | CC0 | CREDITS.md:19 |
+| `public/textures/rock_surface_rough_1k.jpg` | 643 KB | CC0 | CREDITS.md:19 |
+| `public/textures/rocky_trail_diff_1k.jpg` | 1.1 MB | CC0 | CREDITS.md:20 |
+| `public/textures/rocky_trail_nor_gl_1k.jpg` | 1.4 MB | CC0 | CREDITS.md:20 |
+| `public/textures/rocky_trail_rough_1k.jpg` | 747 KB | CC0 | CREDITS.md:20 |
+| `public/ui/laurel.svg` | 886 B | Drawn by the team | CREDITS.md:58 |
+| `public/ui/owl.svg` | 726 B | Drawn by the team | CREDITS.md:58 |
+| `public/ui/palmette.svg` | 786 B | Drawn by the team | CREDITS.md:58 |
+| `public/ui/ship.svg` | 999 B | Drawn by the team | CREDITS.md:58 |
+
+## Sources opened for the third report
+
+All on 2026-11-14. "Fetched" means the page was read through a tool that returns the page's text or a summary of it, not by a person in a browser.
+
+| Files | Source opened | What it says |
+|---|---|---|
+| The two skies and six textures | Fetched each asset's Poly Haven page. Read `https://api.polyhaven.com/info/<asset>` for the authors | CC0 on all four pages. Authors: Andreas Mischok (Small Cave), Greg Zaal and Jarod Guest (Qwantani Dusk 2 Puresky), Amal Kumar (Rock Surface, Rocky Trail) |
+| The dev robot | Read the README at three.js tag `r187`. Compared our file's git blob hash with the one GitHub lists for that tag | "Model by Tomás Laulhé", "Modifications by Don McCurdy", "CC0 1.0". The hashes are equal |
+| The giant | Fetched the Poly Pizza page | "Public Domain (CC0)", author Quaternius |
+| The hero | Fetched the pack pages of Universal Animation Library 1 and 2 on quaternius.com (`https://quaternius.com/packs/universalanimationlibrary.html` and `.../universalanimationlibrary2.html`), their itch.io pages, and the viewer page | All four pack pages say "(CC0 License)", author Quaternius. On the two quaternius.com pages the word "CC0" links to `https://creativecommons.org/publicdomain/zero/1.0/`. The viewer page states no licence |
+| The suitor | Fetched the pack pages of Universal Base Characters and Universal Animation Library 2 on quaternius.com (`https://quaternius.com/packs/universalbasecharacters.html` and `.../universalanimationlibrary2.html`) and their itch.io pages | All four say "(CC0 License)", author Quaternius. The quaternius.com pages link "CC0" to the same deed |
+| The generated clips and music | Fetched the ElevenLabs Terms of Service and Music Terms again | Both last updated 09 October 2026. The points read again match `CREDITS.md`: the user keeps the rights in their output, paid plans may use it commercially, the Creator plan's music rights leave out film, TV, radio and "Studio Games", and paid plans need no attribution. The indie game limits were not read again |
+| The icons and the favicon | Read the files, their git history and the PR text | PR #134: "ship, owl, palmette and laurel SVGs drawn in code". PR #105 says only "public/favicon.svg linked in index.html"; the file came in with the lead's commit `aea5e7a`. Each file is a few plain shapes with no editor or stock-site data in it |
+| The Draco decoder | Compared SHA-256 with `node_modules/three/examples/jsm/libs/draco/gltf/` (three 0.187.0), and again, byte for byte, at `f791c52`. Read the README one folder up. Fetched `LICENSE` of github.com/google/draco | Hashes equal. README: "Apache License 2.0". The `LICENSE` file is the Apache License 2.0 |
+| The MediaPipe runtime | Compared SHA-256 with `node_modules/@mediapipe/tasks-vision/wasm/` (1.2.3), and again, byte for byte, at `f791c52`. Read its `package.json`. Fetched `LICENSE` of github.com/google-ai-edge/mediapipe | Hashes equal. `"license": "Apache-2.0"`, author `mediapipe@google.com`. The `LICENSE` file is the Apache License 2.0 |
+| The pose model | Compared the file's MD5 with the one Google's server reports for the address in `scripts/vendor-pose.sh`. Read the model card PDF that Google's Pose Landmarker page links | MD5 equal. Model card: "Licensed under Apache License, Version 2.0", authors Valentin Bazarevsky, Ivan Grishchenko and Eduard Gabriel Bazavan of Google, dated 16 April 2021 |
+
+## Not confirmed
+
+- **`License.txt` in the downloaded Quaternius packs.** The model logs say it reads "CC0 1.0 Universal". The packs are not in the repo, so that file was not read here. The pack pages on quaternius.com and itch.io say CC0 (see the table above). The site also has a general page, `https://quaternius.com/license.html` (last updated 8/28/2026), with a "Quaternius Asset License (QAL) v1.0" that does not mention CC0 and does not say which packs it covers. Someone who has the downloaded packs should read `License.txt` and confirm it is CC0.
+- **The giant.** Its CC0 is confirmed by its Poly Pizza page only. A page for it on quaternius.com was not looked for.
+- **Whether our three Quaternius GLB files are the pack files.** They were trimmed and edited, so there is no hash to compare.
+- **Code from other projects inside the MediaPipe runtime.** The `.wasm` files are compiled, and the package has no licence or notice file. Only the package's own licence was checked.
+- **A copy of the Apache License 2.0.** That licence asks that a copy of it goes with the files (section 4). `CREDITS.md` links to the text. The repo and the built game do not carry a copy.
+- **The favicon.** PR #105 does not say how it was made. "Drawn by the team" rests on the file itself (four plain shapes, no editor data) and on its commit by the lead. The lead should confirm it was written by hand.
+- **Which ElevenLabs plan the account is on.** `CREDITS.md` says Creator. That was not looked at again.
+
 ## Second report
 
-Run on branch `118-audio-credits` after merging `main` at `f07fcdd`, Saturday 5:59 PM. This is a snapshot too.
+Run on branch `118-audio-credits` after merging `main` at `f07fcdd`, Saturday 5:59 PM, with the script as it was then: it listed only `public/models`, `public/hdri`, `public/textures` and `public/audio`.
 
 - 128 files, 20.7 MB (20673282 bytes). 121 assets: 121 credited, 0 gaps. 7 not assets.
 - NOTE, public/models/suitors/suitor.glb: credited in the model log only, not in CREDITS.md
@@ -73,14 +300,14 @@ What changed since the first report:
 
 ## First report
 
-Run on `main` at `8dc1d56`, Saturday 5:40 PM. This is a snapshot: run `make credits` for the current one.
+Run on `main` at `8dc1d56`, Saturday 5:40 PM, with the same four-folder script. Its full table is in this file's history, at commit `cf6507c`.
 
-What the gaps are:
+What the gaps were:
 
-- **Audio (ours), no credit:** the 80 voice and sound effect clips in `public/audio/athena/`, `narration/`, `sfx/` and `taunts/`. `CREDITS.md` has no rows for these. We made every one with ElevenLabs through `server/tools/genClips.ts`. The README says so for sfx and athena only; for narration and taunts only the header of `server/tools/genClips.ts` does. One row per folder in `CREDITS.md` closes them.
-- **Audio (ours), licence not allowed:** the four music files. Their rows say "ElevenLabs Terms of Service ..., see below" in the Licence cell, which is not CC0, CC BY or "made by the team". We generated them, and the paragraph above the table says so, but the row does not. Starting each Licence cell with `Generated by the team with ElevenLabs` closes them.
-- **Models (the lead's agents):** `public/models/hero/warrior.glb`. `docs/models/hero-warrior.md` names the file on line 10, but its licence (CC0) is on other lines, and `CREDITS.md` has no row for it. The "CREDITS line" on line 14 of that log does not name the file, so pasting it as it is would not close the gap.
-- **Note:** `public/models/hero/spartan.glb` is found through the "CREDITS line" in `docs/models/hero-spartan.md` (line 38), but that line was never pasted into `CREDITS.md`.
+- **Audio (ours), no credit:** the 80 voice and sound effect clips in `public/audio/athena/`, `narration/`, `sfx/` and `taunts/`. `CREDITS.md` had no rows for these. We made every one with ElevenLabs through `server/tools/genClips.ts`.
+- **Audio (ours), licence not allowed:** the four music files. Their rows said "ElevenLabs Terms of Service ..., see below" in the Licence cell, which is not CC0, CC BY or "made by the team".
+- **Models (the lead's agents):** `public/models/hero/warrior.glb`. Its model log named the file on one line and its licence on others, and `CREDITS.md` had no row for it.
+- **Note:** `public/models/hero/spartan.glb` was found through a line in its model log that was never pasted into `CREDITS.md`.
 
 - 104 files, 20.8 MB (20777087 bytes). 98 assets: 13 credited, 85 gaps. 6 not assets.
 - GAP, audio (luvudeshi's agent), no credit: public/audio/athena/ (45 files)
@@ -90,110 +317,3 @@ What the gaps are:
 - GAP, audio (luvudeshi's agent), no credit: public/audio/taunts/ (13 files)
 - GAP, models, textures and skies (the lead's agents), no licence on the credit line: public/models/hero/{warrior.glb}
 - NOTE, public/models/hero/spartan.glb: credited in the model log only, not in CREDITS.md
-
-| File | Size | Licence | Credited at |
-|---|---|---|---|
-| `public/audio/.gitkeep` | 0 B | not an asset (dot file) | - |
-| `public/audio/athena/call_aegis_push.mp3` | 33 KB | GAP: no credit | - |
-| `public/audio/athena/call_any_defend.mp3` | 24 KB | GAP: no credit | - |
-| `public/audio/athena/call_any_strike.mp3` | 23 KB | GAP: no credit | - |
-| `public/audio/athena/call_block.mp3` | 31 KB | GAP: no credit | - |
-| `public/audio/athena/call_chain_punch.mp3` | 38 KB | GAP: no credit | - |
-| `public/audio/athena/call_cross.mp3` | 33 KB | GAP: no credit | - |
-| `public/audio/athena/call_dodge_left.mp3` | 24 KB | GAP: no credit | - |
-| `public/audio/athena/call_dodge_right.mp3` | 24 KB | GAP: no credit | - |
-| `public/audio/athena/call_double_palm.mp3` | 38 KB | GAP: no credit | - |
-| `public/audio/athena/call_duck.mp3` | 32 KB | GAP: no credit | - |
-| `public/audio/athena/call_hammer_fist.mp3` | 41 KB | GAP: no credit | - |
-| `public/audio/athena/call_hook.mp3` | 34 KB | GAP: no credit | - |
-| `public/audio/athena/call_jab.mp3` | 32 KB | GAP: no credit | - |
-| `public/audio/athena/call_jump.mp3` | 28 KB | GAP: no credit | - |
-| `public/audio/athena/call_knife_hand.mp3` | 33 KB | GAP: no credit | - |
-| `public/audio/athena/call_moon_arrow.mp3` | 34 KB | GAP: no credit | - |
-| `public/audio/athena/call_overhead_strike.mp3` | 36 KB | GAP: no credit | - |
-| `public/audio/athena/call_reverse_punch.mp3` | 38 KB | GAP: no credit | - |
-| `public/audio/athena/call_rising_palm.mp3` | 38 KB | GAP: no credit | - |
-| `public/audio/athena/call_spear_thrust.mp3` | 33 KB | GAP: no credit | - |
-| `public/audio/athena/call_stake_thrust.mp3` | 45 KB | GAP: no credit | - |
-| `public/audio/athena/call_sun_burst.mp3` | 41 KB | GAP: no credit | - |
-| `public/audio/athena/call_swift_dash.mp3` | 31 KB | GAP: no credit | - |
-| `public/audio/athena/call_thunderbolt.mp3` | 34 KB | GAP: no credit | - |
-| `public/audio/athena/call_trident_sweep.mp3` | 34 KB | GAP: no credit | - |
-| `public/audio/athena/call_uppercut.mp3` | 36 KB | GAP: no credit | - |
-| `public/audio/athena/fight_start.mp3` | 38 KB | GAP: no credit | - |
-| `public/audio/athena/homer_intro_polyphemus.mp3` | 148 KB | GAP: no credit | - |
-| `public/audio/athena/homer_loss.mp3` | 95 KB | GAP: no credit | - |
-| `public/audio/athena/homer_title.mp3` | 72 KB | GAP: no credit | - |
-| `public/audio/athena/homer_win.mp3` | 75 KB | GAP: no credit | - |
-| `public/audio/athena/index.json` | 708 B | not an asset (index.json, a list of the clips beside it) | - |
-| `public/audio/athena/loss.mp3` | 61 KB | GAP: no credit | - |
-| `public/audio/athena/phase_1.mp3` | 28 KB | GAP: no credit | - |
-| `public/audio/athena/phase_2.mp3` | 39 KB | GAP: no credit | - |
-| `public/audio/athena/praise_1.mp3` | 23 KB | GAP: no credit | - |
-| `public/audio/athena/praise_2.mp3` | 24 KB | GAP: no credit | - |
-| `public/audio/athena/praise_3.mp3` | 23 KB | GAP: no credit | - |
-| `public/audio/athena/taunt_polyphemus_1.mp3` | 52 KB | GAP: no credit | - |
-| `public/audio/athena/taunt_polyphemus_2.mp3` | 46 KB | GAP: no credit | - |
-| `public/audio/athena/taunt_polyphemus_3.mp3` | 79 KB | GAP: no credit | - |
-| `public/audio/athena/taunt_polyphemus_4.mp3` | 44 KB | GAP: no credit | - |
-| `public/audio/athena/warn_1.mp3` | 19 KB | GAP: no credit | - |
-| `public/audio/athena/warn_2.mp3` | 21 KB | GAP: no credit | - |
-| `public/audio/athena/warn_3.mp3` | 23 KB | GAP: no credit | - |
-| `public/audio/athena/win.mp3` | 54 KB | GAP: no credit | - |
-| `public/audio/music/fight.mp3` | 577 KB | GAP: licence not allowed | CREDITS.md:42 |
-| `public/audio/music/index.json` | 30 B | not an asset (index.json, a list of the clips beside it) | - |
-| `public/audio/music/loss.mp3` | 91 KB | GAP: licence not allowed | CREDITS.md:44 |
-| `public/audio/music/menu.mp3` | 481 KB | GAP: licence not allowed | CREDITS.md:41 |
-| `public/audio/music/win.mp3` | 72 KB | GAP: licence not allowed | CREDITS.md:43 |
-| `public/audio/narration/homer_after_charybdis.mp3` | 102 KB | GAP: no credit | - |
-| `public/audio/narration/homer_after_circe.mp3` | 129 KB | GAP: no credit | - |
-| `public/audio/narration/homer_after_polyphemus.mp3` | 117 KB | GAP: no credit | - |
-| `public/audio/narration/homer_after_scylla.mp3` | 115 KB | GAP: no credit | - |
-| `public/audio/narration/homer_after_sirens.mp3` | 116 KB | GAP: no credit | - |
-| `public/audio/narration/homer_after_suitors.mp3` | 140 KB | GAP: no credit | - |
-| `public/audio/narration/homer_before_charybdis.mp3` | 135 KB | GAP: no credit | - |
-| `public/audio/narration/homer_before_circe.mp3` | 140 KB | GAP: no credit | - |
-| `public/audio/narration/homer_before_scylla.mp3` | 125 KB | GAP: no credit | - |
-| `public/audio/narration/homer_before_sirens.mp3` | 112 KB | GAP: no credit | - |
-| `public/audio/narration/homer_before_suitors.mp3` | 112 KB | GAP: no credit | - |
-| `public/audio/narration/index.json` | 248 B | not an asset (index.json, a list of the clips beside it) | - |
-| `public/audio/sfx/defended.mp3` | 14 KB | GAP: no credit | - |
-| `public/audio/sfx/enemyHit.mp3` | 15 KB | GAP: no credit | - |
-| `public/audio/sfx/finished.mp3` | 41 KB | GAP: no credit | - |
-| `public/audio/sfx/index.json` | 124 B | not an asset (index.json, a list of the clips beside it) | - |
-| `public/audio/sfx/lost.mp3` | 49 KB | GAP: no credit | - |
-| `public/audio/sfx/opening.mp3` | 10 KB | GAP: no credit | - |
-| `public/audio/sfx/phaseChanged.mp3` | 25 KB | GAP: no credit | - |
-| `public/audio/sfx/playerHit.mp3` | 12 KB | GAP: no credit | - |
-| `public/audio/sfx/powerUnleashed.mp3` | 33 KB | GAP: no credit | - |
-| `public/audio/sfx/telegraph.mp3` | 17 KB | GAP: no credit | - |
-| `public/audio/sfx/whiffed.mp3` | 9 KB | GAP: no credit | - |
-| `public/audio/sfx/won.mp3` | 49 KB | GAP: no credit | - |
-| `public/audio/taunts/index.json` | 232 B | not an asset (index.json, a list of the clips beside it) | - |
-| `public/audio/taunts/taunt_charybdis_1.mp3` | 79 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_charybdis_2.mp3` | 44 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_charybdis_3.mp3` | 65 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_circe_1.mp3` | 57 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_circe_2.mp3` | 56 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_circe_3.mp3` | 60 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_scylla_1.mp3` | 50 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_sirens_1.mp3` | 93 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_sirens_2.mp3` | 72 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_sirens_3.mp3` | 84 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_suitors_1.mp3` | 66 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_suitors_2.mp3` | 74 KB | GAP: no credit | - |
-| `public/audio/taunts/taunt_suitors_3.mp3` | 70 KB | GAP: no credit | - |
-| `public/hdri/qwantani_dusk_2_puresky_1k.hdr` | 1.2 MB | CC0 | CREDITS.md:8 |
-| `public/hdri/small_cave_1k.hdr` | 1.8 MB | CC0 | CREDITS.md:7 |
-| `public/models/dev/RobotExpressive.glb` | 464 KB | CC0 | CREDITS.md:20 |
-| `public/models/hero/adventurer.glb` | 1.6 MB | CC0 | CREDITS.md:27 |
-| `public/models/hero/knight.glb` | 2.5 MB | CC0 | CREDITS.md:26 |
-| `public/models/hero/spartan.glb` | 758 KB | CC0 | docs/models/hero-spartan.md:38 |
-| `public/models/hero/warrior.glb` | 744 KB | GAP: no licence on the credit line | docs/models/hero-warrior.md:10 |
-| `public/models/polyphemus/giant.glb` | 246 KB | CC0 | CREDITS.md:33 |
-| `public/textures/rock_surface_diff_1k.jpg` | 886 KB | CC0 | CREDITS.md:9 |
-| `public/textures/rock_surface_nor_gl_1k.jpg` | 1.2 MB | CC0 | CREDITS.md:9 |
-| `public/textures/rock_surface_rough_1k.jpg` | 643 KB | CC0 | CREDITS.md:9 |
-| `public/textures/rocky_trail_diff_1k.jpg` | 1.1 MB | CC0 | CREDITS.md:10 |
-| `public/textures/rocky_trail_nor_gl_1k.jpg` | 1.4 MB | CC0 | CREDITS.md:10 |
-| `public/textures/rocky_trail_rough_1k.jpg` | 747 KB | CC0 | CREDITS.md:10 |
