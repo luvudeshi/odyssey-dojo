@@ -51,7 +51,7 @@ export function FightScreen(props: {
   seed: number;
   /** Set by calibration; null for keyboard play. */
   baseline?: Baseline | null;
-  /** The god the scan found, for the divine power effect; null for none. */
+  /** A god for the divine power effect; null for none. The game passes none, so Athena lends her aegis. */
   god?: GodId | null;
   /** Buttons shown once the fight is over. */
   /** Pause menu: start this fight again, or leave it for the quest map. */
@@ -121,7 +121,7 @@ export function FightScreen(props: {
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
       setLost(false);
-      const own = mergeInputs(keys, readPose(history));
+      const own = mergeInputs(keys, readPose(history, current.phase.kind === "strike" ? current.phase.move : null));
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
@@ -166,7 +166,7 @@ export function FightScreen(props: {
     const timer = setTimeout(() => { setBlowSeen(true); }, LAST_BLOW_MS);
     return () => { clearTimeout(timer); };
   }, [won]);
-  // With no god (keyboard play or a skipped scan) Athena lends her aegis, as the power-ready banner says.
+  // With no god (every fight now) Athena lends her aegis, as the power-ready banner says.
   const patron: GodId = god ?? "athena";
   useEffect(() => { patronRef.current = patron; }, [patron]);
   const running = view === "off";
