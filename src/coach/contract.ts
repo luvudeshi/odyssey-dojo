@@ -12,6 +12,8 @@ export interface WarmupStep {
   readonly say: string;
   /** How long the player has, in milliseconds. */
   readonly ms: number;
+  /** Time after the step when nothing is asked (the grade is on screen), in milliseconds. Left out: none. */
+  readonly restMs?: number;
 }
 
 export type SkillLevel = "beginner" | "average" | "good";

@@ -5,6 +5,8 @@ import type { EnemyAttack, EnemySpec } from "../core/types";
 import { MOVES } from "../moves/registry";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
 import type { Assess, Assessment, Focus, SkillLevel, StepResult, WarmupStep } from "./contract";
+import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
+import type { Grade } from "./grade";
 import { scoreWarmup } from "./habits";
 import type { DefenseId, Habit } from "./habits";
 import { trainOn } from "./train";
@@ -24,14 +26,16 @@ export const WARMUP_STEPS: readonly WarmupStep[] = [
 /** A move counts as seen at this confidence: the same line the fight uses (src/input/poseInput.ts). */
 const ON = 0.7;
 /** A move made this soon after its step starts gets full marks for speed; one at SLOW_MS or later gets none. */
-export const FAST_MS = 700;
-export const SLOW_MS = 2000;
-/** The mean step score under which the player is a beginner, and under which they are average. */
-export const BEGINNER_BELOW = 0.4;
-export const AVERAGE_BELOW = 0.75;
-/** A move scoring under this is worth working on; one at STRONG_FROM or over is already strong. */
-export const FOCUS_BELOW = 0.6;
-export const STRONG_FROM = 0.8;
+export const FAST_MS = 1000;
+export const SLOW_MS = 2200;
+/** The level follows the grades: the share of full points (every step Excellent) under which the player is a beginner, and from which they are good. */
+export const BEGINNER_BELOW = 0.45;
+export const GOOD_FROM = 0.8;
+/** What a move that was seen scores at the least. */
+const SEEN_SCORE = 0.4;
+/** A move scoring under this is worth working on; one at STRONG_FROM or over (graded Excellent) is already strong. */
+export const FOCUS_BELOW = 0.5;
+export const STRONG_FROM = SEEN_SCORE + (1 - SEEN_SCORE) * EXCELLENT_AT;
 /** What the level does to every attack's warning time. */
 export const TELEGRAPH_SCALE: Record<SkillLevel, number> = { beginner: 1.25, average: 1, good: 0.85 };
 
@@ -49,14 +53,37 @@ const TIPS: Readonly<Record<string, string>> = {
 };
 const TIP_BOTH_SIDES = "Step your whole body off the line of the attack, to either side.";
 
-/**
- * How well one step went, 0 to 1. Not seen: 0. Seen: 0.4, plus up to 0.3 for speed (all of it at FAST_MS
- * or sooner, none at SLOW_MS or later) and up to 0.3 for how well the move was made.
- */
-export function stepScore(result: StepResult): number {
+/** How well a move that was seen was made, 0 to 1: half is speed (all of it at FAST_MS or sooner, none at SLOW_MS or later), half its quality. */
+function made(result: StepResult): number {
   if (!result.done || result.reactMs === null) return 0;
   const speed = clamp01((SLOW_MS - result.reactMs) / (SLOW_MS - FAST_MS));
-  return 0.4 + 0.3 * speed + 0.3 * (Number.isFinite(result.quality) ? clamp01(result.quality) : 0);
+  return 0.5 * speed + 0.5 * (Number.isFinite(result.quality) ? clamp01(result.quality) : 0);
+}
+
+/** How well one step went, 0 to 1. Not seen: 0. Seen: 0.4, plus up to 0.3 for speed and up to 0.3 for how well the move was made. */
+export function stepScore(result: StepResult): number {
+  if (!result.done || result.reactMs === null) return 0;
+  return SEEN_SCORE + (1 - SEEN_SCORE) * made(result);
+}
+
+/**
+ * The grade the player sees for one step. Not seen: "Needs improvement", 25 points. Seen: at least "Good" (100),
+ * and "Excellent!" (150) when speed and quality together reach EXCELLENT_AT (src/coach/grade.ts).
+ */
+export function gradeStep(result: StepResult): Grade {
+  return gradeFor(result.done && result.reactMs !== null, made(result));
+}
+
+/** The level for a set of graded steps, from the share of full points. Nothing seen at all is a beginner. */
+export function levelOf(steps: readonly StepResult[]): SkillLevel {
+  if (!steps.some((result) => result.done)) return "beginner";
+  const share = steps.reduce((sum, result) => sum + gradeStep(result).points, 0) / (steps.length * POINTS.excellent);
+  return share < BEGINNER_BELOW ? "beginner" : share < GOOD_FROM ? "average" : "good";
+}
+
+/** One line on how to make a move, for the work-on list when nothing more exact was measured. */
+export function tipFor(moveId: string): string {
+  return TIPS[moveId] ?? MOVES.get(moveId)?.hint ?? "";
 }
 
 /** The lowest score each move got, by move id, in warm-up order. */
@@ -91,10 +118,12 @@ export const assessWarmup: Assess = (frames, startedAtMs, steps) => {
     let reactMs: number | null = null;
     let thrown: number | null = null;
     let peak = 0;
-    for (let frame = ordered[next]; frame && frame.t < stepStart + step.ms; frame = ordered[next]) {
+    // The rest after a step (the grade is on screen) is not judged, but its frames still pass through the history.
+    const rest = Math.max(0, step.restMs ?? 0);
+    for (let frame = ordered[next]; frame && frame.t < stepStart + step.ms + rest; frame = ordered[next]) {
       next += 1;
       history = pushFrame(history, frame);
-      if (!move || frame.t < stepStart) continue;
+      if (!move || frame.t < stepStart || frame.t >= stepStart + step.ms) continue;
       const confidence = move.detect(history);
       peak = Math.max(peak, confidence);
       if (reactMs === null && confidence >= ON) {
@@ -106,13 +135,11 @@ export const assessWarmup: Assess = (frames, startedAtMs, steps) => {
     // A strike says how well it was thrown; a defense is as good as the surest the detector got.
     const quality = done ? clamp01(thrown ?? peak) : 0;
     results.push({ step, done, reactMs, quality: Number.isFinite(quality) ? quality : 0 });
-    stepStart += step.ms;
+    stepStart += step.ms + rest;
   }
 
   const scores = moveScores(results);
-  const mean = results.reduce((sum, result) => sum + stepScore(result), 0) / Math.max(1, results.length);
-  const level: SkillLevel =
-    !results.some((result) => result.done) || mean < BEGINNER_BELOW ? "beginner" : mean < AVERAGE_BELOW ? "average" : "good";
+  const level = levelOf(results);
 
   // Weakest first. On a tie a defense comes before a punch (staying safe is learned first), then warm-up order.
   const weak = [...scores]
@@ -124,12 +151,12 @@ export const assessWarmup: Assess = (frames, startedAtMs, steps) => {
     if (focus.some((picked) => OTHER_SIDE[picked.moveId] === moveId)) continue;
     const other = OTHER_SIDE[moveId];
     const both = other !== undefined && weak.some(([id]) => id === other);
-    focus.push({ moveId, tip: both ? TIP_BOTH_SIDES : (TIPS[moveId] ?? MOVES.get(moveId)?.hint ?? "") });
+    focus.push({ moveId, tip: both ? TIP_BOTH_SIDES : tipFor(moveId) });
   }
   return {
     level,
     focus: focus.slice(0, 2),
-    strong: [...scores].filter(([, score]) => score >= STRONG_FROM).map(([id]) => id),
+    strong: [...scores].filter(([, score]) => score >= STRONG_FROM - 1e-9).map(([id]) => id),
     habits: scoreWarmup(ordered),
     steps: results,
   };
@@ -153,8 +180,8 @@ function focusNeeds(assessment: Assessment): Pick<Habit, "trains" | "severity">[
 }
 
 /**
- * The enemy for this player. A beginner gets 1.25 times the warning before every attack, a good player
- * 0.85 times, an average one the same. Then attack weights lean toward the attacks stopped by the focus
+ * The enemy for this player. The level follows the warm-up's grades (`levelOf`). A beginner gets 1.25 times
+ * the warning before every attack, a good player 0.85 times, an average one the same: those are the bounds. Then attack weights lean toward the attacks stopped by the focus
  * moves and by what the habits train (`trainOn`, capped at MAX_LEAN). Only `telegraphMs` and `weight`
  * ever change. With nothing to change (SKIPPED, or an average player with no weak spot) the same object
  * comes back.
@@ -168,6 +195,25 @@ export function tuneFor(enemy: EnemySpec, assessment: Assessment): EnemySpec {
   const timed = (attack: EnemyAttack): EnemyAttack => ({ ...attack, telegraphMs: Math.round(attack.telegraphMs * scale) });
   const [first, ...rest] = leaned.attacks;
   return { ...leaned, attacks: [timed(first), ...rest.map(timed)] };
+}
+
+const TESTED: Readonly<Record<string, string>> = { block: "block", duck: "duck", dodge_left: "dodge", dodge_right: "dodge" };
+
+/**
+ * One line for the end of the warm-up on what `tuneFor` will do for this player. `who` is the monster's name
+ * ("Polyphemus"); left out, the line speaks of every enemy.
+ */
+export function tuneLine(assessment: Assessment, who = "Your enemies"): string {
+  if (assessment.steps.length === 0) return `${who} will fight at the usual pace.`;
+  const percent = String(Math.round(Math.abs(TELEGRAPH_SCALE[assessment.level] - 1) * 100));
+  const pace: Record<SkillLevel, string> = {
+    beginner: `${who} will swing slower for you: ${percent}% more warning before every attack.`,
+    average: `${who} will fight at the usual pace.`,
+    good: `${who} will press you harder: ${percent}% less warning before every attack.`,
+  };
+  const needs = [...assessment.habits, ...focusNeeds(assessment)].filter((need) => need.severity > 0);
+  const tested = [...new Set(needs.flatMap((need) => TESTED[need.trains] ?? []))];
+  return tested.length > 0 ? `${pace[assessment.level]} Expect more attacks you have to ${tested.join(" or ")}.` : pace[assessment.level];
 }
 
 const LEVEL_LINE: Record<SkillLevel, string> = {

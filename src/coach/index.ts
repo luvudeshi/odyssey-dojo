@@ -11,3 +11,10 @@ export type { PracticeState, PracticeSummary, PracticeTip, RepResult, Trend } fr
 // The move guide: a looping figure per move and a live checklist of what its detector sees. The component is ./ui/MoveGuide.
 export { guideFor, liveChecks, poseAt, toScreen } from "./guide";
 export type { Guide, GuideKeyframe, LiveCheck, LiveChecks } from "./guide";
+// One grade for one attempt at a move: the word the player sees and the points it earns.
+export { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
+export type { Grade, GradeTier } from "./grade";
+// The warm-up's grades: a grade and a tip per step, the end-of-warm-up highlights, and the line on what was tuned.
+export { TELEGRAPH_SCALE, gradeStep, levelOf, tipFor, tuneLine } from "./warmup";
+export { MAX_WORK_ON, feedbackFor, highlights } from "./warmupGrades";
+export type { Highlights, StepFeedback } from "./warmupGrades";
