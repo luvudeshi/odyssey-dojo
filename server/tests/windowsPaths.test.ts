@@ -12,6 +12,7 @@ import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Config } from "../env";
 import { decodeEnvFile, loadEnvFile } from "../lib/envFile";
+import { checkClips, checkPoseFiles } from "../lib/preflightChecks";
 import { CARD_FILE, VIDEO_KINDS, createReplay, findReplay, isReplayId, replayDir, videoFile } from "../lib/replayStore";
 import { STOP_CLIPS } from "../tools/stopClips";
 import { isInside, listFiles, toPosix, windowsNameProblem } from "./support/paths";
@@ -177,6 +178,25 @@ test("a .env file saved by a Windows editor or by PowerShell is still read", () 
   loadEnvFile(dir, empty);
   expect(empty).toEqual({});
   expect(warn).toHaveBeenCalledTimes(1);
+});
+
+test("the preflight reads a clip index saved on Windows, and tells a Windows user how to get the pose files", () => {
+  const audio = join(scratch, "audio");
+  for (const [folder, id, index] of [
+    // Git checks text files out with CRLF on Windows by default.
+    ["athena", "win", '[\r\n  "win"\r\n]\r\n'],
+    ["sfx", "won", '﻿["won"]\r\n'],
+  ] as const) {
+    mkdirSync(join(audio, folder), { recursive: true });
+    writeFileSync(join(audio, folder, "index.json"), index);
+    writeFileSync(join(audio, folder, `${id}.mp3`), "x");
+  }
+  expect(checkClips(audio)).toEqual({ level: "PASS", name: "clips", detail: "1 Athena, 1 effects" });
+
+  const empty = join(scratch, "no-pose-files");
+  expect(checkPoseFiles(empty, "win32").detail).toContain("run npm install from Git Bash");
+  expect(checkPoseFiles(empty, "darwin").detail).not.toContain("Git Bash");
+  expect(checkPoseFiles(empty, "win32").level).toBe("FAIL");
 });
 
 test("the name check knows what Windows refuses", () => {
