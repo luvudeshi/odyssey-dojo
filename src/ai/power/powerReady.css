@@ -2,11 +2,12 @@
    theme's own rules cannot reach in and nothing here leaks out. Colours: the god's accent (--power-ready-accent, set
    inline) and the theme's --ink and --white, each with a fallback. Only transform and opacity are animated. */
 .power-ready.power-ready--live {
-  /* Bottom right: under the prompt card and beside the hero, who stands at the bottom centre of the battle view with
-     his feet near the lower edge. It never crosses the middle, so the hero, the camera panel (bottom left) and a
-     power chip at the bottom centre stay clear. --power-ready-left, -right and -bottom move it if the HUD changes. */
-  position: absolute; left: var(--power-ready-left, 51%); right: var(--power-ready-right, 24px); bottom: var(--power-ready-bottom, clamp(14px, 2.4vh, 24px)); z-index: 6;
-  display: flex; justify-content: flex-end; margin: 0; padding: 0; pointer-events: none;
+  /* Bottom centre, on the lower edge of the fight: a wide plate two lines tall, so it stays under the hero's feet (he
+     stands just left of the middle, feet at about 86% of the height) and far below the prompt card. The camera panel
+     (bottom left) ends before it starts. --power-ready-bottom lifts it over a power chip at the bottom centre (the
+     pebble HUD's .hb-power needs 62px); --power-ready-left and -right narrow the strip it is centred in. */
+  position: absolute; left: var(--power-ready-left, 0px); right: var(--power-ready-right, 0px); bottom: var(--power-ready-bottom, clamp(10px, 1.6vh, 18px)); z-index: 6;
+  display: flex; justify-content: center; margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: center; line-height: 1;
   color: var(--white, #f2e4c8);
 }
@@ -14,7 +15,7 @@
 
 /* The glow is one fixed shadow; the pulse scales the whole plate a little. */
 .power-ready .power-ready__frame {
-  position: relative; max-width: min(100%, 640px);
+  position: relative; max-width: min(calc(100% - 16px), 900px);
   filter: drop-shadow(0 0 12px var(--power-ready-accent, #ffd9a0)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
   animation: power-ready-in 0.35s ease-out both, power-ready-pulse 1.3s ease-in-out 0.35s infinite;
   will-change: transform, opacity;
@@ -24,42 +25,42 @@
   padding: 3px; background: var(--power-ready-accent, #ffd9a0);
   clip-path: polygon(26px 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 26px 100%, 0 50%);
 }
+/* Wide, not tall: whose power and the move's name on the left, how to throw it on the right. */
 .power-ready .power-ready__plate {
-  padding: 11px clamp(34px, 3vw, 52px) 13px; background: var(--ink, #17110d);
+  display: grid; grid-template-columns: auto auto; grid-template-areas: "title how" "move how"; align-items: center; column-gap: clamp(14px, 1.4vw, 22px);
+  padding: 8px clamp(32px, 2.8vw, 46px) 9px; background: var(--ink, #17110d);
   clip-path: polygon(25px 0, calc(100% - 25px) 0, 100% 50%, calc(100% - 25px) 100%, 25px 100%, 0 50%);
 }
 
 .power-ready .power-ready__title {
-  font-size: clamp(14px, 1.3vw, 20px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  grid-area: title; font-size: clamp(13px, 1.2vw, 19px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0);
 }
 .power-ready .power-ready__move {
-  margin-top: 5px; font-size: clamp(34px, 3.5vw, 54px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  grid-area: move; margin-top: 3px; font-size: clamp(30px, 2.9vw, 48px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8); text-shadow: 0 2px 0 var(--ink, #17110d);
 }
 .power-ready .power-ready__how {
-  margin-top: 6px; font-size: clamp(18px, 1.6vw, 25px); font-weight: 600; line-height: 1.25; letter-spacing: 0.02em; text-wrap: balance;
+  grid-area: how; max-width: 14.5em; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
+  font-size: clamp(18px, 1.72vw, 27px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
   color: var(--white, #f2e4c8);
 }
-.power-ready .power-ready__or { font-size: 0.78em; opacity: 0.85; white-space: nowrap; }
+.power-ready .power-ready__or { font-size: 0.85em; opacity: 0.9; white-space: nowrap; }
 .power-ready .power-ready__key {
-  all: unset; display: inline-block; min-width: 1.5em; padding: 0.12em 0.4em; margin: 0 0.1em; vertical-align: 0.06em;
+  all: unset; display: inline-block; min-width: 1.5em; padding: 0.1em 0.4em; margin: 0 0.1em; vertical-align: 0.06em;
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
   font: inherit; font-weight: 700; line-height: 1.1; text-align: center; color: var(--power-ready-accent, #ffd9a0);
 }
 /* Keyboard play: the key is the instruction, so it is nearly as large as the move's name. */
-.power-ready.power-ready--keys .power-ready__how { font-size: clamp(24px, 2.3vw, 34px); letter-spacing: 0.08em; text-transform: uppercase; }
+.power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2.6vw, 40px); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
 @keyframes power-ready-in { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
-@keyframes power-ready-pulse { 50% { transform: scale(1.04); } }
+@keyframes power-ready-pulse { 50% { transform: scale(1.03); } }
 @media (prefers-reduced-motion: reduce) {
   .power-ready .power-ready__frame { animation: none; }
 }
-/* Short screens (1280 x 720 and under): tighter and lower, so a two-line plate stays below the prompt card, whose
-   foot is at 554px of 720 on the star-chart HUD. */
-@media (max-height: 760px) {
-  .power-ready.power-ready--live { bottom: var(--power-ready-bottom, 10px); }
-  .power-ready .power-ready__plate { padding-top: 7px; padding-bottom: 8px; }
-  .power-ready .power-ready__move { margin-top: 2px; }
-  .power-ready .power-ready__how { margin-top: 3px; line-height: 1.18; }
+/* Narrow screens (a phone held upright): the three lines stack, as there is no room for two columns. */
+@media (max-width: 760px) {
+  .power-ready .power-ready__plate { grid-template-columns: auto; grid-template-areas: "title" "move" "how"; padding: 7px 30px 8px; }
+  .power-ready .power-ready__how { max-width: none; margin-top: 4px; padding-left: 0; border-left: 0; }
 }
