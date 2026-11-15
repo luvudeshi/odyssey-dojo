@@ -215,7 +215,7 @@ After two clean reps of a move its card drops the drawing and the hint; after fi
 
 1. **Robustness:** every move has a key, the camera and the keys feed the same tested engine, and nothing in the fight needs a network.
 2. **Theme:** it is Odysseus's route home, one monster per stop, and this stop ends the way Book 9 does: with the stake.
-3. **Creativity:** the game teaches, then stops telling you what you already know: the card steps back from a drawing with a hint, to one word, to only a timer. `[pending #11, #24]` By the end you are reading the monster and not the card. **Today:** stop after "only a timer".
+3. **Creativity:** the game teaches, then stops telling you what you already know: the card steps back from a drawing with a hint, to the word and its target, to only the word and its timer. `[pending #11, #24]` By the end you are reading the monster and not the card. **Today:** stop after "only the word and its timer".
 
 ## The ten questions
 
@@ -238,7 +238,7 @@ A jab is the left elbow going from bent to straight at shoulder height inside 45
 The fights are the monsters Odysseus met, in the order he met them, and each is built from its episode: Polyphemus's weak spot is his one eye, he throws boulders, and his fight cannot end until you drive in the olive stake. You also win the way Odysseus does: you wait, read the attack, and strike the one opening. Athena, his patron, coaches you by voice. `[if wired]` The camera names the god you take after.
 
 **7. What is new here?**
-The fight teaches. The prompt card shrinks as you get a move right, from a drawing with a hint, to one word, to only a timer. The moves are real ones (guard, slip, duck, jab, cross, hook), always defend first and then counter. And it needs only a laptop webcam and a browser tab: no depth camera, no controller, nothing to install.
+The fight teaches. The prompt card shrinks as you get a move right, from a drawing with a hint, to the word and its target, to only the word and its timer. The moves are real ones (guard, slip, duck, jab, cross, hook), always defend first and then counter. And it needs only a laptop webcam and a browser tab: no depth camera, no controller, nothing to install.
 
 **8. Does it really teach you to fight?**
 It teaches the shape and timing of a move: hands up before the blow lands, weight across on a dodge, a straight arm on a jab. It cannot teach contact, distance or power, and it does not replace a coach. Rating how well each strike is thrown (GOOD, GREAT, PERFECT, on screen now), one line per move on what it is for (on the result screen now), and a ghost outline to line up with (built, switched off) are how we take it further.
@@ -261,7 +261,7 @@ Each of us ran a coding agent, and we treated the three agents like three more t
 These need a change outside this document. They are listed here because the pitch depends on them.
 
 1. **Done: the fight fits the judged slot.** Polyphemus's health is down from 400 to 162. In the simulation a slower player (70 percent right, a second to strike) wins 29 fights of 30 in about a minute and a half, and the test's player wins in about a minute; the comment in the pacing test still names `hp` as the knob.
-2. **The card disappears after five clean reps** (bug 1 in [playtest.md](playtest.md), reported on `#24`). Either keep the word at the last level or give each of the four attacks its own animation `[pending #11]`. Until then the presenter calls the moves.
+2. **Done: the card keeps the word at every level** (bug 1 in [playtest.md](playtest.md), reported on `#24`). After five clean reps the card still shows the move's name, its key and the timer (`promptLevel` in `src/combat/engine.ts`). Giving each of the four attacks its own animation is still `[pending #11]`; until then the presenter calls a move only when the judge is slow to read it.
 3. **The third phase is named Blinded, but the stake that blinds him comes after it.** A judge who knows Book 9 may notice. The name now shows on screen for a moment when the phase starts, and the script avoids saying it; renaming the phase is a data change in `src/enemies/defs/polyphemus.ts`.
 4. **Athena's line at the third phase is "He is blind! Stay light!"** (`phase_2` in `src/audio/athenaLines.ts`). She is wired in now, so the judge hears point 3 said out loud before the stake.
 5. **Done in the engine: Athena's phase lines have room.** Each later phase of each of the six monsters has its own line, picked by the phase's name, so only Polyphemus hears "He takes his club!". After a strike that changes the phase the engine now pauses 3 s (`PHASE_RECOVER_MS` in `src/combat/engine.ts`) instead of 0.7 s, and the longest phase clip is 2.9 s (`phase_the_toll.mp3`), so the next defense call should no longer cut the line. Nobody has logged hearing a whole one.
