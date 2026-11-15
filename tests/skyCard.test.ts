@@ -21,8 +21,8 @@ describe("SkyPromptCard at every mastery level", () => {
         expect(html).toContain(`<kbd>${keyLabel(m.key)}</kbd>`);
         expect(html).toContain('role="meter"');
         expect(html).toContain('aria-valuenow="50"');
-        expect(html.includes("HOLD")).toBe(m.kind === "defend");
-        expect(html.includes("stick")).toBe(successes < 2);
+        expect(html.includes("HOLD")).toBe(false); // a defend made once counts, so no card asks for a hold
+        expect(html).toContain("move-guide"); // the moving figure stays at every mastery level: it is how the player knows the pose
       });
     }
   }

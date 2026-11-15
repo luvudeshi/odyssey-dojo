@@ -101,6 +101,13 @@ function check(
     expect(next.phase.kind).toBe(prev.phase.kind);
     expect(next).toEqual({ ...prev, phase: next.phase });
     if ("msLeft" in prev.phase && "msLeft" in next.phase) expect(next.phase.msLeft).toBe(prev.phase.msLeft - dt);
+    // A waiting defend remembers its counter: "ready" once it has been down, "met" once it is made after that, and never back.
+    if (prev.phase.kind === "defend" && next.phase.kind === "defend") {
+      const held = input.held.has(prev.phase.attack.counter);
+      const was = prev.phase.seen;
+      const now = dt <= 0 ? was : was === "met" || (was === "ready" && held) ? "met" : held ? was : "ready";
+      expect(next.phase.seen).toBe(now);
+    }
   }
   // Something happened: the state says the same thing as the events.
   for (const event of events) {
@@ -111,12 +118,14 @@ function check(
         break;
       case "defended":
         expect(prev.phase.kind === "defend" && prev.phase.attack === event.attack).toBe(true);
-        expect(input.held.has(event.attack.counter)).toBe(true);
+        // Made once after the attack was shown, or held as it lands.
+        expect(input.held.has(event.attack.counter) || (prev.phase.kind === "defend" && prev.phase.seen === "met")).toBe(true);
         expect(next.mastery[event.attack.counter]).toBe((prev.mastery[event.attack.counter] ?? 0) + 1);
         break;
       case "playerHit":
         expect(prev.phase.kind === "defend" && prev.phase.attack === event.attack).toBe(true);
         expect(input.held.has(event.attack.counter)).toBe(false);
+        expect(prev.phase.kind === "defend" && prev.phase.seen === "met").toBe(false);
         expect(event.damage).toBe(event.attack.damage);
         expect(next.playerHp).toBe(Math.max(0, prev.playerHp - event.damage));
         expect(next.combo).toBe(0);

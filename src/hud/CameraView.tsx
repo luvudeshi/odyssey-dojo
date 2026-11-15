@@ -124,7 +124,7 @@ function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boole
   context.lineWidth = 1.4 * ratio;
   context.strokeStyle = "#e8dabb";
   lines.forEach(({ from, to, faint }, bone) => {
-    context.globalAlpha = faint ? 0.12 : 0.4;
+    context.globalAlpha = faint ? 0.2 : 0.7;
     context.beginPath();
     context.moveTo(from.x, from.y);
     context.lineTo(to.x, to.y);
@@ -143,10 +143,14 @@ function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boole
     lay(JOINT_EDGE, dot.faint, dot.x, dot.y, stone * 1.75);
     lay(TERRA, dot.faint, dot.x, dot.y, stone * 1.4);
   }
+  // Every stone gets a dark edge, so the skeleton reads on a bright room as well as a dark one.
+  context.strokeStyle = JOINT_EDGE;
+  context.lineWidth = 1.6 * ratio;
   for (const [key, path] of batches) {
     const [color = TERRA, faint] = key.split("|");
     context.globalAlpha = faint === "true" ? 0.3 : 1;
     context.fillStyle = color;
+    context.stroke(path);
     context.fill(path);
   }
   context.globalAlpha = 1;

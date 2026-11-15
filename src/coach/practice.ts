@@ -31,13 +31,13 @@ const tip = (part: string, line: string): PracticeTip => ({ part, tip: line });
 /** Every tip practice can give. The part names are plain words: the summary says "Work on <part>: <tip>". */
 export const PRACTICE_TIPS = {
   // Not the player's doing: said instead of a tip about the move.
-  camera: tip("camera", "I cannot see you. Stand where your head, shoulders and hips are in the picture."),
+  camera: tip("camera", "I cannot see you. Stand where your head and shoulders are in the picture."),
   stance: tip("standing start", "Stand still facing the camera for a second first, so I can measure the move."),
   feet: tip("feet in view", "I cannot see your feet. Step back until your whole body is in the picture."),
   still: tip("no move seen", "I did not see a move. Take your time, then do it once, clearly."),
   // Any move with no table of its own, or one whose every measured part was strong but still did not count.
   strike: tip("whole move", "Do it as one sharp move from your guard, then come straight back to guard."),
-  defend: tip("whole move", "Make the move bigger and hold it for a moment, eyes on what is coming."),
+  defend: tip("whole move", "Make the move bigger and do it once, clearly, while the attack is coming."),
   // Straight punches and pushes: jab, cross, reverse punch, spear thrust, double palm, chain punch.
   reach: tip("reach", "Reach all the way out, then bring the hand straight back to your face."),
   height: tip("height", "Finish with your fist level with your shoulder, not above or below it."),
@@ -64,7 +64,7 @@ export const PRACTICE_TIPS = {
   sweepOpen: tip("arm", "Open your arm out nearly straight as the sweep finishes."),
   // Block.
   guard: tip("guard", "Bring both fists right up to your cheeks. Hands at your chest leave your head open."),
-  hold: tip("hold", "Keep your hands up for a moment longer. Lower them only when it is safe."),
+  hold: tip("hold", "Keep your fists up for a beat so the guard reads clearly. Once is enough."),
   // Duck.
   depth: tip("depth", "Drop lower: bend your knees until your head is under where it was."),
   knees: tip("knees", "Bend your knees, not your waist, and keep your eyes up on what is coming."),

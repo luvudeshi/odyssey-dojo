@@ -2,11 +2,11 @@
 // tablet for STRIKE, the same tablet with a star burst and a pulsing rim for FINISH. The plate grows with its text, so
 // nothing runs into the countdown line. Same props and same logic as the pebble PromptCard in Hud.tsx.
 import { promptLevel } from "../../combat/engine";
-import type { MoveDef } from "../../core/types";
+import { MoveGuide } from "../../coach/ui/MoveGuide";
+import type { MoveDef, PoseHistory } from "../../core/types";
 import { useSettings } from "../../settings/store";
 import { useBoxSize } from "../../ui/pebble/hooks";
 import { keyLabel } from "../Hud";
-import { SkyFigure } from "./SkyFigure";
 import "./tokens.css";
 import "./card.css";
 
@@ -16,6 +16,8 @@ export type SkyCardKind = "defend" | "strike" | "finish";
 const FALLBACK = { w: 300, h: 460 } as const;
 const ARROWS: Record<string, string> = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" };
 const n = (v: number): string => v.toFixed(1);
+/** The keyboard and the guest have no camera frames: the guide then lists what to do without ticking it. */
+const NO_HISTORY = (): null => null;
 
 /** A four-pointed star, for the finish burst. */
 const star = (x: number, y: number, r: number): string => `M${n(x)},${n(y - r)} Q${n(x)},${n(y)} ${n(x + r)},${n(y)} Q${n(x)},${n(y)} ${n(x)},${n(y + r)} Q${n(x)},${n(y)} ${n(x - r)},${n(y)} Q${n(x)},${n(y)} ${n(x)},${n(y - r)}Z`;
@@ -43,8 +45,8 @@ function Shape({ kind, w, h, left, label }: { kind: SkyCardKind; w: number; h: n
 }
 
 /** Same props as the pebble PromptCard; `finisher` turns a strike card into the FINISH card. */
-export function SkyPromptCard(props: { move: MoveDef; target: string; successes: number; left: number; situation?: string | null; finisher?: boolean }) {
-  const { move, target, successes, left, situation, finisher } = props;
+export function SkyPromptCard(props: { move: MoveDef; target: string; successes: number; left: number; situation?: string | null; finisher?: boolean; history?: () => PoseHistory | null }) {
+  const { move, target, successes, left, situation, finisher, history = NO_HISTORY } = props;
   const level = promptLevel(successes);
   const { keyHints } = useSettings();
   const [ref, box] = useBoxSize<HTMLDivElement>();
@@ -61,16 +63,12 @@ export function SkyPromptCard(props: { move: MoveDef; target: string; successes:
       <Shape kind={kind} w={box.w || FALLBACK.w} h={box.h || FALLBACK.h} left={left} label={`${move.kind === "defend" ? "Defend" : "Strike"} time left`} />
       <div className="sky-card__tag">{tag}</div>
       <div className="sky-card__in">
-        {full && <SkyFigure diagram={move.diagram} />}
+        <MoveGuide key={move.id} move={move} history={history} />
         <div className="sky-card__word">{move.prompt}</div>
         {level !== "mini" && <div className="sky-card__target">{target}</div>}
         {full && situation && <div className="sky-card__situation">{situation}</div>}
-        {/* A defend only counts if it is still held when the attack lands. */}
-        <div className="sky-card__hint">
-          {move.kind === "defend" && <strong className="sky-card__hold">HOLD</strong>}
-          {full && <span className="sky-card__how">{move.hint}</span>}
-          {key}
-        </div>
+        {/* No HOLD tag: a defend made once while the attack is coming counts. */}
+        <div className="sky-card__hint">{key}</div>
       </div>
     </div>
   );

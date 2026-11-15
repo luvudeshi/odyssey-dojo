@@ -1,5 +1,5 @@
 // Runs one fight: reads input every frame, steps the combat engine, and hands the state to the scene and HUD.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
 import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
@@ -58,6 +58,9 @@ export function FightScreen(props: {
   const [lostWhy, setLostWhy] = useState("");
   const [state, setState] = useState(() => startFight(enemy, seed));
   const poseRef = useRef<PoseFrame | null>(null);
+  // The frames the detectors read, for the prompt card's move guide. Null on the keyboard.
+  const historyRef = useRef<PoseHistory | null>(null);
+  const readHistory = useCallback(() => historyRef.current, []);
 
   useEffect(() => {
     battle.styleId = style.id;
@@ -77,6 +80,7 @@ export function FightScreen(props: {
       if (frame) {
         poseRef.current = frame;
         history = pushFrame(history, frame);
+        historyRef.current = history;
       }
       const dt = Math.min(now - last, 100);
       const keys = keyboard.read();
@@ -149,7 +153,7 @@ export function FightScreen(props: {
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
-      <SkyHud enemy={enemy} state={state} />
+      <SkyHud enemy={enemy} state={state} history={readHistory} />
       {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
       <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
