@@ -54,7 +54,7 @@ export function App() {
   const recorded = useRef(0);
   // Achievements the last fight unlocked, shown over its result screen for a few seconds.
   const [fresh, setFresh] = useState<readonly Achievement[]>([]);
-  const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search)));
+  const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search), getProfile().cleared));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
 
