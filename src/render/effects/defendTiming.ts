@@ -1,4 +1,6 @@
 // Timing for the guard shield and the defend bursts. Pure, so it is tested without a browser.
+import type { CombatPhase } from "../../core/types";
+
 export const SHIELD_UP_S = 0.12;
 export const SHIELD_DOWN_S = 0.15;
 /** How long a burst for a counted defend lasts, and how long the shield's block flash lasts. */
@@ -21,6 +23,13 @@ export function burstFade(p: number): number {
 export function burstVariant(search: string): "a" | "b" | "c" {
   const v = new URLSearchParams(search).get("burst");
   return v === "b" || v === "c" ? v : "a";
+}
+
+/** The shield is up only while block is held and the card on screen asks for a block, plus the flash right after that block counts. */
+export function shieldUp(held: ReadonlySet<string>, phase: CombatPhase | undefined, sinceBlock: number): boolean {
+  if (!held.has("block")) return false;
+  const asked = phase?.kind === "defend" && phase.attack.counter === "block";
+  return asked || (sinceBlock >= 0 && sinceBlock < BURST_S);
 }
 
 /** Moves the shield's 0..1 size toward up (held) or down (dropped): about 120 ms to rise, 150 ms to leave. */
