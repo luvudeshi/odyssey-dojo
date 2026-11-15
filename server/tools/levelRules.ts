@@ -22,6 +22,10 @@ export const OUTLIER_LU = 3;
 export const MAX_LIMIT_DB = 3;
 /** A clip that plain gain brings this close under its target is not limited to gain the rest. */
 export const SETTLE_LU = 1;
+/** Every voice clip is an MP3 at this constant bitrate, so the size of its file gives its length with no ffmpeg. */
+export const VOICE_BITS_PER_SECOND = 128_000;
+/** A row whose length is further than this from the length of its file is stale. Tags and padding account for under 0.1 s. */
+export const STALE_SECONDS = 0.25;
 /** Samples under this level count as silence at the start and end of a clip. */
 export const SILENCE_DBFS = -50;
 /** A new try must move the gain or the limit by at least this, and the peak is aimed this far under the ceiling. */
@@ -239,6 +243,15 @@ export function listedClips(doc: string): readonly Measure[] {
     const cell = (value: number | undefined): number => value ?? Number.NaN;
     return { path: match[1] ?? "", seconds: cell(seconds), lufs: cell(lufs), truePeak: cell(truePeak), leadMs: cell(leadMs), tailMs: cell(tailMs), playDb: cell(playDb) };
   });
+}
+
+/**
+ * True when a voice clip's row gives a length that a file of `bytes` does not have: the take was replaced after the
+ * doc was written. A row with no numbers, and a clip that is not voice, is never stale.
+ */
+export function isStale(row: Measure, bytes: number): boolean {
+  if (targetFor(row.path) === null || !Number.isFinite(row.seconds)) return false;
+  return Math.abs((bytes * 8) / VOICE_BITS_PER_SECOND - row.seconds) > STALE_SECONDS;
 }
 
 /** The doc with its measured part replaced. Null when the doc has lost its two markers. */
