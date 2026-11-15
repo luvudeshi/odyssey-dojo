@@ -35,10 +35,14 @@ import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { battle, noteInput, stampPower } from "../render/battle";
 import { Scene } from "../render/Scene";
+import { LEAP_SECONDS } from "../render/strikeReach";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
 import { fallsLine } from "../enemies/wording";
+
+/** A win's result panel waits this long, so the last blow is seen: the hero's leap out and back, then a beat on the falling monster. */
+const LAST_BLOW_MS = Math.round(LEAP_SECONDS * 1000) + 450;
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -154,6 +158,14 @@ export function FightScreen(props: {
   useEffect(() => { link?.start(enemy.id, style.id, seed); }, [link, enemy, style, seed]);
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
+  // A loss shows its panel at once; a win holds it until the finishing strike has landed and been seen.
+  const won = state.phase.kind === "won";
+  const [blowSeen, setBlowSeen] = useState(false);
+  useEffect(() => {
+    if (!won) return;
+    const timer = setTimeout(() => { setBlowSeen(true); }, LAST_BLOW_MS);
+    return () => { clearTimeout(timer); };
+  }, [won]);
   // With no god (keyboard play or a skipped scan) Athena lends her aegis, as the power-ready banner says.
   const patron: GodId = god ?? "athena";
   useEffect(() => { patronRef.current = patron; }, [patron]);
@@ -196,7 +208,7 @@ export function FightScreen(props: {
           onQuit={() => { onQuit?.(); }}
         />
       )}
-      {over && (
+      {over && (!won || blowSeen) && (
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
