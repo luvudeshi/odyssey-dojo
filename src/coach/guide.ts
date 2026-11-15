@@ -1,7 +1,7 @@
 // The move guide's pure half: for each move, a short instruction and a looping figure (start pose, the move, back),
 // and a live checklist of what the move's detector is looking for, read from the frames the game holds right now.
 // The figure comes from the move's own `diagram`; the checklist from src/moves/measures.ts, relabelled for a player.
-// A new move needs an entry in GUIDES and in LABELS: tests/coachGuide.test.ts fails without them.
+// A new move needs an entry in GUIDES. Its checklist labels are in LABELS, tied to the conditions by name.
 import type { Baseline, MoveDef, MoveDiagram, PoseHistory } from "../core/types";
 import type { Side } from "../moves/handSignals";
 import { otherSide } from "../moves/handSignals";
@@ -282,74 +282,224 @@ export interface LiveChecks {
   readonly matched: boolean;
 }
 
-/** A label and its rank: 1 is shown first, 0 is shown only while it fails (the player rarely causes it). */
-type Label = readonly [string, number];
-const m = (label: string, rank = 1): Label => [label, rank];
-const x = (label: string): Label => [label, 0];
-const cap = (side: Side): string => (side === "left" ? "Left" : "Right");
-const out = (side: Side, rank = 1): Label[] => [m(`${cap(side)} arm straight`, rank), m(`${cap(side)} fist shoulder high`, rank + 1)];
-const thrust = (side: Side, rank = 1): Label[] => [...out(side, rank), m(`Snap ${side} arm out fast`, rank + 2)];
-const punch = (side: Side): Label[] => [...thrust(side), x("Not a chop from overhead")];
-/** `strike` in src/moves/handSignals.ts: the jab and the cross since the lenient-strikes PR. */
-const strike = (side: Side): Label[] => [
-  m(`${cap(side)} arm out`), m(`Snap ${side} arm out fast`, 2), x("Not a chop from overhead"), x("Punch forward, not sideways"),
-];
-const oneHanded = (side: Side): Label[] => [x(`Keep ${otherSide(side)} arm back`), x("Lift elbow, don't scoop up"), ...strike(side)];
-const rising = (side: Side, hand: string): Label[] => [
-  m(`${cap(side)} ${hand} up to chin`), x("Not above your head"), x("Hand close to your body"),
-  m(`Keep ${side} elbow bent`, 2), m(`Keep ${side} elbow low`, 2), x("Drive up, don't punch out"), x("Straight up, not across"),
-  m("Start from your waist"), x(`Keep ${otherSide(side)} hand down`),
-];
-const same = (labels: Label[]) => (): Label[] => labels;
+/** A written label and its rank: 1 is shown first, 0 is shown only while it fails (the player rarely causes it). */
+export interface Written {
+  /** Which condition it is for: the start of its `conditionKey`, whole or up to one of its commas. */
+  readonly key: string;
+  /** The way the condition compares, which has to agree too: a condition turned round is not the same condition. */
+  readonly kind: Kind;
+  /** At most 28 characters. */
+  readonly label: string;
+  readonly rank: number;
+}
+type Kind = "min" | "max" | "anyOf";
+const kindOf = (measure: Measure): Kind => ("anyOf" in measure ? "anyOf" : measure.need);
+/** A condition's name up to its first comma or bracket: what it measures, without the unit or the explanation. */
+const headOf = (name: string): string => name.split(/,| \(/)[0] ?? name;
 
-/** For every move, a label for each of its conditions in src/moves/measures.ts, in the same order. */
-export const LABELS: Readonly<Record<string, (side: Side) => Label[]>> = {
-  jab: same([...oneHanded("left"), x("Straight, not a hook")]),
-  cross: same(oneHanded("right")),
-  spear_thrust: same([x("Forward, not flung wide"), ...punch("left"), ...punch("right")]),
-  double_palm: same([...thrust("left"), ...thrust("right"), m("Hands close together")]),
-  chain_punch: (side) => [...thrust(side), m(`Pull ${otherSide(side)} fist back`, 2), m(`${cap(otherSide(side))} punch goes first`)],
-  reverse_punch: same([...thrust("right"), m("Left fist back at hip"), x("Left elbow bent")]),
-  hook: same([
-    x("Don't fold arm too tight"), m("Keep left elbow bent"), m("Left fist shoulder high", 2), m("Left elbow up and out", 3),
-    x("Arm bent the whole way"),
-    x("Swing, don't curl in"), m("Swing fist across fast"),
-  ]),
-  uppercut: same(rising("right", "fist")),
-  rising_palm: same(rising("left", "palm")),
-  hammer_fist: same([m("Bring left fist down"), m("Left fist over head first")]),
-  overhead_strike: same([m("Chop right hand down"), m("Right hand over head first")]),
-  thunderbolt: (side) => [m(`Throw ${side} hand down`), m(`${cap(side)} hand over head first`)],
-  knife_hand: same([m("Right hand out to the side"), m("Hand at neck height", 2), m("Right arm opened out", 2), m("Start across your chest")]),
-  aegis_push: same([
-    m("Hands at shoulder height", 2), m("Both arms straight"), m("Hands close together", 3), m("Start at your chest", 2),
-    m("Push toward the camera"),
-  ]),
-  sun_burst: same([m("Both arms straight"), m("Arms at shoulder height", 2), m("Arms flung wide"), m("Start with hands together")]),
-  moon_arrow: (side) => [...out(side), m(`Let go: drop ${otherSide(side)} hand`), m("Hold the draw a moment")],
-  stake_thrust: same([m("Hands together"), m("Hands down low"), m("Arms straight"), m("Start at your chest")]),
-  trident_sweep: same([
-    x("Hands between head and hips"), x("Start hands at chest height"), m("Finish on the other side"), m("Both hands sweep far, fast"),
-  ]),
-  swift_dash: same([m("Step sideways, fast")]),
-  front_kick: (side) => [m("Whole body in view", 3), m(`Lift ${side} foot high`), m(`Snap ${side} leg straight`), m("Lift your knee first", 2)],
-  knee: (side) => [
-    m("Whole body in view", 3), m(`${cap(side)} knee up high`), m("Foot tucked under knee", 2), m("Hold it up a moment", 2),
-    x("Start with foot on floor"),
+/**
+ * What a condition is called, whatever its numbers: its name in src/moves/measures.ts without what is in brackets
+ * and with every number as "#". So "ms since left elbow was bent under 115" and "... under 120" are one condition.
+ */
+export function conditionKey(name: string): string {
+  return name.replace(/\s*\([^)]*\)/g, "").replace(/-?\d+(?:\.\d+)?/g, "#").trim();
+}
+
+const MAX_LABEL = 28;
+/**
+ * A label made from the condition itself, for one nobody has written a label for: its name without units and
+ * numbers. Clumsier than a written one, but it is about the right condition.
+ */
+export function plainLabel(measure: Measure): string {
+  const head = headOf(measure.name)
+    .replace(/\s+in \d[\d.]* ms\b|\s+\d[\d.]* ms ago\b|\s+(?:under|over) \d[\d.]*/g, "")
+    .replace(/\b(?:was|were|has|have) /g, "");
+  const since = /^ms since (.*)$/.exec(head);
+  // "ms since X" at most so long is "X first"; at least so long is "not straight after X".
+  const said = since ? `${kindOf(measure) === "min" ? "Not" : "First"}: ${since[1] ?? ""}` : head.replace(/^ms /, "");
+  const words = said.replace(/\b(?:degrees|shoulder widths|torso lengths|confidence|ms|\d\S*)\b/g, "").replace(/\s+/g, " ").trim().split(" ");
+  let label = "";
+  for (const word of words) {
+    if (`${label} ${word}`.trim().length > MAX_LABEL) break;
+    label = `${label} ${word}`.trim();
+  }
+  // Cut short, it does not end on a word left hanging ("Left wrist above the").
+  label = label.replace(/(?: (?:the|its|a|to|at|of|off|from|in|on|and|not))+$/, "") || (words[0] ?? "").slice(0, MAX_LABEL) || "This move";
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+const min = (key: string, label: string, rank = 1): Written => ({ key, kind: "min", label, rank });
+const max = (key: string, label: string, rank = 1): Written => ({ key, kind: "max", label, rank });
+const group = (key: string, label: string, rank = 1): Written => ({ key, kind: "anyOf", label, rank });
+const cap = (side: Side): string => (side === "left" ? "Left" : "Right");
+const out = (side: Side, rank = 1): Written[] => [
+  min(`${side} elbow straight`, `${cap(side)} arm straight`, rank),
+  max(`${side} fist off shoulder height`, `${cap(side)} fist shoulder high`, rank + 1),
+];
+const thrust = (side: Side, rank = 1): Written[] =>
+  [...out(side, rank), max(`ms since ${side} elbow was bent under #`, `Snap ${side} arm out fast`, rank + 2)];
+const punch = (side: Side, chop = "Not a chop from overhead"): Written[] =>
+  [...thrust(side), min(`ms since ${side} hand was over the nose`, chop, 0)];
+const oneHanded = (side: Side): Written[] => [
+  group(`${otherSide(side)} arm not out`, `Keep ${otherSide(side)} arm back`, 0),
+  max(`${otherSide(side)} elbow opening in # ms`, `Keep ${otherSide(side)} arm still`, 0),
+  max(`${side} fist out to its side`, "Punch forward, not sideways", 0),
+  ...punch(side),
+  // The conditions of the lenient-strikes branch (`strike` in src/moves/handSignals.ts), written ahead of it landing.
+  max(`${otherSide(side)} arm on its way out too`, `Keep ${otherSide(side)} arm back`, 0),
+  max(`${side} hand rising with the elbow low`, "Lift elbow, don't scoop up", 0),
+  min(`${side} arm out on this frame and the one before`, `${cap(side)} arm out`),
+  min(`${side} elbow opened or upper arm rose in # ms`, `Snap ${side} arm out fast`, 2),
+  min(`ms since ${side} hand was over the punching band`, "Not a chop from overhead", 0),
+  max(`${side} fist's sideways travel in # ms`, "Punch forward, not sideways", 0),
+  max(`${side} fist swept across`, "Straight, not a hook", 0),
+];
+const rising = (side: Side, hand: string): Written[] => [
+  min(`${side} wrist above the shoulder line`, `${cap(side)} ${hand} up to chin`),
+  max(`${side} wrist above the shoulder line`, "Not above your head", 0),
+  max(`${side} wrist out to its side`, "Hand close to your body", 0),
+  max(`${side} elbow bent`, `Keep ${side} elbow bent`, 2),
+  max(`${side} elbow opening in # ms`, "Don't snap the arm straight", 0),
+  max(`ms since ${side} wrist was at the waist`, "Start from your waist"),
+  group(`${otherSide(side)} hand not coming up too`, `Keep ${otherSide(side)} hand down`, 0),
+  // The lenient-strikes branch's.
+  max(`${side} upper arm lifted from hanging`, `Keep ${side} elbow low`, 2),
+  max(`${side} elbow opening fast`, "Drive up, don't punch out", 0),
+  max(`${side} fist swept across`, "Straight up, not across", 0),
+  min(`${side} wrist's rise in # ms from under #`, "Start from your waist"),
+  max(`${otherSide(side)} wrist's rise in # ms from under #`, `Keep ${otherSide(side)} hand down`, 0),
+];
+const chain = (side: Side): Written[] => [
+  ...thrust(side),
+  group(`${otherSide(side)} arm not out`, `Pull ${otherSide(side)} fist back`, 2),
+  max(`ms since ${otherSide(side)} arm was out`, `${cap(otherSide(side))} punch goes first`),
+];
+const thrown = (side: Side): Written[] => [
+  min(`${side} wrist below its shoulder`, `Throw ${side} hand down`),
+  max(`ms since ${side} hand was over the nose`, `${cap(side)} hand over head first`),
+];
+const arrow = (bow: Side): Written[] => [
+  ...out(bow),
+  min(`${otherSide(bow)} hand from its shoulder`, `Let go: drop ${otherSide(bow)} hand`),
+  min("ms the draw was held", "Hold the draw a moment"),
+];
+const kick = (side: Side): Written[] => [
+  min("legs in view", "Whole body in view", 3),
+  min(`${side} foot above the other`, `Lift ${side} foot high`),
+  min(`${side} knee straight`, `Snap ${side} leg straight`),
+  max(`ms since ${side} knee was chambered`, "Lift your knee first", 2),
+];
+const kneeUp = (side: Side): Written[] => [
+  min("legs in view", "Whole body in view", 3),
+  min(`${side} knee above the other`, `${cap(side)} knee up high`),
+  max(`${side} knee folded`, "Foot tucked under knee", 2),
+  min(`ms ${side} knee has stayed up`, "Hold it up a moment", 2),
+  max(`ms since ${side} foot was on the floor`, "Start with foot on floor", 0),
+];
+const eitherSide = (build: (side: Side) => Written[]): Written[] => SIDES.flatMap(build);
+
+/**
+ * The labels written for each move's conditions in src/moves/measures.ts. Each is tied to its condition by the
+ * condition's name (`conditionKey`) and the way it compares, never by its place in the list, so the table can
+ * gain, lose or reorder conditions: one with no label here gets `plainLabel`, and a label whose condition has gone
+ * is simply not used. A label here says what its condition means in this move, at about today's threshold.
+ * A key is the name up to any of its commas, so the unit can be left off; the longest key that fits wins.
+ */
+export const LABELS: Readonly<Record<string, readonly Written[]>> = {
+  jab: oneHanded("left"),
+  cross: oneHanded("right"),
+  spear_thrust: [
+    group("arms not both flung out to their sides", "Thrust forward, not wide", 0),
+    max("both arms flung out to their sides", "Thrust forward, not wide", 0),
+    ...punch("left", "No left chop from overhead"), ...punch("right", "No right chop from overhead"),
   ],
-  block: same([m("Both fists by your face")]),
-  duck: same([m("Drop your shoulders lower")]),
-  dodge_left: same([m("Move your body left")]),
-  dodge_right: same([m("Move your body right")]),
-  jump: same([m("Hop up off the floor")]),
+  double_palm: [...thrust("left"), ...thrust("right"), max("gap between the wrists", "Hands close together")],
+  chain_punch: eitherSide(chain),
+  reverse_punch: [
+    ...thrust("right"), max("left wrist above the shoulder line", "Left fist back at hip"), max("left elbow bent", "Left elbow bent", 0),
+  ],
+  hook: [
+    min("left elbow bend", "Don't fold arm too tight", 0), max("left elbow bend", "Keep left elbow bent"),
+    max("left fist off shoulder height", "Left fist shoulder high", 2), max("widest left elbow in # ms", "Arm bent the whole way", 0),
+    max("left elbow closing in # ms", "Swing, don't curl in", 0), min("left fist's swing across in # ms", "Swing fist across fast"),
+    // The lenient-strikes branch's.
+    max("left fist off the shoulder line", "Left fist shoulder high", 2), min("left upper arm lifted from hanging", "Left elbow up and out", 3),
+    min("left fist's swing across in # ms, more than up", "Swing across, not upward", 0),
+    min("left fist's swing across in # ms, confidence", "Swing fist across fast"),
+  ],
+  uppercut: rising("right", "fist"),
+  rising_palm: rising("left", "palm"),
+  hammer_fist: [
+    max("left wrist above the shoulder line", "Bring left fist down"),
+    max("ms since left wrist was # above the shoulder line", "Left fist over head first"),
+  ],
+  overhead_strike: [
+    min("right wrist below its shoulder", "Chop right hand down"), max("ms since right hand was over the nose", "Right hand over head first"),
+  ],
+  thunderbolt: eitherSide(thrown),
+  knife_hand: [
+    min("right wrist out to its side", "Right hand out to the side"), max("right wrist off the shoulder line", "Hand at neck height", 2),
+    min("right elbow open", "Right arm opened out", 2),
+    max("ms since right hand was across the body at chest height", "Start across your chest"),
+  ],
+  aegis_push: [
+    max("hand furthest off shoulder height", "Hands at shoulder height", 2), min("less straight elbow", "Both arms straight"),
+    max("gap between the wrists", "Hands close together", 3), max("ms since both hands were at the chest", "Start at your chest", 2),
+    min("nearer wrist's reach forward", "Push toward the camera"),
+  ],
+  sun_burst: [
+    min("less straight elbow", "Both arms straight"), max("hand furthest off shoulder height", "Arms at shoulder height", 2),
+    min("nearer wrist out to its side of its shoulder", "Arms flung wide"),
+    max("ms since the hands were together", "Start with hands together"),
+  ],
+  moon_arrow: eitherSide(arrow),
+  stake_thrust: [
+    max("gap between the wrists", "Hands together"), min("hands below the shoulders", "Hands down low"),
+    min("less straight elbow", "Arms straight"), max("ms since the hands were loaded at the chest", "Start at your chest"),
+  ],
+  trident_sweep: [
+    min("wrists inside head-to-hip height now", "Hands between head and hips", 0),
+    min("wrists inside head-to-hip height # ms ago", "Start hands at chest height", 0),
+    min("hands' distance from the chest line", "Finish on the other side"),
+    min("slower wrist's travel in # ms", "Both hands sweep far, fast"),
+  ],
+  swift_dash: [min("shoulders moved sideways in # ms", "Step sideways, fast")],
+  front_kick: eitherSide(kick),
+  knee: eitherSide(kneeUp),
+  block: [min("guard confidence", "Both fists up by your face")],
+  duck: [min("crouch confidence", "Drop your shoulders lower")],
+  dodge_left: [min("side step confidence", "Move your body left")],
+  dodge_right: [min("side step confidence", "Move your body right")],
+  jump: [min("hop confidence", "Hop up off the floor")],
 };
+
+/**
+ * The label for one condition of a move: the one written for it, or failing that one made from the condition
+ * itself, shown only while it fails. `written` tells the two apart.
+ */
+export function labelOf(
+  moveId: string, measure: Measure, among: readonly Measure[] = [measure],
+): { readonly label: string; readonly rank: number; readonly written: boolean } {
+  const found = entryFor(moveId, measure);
+  // `among` is the move's other conditions. A label that fits two of them was written for neither: both go without.
+  const shared = among.some((other) => other !== measure && entryFor(moveId, other) === found);
+  return found && !shared ? { label: found.label, rank: found.rank, written: true } : { label: plainLabel(measure), rank: 0, written: false };
+}
+
+function entryFor(moveId: string, measure: Measure): Written | undefined {
+  const key = conditionKey(measure.name);
+  const kind = kindOf(measure);
+  return (LABELS[moveId] ?? [])
+    .filter((entry) => entry.kind === kind && (key === entry.key || key.startsWith(`${entry.key},`)))
+    .reduce<Written | undefined>((best, entry) => (!best || entry.key.length > best.key.length ? entry : best), undefined);
+}
 
 const MAX_SHOWN = 4;
 interface Read extends LiveCheck { readonly rank: number }
 
-function readOption(measures: readonly Measure[], labels: readonly Label[], history: PoseHistory | null): Read[] {
-  return measures.map((measure, index) => {
-    const [label, rank] = labels[index] ?? [measure.name.slice(0, 28), 1];
+function readOption(moveId: string, measures: readonly Measure[], history: PoseHistory | null): Read[] {
+  return measures.map((measure) => {
+    const { label, rank } = labelOf(moveId, measure, measures);
     if (!history || history.frames.length === 0) return { label, rank, met: false, progress: 0 };
     const { passed, margin } = readMeasure(measure, history);
     const near = Number.isNaN(margin) ? 0 : Math.min(0.95, Math.max(0, 1 + margin / 100));
@@ -360,16 +510,20 @@ function readOption(measures: readonly Measure[], labels: readonly Label[], hist
 /**
  * What the move's detector sees on the newest frame of `history`. `baseline`, when given, is used in place of the
  * history's own. A move either side can make shows the side that is nearest. Never throws: no frames is all unmet.
+ * `table` is the conditions to read: src/moves/measures.ts, unless a test hands in another.
  */
-export function liveChecks(move: MoveDef, history: PoseHistory | null, baseline?: Baseline | null, max = MAX_SHOWN): LiveChecks {
+export function liveChecks(
+  move: MoveDef, history: PoseHistory | null, baseline?: Baseline | null, max = MAX_SHOWN, table: typeof MEASURES = MEASURES,
+): LiveChecks {
   const held = history && baseline !== undefined ? { ...history, baseline } : history;
   const total = (reads: readonly Read[]): number => reads.reduce((sum, read) => sum + (read.met ? 1 : 0) + read.progress, 0);
-  const options = (MEASURES[move.id] ?? []).map((measures, index) =>
-    readOption(measures, LABELS[move.id]?.(SIDES[index] ?? "left") ?? [], held));
+  const options = (table[move.id] ?? []).map((measures) => readOption(move.id, measures, held));
   const reads = options.reduce<readonly Read[]>((best, option) => (best.length === 0 || total(option) > total(best) ? option : best), []);
   if (reads.length === 0) return { checks: [], overall: 0, matched: false };
-  const shown = reads.filter((read) => read.rank > 0).sort((a, b) => a.rank - b.rank).slice(0, max);
-  for (const failing of reads.filter((read) => read.rank === 0 && !read.met)) {
+  const ranked = reads.filter((read) => read.rank > 0).sort((a, b) => a.rank - b.rank);
+  // With no ranked label at all (every condition of the move is new to this file) the conditions are shown as they come.
+  const shown = (ranked.length > 0 ? ranked : reads).slice(0, max);
+  for (const failing of reads.filter((read) => read.rank === 0 && !read.met && !shown.includes(read))) {
     // A rarely failed condition takes a free row, or the place of the last one already met: it is why the move is not firing.
     const spare = shown.map((read) => read.met).lastIndexOf(true);
     if (shown.length < max) shown.push(failing);
