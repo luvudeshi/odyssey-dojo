@@ -35,6 +35,9 @@ const MEASURED_SAMPLES = 200_000;
 const FADE_SECONDS = 1;
 /** A sting starts at once: a slow fade would swallow its first note. */
 const STING_FADE_SECONDS = 0.05;
+/** The scene that follows a sting once it has played out, and how slowly it comes in: the result screen is being read. */
+const AFTER_STING: MusicScene = "menu";
+const AFTER_STING_FADE_SECONDS = 3;
 /** A faded-out clip is stopped this long after its fade ends. */
 const STOP_MARGIN_SECONDS = 0.05;
 /** Samples quieter than this at either end of a clip are MP3 padding, not sound. */
@@ -89,6 +92,8 @@ const clips = new Map<MusicScene, Clip>();
 let rig: Rig | null | undefined;
 let wanted: MusicScene | null = null;
 let playing: Playing | null = null;
+/** The sting that played to its end and was followed by the menu loop. Asking for it again does not replay it. */
+let finished: MusicScene | null = null;
 /** Who is speaking over the music now. */
 const speakers = new Set<string>();
 let volume = 1;
@@ -185,8 +190,7 @@ function release({ context }: Rig, { source, gain, level, fadeIn, since }: Playi
   }
 }
 
-function begin({ context, bus, dip }: Rig, scene: MusicScene, { buffer, level, loop }: Clip): Playing {
-  const { fadeIn } = SCENES[scene];
+function begin({ context, bus, dip }: Rig, scene: MusicScene, { buffer, level, loop }: Clip, fadeIn = SCENES[scene].fadeIn): Playing {
   const now = context.currentTime;
   const source = context.createBufferSource();
   source.buffer = buffer;
@@ -204,8 +208,11 @@ function begin({ context, bus, dip }: Rig, scene: MusicScene, { buffer, level, l
   return { scene, source, gain, level, fadeIn, since: now };
 }
 
-/** Brings what is heard in line with the wanted scene. Safe to call at any time, any number of times. */
-function sync(active: Rig): void {
+/**
+ * Brings what is heard in line with the wanted scene. Safe to call at any time, any number of times.
+ * `fadeIn` replaces the scene's own fade in, for a scene started now.
+ */
+function sync(active: Rig, fadeIn?: number): void {
   try {
     if (playing && playing.scene !== wanted) {
       const old = playing;
@@ -222,10 +229,26 @@ function sync(active: Rig): void {
     }
     const clip = clips.get(wanted);
     // Not loaded yet (this runs again when it is), or missing: silence.
-    if (clip) playing = begin(active, wanted, clip);
+    if (!clip) return;
+    const started = begin(active, wanted, clip, fadeIn);
+    playing = started;
+    if (!clip.loop) started.source.onended = () => { afterSting(active, started); };
   } catch (error) {
     log("warn", "music.playFailed", error);
   }
+}
+
+/**
+ * A sting has stopped. If it played to its end while it was still the scene, the result screen would be silent from
+ * here until a button is pressed, so the menu loop comes in under it. The screens ask for "menu" later anyway, and by
+ * then it is the wanted scene, so that call changes nothing. A sting stopped by a change of scene is left alone.
+ */
+function afterSting(active: Rig, sting: Playing): void {
+  if (playing !== sting || wanted !== sting.scene) return;
+  finished = sting.scene;
+  wanted = AFTER_STING;
+  playing = null;
+  sync(active, AFTER_STING_FADE_SECONDS);
 }
 
 async function loadClip(active: Rig, scene: MusicScene): Promise<void> {
@@ -292,10 +315,12 @@ function createRig(): Rig | null {
 /**
  * Fades to the music for a scene: "menu" (cave ambience, looped), "fight" (battle music, looped), "win" or "loss"
  * (a short sting, played once). Asking for the scene already wanted does nothing, so this can be called on every render.
+ * A sting that plays to its end is followed by the menu loop, faded in slowly, so the result screen is not left silent.
  */
 export function startMusic(scene: MusicScene): void {
   try {
-    if (!(scene in SCENES) || scene === wanted) return;
+    if (!(scene in SCENES) || scene === wanted || scene === finished) return;
+    finished = null;
     wanted = scene;
     if (rig === undefined) rig = createRig();
     if (rig) sync(rig);
@@ -306,6 +331,7 @@ export function startMusic(scene: MusicScene): void {
 
 /** Fades the music out. */
 export function stopMusic(): void {
+  finished = null;
   wanted = null;
   if (rig) sync(rig);
 }

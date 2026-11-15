@@ -523,3 +523,30 @@ test("the shared voice is silent, not broken, where there is no audio", () => {
   }).not.toThrow();
   expect(speakLine("fight_start")).toBe(false);
 });
+
+test("a warning that ends late on a busy laptop is still followed by the call that waited for it", () => {
+  const now = vi.spyOn(Date, "now").mockReturnValue(0);
+  const { voice, started, stopped, end } = fakeVoice();
+  voice.handle([playerHit]);
+  now.mockReturnValue(650);
+  voice.handle([telegraph]);
+  // Measured with two browsers running at once: the 1.36 s warning was reported over at 1.55 s, so the call waited 0.9 s.
+  now.mockReturnValue(1550);
+  end();
+  expect(started).toEqual(["warn_1", "call_duck"]);
+  expect(stopped).toEqual([]);
+});
+
+test("a warning that has stalled does not keep the calls waiting: the next call cuts it", () => {
+  const now = vi.spyOn(Date, "now").mockReturnValue(0);
+  const { voice, started, stopped } = fakeVoice();
+  voice.handle([playerHit]);
+  now.mockReturnValue(650);
+  voice.handle([telegraph]);
+  expect(started).toEqual(["warn_1"]);
+  // The clip never reports its end. No warning lasts this long, so the next call takes the voice as it did before.
+  now.mockReturnValue(4000);
+  voice.handle([opening]);
+  expect(started).toEqual(["warn_1", "call_jab"]);
+  expect(stopped).toEqual(["warn_1"]);
+});
