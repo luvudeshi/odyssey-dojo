@@ -95,8 +95,8 @@ const NEARLY_STRAIGHT = 135;
 export const BENT = 115;
 /** A punch snaps: the elbow goes from bent to straight inside this many milliseconds. A reach takes longer. */
 export const SNAP_MS = 200;
-const OPENING_MS = 100;
-const OPENING_DEGREES = 20;
+export const OPENING_MS = 100;
+export const OPENING_DEGREES = 20;
 
 /** True when the hand was higher than the nose at some point in the last `ms` milliseconds. */
 export function handWasOverhead(history: PoseHistory, side: Side, ms: number): boolean {
