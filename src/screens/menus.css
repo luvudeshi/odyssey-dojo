@@ -32,31 +32,6 @@
 .menu .style-card small { display: block; margin-top: 6px; font: 500 18px/1.3 var(--pb-font-body); letter-spacing: 0; text-transform: none; opacity: 1; color: var(--pb-text); }
 .style-card__glyph { display: block; margin: 0 auto 6px; }
 
-/* Quest map: dotted sea rows, a dotted route, one island per stop. */
-.chart { position: relative; width: min(92vw, 1000px, calc(48vh * 1000 / 420)); aspect-ratio: 1000 / 420; margin: 0.3rem 0 0.6rem; }
-.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.wave { fill: none; stroke: var(--pb-sea); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 0.1 9; opacity: 0.85; }
-.route { fill: none; stroke: var(--pb-terra); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 0.1 11; }
-.harbour { fill: var(--pb-olive); stroke: var(--pb-lead); stroke-width: 2; }
-.port { position: absolute; transform: translate(-50%, 1rem); font: 700 18px var(--pb-font-body); z-index: 2; color: var(--pb-text); }
-.menu .stop { position: absolute; transform: translate(-50%, -50%); padding: 0; margin: 0; min-width: 0; border: 0; background: none; color: var(--pb-text); z-index: 2; letter-spacing: normal; text-transform: none; box-shadow: none; }
-.menu .stop:hover:not(:disabled), .menu .stop:active:not(:disabled) { background: none; box-shadow: none; color: var(--pb-text); }
-.stop .dot { position: relative; display: grid; place-items: center; width: 76px; height: 50px; font: 700 20px var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline), 0 0 3px var(--pb-outline); transition: transform 0.12s; }
-.stop .dot canvas { position: absolute; left: 0; top: 0; }
-.stop .dot > b { position: relative; font: inherit; }
-.stop.open .dot { animation: stop-pulse 1.8s ease-in-out infinite; }
-.stop:hover:not(:disabled) .dot { transform: scale(1.14); }
-.stop:active:not(:disabled) .dot { transform: scale(1.04); }
-.stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 700 18px/1.25 var(--pb-font-body); color: var(--pb-text); }
-.stop.above .lbl { bottom: 50px; }
-.stop.below .lbl { top: 50px; }
-.stop .lbl small { display: block; font: 500 18px var(--pb-font-body); color: var(--pb-text-dim); }
-.stop.locked { cursor: not-allowed; }
-.stop.locked .dot { opacity: 0.8; }
-.stop:focus-visible { outline: none; box-shadow: none; }
-.stop:focus-visible .dot { outline: 3px solid var(--pb-focus); outline-offset: 3px; border-radius: 50%; }
-@keyframes stop-pulse { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 7px var(--pb-ochre)); } }
-
 /* Calibration and other small panels centred over the page. */
 .menu--small { position: fixed; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(44rem, 92vw); height: auto; max-height: 94vh; margin: 0; padding: 2.6rem 2rem 2.2rem; }
 .menu--small { --pb-band: 14px; --pb-band-top: 40px; }
@@ -66,13 +41,6 @@
 .intro-place { color: var(--pb-text-dim); }
 .menu .verse + .notice { color: var(--pb-ochre-light); }
 
-@media (prefers-reduced-motion: reduce) { .stop.open .dot, .menu .style-card { animation: none; transition: none; } }
+@media (prefers-reduced-motion: reduce) { .menu .style-card { animation: none; transition: none; } }
 
 .room label { display: block; margin: 0.4rem 0 0.6rem; font: 600 20px var(--pb-font-body); }
-
-/* Main menu: three cards in a row under the logo (they borrow the style card's plaque), and a quiet keyboard link. */
-.menu-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; width: min(76rem, 100%); margin: 0.7rem 0 0.5rem; }
-.menu .menu-card { flex: 1 1 13rem; max-width: 18.5rem; padding: 18px 14px 20px; }
-.menu .menu-card--primary { border-color: var(--pb-ochre); border-width: 3px; }
-.menu-card__icon { display: block; width: 76px; height: 76px; margin: 0 auto 10px; fill: none; stroke: var(--pb-ochre-light); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.menu .menu-card .style-card__name { font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; }
