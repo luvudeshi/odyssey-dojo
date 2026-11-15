@@ -7,8 +7,9 @@ import { POWER_CLIPS } from "../server/tools/powerClips";
 import { GOD_IDS } from "../src/ai/gods/gods";
 import type { GodId } from "../src/ai/gods/gods";
 import type { PowerReadyProps } from "../src/ai/power/PowerReady";
-import { leadSilence, listedPowerClips, POWER_GAIN, POWER_LOUDNESS, POWER_PEAK } from "../src/audio/powerSound";
+import { leadSilence, listedPowerClips, POWER_DELAY, POWER_GAIN, POWER_LOUDNESS, POWER_PEAK } from "../src/audio/powerSound";
 import type { CombatEvent } from "../src/core/types";
+import { POWER_SPAN, WINDUP_S } from "../src/render/effects/power/powerTiming";
 
 // The banner is called as a plain function here, so its effects run at once and their clean-ups are kept for the test to run.
 const mounted = vi.hoisted(() => ({ cleanups: [] as (() => void)[] }));
@@ -25,6 +26,8 @@ const FOLDER = "public/audio/power";
 const POWER: CombatEvent = { type: "powerUnleashed", damage: 36 };
 const USUAL = "/audio/sfx/powerUnleashed.mp3";
 const clipOf = (god: string): string => `/audio/power/${god}.mp3`;
+/** The stand-in audio clock reads this when a sound is started. */
+const NOW = 12;
 /** The stand-in clips are 1,000 samples a second: 100 ms of silence, then a steady 0.25. */
 const RATE = 1000;
 const LEAD = 100;
@@ -39,6 +42,8 @@ interface Started {
   /** The file the buffer was decoded from. */
   readonly url: string;
   readonly gain: number;
+  /** The context time it was asked to start at, and how far into the clip. */
+  readonly when: number;
   readonly offset: number;
 }
 
@@ -77,6 +82,7 @@ async function inBrowser({ index = [...GOD_IDS], offline = false, missing = [], 
   class FakeContext {
     static latest: FakeContext | null = null;
     readonly sampleRate = RATE;
+    readonly currentTime = NOW;
     readonly destination = {};
     state = initial;
     constructor() {
@@ -97,8 +103,8 @@ async function inBrowser({ index = [...GOD_IDS], offline = false, missing = [], 
           level = node;
           return node;
         },
-        start: (_when = 0, offset = 0) => {
-          started.push({ url: source.buffer?.url ?? "", gain: level?.gain.value ?? Number.NaN, offset });
+        start: (when = 0, offset = 0) => {
+          started.push({ url: source.buffer?.url ?? "", gain: level?.gain.value ?? Number.NaN, when, offset });
         },
       };
       return source;
@@ -331,6 +337,37 @@ describe("how the clip is played", () => {
     expect(POWER_GAIN).toBeGreaterThan(0.5);
     // No clip can pass full scale at the output.
     expect(POWER_GAIN * POWER_PEAK).toBeLessThan(0.7);
+  });
+
+  test.each(GOD_IDS)("%s: the clip is held back so it lands on the effect on screen, never after the hit", async (god) => {
+    const { mount, settle, sfx, started } = await inBrowser();
+    mount(god);
+    await settle();
+    sfx.playEvent(POWER);
+    const delay = POWER_DELAY[god] ?? Number.NaN;
+    expect(started[0]?.when).toBeCloseTo(NOW + delay);
+    expect(delay).toBeGreaterThanOrEqual(0);
+    expect(delay).toBeLessThan(POWER_SPAN[god].hit);
+  });
+
+  test("the delays put each clip's loud moment on its beat of the effect", () => {
+    // Seconds from a clip's first sound to its loud moment, measured on the committed files (docs/audio-levels.md).
+    const loudAt = { zeus: 0.1, poseidon: 0.8, athena: 0.02, hermes: 0.3, artemis: 0.04, apollo: 0.62 };
+    const lands = (god: GodId): number => (POWER_DELAY[god] ?? Number.NaN) + loudAt[god];
+    // The thunder, the clang, the wave and the blaze land on the hit; the wind arrives just before the dash does.
+    for (const god of ["zeus", "poseidon", "athena", "apollo"] as const) expect(Math.abs(lands(god) - POWER_SPAN[god].hit), god).toBeLessThanOrEqual(0.05);
+    expect(lands("hermes")).toBeGreaterThan(WINDUP_S);
+    expect(lands("hermes")).toBeLessThanOrEqual(POWER_SPAN.hermes.hit);
+    // The bowstring sounds as the arrow leaves, at the end of the wind-up.
+    expect(Math.abs(lands("artemis") - WINDUP_S)).toBeLessThanOrEqual(0.05);
+  });
+
+  test("the usual power sound is never delayed", async () => {
+    const { settle, sfx, started } = await inBrowser();
+    sfx.sharedAudioContext();
+    await settle();
+    sfx.playEvent(POWER);
+    expect(started).toEqual([{ url: USUAL, gain: 1, when: 0, offset: 0 }]);
   });
 
   test("the silence before a clip is measured to its first sound in any channel, and at most half a second", () => {
