@@ -8,6 +8,7 @@ import { KICK_IDS } from "../moves/legSignals";
 import { MEASURES } from "../moves/measures";
 import { MOVES } from "../moves/registry";
 import { NEEDS_LEGS } from "../moves/waistUp";
+import { currentDojoStyleId } from "../styles/oldIds";
 import { STYLES } from "../styles/registry";
 import { EXTRA_MEASURES, EXTRA_MOVES, EXTRA_NEEDS_LEGS, EXTRA_STYLES, EXTRA_TIPS, extraGuideFor, judgeExtraRep } from "./extra";
 import type { DojoStyleDef } from "./extra";
@@ -151,6 +152,12 @@ export interface DojoChoice {
 }
 
 export const DOJO_CHOICE_KEY = "odyssey-dojo.training";
+/**
+ * Saved with every choice since the Dojo's kicks list became "taekwondo_kicks" and the game's Hoplite and Pankration
+ * became Jiu-jitsu and Taekwondo. A choice without it was kept before, so its style id is read through
+ * currentDojoStyleId: its "taekwondo" was the kicks list, not the game's Taekwondo.
+ */
+const CHOICE_IDS = 2;
 
 /** The part of localStorage used, so a test can pass a stand-in (the same shape src/settings/store.ts uses). */
 export interface ChoiceStorage {
@@ -171,9 +178,9 @@ export function loadChoice(storage: ChoiceStorage | null = browserStorage()): Do
   try {
     const data: unknown = JSON.parse(storage?.getItem(DOJO_CHOICE_KEY) ?? "null");
     if (typeof data !== "object" || data === null) return null;
-    const { style, moves, reps } = data as Record<string, unknown>;
+    const { style, moves, reps, ids } = data as Record<string, unknown>;
     if (typeof style !== "string" || !Array.isArray(moves) || typeof reps !== "number" || !Number.isFinite(reps)) return null;
-    return { style, moves: moves.filter((id): id is string => typeof id === "string"), reps };
+    return { style: ids === CHOICE_IDS ? style : currentDojoStyleId(style), moves: moves.filter((id): id is string => typeof id === "string"), reps };
   } catch {
     return null;
   }
@@ -182,7 +189,7 @@ export function loadChoice(storage: ChoiceStorage | null = browserStorage()): Do
 /** Keeps the choice for next time. A browser that will not store it is not an error. */
 export function saveChoice(choice: DojoChoice, storage: ChoiceStorage | null = browserStorage()): void {
   try {
-    storage?.setItem(DOJO_CHOICE_KEY, JSON.stringify(choice));
+    storage?.setItem(DOJO_CHOICE_KEY, JSON.stringify({ style: choice.style, moves: choice.moves, reps: choice.reps, ids: CHOICE_IDS }));
   } catch {
     // Private windows and full storage throw: the choice is simply not remembered.
   }

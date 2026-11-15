@@ -94,7 +94,7 @@ describe("the list a player ticks", () => {
   });
 
   test("a style whose own strikes are kicks keeps them in its own group, marked, and has no second kicks group", () => {
-    const menu = dojoMenu(styleOf("pankration"), { extras: NONE });
+    const menu = dojoMenu(styleOf("taekwondo"), { extras: NONE });
     expect(group(menu, "style")).toEqual(["front_kick", "knee", "hammer_fist", "uppercut"]);
     expect(menu.map((each) => each.id)).toEqual(["style", "defends", "more"]);
     expect(need(menu[0]).moves.map((move) => move.wholeBody)).toEqual([true, true, false, false]);
@@ -165,11 +165,11 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
   });
 
   test("the four dojo styles are offered after the game's five", () => {
-    expect(dojoStyles().map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "taekwondo", "self_defense", "muay_thai", "karate_basics"]);
+    expect(dojoStyles().map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "taekwondo_kicks", "self_defense", "muay_thai", "karate_basics"]);
   });
 
-  test("Taekwondo is all kicks: its own group holds them, with the whole-body note", () => {
-    const menu = dojoMenu(styleOf("taekwondo"));
+  test("The Taekwondo kicks list is all kicks: its own group holds them, with the whole-body note", () => {
+    const menu = dojoMenu(styleOf("taekwondo_kicks"));
     expect(group(menu, "style")).toEqual(["front_kick", "roundhouse_kick", "side_kick", "low_kick", "knee"]);
     expect(need(menu[0]).note).toBe(WHOLE_BODY_NOTE);
     expect(need(menu[0]).moves.every((move) => move.wholeBody)).toBe(true);
@@ -222,8 +222,8 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
     expect(dojoJudgeRep(need(dojoMoveOf("jab")), [])).toEqual(judgeRep(need(dojoMoveOf("jab")), []));
   });
 
-  test("a Taekwondo session on the keyboard: every kick, in order, each counted by its own key press", () => {
-    const moves = pickedInOrder(dojoMenu(styleOf("taekwondo")), ["roundhouse_kick", "front_kick", "high_block"]);
+  test("a Taekwondo kicks session on the keyboard: every kick, in order, each counted by its own key press", () => {
+    const moves = pickedInOrder(dojoMenu(styleOf("taekwondo_kicks")), ["roundhouse_kick", "front_kick", "high_block"]);
     expect(moves).toEqual(["front_kick", "roundhouse_kick", "high_block"]);
     let state = startDojo({ moves, reps: 1, keyboard: true }, 0);
     const asked: string[] = [];
