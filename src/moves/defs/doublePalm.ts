@@ -3,6 +3,7 @@ import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { latest } from "../../pose/signals";
 import { strike, wristGap } from "../handSignals";
+import { armsWent } from "../looseSignals";
 
 export const move: MoveDef = {
   id: "double_palm",
@@ -17,6 +18,10 @@ export const move: MoveDef = {
     const frame = latest(history);
     if (!frame || strike(history, "left") < 0.7 || strike(history, "right") < 0.7) return 0;
     return wristGap(frame) < 1.1 ? 1 : 0;
+  },
+  /** Asked for: both arms pushed forward together. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), armsWent(history, "forward"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["left", "right"] });

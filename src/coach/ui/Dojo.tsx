@@ -118,7 +118,7 @@ export function Dojo(props: DojoProps) {
       session.current = state;
       // A wrong move or a weak try does not end the turn or cost the repetition: it flashes MISS and the player tries again.
       const asked = state.phase === "go" && !state.hit ? currentMove(state) : undefined;
-      if (watch(asked?.id ?? null, asked?.kind === "defend", tracker ? readPose(state.history, asked?.kind === "strike" ? asked.id : null) : { held: new Set(), struck: [] }, false, now)) noteMiss();
+      if (watch(asked?.id ?? null, asked?.kind === "defend", tracker ? readPose(state.history, asked?.id ?? null) : { held: new Set(), struck: [] }, false, now)) noteMiss();
       history.current = state.history.frames.length > 0 ? state.history : null;
       if (state.phase !== before.phase || state.moveIndex !== before.moveIndex || state.repIndex !== before.repIndex) setView(viewOf(state));
       root.current?.style.setProperty("--dojo-time", (state.phaseMs > 0 ? state.msLeft / state.phaseMs : 0).toFixed(3));

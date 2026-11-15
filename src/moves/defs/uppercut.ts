@@ -2,6 +2,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { UPPERCUT_BEND, risingHand } from "../handSignals";
+import { armWent } from "../looseSignals";
 
 export const move: MoveDef = {
   id: "uppercut",
@@ -14,6 +15,10 @@ export const move: MoveDef = {
   teaches: "Up close a blow can come up from below, out of sight, so keep your chin down and hands up",
   detect(history) {
     return risingHand(history, "right", UPPERCUT_BEND) ? 1 : 0;
+  },
+  // Asked for an uppercut, the right hand rising by any amount counts, not toward the camera (that is a cross).
+  detectAsked(history) {
+    return Math.max(move.detect(history), armWent(history, "right", "up"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["right"], straight: false, rise: 0.5 });

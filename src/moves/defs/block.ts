@@ -1,5 +1,6 @@
 import type { MoveDef, PoseFrame } from "../../core/types";
 import { JOINT, SEEN, clamp01, joint, latest, bothNewest, meanOf, recent, shoulderCenter, shoulderWidth } from "../../pose/signals";
+import { armsWent } from "../looseSignals";
 
 /** A webcam's landmarks shake by about 1% of the frame; the guard is also read from this many milliseconds of frames. */
 export const STEADY_MS = 200;
@@ -73,5 +74,8 @@ export const move: MoveDef = {
     if (!latest(history)) return 0;
     // The newest two frames put the guard up at once; the steadied reading keeps it up through the shake.
     return Math.max(bothNewest(history, guard), guard(recent(history, STEADY_MS)));
+  },
+  detectAsked(history) {
+    return Math.max(move.detect(history), armsWent(history, "up"));
   },
 };
