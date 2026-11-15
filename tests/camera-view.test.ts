@@ -9,7 +9,7 @@ import { FLASH_SECONDS, NO_FLASH, flashText, nextFlash, presenceOf } from "../sr
 import { CameraPanelContext, offersCamera, panelNote, panelState } from "../src/hud/cameraPanel";
 import type { CameraStatus } from "../src/pose/cameraSession";
 import type { PoseTracker } from "../src/pose/tracker";
-import { skeletonLines } from "../src/hud/skeletonLines";
+import { headStones, skeletonLines, stonesAlong } from "../src/hud/skeletonLines";
 import { JOINT } from "../src/pose/signals";
 import { shiftBattleTimes } from "../src/ui/pauseState";
 import { noteInput, resetBattle } from "../src/render/battle";
@@ -100,6 +100,20 @@ test("resuming from a pause does not flash the last strike again", () => {
   const after = nextFlash(flash, b, 41, nameOf);
   expect(after).toBe(flash);
   expect(flashText(after, 41)).toBe("");
+});
+
+test("stones are laid between the joints, one per step, and a short bone gets none", () => {
+  const row = stonesAlong({ x: 0, y: 0 }, { x: 100, y: 0 }, 20);
+  expect(row).toHaveLength(4);
+  expect(row[0]).toEqual({ x: 20, y: 0 });
+  expect(stonesAlong({ x: 0, y: 0 }, { x: 5, y: 0 }, 20)).toEqual([]);
+});
+
+test("the head cluster is a centre and a ring of six, with an outer ring of twelve on a big head", () => {
+  const small = headStones({ x: 10, y: 10 }, 5, 2);
+  expect(small).toHaveLength(7);
+  expect(small[0]).toEqual({ x: 10, y: 10 });
+  expect(headStones({ x: 10, y: 10 }, 20, 2)).toHaveLength(19);
 });
 
 const panel = (status: CameraStatus, tracker: PoseTracker | null, onCamera: (() => void) | null = () => undefined): string =>
