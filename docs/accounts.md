@@ -417,7 +417,7 @@ All of it on the Tiger Data service (free plan, PostgreSQL 18.6, TimescaleDB 2.3
 
 After the review of the branch (three reviewers; what they found and what was changed is in the PR), on the same service with `DATABASE_CA_FILE` set, so every connection below had the database's certificate and host name checked:
 
-- **The 27 database tests:** pass, two runs in a row (20.5 s, 20.1 s). No test table was left.
+- **The 27 database tests:** pass, three runs in a row (20.5 s, 20.1 s, 19.9 s), the last with the one line given under "The database tests". No test table was left.
 - **The unit test files of the accounts, the hall and the preflight** (16 files): 218 tests pass.
 - **The real `fights` table was set right by the server's own start-up.** It had been made grouped by account. The first reading of the hall on the new code logged `heroes_columnstore_set`, and the service then listed it as ordered by time with no grouping. The second start changed nothing and logged only `accounts_ready` and `heroes_ready`. The table was empty, with one chunk and none in the columnstore.
 - **A fresh start of the server:** `GET /api/account/status` answered `{"available":true}` in 0.48 s, the first `GET /api/heroes` in 0.24 s (0.28 s the time it also changed the setting), the next from memory in 2 ms.
