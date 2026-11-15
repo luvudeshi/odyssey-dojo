@@ -128,7 +128,7 @@ test("the route gets harder at every stop: the same player ends each fight with 
   expect(route.at(-1)?.hpLeft ?? 100).toBeLessThanOrEqual((route[0]?.hpLeft ?? 0) - 5);
 });
 
-test("every later stop has three phases, and a finishing move only where Odysseus ends the fight himself", () => {
+test("every later stop has three phases, and a last move that is true to how Odysseus leaves it", () => {
   const finishers: Record<string, string | undefined> = {};
   for (const id of LATER_STOPS) {
     const enemy = ENEMIES.find((candidate) => candidate.id === id);
@@ -146,12 +146,13 @@ test("every later stop has three phases, and a finishing move only where Odysseu
       }
     }
   }
-  // He draws his sword on Circe and kills the suitors with spears. The Sirens, Scylla and Charybdis he only gets past.
+  // He draws his sword on Circe and kills the suitors with spears. The Sirens, Scylla and Charybdis he only gets past,
+  // so their last move is the getting past (issue #33): the oar stroke, rowing hard, the reach for the fig tree.
   expect(finishers).toEqual({
     circe: "overhead_strike",
-    sirens: undefined,
-    scylla: undefined,
-    charybdis: undefined,
+    sirens: "double_palm",
+    scylla: "chain_punch",
+    charybdis: "rising_palm",
     suitors: "spear_thrust",
   });
 });
