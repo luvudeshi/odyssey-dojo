@@ -24,16 +24,21 @@ Works for a visitor:
 - Joining a room and playing in it: everything under `/api/rooms/<code>/` (join, events, poll, send) and
   `/api/rooms/address`.
 - Opening a replay page (`/replays/<id>`) that already exists.
+- Making a room (`POST /api/rooms`), with `PUBLIC_ROOMS=1` in the instance's `.env` (`docs/rooms-tunnel.md`, "The
+  hosted copy"). Only exactly `1` turns it on. Visitors who come through the same Vercel address share 15 new rooms
+  a minute, 20 rooms in use and 20 join attempts a minute. On since 15 Nov on the live instance.
+- Accounts and the hall of heroes, with a database string in `.env` and `PUBLIC_ACCOUNTS=1`. See "Accounts on the
+  hosted copy" below.
 
 Does not work for a visitor (the server answers 403, and the page uses its built-in fallbacks):
 
-- Making a room (`POST /api/rooms`). See "Optional: host a room" below for how the owner makes one.
+- Making a room, when `PUBLIC_ROOMS=1` is not set. "Optional: host a room" below says how the owner makes one then.
 - The AI routes: `/api/level`, `/api/speech`, `/api/reveal`, `/api/portrait/...`. The visitor gets the bundled fights
   and lines instead of generated ones.
 - Making a replay or uploading its video (`/api/replays`), and the replay QR picture.
 - FaceTime (`/api/facetime/...`) and `/api/health`.
 
-So the hosted copy is the offline game plus joining rooms. The full AI demo stays on the laptop.
+So the hosted copy is the offline game plus rooms and accounts. The full AI demo stays on the laptop.
 
 Optional keys in the instance's `.env`:
 
@@ -247,16 +252,21 @@ Not checked:
 
 ## Accounts on the hosted copy
 
-Accounts and the hall of heroes (`docs/accounts.md`) work on the hosted copy once three things are true.
+Accounts and the hall of heroes (`docs/accounts.md`) work on the hosted copy once three things are true (`PUBLIC_ACCOUNTS=1` needs the code from PR 384).
 
 1. **Caddy reaches the game as a caller on the same machine.** The game answers the account paths and the hall only to its own machine (a tunnel that runs there). `docker-compose.yml` runs Caddy inside the game's network (`network_mode: "service:game"`) and the Caddyfile hands requests to `127.0.0.1:8787`, so Caddy is such a caller. Every request still carries `X-Forwarded-For`, so the routes that spend keys, room making and health stay closed to visitors. Checked on the live server: `/api/account/status` answers, `/api/level`, `/api/speech`, `/api/health` and `POST /api/rooms` still answer 403.
-2. **The database string is in `.env` on the instance.** Add the two lines to `deploy/vultr/.env` there, by hand over SSH. Never put the string in git, an issue, a PR or a chat.
+2. **The database string and the flag are in `.env` on the instance.** Add the three lines to `deploy/vultr/.env` there, by hand over SSH. Never put the string in git, an issue, a PR or a chat.
    ```
+   PUBLIC_ACCOUNTS=1
    DATABASE_URL=postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require
    DATABASE_CA_FILE=/app/certs/tiger-ca.pem
    ```
-   Put the CA file (see `docs/accounts.md`, set-up step 3; it is not a secret) at `deploy/vultr/certs/tiger-ca.pem` on the instance. Leave the second line out to run with the certificate unchecked. Then `docker compose up -d` in `deploy/vultr`.
-3. **The Account page shows the sign-in.** That is the lead's four lines in `src/screens/Account.tsx` (see `docs/accounts.md`).
+   Put the CA file (see `docs/accounts.md`, set-up step 3; it is not a secret) at `deploy/vultr/certs/tiger-ca.pem` on the instance. Leave the `DATABASE_CA_FILE` line out to run with the certificate unchecked. Then `docker compose up -d` in `deploy/vultr`.
+   Set `PUBLIC_ACCOUNTS=1` even though the account paths already answer in this layout: with it (or `PUBLIC_ROOMS=1`) the server counts a caller by the address Caddy wrote, not by a header the visitor can write. To turn accounts off, take the `DATABASE_URL` line out and restart; removing only the flag does not close the paths.
+   On the live instance (15 Nov) the CA file was read from the service itself: `openssl s_client -starttls postgres -showcerts -connect HOST:PORT </dev/null`, keeping the second certificate (subject `CN = ca.timescale.com`).
+3. **The Account page shows the sign-in.** That is the lead's lines in `src/screens/Account.tsx` (see `docs/accounts.md`).
+
+State on 15 Nov: 1 and 2 are done on the live instance and `https://odysseydojo.club/api/account/status` answers `{"available":true}`; `/api/heroes` answers an empty hall; no sign-up has been tried there; 3 is not on main yet.
 
 Check: `https://<domain>/api/account/status` must answer `{"available":true}`. `{"available":false}` means the string is missing or the database did not answer; `docker compose logs game` names the reason in one line.
 
