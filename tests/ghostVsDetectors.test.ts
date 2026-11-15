@@ -4,6 +4,20 @@
 // The table is pinned: a change to a diagram, the ghost's maths or a detector that moves a row fails here.
 // The pins are a measurement, not a requirement: when a detector changes, measure again and write down what it gives.
 // Second half: the same question for the move guide's looping figure (src/coach/guide.ts), side by side.
+//
+// Pairs that are allowed to fire together, and why (measured again after PR 272):
+// - jab and cross, both ways. By the owner's ruling both read a straight punch on either hand, so that a player
+//   told to jab who throws the strong hand is still counted. They are now one detector under two names: any body
+//   that fires one fires the other. The fight counts only the strike it asked for, so this costs nothing there.
+//   tests/moves/crossFire.test.ts pins the same two pairs (jab>cross, cross>jab) and docs/cross-fire.md says why.
+// - So every row here that had one of the two now has both: the guide's jab, cross and reverse punch (the reverse
+//   punch already read as a cross, and crossFire.test.ts lists reverse_punch>jab too), and the still ghost's hammer
+//   fist, overhead strike and thunderbolt. The test "jab and cross fire together or not at all" holds this for
+//   every row, so a jab that fires without the cross, or the other way round, fails here.
+// - Nothing else was let through. The hook now reads either hand as well, and that shows in one row: copying the
+//   still ghost of the trident sweep fires the hook while in the pose, where before it fired only on the way back
+//   out. That is pinned as measured, not allowed as a pair.
+// The guide's figure was not changed: a body that follows it is still counted for its own move for all 26.
 import { describe, expect, test } from "vitest";
 import doc from "../docs/ghost-check.md?raw";
 import type { MoveDef } from "../src/core/types";
@@ -117,22 +131,22 @@ const EXPECTED: Record<string, Row> = {
   double_palm: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "block", othersInAll: "block", realLimbs: "no/no, no/no", right: 0.56, rightGuarded: 0.56, rightBest: 0.61, inPose: 0.81 },
   duck: { down: "yes/yes", chest: "yes/yes", otherArm: "yes/yes", letGo: "no/no", peak: 1, others: "", othersInAll: "", realLimbs: "yes/yes, yes/yes", right: 0.81, rightGuarded: 0.94, rightBest: 0.97, inPose: 0 },
   front_kick: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "block", othersInAll: "block", realLimbs: "no/no, no/no", right: 0, rightGuarded: 1, rightBest: 1, inPose: 0.72 },
-  hammer_fist: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/yes", peak: 0, others: "block, jab, rising_palm, uppercut", othersInAll: "block, jab, rising_palm, thunderbolt, uppercut", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0.26, rightBest: 0.87, inPose: 0.53 },
+  hammer_fist: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/yes", peak: 0, others: "block, cross, jab, rising_palm, uppercut", othersInAll: "block, cross, jab, rising_palm, thunderbolt, uppercut", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0.26, rightBest: 0.87, inPose: 0.53 },
   hook: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "", othersInAll: "", realLimbs: "no/no, no/no", right: 0.25, rightGuarded: 0.85, rightBest: 0.88, inPose: 0.82 },
   jab: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "", othersInAll: "", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0.46, rightBest: 0.47, inPose: 0.79 },
   jump: { down: "yes/yes", chest: "yes/yes", otherArm: "yes/yes", letGo: "no/no", peak: 1, others: "", othersInAll: "", realLimbs: "yes/yes, yes/yes", right: 0.62, rightGuarded: 0.96, rightBest: 0.96, inPose: 0.31 },
   knee: { down: "yes/yes", chest: "yes/yes", otherArm: "yes/yes", letGo: "no/no", peak: 1, others: "stake_thrust", othersInAll: "stake_thrust", realLimbs: "yes/yes, yes/yes", right: 0.47, rightGuarded: 1, rightBest: 1, inPose: 0.4 },
   knife_hand: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "", othersInAll: "", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0.49, rightBest: 0.69, inPose: 0.85 },
   moon_arrow: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/no", peak: 0, others: "", othersInAll: "", realLimbs: "no/no, no/no", right: 0.43, rightGuarded: 0.43, rightBest: 0.62, inPose: 0.92 },
-  overhead_strike: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/yes", peak: 0, others: "block, cross, rising_palm, uppercut", othersInAll: "block, cross, rising_palm, thunderbolt, uppercut", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0.26, rightBest: 0.87, inPose: 0.53 },
+  overhead_strike: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/yes", peak: 0, others: "block, cross, jab, rising_palm, uppercut", othersInAll: "block, cross, jab, rising_palm, thunderbolt, uppercut", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0.26, rightBest: 0.87, inPose: 0.53 },
   reverse_punch: { down: "no/no", chest: "yes/yes", otherArm: "no/no", letGo: "no/no", peak: 1, others: "", othersInAll: "", realLimbs: "no/no, yes/yes", right: 0.34, rightGuarded: 0.34, rightBest: 0.39, inPose: 0.6 },
   rising_palm: { down: "no/no", chest: "no/no", otherArm: "yes/no", letGo: "no/no", peak: 0, others: "block, uppercut", othersInAll: "block, hammer_fist, thunderbolt, uppercut", realLimbs: "no/no, no/no", right: 0.13, rightGuarded: 0.74, rightBest: 0.78, inPose: 0.64 },
   spear_thrust: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "sun_burst", othersInAll: "sun_burst", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0, rightBest: 0, inPose: 0.86 },
   stake_thrust: { down: "no/no", chest: "yes/yes", otherArm: "no/yes", letGo: "no/no", peak: 1, others: "", othersInAll: "", realLimbs: "no/no, yes/yes", right: 0.43, rightGuarded: 0.43, rightBest: 0.59, inPose: 0.46 },
   sun_burst: { down: "no/no", chest: "yes/yes", otherArm: "no/yes", letGo: "no/no", peak: 1, others: "", othersInAll: "", realLimbs: "no/no, yes/yes", right: 0, rightGuarded: 0, rightBest: 0.31, inPose: 0.79 },
   swift_dash: { down: "yes/no", chest: "yes/no", otherArm: "yes/yes", letGo: "no/no", peak: 1, others: "dodge_right", othersInAll: "dodge_right", realLimbs: "yes/no, yes/no", right: 0.6, rightGuarded: 0.98, rightBest: 0.98, inPose: 0.34 },
-  thunderbolt: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/yes", peak: 0, others: "cross, uppercut", othersInAll: "cross, overhead_strike, uppercut", realLimbs: "no/no, no/no", right: 0.03, rightGuarded: 0.16, rightBest: 0.73, inPose: 0.26 },
-  trident_sweep: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "", othersInAll: "hook", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0, rightBest: 0.37, inPose: 0.7 },
+  thunderbolt: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "yes/yes", peak: 0, others: "cross, jab, uppercut", othersInAll: "cross, jab, overhead_strike, uppercut", realLimbs: "no/no, no/no", right: 0.03, rightGuarded: 0.16, rightBest: 0.73, inPose: 0.26 },
+  trident_sweep: { down: "no/no", chest: "no/no", otherArm: "no/no", letGo: "no/no", peak: 0, others: "hook", othersInAll: "hook", realLimbs: "no/no, no/no", right: 0, rightGuarded: 0, rightBest: 0.37, inPose: 0.7 },
   uppercut: { down: "no/no", chest: "no/no", otherArm: "yes/no", letGo: "no/no", peak: 0, others: "block, rising_palm", othersInAll: "block, overhead_strike, rising_palm, thunderbolt", realLimbs: "no/no, no/no", right: 0.13, rightGuarded: 0.74, rightBest: 0.78, inPose: 0.64 },
 };
 
@@ -179,10 +193,10 @@ describe("how many moves a literal copy counts for", () => {
   test("real-length limbs change no answer", () => {
     for (const id of IDS) expect(rowOf(id).realLimbs, id).toBe(`${rowOf(id).down}, ${rowOf(id).chest}`);
   });
-  test("copying the ghost sets off a different move for 12 of 26, and for 15 with the drop back out counted", () => {
+  test("copying the ghost sets off a different move for 13 of 26, and for 15 with the drop back out counted", () => {
     const some = where((row) => row.others !== "");
-    expect(some).toHaveLength(12);
-    expect(some.filter((id) => strikes.includes(id))).toHaveLength(10);
+    expect(some).toHaveLength(13);
+    expect(some.filter((id) => strikes.includes(id))).toHaveLength(11);
     const inAll = where((row) => row.othersInAll !== "");
     expect(inAll).toHaveLength(15);
     expect(inAll.filter((id) => strikes.includes(id))).toHaveLength(12);
@@ -259,7 +273,7 @@ const GUIDE_EXPECTED: Record<string, GuideRow> = {
   aegis_push: { counted: "yes/yes", others: "double_palm, spear_thrust" },
   block: { counted: "yes/yes", others: "overhead_strike, thunderbolt" },
   chain_punch: { counted: "yes/yes", others: "cross, jab, trident_sweep" },
-  cross: { counted: "yes/yes", others: "" },
+  cross: { counted: "yes/yes", others: "jab" },
   dodge_left: { counted: "yes/yes", others: "swift_dash" },
   dodge_right: { counted: "yes/yes", others: "swift_dash" },
   double_palm: { counted: "yes/yes", others: "aegis_push, spear_thrust" },
@@ -267,13 +281,13 @@ const GUIDE_EXPECTED: Record<string, GuideRow> = {
   front_kick: { counted: "yes/yes", others: "block, knee" },
   hammer_fist: { counted: "yes/yes", others: "block, thunderbolt, uppercut" },
   hook: { counted: "yes/yes", others: "block, thunderbolt, uppercut" },
-  jab: { counted: "yes/yes", others: "" },
+  jab: { counted: "yes/yes", others: "cross" },
   jump: { counted: "yes/yes", others: "" },
   knee: { counted: "yes/yes", others: "stake_thrust" },
   knife_hand: { counted: "yes/yes", others: "block" },
   moon_arrow: { counted: "yes/yes", others: "" },
   overhead_strike: { counted: "yes/yes", others: "block, rising_palm, thunderbolt" },
-  reverse_punch: { counted: "yes/yes", others: "cross" },
+  reverse_punch: { counted: "yes/yes", others: "cross, jab" },
   rising_palm: { counted: "yes/yes", others: "block, hammer_fist, thunderbolt" },
   spear_thrust: { counted: "yes/yes", others: "" },
   stake_thrust: { counted: "yes/yes", others: "" },
@@ -309,11 +323,33 @@ describe("the still ghost beside the move guide's figure", () => {
     expect(doc).toContain("| counted, the natural way (ghost: fast from arms hanging; guide: first time round the loop) | 7 of 26 | 26 of 26 |");
     expect(doc).toContain("| ...of the 21 strikes | 2 of 21 | 21 of 21 |");
     expect(doc).toContain("| counted at best (ghost: any start, any speed; guide: within two loops) | 10 of 26 | 26 of 26 |");
-    expect(doc).toContain("| also sets off some other move, way back out included | 15 of 26 | 19 of 26 |");
+    expect(doc).toContain("| also sets off some other move, way back out included | 15 of 26 | 21 of 26 |");
   });
-  test("following the guide's figure sets off a different move too, for 19 of 26", () => {
+  test("following the guide's figure sets off a different move too, for 21 of 26", () => {
     const some = IDS.filter((id) => guideRowOf(id).others !== "");
-    expect(some).toHaveLength(19);
-    expect(some.filter((id) => strikes.includes(id))).toHaveLength(16);
+    expect(some).toHaveLength(21);
+    expect(some.filter((id) => strikes.includes(id))).toHaveLength(18);
+  });
+});
+
+// Jab and cross read a straight punch on either hand (PR 272), so they are the one pair allowed to fire together.
+describe("jab and cross fire together or not at all", () => {
+  const PAIR = ["cross", "jab"];
+  /** The two of them among everything a row fired, the row's own move counted in when it was counted. */
+  const ofPair = (id: string, counted: boolean, others: string): string[] =>
+    [...(counted ? [id] : []), ...others.split(", ")].filter((move) => PAIR.includes(move)).sort();
+
+  test.each(IDS)("%s: the still ghost and the guide's figure", (id) => {
+    const ghost = rowOf(id);
+    const ghostCounted = `${ghost.down}/${ghost.chest}/${ghost.letGo}`.includes("yes");
+    expect([[], PAIR]).toContainEqual(ofPair(id, ghostCounted, ghost.othersInAll));
+    expect([[], PAIR]).toContainEqual(ofPair(id, guideRowOf(id).counted.includes("yes"), guideRowOf(id).others));
+  });
+  test("the guide's jab sets off the cross and nothing else, and the guide's cross the jab and nothing else", () => {
+    expect(guideRowOf("jab").others).toBe("cross");
+    expect(guideRowOf("cross").others).toBe("jab");
+  });
+  test("the guide's figure sets off the pair for the jab, the cross, and the two that already read as a cross", () => {
+    expect(IDS.filter((id) => ofPair(id, true, guideRowOf(id).others).length > 0)).toEqual(["chain_punch", "cross", "jab", "reverse_punch"]);
   });
 });
