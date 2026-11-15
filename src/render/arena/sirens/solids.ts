@@ -5,10 +5,10 @@ import { aimed, merge, mulberry, part } from "../../monsters/sirens/geo";
 import { bones, groundHeight, islandDistance, noise2, rocks } from "./layout";
 import type { Bone, Rock } from "./layout";
 
-const GRASS_A = new Color("#5fa83a");
-const GRASS_B = new Color("#9ccc4a");
-const GRASS_DRY = new Color("#d2cf74");
-const SAND = new Color("#ead9a0");
+const GRASS_A = new Color("#3f8040");
+const GRASS_B = new Color("#6fa44a");
+const GRASS_DRY = new Color("#b4ad6a");
+const SAND = new Color("#d9bf98");
 const ROCK_A = new Color("#b3a28a");
 const ROCK_B = new Color("#8f7e6a");
 
