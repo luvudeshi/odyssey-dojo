@@ -21,6 +21,8 @@ import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
+import { noteMiss } from "../hud/MissFlash";
+import { createMissWatch } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -78,6 +80,7 @@ export function FightScreen(props: {
     speakLine("fight_start");
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
+    const watchMiss = createMissWatch();
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
     let history: PoseHistory = { frames: [], baseline };
@@ -119,6 +122,7 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
+      if (watchMiss(from.phase, input, result.events)) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       result.events.forEach((event) => {
