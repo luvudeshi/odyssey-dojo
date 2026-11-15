@@ -10,8 +10,7 @@ import { normalizePhone } from "../phone";
 import type { FaceTimeSession } from "../session";
 import { standInLink } from "../standIn";
 import { AnswerStart, AnswerWaiting, answeredLine, startOffer, useAnswering } from "./AnswerPanel";
-import "../../screens/account.css";
-import "../../screens/multiplayer.css";
+import "../../ui/set/screens-mp.css";
 import "./faceTimeCard.css";
 
 export const NOT_SET_UP = "FaceTime is not set up on this server.";
@@ -102,7 +101,7 @@ export function FaceTimeCard(props: {
   if (idle && setup.kind !== "ready" && !offerStandIn && !answering.offered) return null;
 
   return (
-    <section className="acc-card rooms__card ft-card">
+    <section className="ft-card">
       <h2>
         <svg className="acc-icon acc-card__icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
           <path d="M8 20 H38 V44 H8 Z M38 28 L56 18 V46 L38 36" />
