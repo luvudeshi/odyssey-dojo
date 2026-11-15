@@ -1,16 +1,9 @@
 // The dodge, as numbers. Pure (no three.js), so it is tested without a browser. A spring carries the hero sideways and
 // back, so he gets anticipation (a small step the other way), real travel, an overshoot and a settle for free. The
 // fight store says when a dodge is held or counted; this turns that into where he is, how he leans and how low he sits.
-// Four looks, picked with ?dodge=1..4 (no parameter keeps the old slide). Nothing here touches a combat rule or timing.
+// A low dash: he drops into a crouch, leans and dips a shoulder into the move (never more than a quarter turn), and is
+// back on his mark soon after the blow has passed. Nothing here touches a combat rule or timing.
 import type { DefendSeen } from "../../../hud/DefendFlash";
-
-export type DodgeVariant = 0 | 1 | 2 | 3 | 4;
-
-/** Which look to draw: ?dodge=1, 2, 3 or 4; anything else is today's. */
-export function dodgeVariant(search: string): DodgeVariant {
-  const v = Number(new URLSearchParams(search).get("dodge"));
-  return v === 1 || v === 2 || v === 3 || v === 4 ? v : 0;
-}
 
 export interface DodgeLook {
   /** Metres to the side he ends up at. */
@@ -21,36 +14,27 @@ export interface DodgeLook {
   /** The step the other way first: metres and seconds. */
   readonly antic: number;
   readonly anticS: number;
-  /** Radians he leans into the move at full travel. */
+  /** Radians he leans and dips a shoulder into the move at full travel. A quarter turn is 1.57; keep it well under. */
   readonly lean: number;
   /** 0..1 how far the pelvis drops. */
   readonly crouch: number;
-  /** A full sideways roll while he travels. */
-  readonly roll: boolean;
-  /** How much the body stretches along the move at top speed (0.14 is 14%). */
-  readonly stretch: number;
   /** Seconds he stays out after the blow has passed, so the miss is seen. */
   readonly hold: number;
   /** Share of the travel kept on webcam play, where the tracked body already moves him. */
   readonly share: number;
 }
 
-export const LOOKS: Readonly<Record<1 | 2 | 3 | 4, DodgeLook>> = {
-  1: { dist: 1.25, stiff: 420, zeta: 0.55, antic: 0.16, anticS: 0.07, lean: 0.3, crouch: 0.35, roll: false, stretch: 0, hold: 0.3, share: 0.55 },
-  2: { dist: 1.7, stiff: 650, zeta: 0.8, antic: 0.1, anticS: 0.05, lean: 0.5, crouch: 0.9, roll: false, stretch: 0, hold: 0.22, share: 0.55 },
-  3: { dist: 1.5, stiff: 300, zeta: 0.7, antic: 0.12, anticS: 0.06, lean: 0.12, crouch: 0.75, roll: true, stretch: 0, hold: 0.3, share: 0.55 },
-  4: { dist: 1.9, stiff: 1100, zeta: 0.9, antic: 0.05, anticS: 0.04, lean: 0.22, crouch: 0.3, roll: false, stretch: 0.14, hold: 0.45, share: 0.55 },
-};
+/** The numbers to nudge. */
+export const LOOK: DodgeLook = { dist: 1.6, stiff: 650, zeta: 0.8, antic: 0.1, anticS: 0.05, lean: 0.5, crouch: 0.85, hold: 0.22, share: 0.55 };
 
-/** The body turns about this height, so a lean keeps the feet near the floor and a roll turns about his middle. */
+/** The body turns about this height, so a lean keeps the feet near the floor. */
 export const PIVOT_Y = 0.6;
-const ROLL_SECONDS = 0.42;
 const TRAIL_SIZE = 40;
 const STEP = 1 / 120;
 
 export interface DodgeState {
-  /** The variant in force this frame; 0 means the old look is drawing and nothing here is read. */
-  variant: DodgeVariant;
+  /** The dodge look is in force this frame (false with reduced motion, when the old slide stays). */
+  active: boolean;
   x: number;
   vx: number;
   /** -1 left, 1 right: the last way he went. */
@@ -61,19 +45,12 @@ export interface DodgeState {
   /** Radians, positive = head toward +x. */
   lean: number;
   crouch: number;
-  /** 1 at rest, more at speed (a stretch along x). */
-  stretch: number;
-  /** Rotation of the whole body about z, radians (lean plus roll). */
+  /** Rotation of the whole body about z, radians. */
   tiltZ: number;
-  rollT: number;
-  rolling: boolean;
-  rollDir: -1 | 1;
   /** When the blow he dodged last passed him (the defend phase ended on a counted dodge). -Infinity before the first. */
   missAt: number;
   /** When he last went out. */
   outAt: number;
-  /** 0..1 camera push, up while the blow passes. */
-  push: number;
   share: number;
   prevKind: DefendSeen["kind"] | "";
   defendStart: number;
@@ -93,13 +70,12 @@ export interface DodgeInput {
 
 export function newDodge(): DodgeState {
   return {
-    variant: 0, x: 0, vx: 0, dir: 1, out: false, anticUntil: -Infinity, holdUntil: -Infinity, lean: 0, crouch: 0, stretch: 1, tiltZ: 0,
-    rollT: 0, rolling: false, rollDir: 1, missAt: -Infinity, outAt: -Infinity, push: 0, share: 1, prevKind: "", defendStart: -Infinity, trail: new Trail(),
+    active: false, x: 0, vx: 0, dir: 1, out: false, anticUntil: -Infinity, holdUntil: -Infinity, lean: 0, crouch: 0, tiltZ: 0,
+    missAt: -Infinity, outAt: -Infinity, share: 1, prevKind: "", defendStart: -Infinity, trail: new Trail(),
   };
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
-const smooth = (t: number): number => { const k = clamp(t, 0, 1); return k * k * (3 - 2 * k); };
 
 /** Which way the fight wants him out right now: 0 stay, else -1 or 1. A dodge made while the blow winds up keeps him out until it passes. */
 export function wantDir(s: DodgeState, input: DodgeInput): -1 | 0 | 1 {
@@ -124,7 +100,7 @@ export function stepDodge(s: DodgeState, look: DodgeLook | null, input: DodgeInp
     if (look) s.holdUntil = now + look.hold;
   }
   s.prevKind = seen.kind;
-  if (!look) { s.variant = 0; return; }
+  if (!look) { s.active = false; return; }
 
   const want = wantDir(s, input);
   if (want !== 0 && (!s.out || want !== s.dir)) {
@@ -132,7 +108,6 @@ export function stepDodge(s: DodgeState, look: DodgeLook | null, input: DodgeInp
     s.dir = want;
     s.outAt = now;
     s.anticUntil = now + look.anticS;
-    if (look.roll) { s.rolling = true; s.rollT = 0; s.rollDir = want; }
   } else if (want === 0) s.out = false;
 
   s.share = input.live ? look.share : 1;
@@ -148,17 +123,8 @@ export function stepDodge(s: DodgeState, look: DodgeLook | null, input: DodgeInp
   const u = s.x / reach;
   s.lean = look.lean * (0.7 * u + 0.3 * clamp(s.vx / (reach * 6), -1.5, 1.5));
   s.crouch = look.crouch * Math.max(clamp(Math.abs(u) * 1.1, 0, 1), now < s.anticUntil ? 0.5 : 0) * (input.live ? 0.4 : 1);
-  s.stretch = 1 + look.stretch * clamp(Math.abs(s.vx) / (reach * 7), 0, 1);
-  if (s.rolling) {
-    s.rollT += input.dt / ROLL_SECONDS;
-    if (s.rollT >= 1) { s.rollT = 1; s.rolling = false; }
-  } else if (!s.out && Math.abs(s.x) < 0.03) s.rollT = 0;
-  // Rolling toward +x turns the head toward +x, which is a negative turn about z (see tiltZ below).
-  s.tiltZ = -s.lean - (look.roll ? s.rollDir * 2 * Math.PI * smooth(s.rollT) : 0);
-  const since = now - s.missAt;
-  const pushTo = look === LOOKS[4] ? (since >= 0 && since < 0.6 ? 1 : s.out ? 0.35 : 0) : 0;
-  s.push += (pushTo - s.push) * (1 - Math.exp(-(pushTo > s.push ? 14 : 6) * input.dt));
-  s.variant = look === LOOKS[1] ? 1 : look === LOOKS[2] ? 2 : look === LOOKS[3] ? 3 : 4;
+  s.tiltZ = -s.lean;
+  s.active = true;
   s.trail.push(now, s.x, s.tiltZ);
 }
 

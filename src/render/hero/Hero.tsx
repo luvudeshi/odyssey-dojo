@@ -94,11 +94,10 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
     if (!g) return;
     const h = home.current;
     h[0] = battle.heroX + (tracker.current?.stepX ?? 0); h[1] = 0; h[2] = HOME_Z + battle.heroZ;
-    // ?dodge=1..4: lean or roll the whole body about his middle (dodgeMotion), and stretch it along the move.
-    const on = dodge.variant > 0;
+    // The dodge look leans the whole body about his low middle (dodgeMotion).
+    const on = dodge.active;
     const shift = pivotShift(on ? dodge.tiltZ : 0, turn.current);
     g.rotation.z = on ? dodge.tiltZ : 0;
-    g.scale.x = on ? dodge.stretch : 1;
     g.position.set(h[0] + battle.reachX + shift.x, battle.reachY + (poser.current?.lift ?? 0) + shift.y, h[2] + battle.reachZ);
     // A tracked duck lowers the pelvis itself; squashing the whole model on top would double it.
     g.scale.y = MathUtils.damp(g.scale.y, battle.held.has("duck") && !tracker.current?.active ? (candidate.rig.duck?.squash ?? 1) : 1, 14, Math.min(delta, 0.05));
@@ -128,14 +127,14 @@ function GlbHero({ candidate, ready, poseRef, trackableRef }: { candidate: HeroC
             // A kick is thrown only in the leap; a later held jump tucks both legs.
             const kick: Act["kick"] = l.air > 0 && KICKS.has(move) ? (move === "knee" ? "knee" : "front_kick") : null;
             const t = target.current;
-            // With a ?dodge look the dodge's own crouch and turn come from dodgeMotion, so the stance leaves the held dodges out.
+            // With the dodge look the dodge's own crouch and turn come from dodgeMotion, so the stance leaves the held dodges out.
             let held: ReadonlySet<string> = battle.held;
-            if (dodge.variant > 0) {
+            if (dodge.active) {
               kept.current.clear();
               for (const m of battle.held) if (m !== "dodge_left" && m !== "dodge_right") kept.current.add(m);
               held = kept.current;
             }
-            p.update(l, held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta, dodge.variant > 0 ? dodge.crouch : 0);
+            p.update(l, held, kick, battle.hitSpot ? t.v.fromArray(contactPoint(battle.hitSpot, t.at)) : null, delta, dodge.active ? dodge.crouch : 0);
           }
           if (group.current) reaches.current.get(root)?.update(group.current, home.current, now, l);
         }}
