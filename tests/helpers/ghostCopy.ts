@@ -1,4 +1,5 @@
 // A made-up player who copies the move ghost (src/render/GhostFigure.tsx), for tests/ghostVsDetectors.test.ts.
+// And, for comparison, one who copies the move guide's looping figure (`guideCopy`, src/coach/guide.ts).
 //
 // Two readings of "copy the ghost":
 // - LITERAL (`literalCopy`): the body ends up exactly where the ghost's joints are drawn. The ghost is flat: its arms
@@ -15,11 +16,13 @@
 // and world (-+.2, -.5, 0); world is metres from the hips with y down and z negative toward the camera; one metre
 // covers 0.4 of the picture across and 0.6 down.
 import type { MoveDef, MoveDiagram, PoseFrame, PoseHistory } from "../../src/core/types";
+import { guideFor } from "../../src/coach/guide";
 import { createPoseInput } from "../../src/input/poseInput";
 import { MOVES } from "../../src/moves/registry";
 import { EMPTY_HISTORY, JOINT, pushFrame } from "../../src/pose/signals";
 import { ghostJoints } from "../../src/render/ghost/ghostPose";
 import type { Vec3 } from "../../src/render/ghost/ghostPose";
+import { FRAME_MS as GUIDE_FRAME_MS, STAND_FRAMES, following } from "../../tools/guide/body";
 import { GOD_GOOD } from "../godMoveSequences";
 import { frameAt } from "../poseFixture";
 import type { Arm, Key, Leg } from "./poses";
@@ -398,6 +401,18 @@ export function intendedCopy(id: string): Recording {
   const good = GOOD[id];
   if (!good) throw new Error(`no clean performance for ${id}`);
   return { frames: sequence(good), from: CALIBRATION_FRAMES * FRAME_MS, release: null };
+}
+
+/**
+ * GUIDE: a body that follows the move guide's figure exactly, `loops` times round, after standing in the figure's
+ * start pose for the baseline. The same made-up player tests/coachGuide.test.ts uses (tools/guide/body.ts): each
+ * joint where the figure draws it, and an end the figure marks as coming at the camera pushed toward the camera.
+ * The figure goes back to its start inside the loop, so the way back is part of the copy and there is no letting go.
+ */
+export function guideCopy(def: MoveDef, loops: number): Recording {
+  const guide = guideFor(def);
+  if (!guide) throw new Error(`no guide for ${def.id}`);
+  return { frames: following(guide, loops), from: (STAND_FRAMES - 1) * GUIDE_FRAME_MS, release: null };
 }
 
 export interface Outcome {
