@@ -12,7 +12,7 @@ export const KICK_LIFT = 0.8;
 export const KICK_STRAIGHT = 140;
 
 /** The start: the knee is up and the lower leg is still folded under it. */
-function chambered(frame: PoseFrame, side: Side): boolean {
+export function chambered(frame: PoseFrame, side: Side): boolean {
   return legsVisible(frame) && kneeLift(frame, side) >= CHAMBER_LIFT && kneeAngle(frame, side) < CHAMBER_BEND;
 }
 

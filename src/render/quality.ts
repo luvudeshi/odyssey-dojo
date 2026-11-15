@@ -2,6 +2,7 @@
 // The choice is a saved setting (src/settings/store.ts).
 import { createContext, useContext, useEffect } from "react";
 import { setSettings, useSettings } from "../settings/store";
+import { setAutoLow, useAutoLow } from "./qualityGovernor";
 
 export type Quality = "high" | "low";
 
@@ -16,10 +17,14 @@ export function useQualityLevel(): Quality {
 }
 
 export function useQualityToggle(): Quality {
-  const { quality } = useSettings();
+  const { quality: saved } = useSettings();
+  const auto = useAutoLow();
+  const quality: Quality = auto ? "low" : saved;
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === "q" && !event.repeat) setSettings({ quality: nextQuality(quality) });
+      if (event.key !== "q" || event.repeat) return;
+      setAutoLow(false);
+      setSettings({ quality: nextQuality(quality) });
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); };
