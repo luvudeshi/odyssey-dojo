@@ -13,9 +13,9 @@ import { cliffGeometry, driftGeometry, raftGeometry, rockGeometry, treeGeometry 
 import { Scenery, SeaAndSky } from "../charybdis/looks";
 import type { ArenaDef } from "../registry";
 
-// ?look=a or ?look=b swaps in downloaded scenery for the owner to compare; no flag is today's look.
+// The anglerfish look ("a") is the owner's pick and the default. ?look=b is the tentacle look, ?look=base the one built in code.
 const LOOK = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("look");
-const ALT = LOOK === "a" || LOOK === "b" ? LOOK : null;
+const ALT = LOOK === "base" ? null : LOOK === "b" ? "b" : "a";
 
 const DEBRIS = 5;
 
