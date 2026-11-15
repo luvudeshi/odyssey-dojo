@@ -504,7 +504,7 @@ test("every monster can taunt, and the dice pick which taunt", async () => {
 
 test("a taunt starts in the frame it is asked for, over Athena's phase line, and her next call does not cut it", async () => {
   const { voice, taunts, story, started, stopped, end } = fakeStory();
-  voice.handle([{ type: "phaseChanged", index: 1, name: "Enraged" }]);
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
   const taunt = watch(story.speakMonsterTaunt("sirens"));
   expect(started).toEqual(["phase_1", "taunt_sirens_1"]);
   voice.stop("phase_1");
