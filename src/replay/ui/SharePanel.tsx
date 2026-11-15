@@ -2,6 +2,7 @@
 // Nothing is sent until Share is pressed. With no server, the card and Save still work.
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { GodReveal } from "../../ai/revealGod";
+import { Button } from "../../ui/pebble";
 import { godCardBlob } from "../godCard";
 import { IDLE, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, oneShareAtATime, portraitWithin, replayMeta, sendsCard, sendsVideo, shareStep, statusLine } from "./shareFlow";
 import type { PaintedFrom, ShareFight } from "./shareFlow";
@@ -50,7 +51,7 @@ function loadImage(url: string | null): Promise<HTMLImageElement | null> {
   });
 }
 
-/** Saves the card as a PNG file. A real button does this, so Save looks like the theme's other buttons. */
+/** Saves the card as a PNG file. A real button does this, so Save is one of the pebble kit's buttons like the rest. */
 function saveCard(url: string, name: string): void {
   const link = document.createElement("a");
   link.href = url;
@@ -143,13 +144,13 @@ export function SharePanel(props: SharePanelProps) {
         ) : (
           // Once the card is finished: with no card and no video that the server would take, there is nothing to share.
           (waiting || sendsCard(blob) || sendsVideo(video)) && (
-            <button className="share-action" onClick={share} disabled={busy || waiting}>{busy ? "Sharing..." : "Share"}</button>
+            <Button className="share-action" onClick={share} disabled={busy || waiting}>{busy ? "Sharing..." : "Share"}</Button>
           )
         )}
         {busy && <div className={`share-progress share-stage-${view.stage}`} role="progressbar" aria-label="Uploading"><span /></div>}
         <p className="share-small" role="status">{statusLine(view, blob, video, { qr: qr !== null, portrait: portrait !== null })}</p>
-        {card && <button className="share-action" onClick={() => { saveCard(card.url, cardFileName(words.godName)); }}>Save card</button>}
-        {onClose && <button className="quiet share-quiet" onClick={onClose}>Close</button>}
+        {card && <Button className="share-action" onClick={() => { saveCard(card.url, cardFileName(words.godName)); }}>Save card</Button>}
+        {onClose && <Button className="share-quiet" onClick={onClose}>Close</Button>}
       </div>
     </section>
   );

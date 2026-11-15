@@ -45,7 +45,7 @@ test("every colour comes from a theme variable or from where the panel is mounte
       const value = declarations.get(property);
       if (value === undefined || value === "none" || value === "0") continue;
       coloured += 1;
-      expect(value.split(" ").at(-1), `${selector} ${property}`).toMatch(THEMED);
+      expect(value.replace(/^\S+ \S+ /, ""), `${selector} ${property}`).toMatch(THEMED);
     }
     expect(declarations.has("box-shadow"), `${selector} box-shadow`).toBe(false);
   }
@@ -60,11 +60,11 @@ test("a theme that renames a variable still shows the progress bar: every colour
   for (const value of variables) expect(value).toMatch(/var\(--[\w-]+, (currentColor|transparent|inherit)\)$/);
   const track = rule(".share-panel .share-progress");
   const fill = rule(".share-panel .share-progress span");
-  // The edge is the text colour of wherever the panel is mounted, so it shows on any ground.
-  expect(track?.get("border")).toMatch(/ currentColor$/);
+  // The edge falls back to the text colour of wherever the panel is mounted, so it shows on any ground.
+  expect(track?.get("border")).toMatch(/, currentColor\)$/);
   expect(track?.get("background")).toMatch(/, transparent\)$/);
   expect(fill?.get("background")).toMatch(/, currentColor\)$/);
-  expect(rule(".share-panel .share-card")?.get("border")).toMatch(/ currentColor$/);
+  expect(rule(".share-panel .share-card")?.get("border")).toMatch(/, currentColor\)$/);
 });
 
 test("every rule sits under .share-panel with two classes, so it outranks the theme's button and paragraph rules", () => {
@@ -76,9 +76,12 @@ test("every rule sits under .share-panel with two classes, so it outranks the th
   }
 });
 
-test("the small Close button undoes the theme button's width, capitals and letter spacing, and Share and Save undo its width", () => {
+test("the buttons are the pebble kit's, and the stylesheet only sizes them: Close undoes the kit button's width, height, capitals and letter spacing, and Share and Save undo its width", () => {
+  expect(PANEL).toContain('import { Button } from "../../ui/pebble";');
+  expect(PANEL).not.toContain("<button");
   const close = rule(".share-panel .share-quiet");
   expect(close?.get("min-width")).toBe("0");
+  expect(close?.get("min-height")).toBe("0");
   expect(close?.get("text-transform")).toBe("none");
   expect(close?.get("letter-spacing")).toBe("normal");
   expect(rule(".share-panel .share-action")?.get("min-width")).toBe("0");
