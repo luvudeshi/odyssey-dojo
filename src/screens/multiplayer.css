@@ -1,14 +1,134 @@
-/* The Multiplayer screen (Multiplayer.tsx): a host card and a join card side by side. The cards reuse .acc-card. */
-.rooms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: min(64rem, 100%); margin: 0.6rem 0 0.8rem; text-align: left; align-items: stretch; }
-.rooms__card { display: flex; flex-direction: column; padding: 14px 18px 16px; }
-.menu .rooms__card p { font-size: 18px; }
-.rooms__card .room { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; text-align: center; }
-.rooms__card .pb-btn { min-width: 12rem; font-size: 19px; padding: 10px 18px; }
-.rooms__card > .pb-btn { align-self: center; margin-top: auto; }
-.rooms__card .room-invite { display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; }
-.rooms__card .room .room-code { font-size: 3.6rem; line-height: 1.1; }
-.rooms__card .room .room-url { max-width: 16rem; margin: 0.2rem auto 0; font-size: 14px; }
-.rooms__card .room .room-input { font-size: 2.6rem; width: 6.4em; }
-.rooms__card .room .mode-note { max-width: none; font-size: 16px; }
-.rooms__card .room .notice:empty { display: none; }
-@media (max-width: 760px) { .rooms { grid-template-columns: minmax(0, 1fr); } .rooms__card .room-invite { flex-direction: column; } }
+/* The Multiplayer screen (Multiplayer.tsx, RoomHost.tsx, RoomJoin.tsx, RoomTags.tsx, RoomArt.tsx), on the layout of the
+   owner's Dance Fantasy rooms in the Mosaic floor look: a sea-blue pebble floor, cream stone cards ringed in terracotta
+   pebbles, bronze. Cream stone takes a dark focus ring; the floor keeps the cream one. */
+.menu.mp { justify-content: flex-start; gap: 12px; padding: 3rem 2rem 1.6rem; background: #10181d var(--pebble-dusk) repeat; }
+.menu.mp::before { background: radial-gradient(ellipse 75% 65% at 50% 45%, rgba(8, 14, 18, 0.1), rgba(6, 10, 12, 0.55)); }
+
+/* Cream stone, ringed with terracotta pebbles (a dotted mask on a frame round the box). */
+.mp-card, .mp-bar, .mp-qr__card, .mp-tag {
+  --pb-focus: #2a1208; position: relative; color: #241a14;
+  background: radial-gradient(ellipse 90% 70% at 30% 20%, #fbf4e4, #eadcbc 70%, #dccaa4);
+  box-shadow: 0 0 0 3px #10181d, 0 10px 22px rgba(0, 0, 0, 0.55);
+}
+.mp-card::after, .mp-bar::after {
+  content: ""; position: absolute; inset: -12px; border-radius: inherit; pointer-events: none; padding: 9px;
+  background: radial-gradient(circle at 50% 50%, #c9684a 0 3.2px, #93402c 3.6px, transparent 4.4px) 0 0 / 10px 10px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.mp-kicker { display: block; font: italic 600 22px/1.1 var(--pb-font-body); letter-spacing: 0.02em; text-transform: none; color: #8a5a2a; }
+
+/* The bar along the top: the game, the hero, the way back. */
+.mp-top { display: flex; align-items: center; gap: 14px; width: min(90rem, 100%); }
+.mp-top__brand { margin-right: auto; font: 700 24px var(--pb-font-body); letter-spacing: 0.04em; color: #f6eedc; text-shadow: 0 2px 0 #0a1014; }
+.mp-top__brand b { color: #e2b25d; }
+.mp-top__hero { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 8px; border: 2px solid #c98f37; border-radius: 24px; background: #223039; font: 700 17px var(--pb-font-body); color: #f6eedc; }
+.mp-top__hero .acc-icon { width: 28px; height: 28px; padding: 3px; border-radius: 50%; background: #10181d; stroke: #e2b25d; }
+.menu.mp .mp-top__back { min-height: 44px; margin: 0; padding: 6px 18px; border: 3px solid #93402c; border-radius: 24px; background: #f1e6cf; color: #241a14; font-size: 17px; }
+.menu.mp .mp-top__back:hover { background: #fff6e6; }
+
+/* ---- the choices ---- */
+.mp-head { display: flex; flex-direction: column; align-items: center; margin-top: auto; }
+.menu.mp .mp-head .pb-heading { margin: 0 auto 0.2rem; }
+.menu.mp .mp-head .lead { margin: 0; color: #f6eedc; text-shadow: 0 2px 0 #0a1014, 0 0 8px #0a1014; }
+/* One row; a third card fits beside these two at 1280 px and wider, and the row wraps below that. */
+.mp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 24rem)); justify-content: center; align-items: stretch; gap: 30px 52px; width: min(84rem, 100%); margin: 44px 0 auto; }
+.mp-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 50px 28px 24px; border-radius: 18px; text-align: center; }
+.mp-card__sticker { position: absolute; top: -46px; left: 50%; transform: translateX(-50%); filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5)); }
+.mp-card h2 { margin: 0; font: 700 44px/1 var(--pb-font-body); letter-spacing: 0.06em; text-transform: uppercase; color: #8a3a26; }
+.menu.mp .mp-card > p { margin: 0; font-size: 18px; line-height: 1.3; color: #3a2c22; }
+.menu.mp .mp-card > .mp-card__as { display: flex; flex-direction: column; gap: 2px; align-self: stretch; margin-top: 14px; font-size: 15px; color: #5a4636; }
+.mp-card__as small:first-child { font: 700 16px var(--pb-font-body); color: #3a2c22; }
+.mp-card__as b { margin: 4px 0; padding: 10px 14px; border: 3px solid #c9a46a; border-radius: 16px; background: #fffaf0; box-shadow: inset 0 2px 6px rgba(80, 50, 20, 0.2); font: 700 26px var(--pb-font-body); color: #241a14; }
+.menu.mp .mp-card .pb-btn { align-self: stretch; min-height: 60px; margin: 0; border-radius: 32px; font-size: 22px; }
+.menu.mp .mp-card > .pb-btn { margin-top: auto; }
+.menu.mp .mp-card .pb-btn--primary, .menu.mp .mp-bar .pb-btn--primary { border: 3px solid #6b2e1e; background: #b8553a; color: #fff6e6; box-shadow: 0 4px 0 #6b2e1e; }
+.menu.mp .mp-card .pb-btn--primary:hover:not(:disabled), .menu.mp .mp-bar .pb-btn--primary:hover:not(:disabled) { background: #93402c; }
+.menu.mp .mp-card .pb-btn:disabled, .menu.mp .mp-bar .pb-btn:disabled { background: #d8cbb0; color: #6a5a4a; border-color: #b0a088; box-shadow: none; opacity: 1; }
+.menu.mp .mp-card .pb-btn:not(.pb-btn--primary), .menu.mp .mp-bar .pb-btn:not(.pb-btn--primary) { border: 3px solid #93402c; background: #fbf4e4; color: #241a14; }
+.menu.mp .mp-card .pb-btn:not(.pb-btn--primary):hover:not(:disabled), .menu.mp .mp-bar .pb-btn:not(.pb-btn--primary):hover:not(:disabled) { background: #f1d9b8; }
+
+/* The join card's form (RoomJoin.tsx): the code field big across the card, then the button. */
+.mp-card .room { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin-top: 6px; }
+.mp-card .room label { font: 700 16px var(--pb-font-body); color: #3a2c22; }
+.mp-card .room .room-input { box-sizing: border-box; width: 100%; padding: 0.15em 0.2em; font-size: 2.6rem; color: #241a14; background: #fffaf0; border: 3px solid #c9a46a; border-radius: 16px; box-shadow: inset 0 2px 6px rgba(80, 50, 20, 0.2); }
+.mp-card .room .room-input:focus-visible { outline-color: #2a1208; }
+.mp-card .room .notice:empty { display: none; }
+.menu.mp .mp-card .room .notice { margin: 0; font-size: 16px; color: #8a2a16; }
+.menu.mp .mp-card .room .mode-note { max-width: none; margin: 0; font-size: 14px; line-height: 1.3; color: #4a3c30; }
+
+/* ---- the room ---- */
+.mp-wait { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: auto 0; }
+.mp-lobby { display: grid; grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr); gap: 20px 52px; flex: 1 1 0; min-height: 0; width: min(90rem, 100%); text-align: left; }
+.mp-lobby__side { display: flex; align-items: center; justify-content: center; min-height: 0; }
+.mp-frame { position: relative; height: min(100%, 900px); aspect-ratio: 0.74; max-width: 100%; }
+.mp-frame__glass {
+  position: absolute; inset: 64px 38px 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; overflow: hidden; text-align: center;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(30, 48, 58, 0.2), rgba(8, 14, 18, 0.75)), #10181d var(--pebble-dusk) repeat;
+}
+.mp-frame__glare { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(120deg, transparent 22%, rgba(241, 230, 207, 0.1) 23%, rgba(241, 230, 207, 0.1) 29%, transparent 30%, transparent 35%, rgba(241, 230, 207, 0.06) 36%, rgba(241, 230, 207, 0.06) 38%, transparent 39%); }
+.mp-frame__stones { position: absolute; left: 0; top: 0; pointer-events: none; }
+.menu.mp .mp-frame__kicker { position: relative; margin: 0; font: italic 600 clamp(16px, 1.5vw, 22px) var(--pb-font-body); color: #f1e6cf; }
+.menu.mp .mp-frame__note { position: relative; margin: 6px 0 0; font: 600 clamp(14px, 1.2vw, 18px) var(--pb-font-body); color: #cfe0e4; }
+.mp .room .room-code {
+  position: relative; margin: 0; padding-left: 0.1em; font-size: clamp(3.2rem, 5.4vw, 6.4rem); letter-spacing: 0.1em; line-height: 1.05;
+  background: linear-gradient(#fff3c8, #f0c870 45%, #c98f37 80%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; filter: drop-shadow(0 3px 0 #0a1014) drop-shadow(0 0 10px rgba(226, 178, 93, 0.35));
+}
+
+.mp-lobby__main { display: flex; flex-direction: column; justify-content: center; gap: 22px; min-width: 0; min-height: 0; }
+.mp-lobby__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 24px; }
+.mp-lobby__titles { margin: 0; }
+.mp-lobby__titles .mp-kicker { margin-bottom: -14px; font-size: 34px; color: #e2b25d; text-shadow: 0 2px 0 #0a1014; }
+.menu.mp .mp-lobby__titles .pb-heading { margin: 2px 0 8px; }
+.menu.mp .mp-lobby__enter { max-width: 26rem; margin: 0; font-size: 19px; color: #f6eedc; text-shadow: 0 2px 0 #0a1014; }
+.mp-qr { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 0; }
+.mp-qr__card { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 12px 8px; border-radius: 14px; transform: rotate(4deg); box-shadow: 0 0 0 3px #10181d, 0 0 0 7px #c98f37, 0 0 0 9px #10181d, 0 12px 24px rgba(0, 0, 0, 0.6); }
+.mp .room .room-qr { display: block; padding: 0; border: 0; border-radius: 4px; background: #fff; }
+.mp-qr__caption { font: 700 17px var(--pb-font-body); color: #241a14; }
+.menu.mp .mp-qr .room-url { max-width: 13rem; margin: 0; font: 600 13px/1.3 var(--pb-font-body); color: #cfe0e4; text-align: center; }
+
+.mp-tags h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0 0 12px; font: italic 600 26px var(--pb-font-body); color: #f6eedc; text-shadow: 0 2px 0 #0a1014; }
+.mp-tags__count { font: 700 16px var(--pb-font-body); font-style: normal; letter-spacing: 0.04em; color: #e2b25d; }
+.mp-tags ul { display: flex; flex-wrap: wrap; gap: 18px 26px; margin: 0; padding: 0; list-style: none; }
+.mp-tags li { display: flex; flex-direction: column; align-items: center; }
+.mp-tag { display: flex; flex-direction: column; align-items: center; margin-top: -8px; padding: 14px 16px 8px; border-radius: 10px; text-align: center; box-shadow: 0 0 0 3px #10181d, 0 0 0 5px #c98f37, 0 8px 16px rgba(0, 0, 0, 0.5); }
+.mp-tag::before { content: ""; position: absolute; top: 5px; left: 50%; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: #93402c; }
+.mp-tag b { font: 700 19px var(--pb-font-body); color: #241a14; }
+.mp-tag i { font: italic 600 15px var(--pb-font-body); color: #6a4a32; }
+.mp-tag small { font: 600 14px var(--pb-font-body); color: #5a4636; }
+
+/* The host's controls, together: the status line, Start right after it (rooms-smoke.mjs), playing alone, closing. */
+.mp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 40px; }
+.menu.mp .mp-bar__status { display: inline-flex; align-items: center; gap: 10px; margin: 0 auto 0 0; padding: 8px 16px 8px 12px; border-radius: 24px; background: #223039; font: 700 16px var(--pb-font-body); color: #f6eedc; }
+.mp-bar__status::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #e2b25d; box-shadow: 0 0 0 3px rgba(226, 178, 93, 0.3); }
+.mp-bar__status[data-friend="here"]::before { background: #8d9a5b; box-shadow: 0 0 0 3px rgba(141, 154, 91, 0.4); }
+.menu.mp .mp-bar .pb-btn { min-width: 0; min-height: 50px; margin: 0; padding: 8px 16px; border-radius: 28px; font-size: 17px; }
+.menu.mp .mp-bar .pb-btn--primary { min-width: 6.5rem; }
+
+/* A short window: smaller heading, tighter cards. */
+@media (max-height: 820px) {
+  .menu.mp { padding-top: 2.8rem; gap: 8px; }
+  .mp-head .pb-heading { zoom: 0.8; }
+  .mp-cards { margin-top: 40px; }
+  .mp-card { gap: 6px; padding: 44px 24px 20px; }
+  .mp-card h2 { font-size: 36px; }
+  .menu.mp .mp-card > .mp-card__as { margin-top: 6px; }
+  .mp-card__as b { padding: 6px 12px; font-size: 22px; }
+  .mp-card .room .room-input { font-size: 2.2rem; }
+  .menu.mp .mp-card .pb-btn { min-height: 52px; font-size: 20px; }
+  .mp-lobby__main { gap: 16px; }
+  .mp-lobby__titles .pb-heading { zoom: 0.8; }
+  .mp-lobby { margin-top: 8px; }
+}
+
+@media (max-width: 900px) {
+  .mp-lobby { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+  .mp-frame { height: 420px; }
+  .mp-top__hero { display: none; }
+}
+
+/* The round token (RoomArt.tsx): stones on a canvas, the line icon on top. */
+.mp-token { position: relative; display: inline-block; flex: none; }
+.mp-token canvas { position: absolute; inset: 0; }
+.mp-token__icon { position: absolute; inset: 24%; width: 52%; height: 52%; stroke: #fbf4e4; stroke-width: 4.6; filter: drop-shadow(0 1px 1px #0a1014) drop-shadow(0 0 2px #0a1014); }
+.mp-card__sticker.mp-token { position: absolute; z-index: 2; }

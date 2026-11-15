@@ -1,8 +1,12 @@
-// The Multiplayer screen: host a room or join one, side by side. Hosting shows a four-letter code and a QR code a friend
-// scans; joining takes the typed code, or the code a scanned link filled in. Rooms need the game's own server (/api/rooms).
+// The Multiplayer screen, laid out like the owner's Dance Fantasy rooms in Odyssey Dojo's mosaic. A bar along the top
+// (the game's name, the hero, the way back), then the choices as tall stone cards in one row: host a room, or join one
+// by its code (a scanned link fills the code in). Opening a room turns the whole screen into the room (RoomHost).
+// Rooms need the game's own server (/api/rooms).
+import { useProfile } from "../account/store";
 import { Icon } from "../account/ui/icons";
 import type { HostLink } from "../net/host";
 import { Button, Panel, PebbleHeading } from "../ui/pebble";
+import { RoomToken } from "./RoomArt";
 import { RoomHost } from "./RoomHost";
 import { RoomJoin } from "./RoomJoin";
 import type { Joined } from "./RoomJoin";
@@ -10,7 +14,7 @@ import "./account.css";
 import "./multiplayer.css";
 
 export function Multiplayer(props: {
-  /** True once "Open a room" was pressed: the host card holds the live room. */
+  /** True once "Open a room" was pressed: the screen is the live room. */
   hosting: boolean;
   /** The code from a scanned link, or "". */
   code: string;
@@ -22,29 +26,40 @@ export function Multiplayer(props: {
   onJoined: (joined: Joined) => void;
   onBack: () => void;
 }) {
+  const { name } = useProfile();
   return (
-    <Panel as="main" ornament className="menu menu--rooms">
-      <PebbleHeading as="h1" text="Multiplayer" px={48} tone="ochre" />
-      <p className="lead">Two fighters, one monster. Strike the same move together to hit twice as hard.</p>
-      <div className="rooms">
-        <section className="acc-card rooms__card">
-          <h2><Icon name="host" className="acc-card__icon" />Host a room</h2>
-          {props.hosting ? (
-            <RoomHost onStart={props.onStart} onSolo={props.onSolo} onBack={props.onClose} />
-          ) : (
-            <>
-              <p>You get a four-letter code and a QR code. Your friend scans it with a phone, or types the code on another computer.</p>
+    <Panel as="main" ornament className={`menu menu--rooms mp ${props.hosting ? "mp--room" : "mp--choices"}`}>
+      <header className="mp-top">
+        <span className="mp-top__brand">Odyssey <b>Dojo</b></span>
+        <span className="mp-top__hero"><Icon name="helmet" />{name || "Odysseus"}</span>
+        {!props.hosting && <Button className="mp-top__back" onClick={props.onBack}><Icon name="house" className="acc-btn__icon" />Main menu</Button>}
+      </header>
+      {props.hosting ? (
+        <RoomHost onStart={props.onStart} onSolo={props.onSolo} onBack={props.onClose} />
+      ) : (
+        <>
+          <div className="mp-head">
+            <PebbleHeading as="h1" text="Multiplayer" px={60} tone="ochre" />
+            <p className="lead">Two fighters, one monster. Strike the same move together to hit twice as hard.</p>
+          </div>
+          {/* One row of choices. A third card (another way to play together) goes in this list as one more <section>. */}
+          <div className="mp-cards">
+            <section className="mp-card">
+              <RoomToken icon="host" size={84} className="mp-card__sticker" />
+              <h2><span className="mp-kicker">Host a</span> Room</h2>
+              <p>You get a four-letter code and a QR code for your friend.</p>
+              <p className="mp-card__as"><small>Your hero name</small><b>{name || "Odysseus"}</b><small>Change it on the Account screen.</small></p>
               <Button primary onClick={props.onOpen}>Open a room</Button>
-            </>
-          )}
-        </section>
-        <section className="acc-card rooms__card">
-          <h2><Icon name="join" className="acc-card__icon" />Join a room</h2>
-          <p>Scanned a friend's QR code? The code is already filled in. Otherwise type it here.</p>
-          <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
-        </section>
-      </div>
-      {!props.hosting && <Button onClick={props.onBack}><Icon name="house" className="acc-btn__icon" />Main menu</Button>}
+            </section>
+            <section className="mp-card">
+              <RoomToken icon="join" size={84} className="mp-card__sticker" />
+              <h2><span className="mp-kicker">Join a</span> Room</h2>
+              <p>Scanned a friend's QR code? The code is already filled in.</p>
+              <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
+            </section>
+          </div>
+        </>
+      )}
     </Panel>
   );
 }
