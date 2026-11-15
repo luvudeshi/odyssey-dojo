@@ -3,3 +3,5 @@ export { scoreWarmup } from "./habits";
 export type { DefenseId, Habit, HabitId } from "./habits";
 export { MAX_LEAN, trainOn } from "./train";
 export { improvement } from "./report";
+export { SKIPPED, WARMUP_STEPS, assessWarmup, stepScore, summary, tuneFor } from "./warmup";
+export type { Assess, Assessment, Focus, SkillLevel, StepResult, WarmupStep } from "./contract";
