@@ -15,6 +15,7 @@ import type { Register } from "../app";
 import { Busy, STRANGERS_AT_ONCE, STRANGERS_WAITING, createAccountLimits, createGate } from "../lib/accountLimits";
 import { CREDENTIALS_BODY_BYTES, SAVE_BODY_BYTES, nameKey, parseCredentials, parseSaveBody } from "../lib/accountRules";
 import { Unavailable, bearerToken, createAccounts } from "../lib/accounts";
+import { shareAccounts } from "../lib/accountsShared";
 import { dbRedactor, openDb } from "../lib/db";
 import { wasRelayed } from "../lib/localOnly";
 import { RELAYED, THIS_MACHINE, clientKey } from "../lib/roomLimits";
@@ -70,6 +71,7 @@ export const register: Register = (router, deps) => {
   const accounts = deps.accounts ?? createAccounts(() => openDb(url), { redact });
   const limits = createAccountLimits();
   const strangers = createGate(STRANGERS_AT_ONCE, STRANGERS_WAITING);
+  shareAccounts(deps, { accounts, strangers });
 
   /**
    * Who a request is counted against. Only a request the guard also calls local is this machine: clientKey knows

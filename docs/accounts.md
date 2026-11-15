@@ -86,6 +86,116 @@ Limits of this, worth knowing:
 - Two browsers that both play before either fetches again each add to their own old count. The larger wins, so "fights" can come out one short. Stops, styles and achievements are never lost.
 - The hero name on a merge is the one saved in the account. It is the sign-in name only until the player renames the hero.
 
+## What Tiger Data does for the game
+
+Read this if you have 30 seconds. Tiger Data is the game's memory in two ways.
+
+1. **Accounts.** A hero name, a password and one saved game per player, in plain Postgres tables. Sign in on any browser and the road home is where you left it.
+2. **The hall of heroes.** Every finished fight of a signed-in player is one row in a time series. The Account page shows the best scores tonight and of all time, how many fights were fought this hour, a line of the last six hours and which monster fell most. All of it comes from **one statement, one round trip, about 45 ms** on a free service, and the database is asked at most once in five seconds however many people look.
+
+What is used, and why each earns its place:
+
+| Tiger Data feature | What it does here |
+| --- | --- |
+| **Hypertable** `fights`, one chunk a day | "Tonight" is the last 24 hours. The planner opens the last day's chunk and no other, however many nights of fights are behind it. |
+| **Columnstore** on chunks older than a day, grouped by account | Old fights are kept small. TimescaleDB 2.32 sets this policy itself when the hypertable is made. |
+| **Continuous aggregate** `fights_hourly`, real-time | Per hero and hour: fights, wins, best score, and the stop, style and god of that best fight. "All time" reads these few rows per hero, not every fight ever fought. Real-time means a fight of this minute is in the list at once, before the next refresh. |
+| **Refresh policy**, every 30 minutes | Writes down the hours that are over. No start offset, so hours missed while a free service slept are caught up. |
+| **`time_bucket_gapfill`** | Fights per ten minutes for the activity line, with the empty buckets filled in by the database. |
+| **`last(value, time)`** and **`last(value, score)`** | The newest hero name of an account, and where its best score was made, in one pass with no join and no second query. |
+
+The table (`server/lib/heroes.ts`):
+
+```sql
+create table if not exists fights (
+  at timestamptz not null,
+  account_id uuid not null references accounts (id) on delete cascade,
+  hero text not null, stop_id text not null, won boolean not null, score integer not null,
+  style_id text not null, god_id text, seconds real, best_combo integer
+) with (tsdb.hypertable, tsdb.partition_column = 'at', tsdb.chunk_interval = '1 day',
+        tsdb.segmentby = 'account_id', tsdb.orderby = 'at desc');
+```
+
+The continuous aggregate behind "all time":
+
+```sql
+create materialized view if not exists fights_hourly
+with (timescaledb.continuous, timescaledb.materialized_only = false) as
+select time_bucket(interval '1 hour', at) as bucket, account_id,
+  count(*) as fights, count(*) filter (where won) as wins, max(score) as best, min(at) as first_at,
+  last(hero, at) as hero, last(stop_id, score) as best_stop, last(style_id, score) as best_style, last(god_id, score) as best_god
+from fights group by bucket, account_id
+with no data;
+
+select add_continuous_aggregate_policy('fights_hourly', start_offset => null::interval,
+  end_offset => interval '1 hour', schedule_interval => interval '30 minutes', if_not_exists => true);
+```
+
+Two of the parts of the one statement that reads the hall (`$1` is now, `$2` a day ago, `$4` and `$5` the ends of the activity line):
+
+```sql
+-- Tonight: the best score of each hero, and where it was made.
+select account_id, last(hero, at) as hero, max(score) as best,
+  last(stop_id, score) as stop, last(style_id, score) as style, last(god_id, score) as god, min(at) as since
+from fights where at > $2 and at <= $1
+group by account_id order by best desc, since asc limit 10;
+
+-- The activity line: 36 buckets of ten minutes, the empty ones as zero.
+select time_bucket_gapfill(interval '10 minutes', at, $4, $5) as bucket, coalesce(count(*), 0) as fights
+from fights where at >= $4 and at < $5 group by bucket;
+```
+
+What this is not: at tonight's size (a few hundred fights) plain Postgres would answer as fast. The design is what keeps the same two lists and the same line one statement when the table holds every fight of every night.
+
+## The hall of heroes
+
+- **When a fight is written.** A signed-in player finishes a fight (won or lost) on the road. The browser sends it in the background once, after the profile has it. The result screen never waits for it and never shows an error from it. Signed out, a fight sends nothing.
+- **What is written.** When (the server's clock), whose (the account of the session), the hero name on the player's screen, the stop, won or lost, the score, the fighting style, the god the scan found (if any), how many seconds the fight took and the best combo.
+- **What the hall shows.** The best score of each hero in the last 24 hours and of all time, ten each: a podium for the first three, a list to ten, the reader's own row marked "You". Under it: fights this hour (or in all), fights per ten minutes over six hours, and the stop beaten most tonight. It is read when the Account page opens and every ten seconds while that page is in front. With accounts off there is no hall and the page is as it was.
+- **A tie** goes to the hero who fought first.
+
+Two routes (`server/routes/heroes.ts`):
+
+| Route | Answers |
+| --- | --- |
+| `POST /api/account/fights` (Bearer) `{ fight: { stop, won, score, style, god?, seconds?, bestCombo?, hero? } }` | 201 `{ recorded: true }`, 400 `{ error: "invalid", field }`, 401 `signed_out`, 413 `too_big`, 429 `slow_down`, 503 `unavailable` |
+| `GET /api/heroes` (no sign-in needed; a Bearer only marks the reader's row) | 200 `{ at, tonight, allTime, lastHour, fightsEver, stops, activity }`, 429, 503 |
+
+- A row of `tonight` and `allTime` is `{ hero, score, stop, style, god, you }`. There is no id of any account in the answer.
+- `activity` is `{ minutes: 10, until, fights: [36 numbers] }`, oldest first. `stops` is `{ stop, fights, wins }` for the last 24 hours.
+- Both paths answer the tunnel and the laptop only, like the account paths (`server/lib/localOnly.ts`).
+
+**Scores are the browser's own word.** The fight runs in the browser, so the server cannot check a score. It is a game, not a bank. What bounds a made-up one:
+
+| A stranger tries to | Bound |
+| --- | --- |
+| Put a made-up score on the list | They can, up to 30,000 (a long clean win at the last stop is under 10,000). It takes an account, and an account is one row on each list. Remove one with `delete from accounts where name_key = lower('The Name');`: its fights and its row go with it. |
+| Write a fight as another player | The account comes from the session and nowhere else. A body cannot name one. |
+| Show another hero's name | They can: the hero name is what the player calls the hero, cleaned like an account name (3 to 20 characters, nothing unseen). Two rows may show the same name. |
+| Fill the table with fights | 4 a minute and 90 an hour an account, whoever sends them. 120 a minute for all strangers together, counting only fights that were written: 172,800 rows a day at the very most. A body is 1 KB at most and is not read before the session is known. |
+| Keep the database busy by reading the hall | The hall is answered from memory. The database is asked once in 5 seconds, by one statement, which takes one of the two places strangers have. 300 reads a minute an address. |
+| Keep it busy with made-up sessions | 30 unknown sessions a minute an address are looked up; past that the hall is given without a mark and a fight is refused. |
+| Learn who is who | Hero names and scores only. No id, no time of a single fight, no account name beside the hero name. |
+
+Things to know:
+
+- **A database without TimescaleDB has no hall.** The server logs `heroes_unavailable` `no_timescaledb` once, both routes answer 503, accounts work as before. A local Postgres for tests is such a database.
+- **The hypertable and the aggregate are made at the first fight or the first reading of the hall**, after the account tables. The log says `heroes_ready`.
+- **A change to the columns of `fights` or `fights_hourly` needs the old ones dropped by hand** (`drop materialized view fights_hourly; drop table fights;`). `create ... if not exists` does not alter what is there.
+- **The time of a fight is the laptop's clock**, like every time in the account tables. A laptop clock more than an hour behind would keep a fight out of "all time" until the next refresh (30 minutes at most).
+- `delete from fights where ...` by hand leaves the hours already written down in `fights_hourly` until `call refresh_continuous_aggregate('fights_hourly', null, null);`. Deleting the account needs nothing more.
+- Only fights on the road are sent (what `recordFight` is given). The guest of a room and the Training Dojo send nothing.
+- The god is sent only when `src/App.tsx` passes it to `recordFight` (one line, the lead's file, in the PR). Without it the god is empty and everything else works.
+
+Not checked for the hall:
+
+- The real `fights` and `fights_hourly` (no prefix) have not been made yet. The tests and the pictures used tables under a prefix of their own, since dropped. The first start of the server with this code makes the real ones.
+- Nothing that takes a day or more: a chunk moving to the columnstore, a fight deleted out of a chunk that is already there, the refresh policy over many hours. The policy was seen to run once, right after it was made.
+- The tunnel. The two paths were called with a tunnel's headers on a loopback socket, not through a real one.
+- A camera fight and the god in a row: the keyboard fight that was played in headless Chrome has no god.
+- Two real browser profiles looking at one hall.
+- Where the hall sits on the Account page is the lead's call. The pictures were taken with one line added to `src/screens/Account.tsx`, not committed.
+
 ## The routes
 
 | Route | Answers |
@@ -174,6 +284,18 @@ TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.t
 - They need the `pg` package installed.
 - Each run makes its own three tables under a random prefix and drops them at the end, so it can share a database with the game.
 - **Without `TEST_DATABASE_URL` these 14 tests are skipped**, as the owner allowed. They have never run.
+
+**The hall of heroes** has its own three files:
+
+```
+npx vitest run server/tests/heroes.test.ts tests/accountHeroes.test.ts
+TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/heroesDb.test.ts
+```
+
+- `server/tests/heroes.test.ts` (20 tests, no database): what a fight must look like, the limits, who may reach the two paths, the order in which the routes count and ask, and the hall's own code. Its stand-ins: an `Accounts` and a `Heroes` object with fixed answers, and a made-up statement function that answers from a list. None is a database.
+- `tests/accountHeroes.test.ts` (9 tests, a made-up `fetch`): no request when signed out, one request a fight when signed in, what is sent, the fight's clock, and the hall as the browser reads it.
+- `server/tests/heroesDb.test.ts` (10 tests) talks to a real Tiger Data service. Each run makes its own tables, hypertable and continuous aggregate under a random prefix and drops them at the end. It needs TimescaleDB, so a plain local Postgres will not do. **Without `TEST_DATABASE_URL` these 10 are skipped.**
+- **These 10 have been run against the real Tiger Data service** (PostgreSQL 18.6, TimescaleDB 2.32.0): 10 passed. They cover: the hypertable, the aggregate and its policy as the service lists them; a fight written with the session's account; nobody writing as somebody else; the ten best in order with a tie; tonight against all time, before and after a refresh of the aggregate; the 36 buckets of the activity line; the limit of four a minute; an account deleted.
 
 ## Not done, not checked
 
