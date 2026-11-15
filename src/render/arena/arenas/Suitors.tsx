@@ -7,6 +7,7 @@ import { DoubleSide } from "three";
 import { useQualityLevel } from "../../quality";
 import { HearthFire, NightSky, Torches } from "../suitors/Fire";
 import { hallSolids } from "../suitors/hall";
+import { Feast } from "../suitors/Feast";
 import { propSolids } from "../suitors/props";
 import type { ArenaDef } from "../registry";
 
@@ -43,6 +44,7 @@ function Hall() {
       <mesh geometry={geo.props} castShadow={high} receiveShadow={high}>
         <meshStandardMaterial vertexColors flatShading roughness={0.9} />
       </mesh>
+      <Feast />
       <HearthFire />
       <Torches />
       <NightSky />
