@@ -4,6 +4,7 @@ import type { MoveDef, PoseFrame, PoseHistory } from "../../core/types";
 import { clamp01, recent } from "../../pose/signals";
 import type { Side } from "../handSignals";
 import { SIDES, kneeAngle, kneeLift, legsVisible } from "../legSignals";
+import { legRose } from "../looseSignals";
 
 /** How long ago the foot may have been on the floor, in milliseconds. */
 export const RISE_MS = 700;
@@ -59,6 +60,10 @@ export const move: MoveDef = {
   teaches: "Held close with no room to swing an arm, a knee can still make the space to get away.",
   detect(history) {
     return best(history) ? 1 : 0;
+  },
+  /** Asked for: a leg rising. The front kick reads the same way: the pose cannot cheaply tell them apart. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), legRose(history));
   },
   /** Better the higher the knee goes, the tighter the leg stays folded and the faster the knee comes up. */
   quality(history) {
