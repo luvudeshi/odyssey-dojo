@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { PowerCircle } from "../src/hud/PowerCircle";
+import { PowerCircle, shardHeat } from "../src/hud/PowerCircle";
 
 const render = (power: number, lifted = false): string => renderToStaticMarkup(createElement(PowerCircle, { power, lifted }));
 
@@ -32,4 +32,12 @@ test("a full meter is marked full, and anything past full or not a number stays 
 test("it lifts over the power-ready banner only when told to", () => {
   expect(render(1, true)).toContain("is-lifted");
   expect(render(1)).not.toContain("is-lifted");
+});
+
+test("each fifth of power lights one more glass shard, the one filling partly", () => {
+  expect([0, 1, 2, 3, 4].map((i) => shardHeat(0.6, i))).toEqual([1, 1, 1, 0, 0]);
+  expect(shardHeat(0.7, 3)).toBeCloseTo(0.5, 5);
+  expect(render(0.6).match(/class="power-circle__melt"/g)?.length).toBe(3);
+  expect(render(0).match(/class="power-circle__melt"/g)).toBeNull();
+  expect(render(1).match(/class="power-circle__melt"/g)?.length).toBe(5);
 });
