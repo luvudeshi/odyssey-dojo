@@ -183,3 +183,13 @@
 @media (prefers-reduced-motion: reduce) {
   .dojo-result { animation: none; }
 }
+
+/* MISS (the fight's flash, src/hud/MissFlash): the dojo has no hud.css, so it is placed here, over the stage, in the dojo's own type. */
+.dojo .hb-rating.hb-miss {
+  position: absolute; left: 50%; top: 4%; z-index: 5; transform: translateX(-50%); width: auto; padding: 0.15em 0.7em; pointer-events: none;
+  font: 700 3.2rem/1.1 var(--dj-font); letter-spacing: 0.14em; text-transform: uppercase; color: #ff6a5c;
+  background: #14111aee; border: 2px solid #ff6a5c; clip-path: var(--dj-chip); text-shadow: 0 0 10px #ff3a2a88, 0 2px 0 #2a0806;
+  animation: dojo-miss 0.7s ease-out both;
+}
+@keyframes dojo-miss { from { opacity: 0; transform: translateX(-50%) scale(1.25); } 25% { opacity: 1; } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .dojo .hb-rating.hb-miss { animation: none; } }

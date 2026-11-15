@@ -7,6 +7,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FightingStyle, PoseFrame, PoseHistory } from "../../core/types";
 import { ENEMIES } from "../../enemies/registry";
+import { MissFlash, noteMiss } from "../../hud/MissFlash";
+import { createMissWatch } from "../../input/missWatch";
+import { createPoseInput } from "../../input/poseInput";
+import { MOVES } from "../../moves/registry";
 import { DOJO_REPS, assessmentFrom, closingLine, currentMove, keyRep, skipResult, startDojo, summariseDojo, tickDojo, tuningLine } from "../dojo";
 import type { DojoConfig, DojoRep, DojoState, DojoSummary } from "../dojo";
 import { POINTS } from "../grade";
@@ -85,6 +89,7 @@ export function Dojo(props: DojoProps) {
   const [round, setRound] = useState(0);
   const session = useRef<DojoState>(null);
   const history = useRef<PoseHistory | null>(null);
+  const missWatch = useRef(createMissWatch());
   const root = useRef<HTMLElement>(null);
   const camera = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>(() => viewOf(startDojo(config, 0)));
@@ -101,6 +106,9 @@ export function Dojo(props: DojoProps) {
     session.current = state;
     history.current = null;
     setView(viewOf(state));
+    const readPose = createPoseInput(MOVES);
+    const watch = createMissWatch();
+    missWatch.current = watch;
     let handle = 0;
     const loop = (): void => {
       const now = performance.now();
@@ -108,6 +116,9 @@ export function Dojo(props: DojoProps) {
       const before = session.current ?? state;
       state = tickDojo(before, now, tracker?.read() ?? null);
       session.current = state;
+      // A wrong move or a weak try does not end the turn or cost the repetition: it flashes MISS and the player tries again.
+      const asked = state.phase === "go" && !state.hit ? currentMove(state) : undefined;
+      if (watch(asked?.id ?? null, asked?.kind === "defend", tracker ? readPose(state.history) : { held: new Set(), struck: [] }, false, now)) noteMiss();
       history.current = state.history.frames.length > 0 ? state.history : null;
       if (state.phase !== before.phase || state.moveIndex !== before.moveIndex || state.repIndex !== before.repIndex) setView(viewOf(state));
       root.current?.style.setProperty("--dojo-time", (state.phaseMs > 0 ? state.msLeft / state.phaseMs : 0).toFixed(3));
@@ -132,6 +143,12 @@ export function Dojo(props: DojoProps) {
       const now = performance.now();
       let next = state;
       if (state.phase === "go" && move && (event.key === move.key || event.key === " ")) next = keyRep(state, now);
+      else if (state.phase === "go" && move) {
+        // Another move's key: the turn goes on, and MISS shows.
+        const other = [...MOVES.values()].find((each) => each.key === event.key && each.id !== move.id);
+        const defend = move.kind === "defend";
+        if (other && missWatch.current(move.id, defend, { held: new Set(other.kind === "defend" ? [other.id] : []), struck: other.kind === "defend" ? [] : [{ move: other.id, quality: 0.7, player: 0 }] }, false, now)) noteMiss();
+      }
       else if (state.phase === "result" && (event.key === " " || event.key === "Enter")) next = skipResult(state, now);
       if (next === state) return;
       event.preventDefault();
@@ -190,6 +207,7 @@ export function Dojo(props: DojoProps) {
       {!picking && !done && move && (
         <>
           <div className="dojo-stage">
+            <MissFlash />
             <div className="dojo-outline">
               <MoveGuide key={move.id} move={move} history={() => history.current} size="large" guide={guide} table={DOJO_MEASURES} />
             </div>

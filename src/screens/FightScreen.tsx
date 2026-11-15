@@ -22,7 +22,7 @@ import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { noteMiss } from "../hud/MissFlash";
-import { createMissWatch } from "../input/missWatch";
+import { createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -129,7 +129,7 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
-      if (watchMiss(from.phase, input, result.events)) noteMiss();
+      if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       fightEvents.current.push(...result.events);
