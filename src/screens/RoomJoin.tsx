@@ -8,7 +8,7 @@ import { startTracker } from "../pose/tracker";
 import type { PoseTracker } from "../pose/tracker";
 import { Button } from "../ui/pebble";
 import { browserDeps } from "./roomNet";
-import { MODE_TEXT, ROOM_MESSAGES, guestMode } from "./roomUrl";
+import { MODE_TEXT, guestMode, roomMessage } from "./roomUrl";
 import type { GuestMode } from "./roomUrl";
 import { forgetSeat, keepCamera, keptRoom, tabStore } from "./seatStore";
 
@@ -51,7 +51,7 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
       return;
     }
     if (typeof room === "string") {
-      setProblem(ROOM_MESSAGES[room] ?? "");
+      setProblem(roomMessage(room, window.location.hostname));
       setBusy(false);
       return;
     }

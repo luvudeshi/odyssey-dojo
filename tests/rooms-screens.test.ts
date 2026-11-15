@@ -5,7 +5,7 @@ import type { Flow, FlowAction } from "../src/screens/flow";
 import { STYLES } from "../src/styles/registry";
 import type { EnemySpec } from "../src/core/types";
 import { fetchLanBase } from "../src/screens/roomNet";
-import { guestMode, joinUrl, reachableBase, roomFromSearch } from "../src/screens/roomUrl";
+import { guestMode, joinUrl, reachableBase, roomFromSearch, roomMessage, ROOM_MESSAGES } from "../src/screens/roomUrl";
 
 const run = (actions: readonly FlowAction[], from: Flow = START): Flow => actions.reduce(flowReducer, from);
 const style = STYLES[0];
@@ -84,4 +84,11 @@ test("the address lookup gives up after its time limit when the server never ans
   expect(await fetchLanBase(40)).toBeNull();
   expect(Date.now() - started).toBeLessThan(2000);
   vi.unstubAllGlobals();
+});
+
+test("a failed room call reads as a developer hint only on localhost", () => {
+  for (const host of ["localhost", "127.0.0.1", "[::1]"]) expect(roomMessage("unreachable", host)).toBe(ROOM_MESSAGES.unreachable);
+  for (const host of ["dojo.test", "odyssey.vercel.app"]) expect(roomMessage("unreachable", host)).toMatch(/^Rooms are not open on this site yet/);
+  expect(roomMessage("room_full", "odyssey.vercel.app")).toBe(ROOM_MESSAGES.room_full);
+  expect(roomMessage("nonsense", "localhost")).toBe("");
 });

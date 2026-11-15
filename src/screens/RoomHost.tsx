@@ -10,7 +10,7 @@ import { Button } from "../ui/pebble";
 import { SetTitle } from "../ui/set/Set";
 import { RoomTags } from "./RoomTags";
 import { browserDeps, fetchLanBase, LAN_BASE_TIMEOUT_MS } from "./roomNet";
-import { ROOM_MESSAGES, joinUrl, reachableBase } from "./roomUrl";
+import { ROOM_MESSAGES, joinUrl, reachableBase, roomMessage } from "./roomUrl";
 
 type Phase =
   | { readonly kind: "making" }
@@ -32,7 +32,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
       const room = await createRoom(browserDeps);
       if (left.current) return;
       if (typeof room === "string") {
-        setPhase({ kind: "failed", why: ROOM_MESSAGES[room] ?? "" });
+        setPhase({ kind: "failed", why: roomMessage(room, window.location.hostname) });
         return;
       }
       link.current = createHostLink(openRoom(browserDeps, room));
