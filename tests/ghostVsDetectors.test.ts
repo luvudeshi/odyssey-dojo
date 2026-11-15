@@ -21,6 +21,7 @@
 import { describe, expect, test } from "vitest";
 import doc from "../docs/ghost-check.md?raw";
 import type { MoveDef } from "../src/core/types";
+import { ENEMIES } from "../src/enemies/registry";
 import { flungWide, punch } from "../src/moves/handSignals";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, baselineOf, pushFrame } from "../src/pose/signals";
@@ -68,7 +69,8 @@ function styleOf(def: MoveDef): string {
   const styles = STYLES.filter((style) => style.strikes.includes(def.id)).map((style) => style.name);
   if (styles.length > 0) return styles.join(", ");
   if (def.kind === "defend") return "defend";
-  return def.id === "stake_thrust" ? "finisher" : "god power";
+  // A strike in no style is one a fight asks for only as a finisher.
+  return ENEMIES.some((enemy) => enemy.finisher === def.id) ? "finisher" : "god power";
 }
 
 function measure(def: MoveDef): Row {
