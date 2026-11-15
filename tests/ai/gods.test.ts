@@ -225,7 +225,8 @@ describe("the gods", () => {
       }
     }
     expect(GODS.athena.rivals[0]).toBe("poseidon");
-    expect(GODS.poseidon.rivals[0]).toBe("athena");
+    // Athena coaches the player, so she is in nobody's list: Poseidon's first rival is Zeus (Iliad 15).
+    expect(GODS.poseidon.rivals[0]).toBe("zeus");
   });
 
   test("no epithet would read as a remark on the player's body, looks or gender", () => {
