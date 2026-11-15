@@ -12,16 +12,32 @@ export const EXAMPLE_PHRASES: readonly string[] = [
   "like a patient old fisherman",
 ];
 
-/** One line of plain text the server will accept: no control characters, single spaces, at most 200 characters. */
-export function cleanPhrase(raw: string): string {
+/** The longest epithet the server's level request allows. */
+export const MAX_EPITHET_LENGTH = 80;
+
+/** One line of plain text, cut to `max` characters without splitting an emoji or leaving a trailing space. */
+function tidyLine(raw: string, max: number): string {
   // \p{Cs} only matches a surrogate with no partner, so emoji survive and broken halves do not.
   const tidy = raw.replace(/[\p{Cc}\p{Cs}]/gu, " ").replace(/\s+/g, " ").trim();
   let cut = "";
   for (const symbol of tidy) {
-    if (cut.length + symbol.length > MAX_PHRASE_LENGTH) break;
+    if (cut.length + symbol.length > max) break;
     cut += symbol;
   }
   return cut.trimEnd();
+}
+
+/** One line of plain text the server will accept: no control characters, single spaces, at most 200 characters. Nothing unless some of it can be seen. */
+export function cleanPhrase(raw: string): string {
+  const cut = tidyLine(raw, MAX_PHRASE_LENGTH);
+  // Zero-width and direction marks are kept inside a phrase (a family emoji needs its joiners), but they are not a phrase on their own.
+  return /[\p{L}\p{N}\p{P}\p{S}]/u.test(cut) ? cut : "";
+}
+
+/** The player's epithet as the level request accepts it (at most 80 characters), or undefined when there is nothing to send. */
+export function cleanEpithet(raw: string | undefined): string | undefined {
+  const cut = tidyLine(raw ?? "", MAX_EPITHET_LENGTH);
+  return cut === "" ? undefined : cut;
 }
 
 /** Up to `count` different examples. The same seed always gives the same ones in the same order. */
