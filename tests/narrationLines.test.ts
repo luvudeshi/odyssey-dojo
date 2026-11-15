@@ -130,12 +130,11 @@ test("every taunt is one of that monster's own taunts, word for word", () => {
   }
 });
 
-test("every monster but Scylla has two or three spoken taunts, each different", () => {
+test("every monster has two or three spoken taunts, each different", () => {
   for (const enemy of ENEMIES) {
     const ids = tauntIds(enemy.id);
-    // Polyphemus's four were recorded first. Scylla's file has one taunt, so she has one clip until it has more:
-    // that part of issue #86 is open. Once her file has three, record them and make her range [2, 3].
-    const [least, most] = enemy.id === "polyphemus" ? [4, 4] : enemy.id === "scylla" ? [1, 3] : [2, 3];
+    // Polyphemus's four were recorded first. Every other monster has two or three, Scylla too since her file got three.
+    const [least, most] = enemy.id === "polyphemus" ? [4, 4] : [2, 3];
     expect(ids.length, enemy.id).toBeGreaterThanOrEqual(least);
     expect(ids.length, enemy.id).toBeLessThanOrEqual(most);
     // Numbered from 1 with no gaps, so a picked id always has a line.
@@ -502,6 +501,28 @@ test("every monster can taunt, and the dice pick which taunt", async () => {
     await vi.advanceTimersByTimeAsync(100);
     expect(first.started, enemy.id).toEqual([ids[0]]);
     expect(last.started, enemy.id).toEqual([ids.at(-1)]);
+  }
+});
+
+test("a monster does not say the same taunt at two phase changes running, whatever the dice pick", async () => {
+  for (const enemy of ENEMIES) {
+    for (const roll of [0, 0.5, 0.999]) {
+      const { taunts, story, started } = fakeStory({ random: () => roll });
+      // A fight has at most three phase changes; the rematch after it starts on a different line too.
+      for (let change = 0; change < 4; change += 1) {
+        const taunt = watch(story.speakMonsterTaunt(enemy.id));
+        await vi.advanceTimersByTimeAsync(100);
+        taunts.stop(started.at(-1) ?? "");
+        await vi.advanceTimersByTimeAsync(100);
+        expect(taunt.settled, enemy.id).toBe(true);
+      }
+      expect(started.length, enemy.id).toBe(4);
+      for (const [at, id] of started.entries()) {
+        expect(tauntIds(enemy.id), enemy.id).toContain(id);
+        if (at > 0) expect(id, `${enemy.id} at roll ${String(roll)}`).not.toBe(started[at - 1]);
+      }
+      expect(vi.getTimerCount()).toBe(0);
+    }
   }
 });
 
