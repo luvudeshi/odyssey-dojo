@@ -113,7 +113,8 @@ export interface LookupDeps {
   readonly now: () => number;
 }
 
-type Asked = { readonly ok: true; readonly body: Record<string, unknown> } | { readonly ok: false; readonly why: "network" | "service"; readonly status: number };
+type NotAsked = Extract<Lookup, { ok: false }>;
+type Asked = { readonly ok: true; readonly body: Record<string, unknown> } | NotAsked;
 
 async function ask(deps: LookupDeps, config: LivekitConfig, path: string, body: Record<string, string>, room?: string): Promise<Asked> {
   const base = roomServiceUrl(config.livekitUrl);
@@ -162,7 +163,7 @@ export async function findChertRoom(deps: LookupDeps, config: LivekitConfig): Pr
     .slice(0, MAX_LOOKED_AT);
   const looked = await Promise.all(rooms.map(async (each) => ({ each, who: await ask(deps, config, LIST_PARTICIPANTS_PATH, { room: each.name }, each.name) })));
   let waiting: WaitingRoom | null = null;
-  let failed: Asked | null = null;
+  let failed: NotAsked | null = null;
   for (const { each, who } of looked) {
     if (!who.ok) {
       // A room that closed between the two questions answers 404: it is simply not there.
@@ -177,6 +178,7 @@ export async function findChertRoom(deps: LookupDeps, config: LivekitConfig): Pr
     if (caller !== null) return { ok: true, room: found };
     if (WAITING_ROOM.test(each.name)) waiting ??= found;
   }
-  if (waiting === null && failed !== null && !failed.ok) return failed;
+  // A waiting room that was found stands. With none found, a room that could not be looked into may have been it.
+  if (waiting === null && failed !== null) return failed;
   return { ok: true, room: waiting };
 }

@@ -189,6 +189,74 @@ These are the places that were guessed. Each is one small change.
 - **The call does not end when the game hangs up.** The game leaves the room and the server deletes the room (see Hang up), so the bridge is dropped. Whether Chert then ends the FaceTime call on the phone is not known. If it does not, and Chert has an end-call request, add it to the hang up route in `server/routes/facetime.ts`.
 - **The server's log says `facetime_room_not_closed`.** LiveKit refused the delete or was not reached. The status is in the line. 401 or 403 means the key and secret are not from the project `LIVEKIT_URL` points at.
 
+## Answer a call (what works on the trial)
+
+The other way round: the friend FaceTimes the game's Chert line and the game answers. It needs no Chert API key and no setting in Chert's console, so it is the path a trial line can take. **It has not been on a real FaceTime call yet either.** What was run is at the end of this section.
+
+### How Chert hands a call over
+
+Read from the code of `chert dev` (0.1.0-beta.21) and seen running:
+
+1. `chert dev --agent odyssey-dojo` holds the line. It keeps one waiting room ready in our LiveKit project, named `chert-warm-<id>`, with the agent of that name in it. It makes a new one about every five minutes and after every call, and deletes the old one.
+2. A waiting room takes two people beside the agent (`max_participants` 2), and LiveKit closes it two seconds after the last of them leaves (`departure_timeout` 2).
+3. A FaceTime call comes into the room as the participant `chert-bridge-<call id>`. A call that finds no waiting room is put in a room named `chert-<operation id>`, and the agent has about five seconds to get there.
+4. When FaceTime is up, the room's metadata becomes `{"chert_call":"<id>","chert_bridge_ready":true,"at":"..."}`. Something must be heard within 10 seconds of that, or Chert ends the call (`remote_audio_timeout`). A greeting when the caller joins is too early.
+5. Sound is taken from exactly one participant, and a second one that publishes sound ends the call. The picture is taken only from that same participant.
+6. A trial call lasts 5 minutes.
+
+### What the game does
+
+- **The agent is silent.** `scripts/chert/bridge.mjs` is the LiveKit agent `chert dev` puts in each room. It publishes nothing and subscribes to nothing. It is there because Chert only answers a call when the named agent is in the room. The game's browser tab is the one participant that publishes the sound and the picture.
+- **The server finds the room.** `GET /api/facetime/waiting` (this machine only) asks LiveKit which `chert-` room has our agent in it: a room with a caller first, else the newest `chert-warm-` room. It answers `{ url, token, room, identity, caller, ready, line }`, or `{ room: null, reason }`. The token is for the game's seat (`odyssey-dojo`) in that one room, for ten minutes. The two questions (ListRooms, ListParticipants) only read. Code: `server/lib/chertWaitingRoom.ts`, `server/routes/facetimeWaiting.ts`.
+- **The tab waits in the room.** Press "Wait for a FaceTime call" on the card. The tab joins the waiting room and publishes nothing. When the room is replaced it goes to the next one by itself.
+- **The tab answers.** When `chert-bridge-...` comes in, the tab publishes the picture (`odyssey-dojo-fight`) and one sound track (`odyssey-dojo-sound`, with the host's microphone inside it), as a dialled call does. On the ready sign it plays the three notes and Athena. If the caller's camera is there and no sign comes for 8 seconds it greets anyway, and greets again if the sign comes later.
+- **After the call** the tab leaves the room. It never deletes it: the room is Chert's (`POST /api/facetime/hangup` refuses it). It then waits in the next room, with no reload.
+- Code in the page: `src/facetime/answer.ts`, `answerBrowser.ts`, `ui/AnswerPanel.tsx`, and `answer()` in `session.ts`.
+
+### The two processes that must run
+
+On the computer that holds the line, both from Chert's starter folder (made once with `npx @trychert/facetime new odyssey-dojo --video`, outside this repo; copy `scripts/chert/bridge.mjs` and `scripts/chert/room-note.mjs` into it):
+
+```sh
+node --env-file=<repo>/.env bridge.mjs start                                        # terminal 1: the silent agent
+npx @trychert/facetime dev --agent odyssey-dojo --env-file <repo>/.env              # terminal 2: holds the line
+```
+
+`.env` holds `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` of one LiveKit project. The game's server reads the same three. Add `FACETIME_LINE_NUMBER=<the line's number>` to show the number on the card; without it the card says "your Chert line". A trial line with no agent connected goes back to Chert's pool, so both stay open until the demo is over.
+
+### The room note
+
+The agent also writes the room down: `{"room":"chert-warm-...","caller":null,"ready":false,"at":"..."}` in the file `ODYSSEY_ROOM_FILE` names (the server reads `FACETIME_ROOM_FILE`, else `~/.chert/odyssey-dojo-room.json`). The server uses it only when LiveKit cannot be asked, and only if it names a `chert-` room and was written in the last 8 minutes.
+
+The first version of the agent wrote one room and let the last writer win. Each room is its own process and they overlap, so after every change of room the note said `"room": null` while a new room was waiting. That is why LiveKit is asked first. `room-note.mjs` keeps every open room and names the one with a caller, else the newest. **An agent that was started before this change still writes the old note; it works, because the note is only the second way.**
+
+### Rules for the demo
+
+- **One tab waits, never two.** The room has two seats beside the agent: the game and the caller. A second thing in the waiting room (another tab under another name, a test page) leaves no seat for the call. A second tab of the game takes the first one's seat, and the first says so and stops.
+- **Do not leave the waiting room just before the call.** "Stop waiting", a reload or closing the tab makes LiveKit close the room 2 seconds later. `chert dev` had the next one ready 6 to 10 seconds after that, twice out of twice. Press "Wait for a FaceTime call" and leave it.
+- Keep the game's tab in front for the whole call (a hidden tab stops drawing).
+- The caller's iPhone must have joined the line (it texts the join code to the line's number once).
+
+### The demo, step by step
+
+1. Both terminals above are running. `chert dev` says the agent is in a waiting room.
+2. The game's server and the game are running on the same computer. Open Multiplayer.
+3. Press "Wait for a FaceTime call". Allow the microphone. The card says "Waiting for a FaceTime call." and shows the number.
+4. The friend calls the number on FaceTime **Video**.
+5. The card says "A FaceTime call is coming in. Connecting...", then "Your friend is on the call. Start the fight." The friend hears three notes and Athena and sees the game.
+6. Press "Start the fight" and play as on a dialled call. The plate at the bottom right has the clock and Hang up.
+7. When the call ends the card says so for five seconds and goes back to "Waiting for a FaceTime call." for the next caller.
+
+In the `chert dev` terminal a good call reads: `Incoming FaceTime Video call.`, `Answered in ... s.`, `FaceTime is ready. ...`, then `Video and audio are coming from "odyssey-dojo".`
+
+### Run so far
+
+- Unit tests: `tests/facetimeAnswer.test.ts` (the tab) and `server/tests/facetimeWaiting.test.ts` (the server and the agent's note).
+- In headless Chrome against the **real** waiting room of the held line: the route named the room, the card's button put `odyssey-dojo` in it beside the agent with no tracks, it stayed through a change of room (back in the new room about 4 seconds after the old one closed), and "Stop waiting" left it.
+- A whole call in rooms of our own (not Chert's), with a browser as `chert-bridge-test` and the ready sign written by hand: one picture and one sound published when the caller came in, silence until the sign, the first sound heard at the other side 256 and 286 ms after the sign was sent, the friend hanging up, the next room, a second call.
+- Seen from outside (ListRooms and ListParticipants only) while a teammate's test page was on a real call at 3:12 AM Sunday: the call's participant was `chert-bridge-<uuid>` with the tracks `facetime-remote-video` (1280 by 720) and `facetime-remote-audio`; the metadata was `{"chert_call":"...","chert_bridge_ready":true,"at":"..."}`; the next waiting room was made when the call was answered; a third participant that was not the agent published the picture and the sound, and the call was still up 70 seconds after the ready sign. Asked during that call, `GET /api/facetime/waiting` named the call's room with the caller and `ready: true`.
+- **Not run:** a real FaceTime call answered by the game itself.
+
 ## Hang up
 
 Leaving the room is not enough. Chert's bridge is a participant too. While it stays, the room stays, the call can stay up on the friend's phone, the line stays busy for the next call, and the trial's minutes keep running. On a real room the bridge's seat was still listed 3 seconds after the game left.
@@ -234,7 +302,7 @@ The host's microphone is sent to the phone only. The friend's voice plays on the
 ## Limits
 
 - One call at a time. A trial call is 5 minutes; the trial has 50 minutes in all.
-- Outbound only. For a friend to call the game, Chert dispatches a named LiveKit agent worker through `chert dev`. A browser tab cannot be that worker. It would need a small Node worker that tells the game server the room name, and then the tab joins with a token from `/api/facetime/seat`. Not built.
+- The Call button is outbound. For a friend to call the game, see "Answer a call": a small silent worker is the agent `chert dev` wants, and the tab joins the room that worker is in.
 - The friend only strikes. Blocks and dodges stay with the host, as in a room.
 - The keys stay on the server. The page gets only a short-lived token for its own seat in one room.
 

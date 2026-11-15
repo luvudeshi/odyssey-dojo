@@ -2,6 +2,8 @@
 
 For the "Best Use of FaceTime (Chert)" judging. The track asks for an AI agent that uses FaceTime video to see what you show it, show you what you need, or both. Ours does both: Athena sees the friend's body through the call, and the call shows the friend the fight.
 
+**On the trial line the call goes the other way:** the friend FaceTimes the line and the game answers. Use "Answer a call" in [facetime.md](facetime.md) for the steps; at 0:15 below, press "Wait for a FaceTime call" and have the friend call the number, in place of typing a number and pressing Call. The rest of the three minutes is the same.
+
 **This script has not been run on a real call yet.** Run it end to end at least twice before judging and change any step that does not match what happens.
 
 ## Before the judge arrives

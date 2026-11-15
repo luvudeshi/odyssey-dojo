@@ -9,7 +9,7 @@ import type { CallState } from "../callMachine";
 import "./answerPanel.css";
 
 /** While the card has nothing to offer yet, the server is asked again this often whether a call can come in. */
-const ASK_AGAIN_MS = 5000;
+const ASK_AGAIN_MS = 8000;
 const OFF: AnswerState = { phase: "off", room: null, reason: "", line: null };
 
 export interface Answering {
@@ -86,6 +86,7 @@ export function AnswerStart(props: { answering: Answering; only?: boolean }) {
   return (
     <div className="ft-answer">
       <small>{props.only === true ? "Your friend calls" : "Or your friend calls"} <Line line={props.answering.line} /> on FaceTime Video, from an iPhone that has joined the line. The game answers.</small>
+      {props.answering.state.reason !== "" && <small role="alert">{props.answering.state.reason}</small>}
       <Button primary={props.only === true} onClick={() => { props.answering.start(); }}>Wait for a FaceTime call</Button>
     </div>
   );

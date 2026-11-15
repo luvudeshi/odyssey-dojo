@@ -27,6 +27,11 @@ export function isBridge(identity: string): boolean {
 
 /** With no room to wait in, the server is asked again this often. */
 export const LOOK_EVERY_MS = 2000;
+/** Right after a room closed (it was replaced, or a call ended) the next one is a moment away: asked this often, this many times. */
+export const QUICK_EVERY_MS = 700;
+export const QUICK_ASKS = 5;
+/** "There is no room" is only said after this long without one: between two waiting rooms there is none for a few seconds. */
+export const NO_ROOM_SAID_AFTER_MS = 6000;
 /** In a waiting room, the server is asked this often whether it is still the right one. */
 export const CHECK_EVERY_MS = 10_000;
 /** A call that ended stays on the card this long before the card goes back to "waiting". */
@@ -36,6 +41,9 @@ export const SAME_ROOM_AFTER_MS = 10_000;
 
 export const NO_SERVER = "The game's server did not answer.";
 export const NOT_JOINED = "The game could not join the call's waiting room.";
+export const SEAT_TAKEN = "Another window of the game is waiting for the call. Only one can: close the other, then wait here again.";
+/** LiveKit's reason for dropping a participant because another joined under the same name (DisconnectReason.DUPLICATE_IDENTITY). */
+export const DUPLICATE_IDENTITY = "2";
 
 /** What GET /api/facetime/waiting says. */
 export type Waiting =
@@ -73,8 +81,9 @@ export function createWaitingApi(fetcher: typeof fetch = (url, init) => fetch(ur
 }
 
 /**
- * off: not answering. looking: asking the server for a room (and `reason` says why there is none yet).
- * waiting: in the room, a call can come in. call: a caller is in the room; the session's own state says the rest.
+ * off: not answering (`reason` says why it stopped by itself, if it did). looking: asking the server for a room
+ * (`reason` says why there is none, once that has lasted). waiting: in the room, a call can come in.
+ * call: a caller is in the room; the session's own state says the rest.
  */
 export type AnswerPhase = "off" | "looking" | "waiting" | "call";
 
@@ -82,7 +91,7 @@ export interface AnswerState {
   readonly phase: AnswerPhase;
   /** The room the game is in, while waiting or on a call. */
   readonly room: string | null;
-  /** Why there is no room, while looking. "" when nothing is wrong yet. */
+  /** Why there is no room, while looking, or why the wait stopped by itself. "" when nothing is wrong. */
   readonly reason: string;
   /** The number to call, when the server knows it. */
   readonly line: string | null;
@@ -130,7 +139,15 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
   let asking = false;
   let joining = false;
   let askAt = 0;
+  /** Quick questions left: see QUICK_ASKS. */
+  let quick = 0;
   let lastNow = 0;
+  /** Since when the server has said there is no room, or null. */
+  let noRoomSince: number | null = null;
+  /** While waiting: what the server last said instead of this room. It is acted on when said twice in a row. */
+  let doubt: string | null | undefined;
+  /** True once another window took this game's seat in the room. */
+  let taken = false;
   /** When the card goes back from "call ended" to "waiting", or null. */
   let resetAt: number | null = null;
   /** The room of the last call, and until when it is not joined again. Forever when the host hung up. */
@@ -154,12 +171,31 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
   const look = (reason: string): void => {
     generation += 1;
     joining = false;
+    doubt = undefined;
+    noRoomSince = null;
     askAt = lastNow;
     set({ phase: "looking", room: null, reason });
   };
 
+  /** Another window joined under this game's name. Joining again would only throw that one out in turn, for ever. */
+  const giveUpSeat = (): void => {
+    generation += 1;
+    joining = false;
+    resetAt = null;
+    room = null;
+    roomName = null;
+    set({ phase: "off", room: null, reason: SEAT_TAKEN });
+  };
+
   const onRoom = (mine: number) => (event: RoomEvent): void => {
-    if (mine !== generation || state.phase === "off" || state.phase === "call") return;
+    if (mine !== generation || state.phase === "off") return;
+    if (event.type === "disconnected" && event.reason === DUPLICATE_IDENTITY) {
+      // On a call the session ends the call first; this is acted on when it has (afterCall).
+      taken = true;
+      if (state.phase !== "call") giveUpSeat();
+      return;
+    }
+    if (state.phase === "call") return;
     if (event.type === "joined" && isBridge(event.identity)) {
       const joined = room;
       if (!joined) return;
@@ -175,12 +211,14 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
       const never = joining;
       look("");
       if (never) askAt = lastNow + LOOK_EVERY_MS;
+      else quick = QUICK_ASKS;
     }
   };
 
   const join = async (found: Extract<Waiting, { room: string }>): Promise<void> => {
     const mine = generation;
     joining = true;
+    noRoomSince = null;
     try {
       const opened = await deps.openRoom();
       if (mine !== generation) return;
@@ -205,6 +243,13 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
     set({ phase: "waiting", room: found.room, reason: "" });
   };
 
+  /** When to ask next, while there is no room. */
+  const soon = (): number => {
+    if (quick <= 0) return lastNow + LOOK_EVERY_MS;
+    quick -= 1;
+    return lastNow + QUICK_EVERY_MS;
+  };
+
   const ask = (): void => {
     asking = true;
     const mine = generation;
@@ -212,28 +257,37 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
       asking = false;
       if (found.line !== null && found.line !== state.line && state.phase !== "off") set({ line: found.line });
       if (mine !== generation || joining || (state.phase !== "looking" && state.phase !== "waiting")) return;
-      askAt = lastNow + (state.phase === "waiting" ? CHECK_EVERY_MS : LOOK_EVERY_MS);
-      if (found.room === undefined) {
-        // Not known: what is in hand stands. Only a game with no room says what is wrong.
-        if (state.phase === "looking" && found.reason !== state.reason) set({ reason: found.reason });
-        return;
-      }
-      if (found.room === null) {
-        if (state.phase === "waiting") {
-          // The room this game is in is no longer one a call can come into.
-          leave();
-          look(found.reason);
-          askAt = lastNow + LOOK_EVERY_MS;
-        } else if (found.reason !== state.reason) set({ reason: found.reason });
-        return;
-      }
-      if (avoid !== null && found.room === avoid.room && lastNow < avoid.until) return;
       if (state.phase === "waiting") {
-        if (found.room === state.room) return;
-        // Another room is the one a call will come into now: move.
+        askAt = lastNow + CHECK_EVERY_MS;
+        // Not known, or the same room: nothing changes.
+        if (found.room === undefined || found.room === state.room) { doubt = undefined; return; }
+        // Something else. Leaving a waiting room closes it, so this is only believed when said twice in a row.
+        if (doubt !== found.room) {
+          doubt = found.room;
+          askAt = lastNow + LOOK_EVERY_MS;
+          return;
+        }
         leave();
         look("");
+        if (found.room === null) {
+          noRoomSince = lastNow;
+          askAt = soon();
+          return;
+        }
+      } else if (found.room === undefined) {
+        // The server could not tell: said at once, it is not a passing thing.
+        askAt = soon();
+        if (found.reason !== state.reason) set({ reason: found.reason });
+        return;
+      } else if (found.room === null) {
+        askAt = soon();
+        noRoomSince ??= lastNow;
+        // Between two waiting rooms there is none for a few seconds: only a lasting lack is said.
+        if (lastNow - noRoomSince >= NO_ROOM_SAID_AFTER_MS && found.reason !== state.reason) set({ reason: found.reason });
+        return;
       }
+      askAt = soon();
+      if (avoid !== null && found.room === avoid.room && lastNow < avoid.until) return;
       void join(found);
     });
   };
@@ -245,9 +299,14 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
     // The session has left the room already (it never closes it).
     room = null;
     roomName = null;
+    if (taken) {
+      giveUpSeat();
+      return;
+    }
     if (was !== null) avoid = { room: was, until: ended.phase === "ended" && ended.ending === "host" ? Infinity : lastNow + SAME_ROOM_AFTER_MS };
     resetAt = lastNow + ENDED_SHOW_MS;
     look("");
+    quick = QUICK_ASKS;
   };
 
   // The answerer lives as long as the page, so this is never taken back.
@@ -266,6 +325,8 @@ export function createAnswerer(deps: AnswerDeps): Answerer {
       lastNow = Math.max(lastNow, now);
       avoid = null;
       resetAt = null;
+      taken = false;
+      quick = 0;
       deps.prime?.();
       look("");
     },
