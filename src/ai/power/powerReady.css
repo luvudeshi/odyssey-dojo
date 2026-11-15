@@ -2,9 +2,11 @@
    theme's own rules cannot reach in and nothing here leaks out. Colours: the god's accent (--power-ready-accent, set
    inline) and the theme's --ink and --white, each with a fallback. Only transform and opacity are animated. */
 .power-ready.power-ready--live {
-  /* Above a power chip at the bottom centre (14px up, about 32px tall) and below the prompt card's row. */
-  position: absolute; left: 0; right: 0; bottom: var(--power-ready-bottom, clamp(58px, 8.5vh, 80px)); z-index: 6;
-  display: flex; justify-content: center; margin: 0; padding: 0; pointer-events: none;
+  /* Bottom right: under the prompt card and beside the hero, who stands at the bottom centre of the battle view with
+     his feet near the lower edge. It never crosses the middle, so the hero, the camera panel (bottom left) and a
+     power chip at the bottom centre stay clear. --power-ready-left, -right and -bottom move it if the HUD changes. */
+  position: absolute; left: var(--power-ready-left, 51%); right: var(--power-ready-right, 24px); bottom: var(--power-ready-bottom, clamp(14px, 2.4vh, 24px)); z-index: 6;
+  display: flex; justify-content: flex-end; margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: center; line-height: 1;
   color: var(--white, #f2e4c8);
 }
@@ -12,7 +14,7 @@
 
 /* The glow is one fixed shadow; the pulse scales the whole plate a little. */
 .power-ready .power-ready__frame {
-  position: relative; max-width: min(47vw, 660px);
+  position: relative; max-width: min(100%, 640px);
   filter: drop-shadow(0 0 12px var(--power-ready-accent, #ffd9a0)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
   animation: power-ready-in 0.35s ease-out both, power-ready-pulse 1.3s ease-in-out 0.35s infinite;
   will-change: transform, opacity;
@@ -23,20 +25,20 @@
   clip-path: polygon(26px 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 26px 100%, 0 50%);
 }
 .power-ready .power-ready__plate {
-  padding: 12px clamp(40px, 4vw, 60px) 14px; background: var(--ink, #17110d);
+  padding: 11px clamp(34px, 3vw, 52px) 13px; background: var(--ink, #17110d);
   clip-path: polygon(25px 0, calc(100% - 25px) 0, 100% 50%, calc(100% - 25px) 100%, 25px 100%, 0 50%);
 }
 
 .power-ready .power-ready__title {
-  font-size: clamp(15px, 1.45vw, 22px); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap;
+  font-size: clamp(14px, 1.3vw, 20px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0);
 }
 .power-ready .power-ready__move {
-  margin-top: 6px; font-size: clamp(38px, 4.1vw, 62px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  margin-top: 5px; font-size: clamp(34px, 3.5vw, 54px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8); text-shadow: 0 2px 0 var(--ink, #17110d);
 }
 .power-ready .power-ready__how {
-  margin-top: 8px; font-size: clamp(19px, 1.8vw, 27px); font-weight: 600; line-height: 1.25; letter-spacing: 0.02em; text-wrap: balance;
+  margin-top: 6px; font-size: clamp(18px, 1.6vw, 25px); font-weight: 600; line-height: 1.25; letter-spacing: 0.02em; text-wrap: balance;
   color: var(--white, #f2e4c8);
 }
 .power-ready .power-ready__or { font-size: 0.78em; opacity: 0.85; white-space: nowrap; }
@@ -45,17 +47,17 @@
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
   font: inherit; font-weight: 700; line-height: 1.1; text-align: center; color: var(--power-ready-accent, #ffd9a0);
 }
-/* Keyboard play: the key is the instruction, so it is as large as the move's name. */
-.power-ready.power-ready--keys .power-ready__how { font-size: clamp(24px, 2.4vw, 36px); letter-spacing: 0.08em; text-transform: uppercase; }
+/* Keyboard play: the key is the instruction, so it is nearly as large as the move's name. */
+.power-ready.power-ready--keys .power-ready__how { font-size: clamp(24px, 2.3vw, 34px); letter-spacing: 0.08em; text-transform: uppercase; }
 
 @keyframes power-ready-in { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
-@keyframes power-ready-pulse { 50% { transform: scale(1.045); } }
+@keyframes power-ready-pulse { 50% { transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) {
   .power-ready .power-ready__frame { animation: none; }
 }
-/* Short screens (1280 x 720 and under): a little tighter, so the plate stays under the hero's feet. */
+/* Short screens (1280 x 720 and under): a little tighter, so the plate stays below the prompt card. */
 @media (max-height: 760px) {
-  .power-ready .power-ready__plate { padding-top: 9px; padding-bottom: 11px; }
-  .power-ready .power-ready__move { margin-top: 4px; }
-  .power-ready .power-ready__how { margin-top: 5px; }
+  .power-ready .power-ready__plate { padding-top: 8px; padding-bottom: 10px; }
+  .power-ready .power-ready__move { margin-top: 3px; }
+  .power-ready .power-ready__how { margin-top: 4px; }
 }
