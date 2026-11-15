@@ -195,3 +195,12 @@
   .menu.mp .pb-btn--primary:not(:disabled)::after { animation: none; opacity: 0.75; }
   .mp-frame__heat { animation: none; }
 }
+
+/* The FaceTime card (src/facetime/ui/FaceTimeCard.tsx) as the third choice: the slab is ours, the card inside loses its own box. */
+.mp-card--call:not(:has(.ft-card)) { display: none; }
+.mp-card--call .ft-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; flex: 1; width: 100%; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; text-align: center; }
+.mp-card--call .ft-card h2 { flex-direction: row; justify-content: center; gap: 0; font-size: 26px; letter-spacing: 0.08em; }
+.mp-card--call .ft-card h2 .acc-icon { display: none; }
+.menu.mp .mp-card--call .ft-card p { margin: 0; font-size: 18px; line-height: 1.3; color: var(--rift-dim); }
+.mp-card--call .ft-card .ft-label { color: var(--rift-text); }
+.mp-card--call .ft-card .ft-input { color: #ffe9c0; background: rgba(4, 3, 8, 0.8); border: 2px solid #ff8a1a; border-radius: 6px; }

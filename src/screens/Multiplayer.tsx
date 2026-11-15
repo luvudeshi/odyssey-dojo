@@ -4,6 +4,7 @@
 // (RoomHost). Rooms need the game's own server (/api/rooms).
 import { useProfile } from "../account/store";
 import { Icon } from "../account/ui/icons";
+import { FaceTimeCard } from "../facetime/ui/FaceTimeCard";
 import type { HostLink } from "../net/host";
 import { useEffect } from "react";
 import { Button, Panel } from "../ui/pebble";
@@ -64,6 +65,12 @@ export function Multiplayer(props: {
               <p>Scanned a friend's QR code? The code is already filled in.</p>
               <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
             </section>
+            {/* The FaceTime call: drawn only when the server has it set up (the card returns nothing otherwise, and the
+                slab hides with it). It comes after the join card so the room code box stays the first text box. */}
+            <div className="mp-card mp-card--call">
+              <RoomToken icon="friends" size={84} className="mp-card__sticker" />
+              <FaceTimeCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
+            </div>
           </div>
         </>
       )}
