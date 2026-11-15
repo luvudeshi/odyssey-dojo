@@ -3,8 +3,6 @@
 import type { CombatEvent, Strike } from "../core/types";
 
 const NO_MOVES: ReadonlySet<string> = new Set();
-/** A hit of the guest's own within this long of an enemyHit is the guest's, not the host's (seconds). */
-const OWN_WINDOW = 1;
 
 export const friendStage: { here: boolean; held: ReadonlySet<string>; struckMove: string; struckAt: number } = {
   here: false,
@@ -19,17 +17,22 @@ export const friendDrawn = { at: -Infinity };
 /** Host side: the guest's strikes (player 1) out of the input the engine is about to get. */
 export function feedFromGuest(struck: readonly Strike[], now: number): void {
   friendStage.here = true;
-  const last = struck.filter((strike) => strike.player === 1).at(-1);
-  if (last) { friendStage.struckMove = last.move; friendStage.struckAt = now; }
+  for (let i = struck.length - 1; i >= 0; i -= 1) {
+    const strike = struck[i];
+    if (strike?.player !== 1) continue;
+    friendStage.struckMove = strike.move;
+    friendStage.struckAt = now;
+    return;
+  }
 }
 
-/** Guest side: a hit that is not the guest's own was the host's. `ownAt` is when the guest last struck `ownMove`. */
-export function feedFromHost(events: readonly CombatEvent[], ownMove: string, ownAt: number, now: number): void {
+/** Guest side: the host's engine marks the hits the host's own strike landed (`byHost`); a miss is not shown. */
+export function feedFromHost(events: readonly CombatEvent[], now: number): void {
   friendStage.here = true;
   for (const event of events) {
-    if (event.type !== "enemyHit") continue;
-    const mine = event.move === ownMove && now - ownAt < OWN_WINDOW;
-    if (event.together === true || !mine) { friendStage.struckMove = event.move; friendStage.struckAt = now; }
+    if (event.type !== "enemyHit" || event.byHost !== true) continue;
+    friendStage.struckMove = event.move;
+    friendStage.struckAt = now;
   }
 }
 

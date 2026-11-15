@@ -35,7 +35,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
         setPhase({ kind: "failed", why: roomMessage(room) });
         return;
       }
-      link.current = createHostLink(openRoom(browserDeps, room));
+      link.current = createHostLink(openRoom(browserDeps, room), true);
       const base = reachableBase(window.location.origin, window.location.hostname, await fetchLanBase(LAN_BASE_TIMEOUT_MS));
       const url = joinUrl(base, room.code);
       setPhase({ kind: "open", code: room.code, url, qr: await toDataURL(url, { margin: 1, width: 360 }) });
