@@ -1,7 +1,8 @@
 /* Structure of the pause and settings dialog: a pebble-ground panel over a dimmed backdrop. Colours, fonts, radii and borders are --ui-* variables from theme.css. */
 .ui-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: var(--ui-backdrop); font-family: var(--ui-font); color: var(--ui-text); }
-.ui-panel { min-width: min(92vw, 28rem); max-width: 92vw; max-height: 92vh; overflow: auto; padding: 1.4rem 2rem 1.6rem; background: var(--pb-ground-deep) var(--pebble-ground) repeat; border: var(--ui-border); border-radius: var(--pb-radius-panel); box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.75); text-align: center; }
+.ui-panel { position: relative; min-width: min(92vw, 28rem); max-width: 92vw; max-height: 92vh; overflow: auto; padding: 1.4rem 2rem 1.6rem; background: var(--pb-ground-deep) var(--pebble-ground) repeat; border: var(--ui-border); border-radius: var(--pb-radius-panel); box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.75); text-align: center; }
 .ui-panel:focus { outline: none; }
+.ui-panel > * { position: relative; }
 .ui-title { margin: 0 auto 1rem; max-width: 100%; }
 .ui-menu { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .ui-menu .pb-btn { min-width: 15rem; }

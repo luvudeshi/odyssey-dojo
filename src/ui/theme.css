@@ -1,6 +1,6 @@
 /* The look of the menu, settings and pause UI. Replace this one block to change the theme; nothing else in src/ui holds a colour, font, radius, border or shadow. Now reads the pebble palette from src/theme.css. */
 :root {
-  --ui-font: var(--font-display);
+  --ui-font: var(--pb-font-body);
   --ui-font-body: var(--pb-font-body);
   --ui-text: var(--pb-text);
   --ui-text-dim: #d3c7adcc;
