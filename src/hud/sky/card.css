@@ -54,5 +54,5 @@
   .sky-card .sky-card__target { font-size: 15px; }
   .sky-card__tag { font-size: 15px; }
 }
-/* Upright, the score and power chips sit under the bars, so the card starts below them. */
+/* Upright, the score sits under the bars, so the card starts below them. */
 @media (max-width: 760px) { .sky-card { top: 150px; } }

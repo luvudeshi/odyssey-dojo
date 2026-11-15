@@ -32,15 +32,12 @@ describe("SkyTop", () => {
     expect(render({ ...base, combo: 3 })).toContain("x3 combo");
   });
 
-  it("hides power at 0, shows the percentage at 0.35 and READY with the full class at 1", () => {
-    expect(render({ ...base, power: 0 })).not.toContain("Divine power");
-    const part = render({ ...base, power: 0.35 });
-    expect(part).toContain("35%");
-    expect(part).not.toContain("is-full");
-    const full = render({ ...base, power: 1 });
-    expect(full).toContain("READY");
-    expect(full).toContain("is-full");
-    expect(full).toContain('aria-valuenow="100"');
+  it("draws no power meter: the ring at the bottom centre is the only one", () => {
+    for (const power of [0, 0.35, 1]) {
+      const html = render({ ...base, power });
+      expect(html).not.toContain("Divine power");
+      expect(html).not.toContain("sk-power");
+    }
   });
 
   it("names the enemy on the intro, and the tag for two players", () => {
