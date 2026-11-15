@@ -11,6 +11,7 @@ import {
   ANTINOUS_HEIGHT, ANTINOUS_PALETTE, EXTRAS, antinousClips, antinousLook, extraClips, gearScale, handProp, isFallen, turnFor,
 } from "../suitors/look";
 import type { Extra } from "../suitors/look";
+import { AltSuitors } from "../suitors/altCast";
 
 const BRONZE = "#b98a3e";
 const FLIP: [number, number, number] = [0, 0, Math.PI];
@@ -92,6 +93,9 @@ function Other({ extra, props }: { extra: Extra; props: MonsterProps }) {
 }
 
 export function Suitors(props: MonsterProps) {
+  // Owner's look comparison: ?look=a (KayKit men) or ?look=b (Gobkit men). Absent: today's mannequins.
+  const look = new URLSearchParams(window.location.search).get("look");
+  if (look === "a" || look === "b") return <AltSuitors look={look} props={props} />;
   return (
     <>
       <Antinous {...props} />

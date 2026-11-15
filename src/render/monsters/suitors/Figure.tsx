@@ -32,7 +32,7 @@ export interface FigureProps {
 }
 
 /** Places the figure and eases it into a turn. A fallen figure lies down through its knockback clip, so no extra tilt is added here. */
-function Pose({ x, z, yaw, children }: { x: number; z: number; yaw: number; children: ReactNode }) {
+export function Pose({ x, z, yaw, children }: { x: number; z: number; yaw: number; children: ReactNode }) {
   const ref = useRef<Group>(null);
   useFrame((_, delta) => {
     const g = ref.current;

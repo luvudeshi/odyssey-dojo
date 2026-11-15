@@ -39,3 +39,33 @@ run higher because five dressed figures carry about eight gear meshes each.
 ## docs/models.md line to add
 
 | The Suitors | suitor.glb (Quaternius UAL2 mannequin, 2.53 MB), dressed in code, with a code-built hall | docs/models/suitors.md |
+
+## Look comparison: `?look=a` and `?look=b` (owner picks; do not merge before he does)
+
+Without the flag nothing changes. The flag is read inline in `src/render/monsters/models/Suitors.tsx` and `src/render/arena/arenas/Suitors.tsx` (and passed to `propSolids` in `props.ts`). Alternate figures live in `src/render/monsters/suitors/alt.tsx` and `altCast.tsx`, alternate furniture in `src/render/arena/suitors/AltProps.tsx`. Screenshots from the running fight are in `docs/screenshots/suitors-look-*`. All licences were read on their pages on 2026-11-14 (Gobkit itch page, polyhaven.com/license, the KayKit GitHub README and LICENSE.txt).
+
+- **a** = KayKit men (Barbarian as Antinous, Knight and Barbarian as the four others) in the code-built hall with KayKit furniture.
+- **b** = Gobkit men (King as Antinous, Heavy Warrior, Knight Captain, Palace Halberdier, Prince) in the code-built hall with a Poly Haven stone fire pit and twelve Poly Haven axes.
+
+| Piece | Source URL, author | Licence | Size | Verdict |
+|---|---|---|---|---|
+| KayKit Knight and Barbarian, trimmed from 76 to 16 clips (`kay_Knight.glb`, `kay_Barbarian.glb`) | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0, Kay Lousberg | CC0 1.0 | 1.0 MB each (3.5 MB before trimming) | Kept in a. Stocky chibi proportions, medieval armour and beards, not Greek. Held weapons and shields are nodes in the file and are switched by phase (mug, axe and round shield, great axe). Fit: bone box x 0.57 gives the mesh height |
+| KayKit Rogue | same pack | CC0 1.0 | 3.6 MB | Rejected: hooded, crossbow, no use |
+| Gobkit King, Heavy Warrior, Knight Captain (`gob_*.glb`) | https://gobkit.itch.io/gobkit-free-character-pack-vol-3, Gobkit | CC0 1.0 | 0.4 to 0.47 MB each | Kept in b. Toy-like, crowned king reads as a smug noble but is fairy-tale, not Greek. Weapons are baked into the mesh, so only the Attack clip is used for every attack. Fit: bone box x 0.38, foot lift 0.014 |
+| Gobkit Prince, Palace Halberdier | https://gobkit.com/freebies/human013/gobkit-human013-pack.zip, Gobkit (licence from the vendor manifest and the pack's LICENSE.txt, no itch page read) | CC0 1.0 | 0.6 MB each | Kept in b |
+| Gobkit Footman, Peasant Militia, Court Crossbowman | same packs | CC0 1.0 | 0.35 to 0.6 MB | Tried and dropped: same look as the kept ones, no extra value |
+| KayKit Dungeon Remastered: long tablecloth feast table, stool, chair, wall torch, shield banner, decorated kegs | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0, Kay Lousberg | CC0 1.0 | 0.03 to 0.14 MB each, 0.5 MB total | Kept in a, resized (table x 0.62, torch x 1.1, banner x 0.9, keg x 0.42). Replaces the knocked-over tables and benches. Dungeon styling, grey-brown, not a megaron; torches read oddly at the trident-like bracket |
+| KayKit pillar_decorated, column | same pack | CC0 1.0 | 0.06 MB | Rejected: the code-built red tapering columns are better Mycenaean |
+| Poly Haven Stone Fire Pit | https://polyhaven.com/a/stone_fire_pit, Sebastian Platen | CC0 | 1.5 MB (1k diffuse and ARM maps; the normal map was left out) | Kept in b, scaled x 2.3. Photo-scanned, heavier than the low-poly neighbours |
+| Poly Haven Wooden Axe, 12 copies | https://polyhaven.com/a/wooden_axe | CC0 | 1.4 MB (shared by all copies) | Kept in b, scaled x 1.7, replaces the sign-post axes. Real axes, a single-bit felling axe rather than the Homeric double axe |
+| Poly Haven Kite Shield, goblets, bowl, candlestick, marble bust | polyhaven.com | CC0 | not downloaded for the final looks | Rejected: medieval shield; goblets and bust too small to read at fight distance |
+| Quaternius Medieval Village MegaKit, Kenney Castle Kit | quaternius.com, kenney.nl | CC0 | n/a | Not tried: no direct download found, and both are medieval shells that would replace a hall that already works |
+
+Known flaws: a fallen figure whose GLB fails to load shows nothing under a flag (no stand-in); a code-built crested helm on the KayKit head bone did not show and was dropped; the weak-spot ring sits just above the bald KayKit heads, not on a helm.
+
+## Credit rows
+
+| KayKit Character Pack: Adventurers, Knight and Barbarian trimmed to 16 clips (Kay Lousberg) | `public/models/suitors/kay_*.glb`, alternate suitors (`?look=a`) | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 | CC0 |
+| KayKit Dungeon Remastered: feast table, stool, chair, torch, banner, kegs (Kay Lousberg) | `public/models/suitors/kkd_*.glb`, alternate hall (`?look=a`) | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 | CC0 |
+| Gobkit Free Character Packs: King, Heavy Warrior, Knight Captain, Prince, Palace Halberdier (Gobkit) | `public/models/suitors/gob_*.glb`, alternate suitors (`?look=b`) | https://gobkit.itch.io/gobkit-free-character-pack-vol-3 | CC0 |
+| Stone Fire Pit and Wooden Axe (Sebastian Platen and Poly Haven contributors) | `public/models/suitors/ph/`, alternate hall (`?look=b`) | https://polyhaven.com/a/stone_fire_pit | CC0 |

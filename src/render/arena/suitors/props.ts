@@ -81,14 +81,19 @@ function hearth(s: Solids): void {
   }
 }
 
-export function propSolids(): Solids {
+/** `look` is the owner's comparison flag: a swaps the knocked-over tables for downloaded upright ones, b swaps the axes and the hearth ring. */
+export function propSolids(look: string | null = null): Solids {
   const s = new Solids();
-  TABLES.forEach((t, i) => { table(s, t, i % 2 === 0 ? "#8a5a30" : "#7b4d2a"); });
-  BENCHES.forEach((t) => { bench(s, t); });
+  if (look !== "a") {
+    TABLES.forEach((t, i) => { table(s, t, i % 2 === 0 ? "#8a5a30" : "#7b4d2a"); });
+    BENCHES.forEach((t) => { bench(s, t); });
+  }
   litter().forEach((it) => { item(s, it); });
-  axes().forEach(([x, , z]) => { axe(s, x, z); });
+  if (look !== "b") {
+    axes().forEach(([x, , z]) => { axe(s, x, z); });
+    hearth(s);
+  }
   bow(s);
-  hearth(s);
   for (const t of TORCHES) s.add(new CylinderGeometry(0.05, 0.035, 0.7, 5), "#2a1a10", [t.x, t.y - 0.1, t.z]);
   return s;
 }

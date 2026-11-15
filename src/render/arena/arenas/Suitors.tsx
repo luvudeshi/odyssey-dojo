@@ -8,11 +8,15 @@ import { useQualityLevel } from "../../quality";
 import { HearthFire, NightSky, Torches } from "../suitors/Fire";
 import { hallSolids } from "../suitors/hall";
 import { propSolids } from "../suitors/props";
+import { AltProps } from "../suitors/AltProps";
 import type { ArenaDef } from "../registry";
 
 function Hall() {
   const high = useQualityLevel() === "high";
-  const geo = useMemo(() => ({ hall: hallSolids().build(), props: propSolids().build() }), []);
+  // Owner's look comparison: ?look=a (KayKit furniture) or ?look=b (Poly Haven hearth and axes). Absent: today's hall.
+  const flag = new URLSearchParams(window.location.search).get("look");
+  const look = flag === "a" || flag === "b" ? flag : null;
+  const geo = useMemo(() => ({ hall: hallSolids().build(), props: propSolids(look).build() }), [look]);
   useEffect(() => () => { geo.hall.dispose(); geo.props.dispose(); }, [geo]);
   return (
     <>
@@ -43,6 +47,7 @@ function Hall() {
       <mesh geometry={geo.props} castShadow={high} receiveShadow={high}>
         <meshStandardMaterial vertexColors flatShading roughness={0.9} />
       </mesh>
+      {look !== null && <AltProps look={look} />}
       <HearthFire />
       <Torches />
       <NightSky />
