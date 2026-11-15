@@ -295,7 +295,8 @@ const oneHanded = (side: Side): Label[] => [
 ];
 const rising = (side: Side, hand: string): Label[] => [
   m(`${cap(side)} ${hand} up to chin`), x("Not above your head"), x("Hand close to your body"),
-  m(`Keep ${side} elbow bent`, 2), m("Start from your waist"),
+  m(`Keep ${side} elbow bent`, 2), x("Don't snap the arm straight"), m("Start from your waist"),
+  x(`Keep ${otherSide(side)} hand down`),
 ];
 const same = (labels: Label[]) => (): Label[] => labels;
 
@@ -303,7 +304,7 @@ const same = (labels: Label[]) => (): Label[] => labels;
 export const LABELS: Readonly<Record<string, (side: Side) => Label[]>> = {
   jab: same(oneHanded("left")),
   cross: same(oneHanded("right")),
-  spear_thrust: same([...punch("left"), ...punch("right")]),
+  spear_thrust: same([x("Thrust forward, not wide"), ...punch("left"), ...punch("right")]),
   double_palm: same([...thrust("left"), ...thrust("right"), m("Hands close together")]),
   chain_punch: (side) => [...thrust(side), m(`Pull ${otherSide(side)} fist back`, 2), m(`${cap(otherSide(side))} punch goes first`)],
   reverse_punch: same([...thrust("right"), m("Left fist back at hip"), x("Left elbow bent")]),
@@ -333,7 +334,7 @@ export const LABELS: Readonly<Record<string, (side: Side) => Label[]>> = {
     m("Whole body in view", 3), m(`${cap(side)} knee up high`), m("Foot tucked under knee", 2), m("Hold it up a moment", 2),
     x("Start with foot on floor"),
   ],
-  block: same([x("Left arm not punching"), x("Right arm not punching"), m("Both fists by your face")]),
+  block: same([m("Both fists up by your face")]),
   duck: same([m("Drop your shoulders lower")]),
   dodge_left: same([m("Move your body left")]),
   dodge_right: same([m("Move your body right")]),
