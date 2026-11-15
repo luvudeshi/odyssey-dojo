@@ -83,8 +83,8 @@ Run on branch `195-tonights-assets`, cut from `main` at `36cefe8`, Saturday 10:2
 
 - Before, with the `CREDITS.md` of `main`: `172 files, 26.7 MB (26666075 bytes). 165 assets: 165 credited, 0 gaps. 7 not assets.`
 - After, with this branch's `CREDITS.md`: the same line. The PRs had added a row for every file, so no file was a gap. What was wrong was inside the rows.
-- Checked again at 10:28 PM with `main` at `c05ad58` merged in and `public/mediapipe/` filled: `177 files, 62.4 MB (62448561 bytes). 170 assets: 170 credited, 0 gaps. 7 not assets.`
-- Not on `main`, so not checked: the model files on the branches `look-circe`, `look-suitors` and `53-hero-hoplite` (no open PR). The four open PRs (#274, #276, #280, #281) add no file under `public/`.
+- Checked again at 10:28 PM with `main` at `f654f56` merged in and `public/mediapipe/` filled: `177 files, 62.4 MB (62448561 bytes). 170 assets: 170 credited, 0 gaps. 7 not assets.`
+- Not on `main`, so not checked: the model files on the branches `look-circe`, `look-suitors` and `53-hero-hoplite` (no open PR). PRs #280 and #281, merged since, and the two open PRs (#274, #276) add no file under `public/`.
 
 What changed in `CREDITS.md`:
 
