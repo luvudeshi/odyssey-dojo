@@ -1,12 +1,13 @@
 // The "your god's power is ready" banner: bottom centre of the fight, while the power meter is full.
 // It names the god, the move and how to throw it, and has Athena call the move aloud when the meter fills.
-// Mount it once inside the fight screen's root; it draws nothing until the meter is full and never takes a click.
+// While the meter is filling it is a small still plate beside the power ring, "Champion of Poseidon", so the god the
+// scan found stays on screen through the fight. Mount it once inside the fight screen's root; it never takes a click.
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { speakPowerReady } from "../../audio/voice";
 import { log } from "../../core/log";
 import type { GodId } from "../gods/gods";
-import { READY_START, missed, nextCheckIn, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
+import { READY_START, champion, missed, nextCheckIn, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
 import type { PowerPrompt } from "./powerPrompt";
 import "./powerReady.css";
 
@@ -68,7 +69,18 @@ export function PowerReady(props: PowerReadyProps) {
     return () => { window.clearTimeout(timer); };
   }, [moveId, paused, announce]);
 
-  if (prompt === null) return null;
+  if (prompt === null) {
+    const patron = champion(god, power, phase);
+    if (patron === null) return null;
+    return (
+      <div className={`power-ready power-ready--champion power-ready--${patron.god}`} style={{ "--power-ready-accent": patron.accent } as CSSProperties}>
+        <div className="power-ready__patron">
+          <div className="power-ready__of">Champion of</div>
+          <div className="power-ready__god">{patron.name}</div>
+        </div>
+      </div>
+    );
+  }
   const keys = keyboard && prompt.key !== null;
   const style = { "--power-ready-accent": prompt.accent } as CSSProperties;
   return (

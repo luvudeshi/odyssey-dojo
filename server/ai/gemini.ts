@@ -34,7 +34,7 @@ export function createGemini(apiKey: string): Pick<AiClients, "json" | "image"> 
       },
       {
         // A signal replaces the SDK's own timeout, and its default is four slow retries: fail fast instead.
-        signal: AbortSignal.any([request.signal, AbortSignal.timeout(JSON_ATTEMPT_MS)]),
+        signal: AbortSignal.any([request.signal, AbortSignal.timeout(request.attemptMs ?? JSON_ATTEMPT_MS)]),
         retries: { strategy: "none" },
       },
     );
