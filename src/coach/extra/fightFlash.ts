@@ -43,11 +43,14 @@ export function landedStrike(feedback: StrikeFeedback): FlashFeedback | null {
 
 // ---------- the line under the word ----------
 
-/** On the keyboard the reminder is the key: "Press J" for a strike, "Hold Space" for a defend. */
+/** The arrow keys as the prompt card prints them. */
+const ARROWS: Readonly<Record<string, string>> = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓" };
+
+/** On the keyboard the reminder is the key: "Press J" for a strike, "Hold Space" or "Hold →" for a defend. */
 export function keyReminder(moveId: string, defend: boolean): string | null {
   const key = MOVES.get(moveId)?.key;
   if (!key) return null;
-  const name = key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
+  const name = key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : ARROWS[key] ?? key;
   return `${defend ? "Hold" : "Press"} ${name}`;
 }
 

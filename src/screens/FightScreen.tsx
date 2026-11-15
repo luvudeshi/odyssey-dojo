@@ -131,11 +131,14 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
-      if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
-      // A move that counted is graded in the same flash: shown only, never spoken, and the score is not touched.
-      // With a guest in the fight a move may be theirs, so the host's body is not read for it.
-      const feedback = watchFeedback(from.phase, current.phase, keys, result.events, link?.guestHere() ? null : history, now);
+      const missed = watchPhase(watchMiss, from.phase, input, result.events, now);
+      // An attempt that needs work gets a line on what to do in the MISS flash: shown only, never spoken, and the
+      // score is not touched. Strong strikes get nothing extra. The body is read only when the camera is playing
+      // and no guest is in the fight (a move may be theirs).
+      const body = tracker && !keyboardMode && !link?.guestHere() ? history : null;
+      const feedback = watchFeedback(from.phase, current.phase, keys, result.events, body, now, missed);
       if (feedback) noteFeedback(feedback);
+      else if (missed) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       fightEvents.current.push(...result.events);
