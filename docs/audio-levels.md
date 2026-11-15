@@ -30,6 +30,7 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | A monster's taunt | Its own channel, at `TAUNT_VOLUME` 0.7 of the voice volume (`voice.ts`). It plays under Athena's calls. | -22.1 LUFS (-23.6 to -21.9) |
 | Effects (`sfx`) | The file's own level, times `LEVELS[type]`, times `MASTER_GAIN` 0.5 (`sfx.ts`). Files are not levelled. | -25.8 LUFS (-41.2 to -16.7) |
 | Stop events | Each clip is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `EVENT_GAIN` 0.5 (`stopAudio.ts`). | -22.4 LUFS (-31.4 to -17.0) |
+| A god's power (`power`) | Each clip is raised or lowered to RMS 0.13 with its peak held to 0.9, then times `POWER_GAIN` 0.7 (`powerSound.ts`). The silence a clip starts with is skipped. It plays in place of `sfx/powerUnleashed`. | -18.9 LUFS (-22.0 to -16.7) |
 | Music | Each clip is brought to its scene's RMS (0.1 to 0.16), then times `MUSIC_GAIN` 0.16, times the music volume (`music.ts`). | fight -34.0, menu -36.5, loss -32.3, win -28.6 LUFS |
 | Music under a spoken line | The two loops drop by half (`DUCK` 0.5). The stings do not. | fight -40.0, menu -42.5 LUFS |
 | Ambience | Each clip is brought to RMS 0.08, then times `AMBIENCE_GAIN` 0.16, times the music volume (`stopAudio.ts`). | -38.2 LUFS (-39.1 to -37.6) |
@@ -58,6 +59,17 @@ These are effects, stop sounds and music. This change does not touch those files
 6. **Calls have up to 301 ms of silence after them.** Not trimmed here.
 
 At commit c34a1af no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
+
+### The gods' power sounds
+
+Added later the same day: six clips in `public/audio/power`, one for each god, made with `npx tsx server/tools/genClips.ts power`. The files are as ElevenLabs returned them. They came back between -37.8 and -12.1 LUFS, so `src/audio/powerSound.ts` levels each one when it loads, the way the stop events are levelled, and plays it through 0.7 where the other effects play through 0.5.
+
+- **At the listener they sit between -22.0 and -16.7 LUFS, median -18.9.** The usual power sound they replace (`sfx/powerUnleashed`) is at -20.4, a hit on the enemy (`sfx/enemyHit`) at -19.9, the finishing blow (`sfx/finished`) at -16.7 and Athena at -15.6. So the power is a little over the hit sounds and still under her voice.
+- **None can clip by itself.** Athena's, Hermes's and Zeus's are held by the peak rule, so their loudest sample is 0.63 at the output (0.9 times 0.7). The other three are held by the loudness and peak lower: Artemis's at 0.62, Apollo's at 0.58, Poseidon's at 0.54. A hit sound peaks at 0.24 to 0.45 there.
+- **Hermes's is the quietest, 3.1 LU under the median.** The file peaks at -19.8 dBTP and its loudness is 18 dB under that, so the peak rule stops it at -22.0. Making it louder would take a limiter, and nobody could listen to the result, so it was left.
+- **Two files start late and the game skips that.** `power/zeus.mp3` has 265 ms of silence before the thunder and `power/hermes.mp3` 341 ms. `powerSound.ts` starts each clip at its first sample above -50 dBFS (never more than half a second in), so the sound lands with the power. The lead column below is the file's, not what is heard.
+- **Artemis's clip is half a second of sound and a second of silence.** It is the second of three takes (`server/tools/powerClips.ts` says why). By the numbers it is a sharp snap that dies away in 0.4 s; whether it reads as a bow is for someone to hear.
+- Nobody has listened to any of the six.
 
 ## What was changed
 
@@ -178,6 +190,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
 | music | 4 | -37.7 | -12.9 | -9.8 | 27.9 | -33.1 (-36.5 to -28.6) |
 | narration | 11 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
+| power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
 | stops (events) | 20 | -38.0 | -20.1 | -12.3 | 25.7 | -22.4 (-31.4 to -17.0) |
@@ -191,6 +204,7 @@ None.
 
 - `music/menu.mp3`: -3.4 LU from the median of music at the listener
 - `music/win.mp3`: +4.5 LU from the median of music at the listener
+- `power/hermes.mp3`: -3.1 LU from the median of power at the listener
 - `sfx/enemyHit.mp3`: +5.9 LU from the median of sfx at the listener
 - `sfx/finished.mp3`: +9.1 LU from the median of sfx at the listener
 - `sfx/lost.mp3`: -12.7 LU from the median of sfx at the listener
@@ -305,6 +319,17 @@ None.
 | `narration/homer_before_scylla.mp3` | 7.76 | -19.0 | -1.5 | 70 | 132 | 0.0 | -19.0 |
 | `narration/homer_before_sirens.mp3` | 6.96 | -19.0 | -1.6 | 39 | 148 | 0.0 | -19.0 |
 | `narration/homer_before_suitors.mp3` | 6.96 | -19.0 | -2.3 | 40 | 124 | 0.0 | -19.0 |
+
+### power
+
+| clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
+|---|---|---|---|---|---|---|---|
+| `power/apollo.mp3` | 2.00 | -26.8 | -13.0 | 0 | 186 | 8.2 | -18.6 |
+| `power/artemis.mp3` | 1.48 | -15.4 | -1.0 | 73 | 977 | -3.1 | -18.5 |
+| `power/athena.mp3` | 1.76 | -20.3 | -5.0 | 0 | 221 | 1.0 | -19.3 |
+| `power/hermes.mp3` | 1.20 | -37.8 | -19.8 | 341 | 92 | 15.8 | -22.0 |
+| `power/poseidon.mp3` | 2.20 | -12.1 | -0.4 | 0 | 0 | -4.6 | -16.7 |
+| `power/zeus.mp3` | 2.00 | -28.1 | -12.9 | 265 | 283 | 8.9 | -19.2 |
 
 ### sfx
 
