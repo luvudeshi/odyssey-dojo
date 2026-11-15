@@ -17,7 +17,7 @@ same camera, in an online room, or with a friend on a FaceTime call.
 
 | | Tool | What it does in Odyssey Dojo |
 |---|---|---|
-| 📞 | **Chert** | A friend FaceTimes the game from an iPhone, sees the fight on the call and strikes as the second fighter |
+| 📞 | **Chert** | A friend FaceTimes the game from an iPhone, sees the fight on the call and can strike as the second fighter |
 | ☁️ | **Vultr** | Runs the game's server (rooms, accounts) in Docker with Caddy for https |
 | 🌐 | **GoDaddy** | The game's domain, [odysseydojo.club](https://odysseydojo.club) |
 | 🐯 | **Tiger Data** | Accounts and the Hall of heroes: every fight of a signed-in player is a row in a hypertable |
@@ -55,9 +55,11 @@ beside him telling him what to do. That is self-defense, and that is a coach.
 - **Athena coaches out loud.** She calls every defend and strike, Homer narrates each stop, and every
   monster taunts you. All of it ships with the game, so sound works offline.
 - **Play together, four ways.** The Multiplayer screen has four cards:
-  - **Host a room** and get a four-letter code and a QR code.
+  - **Host a room** and get a four-letter code and a QR code. Both fighters see the friend's hero on
+    stage, and hits show on both screens.
   - **Join a room** from a laptop or a phone, with a camera, keys or touch buttons.
-  - **Two players, one camera:** both bodies are tracked and each gets a hero.
+  - **Two players, one camera:** both bodies are tracked and read separately. Each gets a hero, a
+    score plate (P1 and P2) and their own tracking lines in the camera panel, gold and blue.
   - **Call a friend on FaceTime:** the friend's iPhone shows the fight and the game reads their body
     from the call. The card always shows; its Call button works only when the server has its phone
     settings.
@@ -92,7 +94,8 @@ A friend calls the game's line on FaceTime Video, with no app and no link. Chert
 LiveKit room where the game's tab answers it. The tab sends the fight to the phone as the call's picture
 and sound, and reads the friend's body from the call's video with the same pose model the webcam uses.
 The friend strikes as the second fighter. On 15 November the game answered a real call from an iPhone
-and held it for 118.9 seconds. This runs on the one Mac that holds our trial line, so the hosted site
+and held it for 118.9 seconds. The call, the picture and the sound worked; the friend's strikes on a
+real call are not proven yet. This runs on the one Mac that holds our trial line, so the hosted site
 shows the card but cannot take a call. Details: [docs/facetime.md](docs/facetime.md).
 
 ### ☁️ Vultr: the game's server
@@ -138,7 +141,8 @@ tsx) for rooms, accounts and AI · **LiveKit** for the FaceTime call · **Vercel
 4. **Show.** The arena, the HUD and the sound only read the fight's state and events. Athena's lines and
    the music are files picked by those events.
 
-The plan, the full feature list and how the folders fit together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The plan and how the folders fit together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Every feature
+and its status on `main`: [docs/FEATURES.md](docs/FEATURES.md).
 
 <!-- picture: the Training Dojo with a grade and a tip on screen -->
 
@@ -163,7 +167,7 @@ The plan, the full feature list and how the folders fit together: [docs/ARCHITEC
 and a style, choose a stop on the map, stand back so the camera sees you, and fight. To play on the
 keyboard, set **Play with** to Keyboard in the Account screen's settings.
 
-To run it locally (Node 22 or newer):
+To run it locally (Node 22.13 or newer):
 
 ```bash
 make setup   # npm packages and the pose-tracking model
@@ -176,6 +180,9 @@ The game plays a full fight with no server. For rooms, accounts and Gemini, copy
 ```bash
 npm run dev:all
 ```
+
+The server listens on port 8787. A FaceTime call also needs a Chert line and a LiveKit project: the six
+keys and the steps are in [docs/facetime.md](docs/facetime.md).
 
 Keys stay on the server and never reach the browser. The routes that spend API credits answer only
 requests from the machine the server runs on. `npm run preflight` checks the clips, the pose model, the
@@ -208,7 +215,7 @@ keys and the server before a demo. Every doc in the repo is listed in [docs/READ
 ## 🤖 AI tools used
 
 - **Claude Code** (Anthropic) helped write and review the code, with coding agents working on separate
-  branches under the rules in [AGENTS.md](AGENTS.md).
+  branches under the rules in [docs/COORDINATION.md](docs/COORDINATION.md).
 - **ElevenLabs** made every voice line, sound effect and sting ahead of time.
 - **FLUX.2 Klein 4B**, run on our own laptop, painted the menu, map, cutscene and screen backdrops from
   our own prompts.

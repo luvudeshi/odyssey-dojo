@@ -22,7 +22,7 @@ The code is in `src/duo/`. It is **mounted**: the Multiplayer screen has the car
 
 ![A duo fight: two skeletons in the camera panel, each player's hits and points above it](screenshots/duo/fight-both-counted.png)
 
-- **Two skeletons in the camera panel**, on the standing-still screen and in the fight. Player one's is the panel's own (grey stones, red joints). Player two's is blue, like their hero, and is drawn as soon as the camera has their body, also before they have joined. A body that is gone leaves no skeleton behind (0.3 seconds). ![The camera panel](screenshots/duo/camera-panel-two-skeletons.png)
+- **Two skeletons in the camera panel**, on the standing-still screen and in the fight. In a two-player fight both are fine lines with small joints, so the bodies stay visible: player one's is gold and player two's is blue, like their hero. Player two's is drawn as soon as the camera has their body, also before they have joined. A body that is gone leaves no skeleton behind (0.3 seconds). ![The camera panel](screenshots/duo/camera-panel-two-skeletons.png)
 - **Two plates above the camera panel in the fight**: `P1 3 hits 420` and, in blue, `P2 2 hits 310`. Before player two has scored, their plate says what the camera makes of them: `P2 not seen: step apart` (no second body in the picture; the usual reason is standing too close, see "How to stand"), `P2 joining` (a body is there and has not yet stood for a second, or stands too far behind), then their numbers. Once they have scored the numbers stay, with `, not seen` added while they are out.
 - **On the end panel** the score line carries the same numbers: `Score 2140 · P1 6 hits 1780 · P2 2 hits 360`.
 
