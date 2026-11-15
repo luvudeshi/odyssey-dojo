@@ -56,6 +56,7 @@ export function useAnswering(given?: { readonly answerer?: Answerer; readonly wa
   const state = useSyncExternalStore(
     (listener) => answerer?.subscribe(listener) ?? (() => undefined),
     () => answerer?.state() ?? OFF,
+    () => OFF,
   );
   const on = state.phase !== "off";
 

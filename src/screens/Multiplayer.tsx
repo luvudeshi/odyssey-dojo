@@ -56,11 +56,11 @@ export function Multiplayer(props: {
             </section>
             {/* Two players on this computer's one camera (src/duo): no room and no server. */}
             <DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
-            {/* The FaceTime call: drawn only when the server has it set up (the card returns nothing otherwise, and the
-                panel hides with it). It comes after the join card so the room code box stays the first text box. */}
+            {/* The FaceTime call: always the fourth card (plain: with no server settings it is the same form and its Call
+                button stays disabled, with no developer text). It comes after the join card so the room code box stays the first text box. */}
             <div className="set-panel mp-card mp-card--call">
               <RoomToken icon="friends" size={76} />
-              <FaceTimeCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
+              <FaceTimeCard plain onStart={(link) => { props.onOpen(); props.onStart(link); }} />
             </div>
           </div>
         </>

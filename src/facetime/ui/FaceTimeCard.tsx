@@ -44,6 +44,8 @@ export function FaceTimeCard(props: {
   status?: () => Promise<{ readonly ready: boolean; readonly missing: readonly string[]; readonly standIn?: boolean }>;
   /** Answering a call that comes in (AnswerPanel.tsx): the page's own answerer and server by default. */
   answering?: Parameters<typeof useAnswering>[0];
+  /** The Multiplayer screen always shows the card: with no server settings it is the plain form, no developer text, and Call stays disabled. */
+  plain?: boolean;
 }) {
   const [session, setSession] = useState<FaceTimeSession | null>(props.session ?? null);
   const [setup, setSetup] = useState<Setup>({ kind: "asking" });
@@ -76,6 +78,7 @@ export function FaceTimeCard(props: {
   const state = useSyncExternalStore(
     (listener) => session?.subscribe(listener) ?? (() => undefined),
     () => session?.state() ?? null,
+    () => null,
   );
   const open = state !== null && isOpen(state);
   // The clock in the status line moves without the state changing.
@@ -98,7 +101,7 @@ export function FaceTimeCard(props: {
   const start = state === null ? "none" : startOffer(state, answering.on);
 
   // Nothing to offer: no phone line on this server and no stand-in. The Multiplayer screen then shows two choices.
-  if (idle && setup.kind !== "ready" && !offerStandIn && !answering.offered) return null;
+  if (!props.plain && idle && setup.kind !== "ready" && !offerStandIn && !answering.offered) return null;
 
   return (
     <section className="ft-card">
@@ -117,7 +120,7 @@ export function FaceTimeCard(props: {
           <AnswerStart answering={answering} only />
           {offerStandIn && <StandInStart disabled={!session} onStart={startStandIn} />}
         </>
-      ) : setup.kind === "missing" && idle ? (
+      ) : !props.plain && setup.kind === "missing" && idle ? (
         <>
           <p className="notice" role="alert">{NOT_SET_UP}</p>
           {setup.names.length > 0 && <small>Missing on the server: {setup.names.join(", ")}. See docs/facetime.md.</small>}
