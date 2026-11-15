@@ -2,7 +2,7 @@
 // What is accepted lives in ../lib/accountRules, the database work in ../lib/accounts and the limits in ../lib/accountLimits;
 // this file only turns them into requests and answers.
 //
-// The public tunnel reaches these paths (../lib/localOnly), so each step is in an order that costs a stranger more
+// The public tunnel reaches these paths, and so does every visitor of a public server (../lib/localOnly), so each step is in an order that costs a stranger more
 // than it costs the server: is the database there (no work when it is not), a cheap count per address, a body of
 // bounded size, the check of that body, and only then the budgets for what costs something (an account, a password
 // hash, a query). A request that is empty or malformed is refused before any of those budgets, so it cannot use them
@@ -12,13 +12,14 @@ import express from "express";
 import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
-import { Busy, STRANGERS_AT_ONCE, STRANGERS_WAITING, createAccountLimits, createGate } from "../lib/accountLimits";
+import { Busy, STRANGERS_AT_ONCE, STRANGERS_WAITING, callerOf, createAccountLimits, createGate } from "../lib/accountLimits";
 import { CREDENTIALS_BODY_BYTES, SAVE_BODY_BYTES, nameKey, parseCredentials, parseSaveBody } from "../lib/accountRules";
 import { Unavailable, bearerToken, createAccounts } from "../lib/accounts";
+import type { Reach } from "../lib/accounts";
 import { shareAccounts } from "../lib/accountsShared";
 import { dbRedactor, openDb } from "../lib/db";
-import { wasRelayed } from "../lib/localOnly";
-import { RELAYED, THIS_MACHINE, clientKey } from "../lib/roomLimits";
+import { publicAccounts } from "../lib/localOnly";
+import { THIS_MACHINE } from "../lib/roomLimits";
 import { withTimeout } from "../lib/timeout";
 
 /** How long "is the database there" may take to answer a request. The first question after a start also opens the database and makes the tables. */
@@ -31,6 +32,19 @@ function unavailable(response: Response): void {
 function slowDown(response: Response, seconds: number): void {
   response.status(429).set("Retry-After", String(seconds)).json({ error: "slow_down" });
 }
+
+/**
+ * Sign-up is closed for strangers: the accounts all of them together may make in ten minutes, an hour or a day are
+ * used up (429, with how long to wait), or the database holds as many accounts as it may (503). Sign-in goes on.
+ * The words are for a person; the browser shows its own (src/account/session.ts).
+ */
+export const SIGNUPS_CLOSED_TEXT = "No new accounts can be made right now. Signing in still works. Try again later.";
+function signUpsClosed(response: Response, seconds: number | null): void {
+  if (seconds !== null) response.set("Retry-After", String(seconds));
+  response.status(seconds === null ? 503 : 429).json({ error: "signups_closed", message: SIGNUPS_CLOSED_TEXT });
+}
+/** How long to wait when the database, not this server's own count, says enough accounts were made this hour or today. */
+export const CLOSED_RETRY_S = 600;
 
 function signedOut(response: Response): void {
   response.status(401).json({ error: "signed_out" });
@@ -73,17 +87,13 @@ export const register: Register = (router, deps) => {
   const strangers = createGate(STRANGERS_AT_ONCE, STRANGERS_WAITING);
   shareAccounts(deps, { accounts, strangers, limits });
 
-  /**
-   * Who a request is counted against. Only a request the guard also calls local is this machine: clientKey knows
-   * fewer proxy headers than the guard does, and a request that was passed on must never get the laptop's free pass.
-   */
-  const client = (request: Request): string => {
-    const who = clientKey(request.socket.remoteAddress, request.headers);
-    return who === THIS_MACHINE && wasRelayed(request.headers) ? RELAYED : who;
-  };
+  /** Who a request is counted against (callerOf). Asked on every request: the server reads its .env after this file is loaded. */
+  const client = (request: Request): string => callerOf(request.socket.remoteAddress, request.headers, publicAccounts());
 
   /** Database work. A stranger's waits at the gate, so however many arrive at once the laptop still finds a free connection. */
   const reach = <T>(who: string, work: () => Promise<T>): Promise<T> => (who === THIS_MACHINE ? work() : strangers(work));
+  /** The same for sign-up and sign-in, which run their statements through it one by one and hash the password outside it. */
+  const through = (who: string): Reach => (work) => reach(who, work);
 
   /** Whether the database answers, within STATUS_MS. A slow start goes on in the background and the next request finds it done. */
   const available = (): Promise<boolean> => withTimeout(STATUS_MS, () => accounts.available()).catch(() => false);
@@ -105,9 +115,9 @@ export const register: Register = (router, deps) => {
       });
     };
 
-  /** Refuses an address that sends sign-ups and sign-ins too fast, before any of the body is read. */
-  const attempt: RequestHandler = (request, response, next) => {
-    const wait = limits.attempt(client(request));
+  /** Refuses an address that sends sign-ups, or sign-ins, too fast, before any of the body is read. */
+  const attempt = (what: "signup" | "signin"): RequestHandler => (request, response, next) => {
+    const wait = limits.attempt(client(request), what);
     if (wait > 0) slowDown(response, wait);
     else next();
   };
@@ -182,7 +192,7 @@ export const register: Register = (router, deps) => {
 
   router.post(
     "/api/account/signup",
-    attempt,
+    attempt("signup"),
     smallBody(CREDENTIALS_BODY_BYTES, (response) => { invalid(response, "body"); }, (response) => { invalid(response, "body"); }),
     safely(async (request, response) => {
       const asked = parseCredentials(request.body);
@@ -191,6 +201,12 @@ export const register: Register = (router, deps) => {
         return;
       }
       const who = client(request);
+      // Closed for all strangers: said in its own words, before anything is held or asked. Sign-in is not touched by it.
+      const closed = limits.signUpsClosed(who);
+      if (closed > 0) {
+        signUpsClosed(response, closed);
+        return;
+      }
       // Held from here, and given back unless an account is made: a typo or a taken name uses up nobody's sign-ups.
       const wait = limits.signUp(who);
       if (wait > 0) {
@@ -199,21 +215,21 @@ export const register: Register = (router, deps) => {
       }
       let made: Awaited<ReturnType<typeof accounts.signUp>> = "full";
       try {
-        made = await reach(who, () => accounts.signUp(asked.name, asked.password, who === THIS_MACHINE));
+        made = await accounts.signUp(asked.name, asked.password, who === THIS_MACHINE, through(who));
       } finally {
         if (typeof made === "string") limits.signUpNotMade(who);
       }
       if (made === "name_taken") response.status(409).json({ error: "name_taken" });
-      else if (made === "full") {
-        log("warn", "accounts_at_cap");
-        unavailable(response);
+      else if (made === "full" || made === "closed") {
+        log("warn", made === "full" ? "accounts_at_cap" : "accounts_signups_closed");
+        signUpsClosed(response, made === "full" ? null : CLOSED_RETRY_S);
       } else response.status(201).json(made);
     }),
   );
 
   router.post(
     "/api/account/signin",
-    attempt,
+    attempt("signin"),
     smallBody(CREDENTIALS_BODY_BYTES, wrong, wrong),
     safely(async (request, response) => {
       const asked = parseCredentials(request.body);
@@ -232,7 +248,7 @@ export const register: Register = (router, deps) => {
       let signed: Awaited<ReturnType<typeof accounts.signIn>> = null;
       let checked = false;
       try {
-        signed = await reach(who, () => accounts.signIn(asked.name, asked.password, who === THIS_MACHINE));
+        signed = await accounts.signIn(asked.name, asked.password, who === THIS_MACHINE, through(who));
         checked = true;
       } finally {
         // Only a wrong password stays counted against the name: not a right one, and not a try that was never checked.

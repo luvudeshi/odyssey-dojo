@@ -12,10 +12,12 @@ export type AccountFetch = (url: string, init: { method: string; headers?: Recor
 export const REQUEST_TIMEOUT_MS = 8_000;
 
 /**
- * Why a call did not work. The first seven are the server's own answers; "unreachable" is everything else:
+ * Why a call did not work. All but the last are the server's own answers; "unreachable" is everything else:
  * no network, no answer in time, or an answer that is not the account server's (a page, a proxy error).
+ * "signups_closed": the server makes no new accounts for now (it has made as many as it may), and sign-in still works.
  */
-export type AccountError = "invalid" | "name_taken" | "wrong_name_or_password" | "slow_down" | "unavailable" | "signed_out" | "too_big" | "unreachable";
+export type AccountError =
+  | "invalid" | "name_taken" | "wrong_name_or_password" | "slow_down" | "signups_closed" | "unavailable" | "signed_out" | "too_big" | "unreachable";
 
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: AccountError; readonly field?: string };
 
@@ -45,8 +47,10 @@ const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 409: 
 
 function failure(answer: Answer | null, on401: AccountError): { ok: false; error: AccountError; field?: string } {
   if (!answer) return { ok: false, error: "unreachable" };
-  const error = answer.status === 401 ? on401 : FAILURES[answer.status] ?? "unreachable";
   const data = answer.data;
+  // Said by name, with a 429 or a 503: a server from before this answer never says it, and the status alone still reads as before.
+  const closed = (answer.status === 429 || answer.status === 503) && typeof data === "object" && data !== null && "error" in data && data.error === "signups_closed";
+  const error = closed ? "signups_closed" : answer.status === 401 ? on401 : FAILURES[answer.status] ?? "unreachable";
   const field = typeof data === "object" && data !== null && "field" in data && typeof data.field === "string" ? data.field.slice(0, 40) : null;
   return error === "invalid" && field ? { ok: false, error, field } : { ok: false, error };
 }
