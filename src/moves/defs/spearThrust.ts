@@ -2,6 +2,8 @@ import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { latest } from "../../pose/signals";
 import { flungWide, strike } from "../handSignals";
+import { armsWent } from "../looseSignals";
+import { armWentForward } from "./cross";
 
 export const move: MoveDef = {
   id: "spear_thrust",
@@ -17,6 +19,10 @@ export const move: MoveDef = {
     // A thrust goes at the camera: both arms flung out to their own sides are a sun burst.
     if (frame && flungWide(frame, "left") && flungWide(frame, "right")) return 0;
     return Math.min(strike(history, "left"), strike(history, "right"));
+  },
+  /** Asked for: one or both arms opening forward. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), armsWent(history, "forward"), armWentForward(history, "left"), armWentForward(history, "right"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["left", "right"] });
