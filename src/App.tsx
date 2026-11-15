@@ -19,13 +19,14 @@ import { createCameraSession } from "./pose/cameraSession";
 import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
+import { SharePanel } from "./replay/ui/SharePanel";
 import { Account } from "./screens/Account";
 import { EndPanel } from "./screens/EndScreen";
 import { enemyFor, flowReducer, openAt, playable } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
 import { narrateIntro } from "./screens/hookups";
-import { MainMenu } from "./screens/MainMenu";
+import { MenuOrMuse as MainMenu } from "./ai/ui/museDoor"; // The main menu (screens/MainMenu), or the Muse's fight in its place when the address has ?ai=1.
 import { QuestMap } from "./screens/QuestMap";
 import { Multiplayer } from "./screens/Multiplayer";
 import type { Joined } from "./screens/RoomJoin";
@@ -151,7 +152,7 @@ export function App() {
         notice={notice}
         problem={cameraProblem}
         onStory={startCamera}
-        onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); dispatch({ type: "ready" }); }}
+        onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); setTracker(null); dispatch({ type: "ready" }); }}
         onMultiplayer={() => { setPanel("multiplayer"); }}
         onTraining={openTraining}
         onAccount={() => { setPanel("account"); }}
@@ -208,6 +209,7 @@ export function App() {
             won={won}
             enemyId={enemy.id}
             mastery={mastery}
+            card={(close) => <SharePanel god={god} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
             onShown={() => {
               if (recorded.current !== flow.seed) {
                 recorded.current = flow.seed;

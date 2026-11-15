@@ -213,6 +213,11 @@ export function isStoryLine(id: string): boolean {
 /** Polyphemus's opening line keeps the id it was recorded under. */
 const RECORDED_FIRST: Readonly<Record<string, string>> = { homer_before_polyphemus: "homer_intro_polyphemus" };
 
+/** True for Homer's line before a stop, which tells the story of that stop while its fight opens. */
+export function isBeforeLine(id: string): boolean {
+  return id.startsWith("homer_before_") || Object.values(RECORDED_FIRST).includes(id);
+}
+
 /** Homer's line for before or after this stop, or null when the stop has none. */
 export function narrationId(enemyId: string, moment: NarrationMoment): string | null {
   const wanted = `homer_${moment}_${enemyId}`;

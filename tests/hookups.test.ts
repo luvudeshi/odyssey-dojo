@@ -2,7 +2,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { GOD_SCAN_LIMIT_MS, narrateIntro, narrateResult, skipsScan } from "../src/screens/hookups";
+import { GOD_SCAN_LIMIT_MS, narrateHomecoming, narrateIntro, narrateResult, skipsScan } from "../src/screens/hookups";
 import type { StoryDeps } from "../src/screens/hookups";
 import { SettingsPanel } from "../src/ui/SettingsPanel";
 
@@ -11,6 +11,7 @@ function recorder() {
   const deps: StoryDeps = {
     narrate: (id, moment) => { calls.push(`narrate ${id} ${moment}`); return Promise.resolve(true); },
     result: (id, won) => { calls.push(`result ${id} ${String(won)}`); return Promise.resolve(true); },
+    homecoming: () => { calls.push("homecoming"); return Promise.resolve(true); },
     stop: () => { calls.push("stop"); },
   };
   return { calls, deps };
@@ -29,6 +30,12 @@ test("the result asks for the win or the loss line and cleans up the same way", 
   narrateResult("scylla", true, deps)();
   narrateResult("scylla", false, deps)();
   expect(calls).toEqual(["result scylla true", "stop", "result scylla false", "stop"]);
+});
+
+test("the last stop's win asks for Homer's closing line, not the result line, and cleans up the same way", () => {
+  const { calls, deps } = recorder();
+  narrateHomecoming(deps)();
+  expect(calls).toEqual(["homecoming", "stop"]);
 });
 
 test("Esc and S skip the god scan, other keys do not, and the limit is well inside a three minute play", () => {

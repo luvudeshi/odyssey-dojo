@@ -11,6 +11,7 @@ import { Button, Panel, PebbleHeading } from "../../ui/pebble";
 import { fightFromLevel } from "../adapt";
 import { generateLevel } from "../client";
 import type { GodId, LevelResponse, LevelSpec } from "../contracts";
+import { fallbackLevel } from "../fallbacks";
 import { EXAMPLE_PHRASES, MAX_PHRASE_LENGTH, cleanEpithet, cleanPhrase, fromSpeech, pickExamples } from "./phrase";
 import "./styleScreen.css";
 
@@ -58,8 +59,10 @@ export function StyleScreen(props: {
   epithet?: string;
   onDone: (fight: { enemy: EnemySpec; level: LevelSpec; source: "ai" | "fallback" }) => void;
   onBack?: () => void;
+  /** What the Back button says. "Back" when left out. */
+  backLabel?: string;
 }) {
-  const { god, rivalGod, epithet, onDone, onBack } = props;
+  const { god, rivalGod, epithet, onDone, onBack, backLabel = "Back" } = props;
   const [step, setStep] = useState<Step>({ kind: "ask" });
   const [phrase, setPhrase] = useState("");
   const [listening, setListening] = useState(false);
@@ -168,6 +171,19 @@ export function StyleScreen(props: {
   if (step.kind === "card") {
     const { level, source } = step.made;
     const taunt = level.taunts[0];
+    // Fight always starts a fight. A made level the game cannot turn into one gives way to the bundled fight for the same phrase.
+    const fight = (): void => {
+      silence();
+      let made: Parameters<typeof onDone>[0];
+      try {
+        made = { enemy: fightFromLevel(level, ENEMIES, MOVES), level, source };
+      } catch (error) {
+        log("error", "level_unplayable", error);
+        const spare = fallbackLevel({ phrase, god, rival_god: rivalGod });
+        made = { enemy: fightFromLevel(spare, ENEMIES, MOVES), level: spare, source: "fallback" };
+      }
+      onDone(made);
+    };
     return (
       <Panel as="main" ornament className="menu style-screen style-card">
         <p className="style-kicker">{source === "ai" ? "The Muse made this fight for you" : "A fight from the old songs"}</p>
@@ -188,16 +204,7 @@ export function StyleScreen(props: {
           <p className="style-note">The Muse was out of reach, so this one comes from the old songs.</p>
         )}
         <div className="style-actions">
-          <Button
-            primary
-            autoFocus
-            onClick={() => {
-              silence();
-              onDone({ enemy: fightFromLevel(level, ENEMIES, MOVES), level, source });
-            }}
-          >
-            Fight
-          </Button>
+          <Button primary autoFocus onClick={fight}>Fight</Button>
           <Button onClick={() => { silence(); setStep({ kind: "ask" }); }}>Try another phrase</Button>
         </div>
       </Panel>
@@ -237,7 +244,7 @@ export function StyleScreen(props: {
           <Button primary type="submit" className="style-build" disabled={cleanPhrase(phrase) === ""}>Build my fight</Button>
         </div>
       </form>
-      {onBack && <Button onClick={onBack}>Back</Button>}
+      {onBack && <Button onClick={onBack}>{backLabel}</Button>}
     </Panel>
   );
 }
