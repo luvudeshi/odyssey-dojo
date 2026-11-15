@@ -2,10 +2,13 @@ import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseHistory } from "../../core/types";
 import { JOINT, joint, latest, recent } from "../../pose/signals";
 
+/** How long ago the hand may have been over the head, in milliseconds. */
+export const RAISED_MS = 700;
+
 function thrown(history: PoseHistory, wrist: number, shoulder: number): boolean {
   const frame = latest(history);
   if (!frame || joint(frame.image, wrist).y <= joint(frame.image, shoulder).y) return false;
-  return recent(history, 500).some((old) => joint(old.image, wrist).y < joint(old.image, JOINT.nose).y);
+  return recent(history, RAISED_MS).some((old) => joint(old.image, wrist).y < joint(old.image, JOINT.nose).y);
 }
 
 export const move: MoveDef = {
