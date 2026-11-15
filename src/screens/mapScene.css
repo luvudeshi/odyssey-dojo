@@ -1,0 +1,197 @@
+/* Draft round two: the quest map as a whole-screen scene (mapScene.tsx), three looks, one block each. Keep the picked
+   block and the shared one, delete the others. */
+
+/* ================= Shared: the stage covers the panel at 16:9, places are buttons over it, title and buttons sit in it. */
+html[data-look] .menu.lk-map { padding: 0; overflow: hidden; background: #05070a; }
+html[data-look] .menu.lk-map::before { display: none; }
+html[data-look] .menu > .lk-stage { position: absolute; left: 50%; top: 50%; width: max(100%, calc((100vh - 28px) * 16 / 9)); aspect-ratio: 16 / 9; transform: translate(-50%, -50%); }
+html[data-look] .lk-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+html[data-look] .menu > .lk-head { position: absolute; top: 16px; left: 0; right: 0; z-index: 3; text-align: center; pointer-events: none; }
+html[data-look] .menu > .lk-head p { margin: 0.2rem auto 0; max-width: 46rem; font: 500 19px/1.35 var(--pb-font-body); }
+html[data-look] .menu > .lk-foot { position: absolute; left: 50%; bottom: 18px; z-index: 3; display: flex; gap: 6px; transform: translateX(-50%); }
+html[data-look] .menu .lk-title { margin: 0; font: 800 clamp(2.4rem, 4.4vw, 3.6rem)/1.05 var(--pb-font-body); letter-spacing: 0.16em; text-transform: uppercase; }
+html[data-look] .menu .lk-stop {
+  position: absolute; width: 12.5%; padding: 0; margin: 0; transform: none; border: 0; border-radius: 12px; background: none; box-shadow: none;
+  display: flex; flex-direction: column; align-items: center; z-index: 2; color: var(--pb-text);
+}
+html[data-look] .menu .lk-stop:hover:not(:disabled), html[data-look] .menu .lk-stop:active:not(:disabled) { background: none; box-shadow: none; }
+html[data-look] .lk-place { display: block; width: 100%; height: auto; overflow: visible; transition: filter 160ms, transform 160ms; }
+html[data-look] .lk-stop:hover:not(:disabled) .lk-place, html[data-look] .lk-stop:focus-visible .lk-place { transform: translateY(-4px) scale(1.05); }
+html[data-look] .menu .lk-stop:focus-visible { outline: 3px solid var(--lk-ring, var(--pb-focus)); outline-offset: 4px; }
+html[data-look] .lk-stop .lbl { position: relative; left: auto; top: auto; bottom: auto; transform: none; display: block; margin-top: 2px; white-space: nowrap; font: 700 18px/1.2 var(--pb-font-body); }
+html[data-look] .lk-stop .lbl small { display: block; font: 600 16px/1.2 var(--pb-font-body); }
+html[data-look] .lk-badge svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+html[data-look] .lk-badge { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; border-radius: 50%; font: 700 14px/1 var(--pb-font-body); vertical-align: 2px; }
+html[data-look] .lk-port { position: absolute; z-index: 2; transform: translateX(-50%); font: 700 18px var(--pb-font-body); }
+html[data-look] .lk-stop.locked { cursor: not-allowed; }
+html[data-look] .lk-stop.locked .lk-place { filter: grayscale(1) brightness(0.5); }
+html[data-look] .lk-place .lit-only { display: none; }
+html[data-look] .is-home .lk-stop--suitors .lit-only { display: inline; }
+html[data-look] :is(.lk-place, .lk-troy) .halo { fill: url(#lk-glow); }
+html[data-look] :is(.lk-place, .lk-troy) :is(.sm, .fm, .ln, .nk, .bn) { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+html[data-look] .lk-home-glow { fill: url(#lk-glow); opacity: 0.8; }
+html[data-look] .lk-course-flow { animation: lk-flow 3s linear infinite; }
+@keyframes lk-flow { to { stroke-dashoffset: -86; } }
+html[data-look] .lk-stop.is-next .halo { animation: lk-pulse 1.6s ease-in-out infinite alternate; }
+@keyframes lk-pulse { from { opacity: 0.6; } to { opacity: 1; } }
+
+/* ================= A: Night sea of black glass. The sea is faceted obsidian under a blood moon, the course is a vein of
+   lava, the places are black glass lit from inside; a won place cools to ice blue, as defend does in the fight HUD. */
+html[data-look="a"] .lk-map { --lk-ring: #cdeeff; }
+.lk-bd-a .sky { fill: url(#lk-a-sky); }
+.lk-bd-a .sky-fire { fill: url(#lk-glow); opacity: 0.55; }
+.lk-bd-a .moon { fill: #c8400f; }
+.lk-bd-a .moon-glow { fill: url(#lk-glow); opacity: 0.45; }
+.lk-bd-a .peaks { fill: #040508; stroke: #2a1a14; stroke-width: 1.5; }
+.lk-bd-a .peak-lava { fill: none; stroke: #ff6a1a; stroke-width: 2.5; stroke-linecap: round; }
+.lk-bd-a .facet { stroke: rgba(130, 160, 210, 0.13); stroke-width: 0.8; }
+.lk-bd-a .t0 { fill: #07080d; } .lk-bd-a .t1 { fill: #0a0c13; } .lk-bd-a .t2 { fill: #0d1019; } .lk-bd-a .t3 { fill: #10141f; } .lk-bd-a .t4 { fill: #08090f; }
+.lk-bd-a .fire-reflect { fill: url(#lk-glow); opacity: 0.32; }
+.lk-bd-a .crack { fill: none; stroke: #ff5a10; stroke-width: 7; stroke-linejoin: round; opacity: 0.22; }
+.lk-bd-a .crack-hot { fill: none; stroke: #ffb347; stroke-width: 1.5; stroke-linejoin: round; opacity: 0.85; }
+.lk-bd-a .glints { fill: none; stroke: #9fd8ff; stroke-width: 1.6; stroke-linecap: round; opacity: 0.5; }
+.lk-bd-a .lk-compass .ring { fill: none; stroke: #ff8a2a; stroke-width: 1.5; opacity: 0.55; }
+.lk-bd-a .lk-compass .star { fill: #0a0b10; stroke: #ff9a3a; stroke-width: 2; }
+.lk-bd-a .lk-compass .star2 { fill: #0a0b10; stroke: #ff6a1a; stroke-width: 1.4; opacity: 0.8; }
+.lk-bd-a .lk-compass .north { fill: #ffb347; font: 700 22px var(--pb-font-body); }
+.lk-map--a .lk-course-glow { fill: none; stroke: #ff5a10; stroke-width: 28; opacity: 0.16; stroke-linecap: round; }
+.lk-map--a .lk-course { fill: none; stroke: #ff6a1a; stroke-width: 9; opacity: 0.7; stroke-linecap: round; }
+.lk-map--a .lk-course-hot { fill: none; stroke: #ffd27a; stroke-width: 3; stroke-linecap: round; }
+.lk-map--a .lk-course-flow { fill: none; stroke: #fff3c4; stroke-width: 3.4; stroke-dasharray: 4 82; stroke-linecap: round; }
+.lk-map--a .lk-place { filter: drop-shadow(0 0 8px rgba(255, 90, 20, 0.4)); }
+.lk-map--a :is(.lk-place, .lk-troy) .rk { fill: url(#lk-a-glass); stroke: #3a4458; stroke-width: 1.4; }
+.lk-map--a :is(.lk-place, .lk-troy) .rk2 { fill: #0b0d13; stroke: #262f42; stroke-width: 1; }
+.lk-map--a :is(.lk-place, .lk-troy) .bd { fill: #161b26; stroke: #4a5670; stroke-width: 1.2; }
+.lk-map--a :is(.lk-place, .lk-troy) .dk { fill: #010102; }
+.lk-map--a :is(.lk-place, .lk-troy) .gl { fill: #ffc061; }
+.lk-map--a :is(.lk-place, .lk-troy) .fx { fill: #ff7a1e; }
+.lk-map--a :is(.lk-place, .lk-troy) .sm { stroke: rgba(70, 60, 64, 0.65); stroke-width: 10; }
+.lk-map--a :is(.lk-place, .lk-troy) .fm { stroke: #7cc6f0; stroke-width: 1.8; opacity: 0.55; }
+.lk-map--a :is(.lk-place, .lk-troy) .ln { stroke: #4a5670; stroke-width: 1.4; }
+.lk-map--a :is(.lk-place, .lk-troy) .nk { stroke: #262e40; stroke-width: 7; }
+.lk-map--a :is(.lk-place, .lk-troy) .bn { stroke: #d9cbb5; stroke-width: 2; }
+.lk-map--a .lk-troy .fx { fill: #ff7a1e; filter: drop-shadow(0 0 10px #ff6a1a); }
+.lk-map--a .lk-stop:is(:hover:not(:disabled), :focus-visible) .lk-place { filter: drop-shadow(0 0 16px rgba(255, 120, 30, 0.85)) brightness(1.2); }
+.lk-map--a .lk-stop.cleared .lk-place .gl { fill: #9fd8ff; }
+.lk-map--a .lk-stop.cleared .lk-place .halo { opacity: 0.25; }
+.lk-map--a .lk-stop.cleared .lk-place { filter: drop-shadow(0 0 8px rgba(110, 190, 255, 0.45)); }
+.lk-map--a .lk-stop .lbl { color: #ffe7c2; text-shadow: 0 0 4px #000, 0 0 4px #000, 0 2px 6px #000; letter-spacing: 0.04em; }
+.lk-map--a .lk-stop .lbl small { color: #e0b98a; }
+.lk-map--a .lk-stop.cleared .lbl small { color: #9fd8ff; }
+.lk-map--a .lk-badge { background: #0a0b10; color: #ffb347; box-shadow: 0 0 0 1.5px #ff8a2a, 0 0 8px rgba(255, 110, 30, 0.6); }
+.lk-map--a .lk-stop.cleared .lk-badge { color: #06131c; background: #9fd8ff; box-shadow: 0 0 0 1.5px #e6f6ff, 0 0 10px rgba(110, 190, 255, 0.8); }
+.lk-map--a .lk-port { color: #ffe7c2; text-shadow: 0 0 4px #000, 0 0 4px #000; }
+html[data-look="a"] .menu .lk-title { color: #ffb347; background: linear-gradient(#fff3c4, #ffc061 40%, #ff7a1e 75%, #c8400f); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 10px rgba(255, 100, 20, 0.75)); }
+.lk-map--a .lk-head p { color: #e6dccb; text-shadow: 0 0 4px #000, 0 1px 4px #000; }
+.lk-map--a.is-home .lk-head p { color: #ffd27a; }
+.lk-map--a .lk-foot .pb-btn { background: linear-gradient(#171c2a, #07080c); border: 1.5px solid #3a4458; color: #ffe7c2; box-shadow: 0 0 0 1px #000, 0 6px 14px rgba(0, 0, 0, 0.6); }
+.lk-map--a .lk-foot .pb-btn:hover { border-color: #ff9a3a; box-shadow: 0 0 0 1px #000, 0 0 16px rgba(255, 110, 30, 0.5); }
+.lk-map--a.is-home .lk-stop--suitors .lk-place { filter: drop-shadow(0 0 20px rgba(255, 200, 90, 0.95)) brightness(1.25); }
+
+/* ================= B: Painted storm. The sea in the menu's storm colours, waves breaking in rows to the horizon, a wind
+   god blowing from the clouds, lightning far off; the places dark rock with warm lights, the course a gilded chart line. */
+html[data-look="b"] .lk-map { --lk-ring: #fff4cf; }
+.lk-bd-b .sky { fill: url(#lk-b-sky); }
+.lk-bd-b .moon-glow { fill: url(#lk-pale); }
+.lk-bd-b .cloud { fill: url(#lk-cloud); }
+.lk-bd-b .cloud-lit { fill: url(#lk-pale); opacity: 0.6; }
+.lk-bd-b .bolt { fill: none; stroke: #f4fbff; stroke-width: 3; stroke-linejoin: round; }
+.lk-bd-b .bolt-glow { fill: none; stroke: #bfe4ff; stroke-width: 16; stroke-linejoin: round; opacity: 0.22; }
+.lk-bd-b .sea { fill: url(#lk-b-sea); }
+.lk-bd-b .horizon-haze { fill: rgba(200, 222, 214, 0.1); }
+.lk-bd-b .wave-face { fill: url(#lk-b-wave); }
+.lk-bd-b .wave-sheen { fill: none; stroke: #8fc4bd; stroke-linecap: round; opacity: 0.16; }
+.lk-bd-b .wave-foam { fill: none; stroke: #e3f3ef; stroke-linecap: round; }
+.lk-bd-b .moon-path { fill: url(#lk-pale); opacity: 0.4; }
+.lk-bd-b .fire-reflect { fill: url(#lk-glow); opacity: 0.35; }
+.lk-bd-b .lk-wind .puff { fill: #1a282b; opacity: 0.95; }
+.lk-bd-b .lk-wind .cheek { fill: url(#lk-pale); opacity: 0.55; }
+.lk-bd-b .lk-wind .face { fill: none; stroke: #d6e6e2; stroke-width: 2.4; stroke-linecap: round; }
+.lk-bd-b .lk-wind .eye { fill: #e6f2f0; }
+.lk-bd-b .lk-wind .blow { fill: none; stroke: #d6e6e2; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 30 14 8 14; opacity: 0.5; }
+.lk-bd-b .rain { fill: url(#lk-rain); opacity: 0.4; }
+.lk-map--b .lk-course-glow { fill: none; stroke: #04100f; stroke-width: 9; opacity: 0.55; stroke-linecap: round; }
+.lk-map--b .lk-course { fill: none; stroke: #f2c56e; stroke-width: 4; stroke-dasharray: 16 11; stroke-linecap: round; }
+.lk-map--b :is(.lk-course-hot, .lk-course-flow) { display: none; }
+.lk-map--b .lk-place { filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.55)); }
+.lk-map--b :is(.lk-place, .lk-troy) .rk { fill: url(#lk-b-rock); stroke: #081010; stroke-width: 1.4; }
+.lk-map--b :is(.lk-place, .lk-troy) .rk2 { fill: #121b1c; stroke: #081010; stroke-width: 1; }
+.lk-map--b :is(.lk-place, .lk-troy) .bd { fill: #d8cdb8; stroke: #4a4236; stroke-width: 1.2; }
+.lk-map--b :is(.lk-place, .lk-troy) .dk { fill: #030606; }
+.lk-map--b :is(.lk-place, .lk-troy) .gl { fill: #ffc86a; }
+.lk-map--b :is(.lk-place, .lk-troy) .fx { fill: #ff8a2a; }
+.lk-map--b :is(.lk-place, .lk-troy) .sm { stroke: rgba(160, 172, 168, 0.45); stroke-width: 11; }
+.lk-map--b :is(.lk-place, .lk-troy) .fm { stroke: #e3f3ef; stroke-width: 2.2; opacity: 0.8; }
+.lk-map--b :is(.lk-place, .lk-troy) .ln { stroke: #3a3328; stroke-width: 1.5; }
+.lk-map--b :is(.lk-place, .lk-troy) .nk { stroke: #1b2526; stroke-width: 7; }
+.lk-map--b :is(.lk-place, .lk-troy) .bn { stroke: #e9dfcc; stroke-width: 2; }
+.lk-map--b .lk-troy .fx { filter: drop-shadow(0 0 12px #ff7a1e); }
+.lk-map--b .lk-stop:is(:hover:not(:disabled), :focus-visible) .lk-place { filter: drop-shadow(0 0 14px rgba(255, 220, 150, 0.7)) brightness(1.25); }
+.lk-map--b .lk-stop.cleared .lk-place .halo { opacity: 0.4; }
+.lk-map--b .lk-stop .lbl { color: var(--pb-text); text-shadow: 0 0 4px #000, 0 0 4px #000, 0 2px 6px #000; }
+.lk-map--b .lk-stop .lbl small { color: #cfe0dc; }
+.lk-map--b .lk-stop.cleared .lbl small { color: #f2c56e; }
+.lk-map--b .lk-badge { background: linear-gradient(#ffe6b0, #c98f37); color: #2a1406; box-shadow: 0 1px 3px #000; }
+.lk-map--b .lk-port { color: var(--pb-text); text-shadow: 0 0 4px #000, 0 0 4px #000; }
+html[data-look="b"] .menu .lk-title { color: #f2d9a0; text-shadow: 0 3px 0 #2a1406, 0 0 18px rgba(0, 0, 0, 0.9), 0 0 2px #000; }
+.lk-map--b .lk-head p { color: var(--pb-text); text-shadow: 0 0 4px #000, 0 1px 4px #000; }
+.lk-map--b.is-home .lk-head p { color: #f2d9a0; }
+.lk-map--b.is-home .lk-stop--suitors .lk-place { filter: drop-shadow(0 0 22px rgba(255, 210, 120, 0.95)) brightness(1.3); }
+
+/* ================= C: Floor mosaic. A Roman floor laid in stones: a blue sea with white wave crests, black dolphins and a
+   sea beast, the places in ochre, slate and marble stones, the course in terracotta stones, a stone border round it. */
+html[data-look="c"] .lk-map { --lk-ring: #1b1714; background: #5f97a6; }
+html[data-look="c"] .menu.lk-map::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; border: 24px solid transparent;
+  border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Crect width='72' height='72' fill='%235a4a3a'/%3E%3Cg fill='%23efe4cc'%3E%3Ccircle cx='6' cy='6' r='4.6'/%3E%3Ccircle cx='18' cy='6' r='4.4'/%3E%3Ccircle cx='30' cy='6' r='4.6'/%3E%3Ccircle cx='42' cy='6' r='4.4'/%3E%3Ccircle cx='54' cy='6' r='4.6'/%3E%3Ccircle cx='66' cy='6' r='4.4'/%3E%3Ccircle cx='6' cy='18' r='4.4'/%3E%3Ccircle cx='66' cy='18' r='4.4'/%3E%3Ccircle cx='6' cy='30' r='4.6'/%3E%3Ccircle cx='66' cy='30' r='4.6'/%3E%3Ccircle cx='6' cy='42' r='4.4'/%3E%3Ccircle cx='66' cy='42' r='4.4'/%3E%3Ccircle cx='6' cy='54' r='4.6'/%3E%3Ccircle cx='66' cy='54' r='4.6'/%3E%3Ccircle cx='6' cy='66' r='4.4'/%3E%3Ccircle cx='18' cy='66' r='4.6'/%3E%3Ccircle cx='30' cy='66' r='4.4'/%3E%3Ccircle cx='42' cy='66' r='4.6'/%3E%3Ccircle cx='54' cy='66' r='4.4'/%3E%3Ccircle cx='66' cy='66' r='4.6'/%3E%3C/g%3E%3Cg fill='%23b8553a'%3E%3Ccircle cx='18' cy='18' r='4.4'/%3E%3Ccircle cx='54' cy='18' r='4.4'/%3E%3Ccircle cx='18' cy='54' r='4.4'/%3E%3Ccircle cx='54' cy='54' r='4.4'/%3E%3C/g%3E%3Cg fill='%231b1714'%3E%3Ccircle cx='30' cy='18' r='4.2'/%3E%3Ccircle cx='42' cy='18' r='4.2'/%3E%3Ccircle cx='18' cy='30' r='4.2'/%3E%3Ccircle cx='54' cy='30' r='4.2'/%3E%3Ccircle cx='18' cy='42' r='4.2'/%3E%3Ccircle cx='54' cy='42' r='4.2'/%3E%3Ccircle cx='30' cy='54' r='4.2'/%3E%3Ccircle cx='42' cy='54' r='4.2'/%3E%3C/g%3E%3C/svg%3E") 24 round;
+}
+.lk-bd-c .sea { fill: url(#lk-c-sea); }
+.lk-bd-c .wavelet { fill: none; stroke: #f3f7f5; stroke-width: 7; stroke-dasharray: 0.1 11; stroke-linecap: round; opacity: 0.9; }
+.lk-bd-c .dolphin path:first-child { fill: url(#lk-c-black); stroke: #0a0807; stroke-width: 2; }
+.lk-bd-c .dolphin .eye, .lk-bd-c .ketos .eye { fill: #f3efe6; }
+.lk-bd-c .dolphin .belly { fill: none; stroke: #f3efe6; stroke-width: 4.5; stroke-dasharray: 0.1 8; stroke-linecap: round; }
+.lk-bd-c .ketos .body { fill: url(#lk-c-olive); stroke: #0a0807; stroke-width: 2.5; }
+.lk-bd-c .ketos .fin { fill: url(#lk-c-terra); stroke: #0a0807; stroke-width: 2; }
+.lk-bd-c .lk-rosette .ring-a { fill: url(#lk-c-cream); stroke: #1b1714; stroke-width: 8; stroke-dasharray: 0.1 11; stroke-linecap: round; }
+.lk-bd-c .lk-rosette .ring-b { fill: none; stroke: #b8553a; stroke-width: 7; stroke-dasharray: 0.1 10; stroke-linecap: round; }
+.lk-bd-c .lk-rosette .star { fill: url(#lk-c-ochre); stroke: #1b1714; stroke-width: 2.5; }
+.lk-bd-c .lk-rosette .hub { fill: url(#lk-c-terra); stroke: #1b1714; stroke-width: 2; }
+.lk-map--c .lk-course-glow { fill: none; stroke: #1b1714; stroke-width: 14; stroke-dasharray: 0.1 15; stroke-linecap: round; }
+.lk-map--c .lk-course { fill: none; stroke: #c9684a; stroke-width: 10; stroke-dasharray: 0.1 15; stroke-linecap: round; }
+.lk-map--c :is(.lk-course-hot, .lk-course-flow) { display: none; }
+.lk-map--c :is(.lk-place, .lk-troy) :is(.rk, .rk2, .bd, .fx) { stroke: #1b1714; stroke-width: 2.4; stroke-linejoin: round; }
+.lk-map--c :is(.lk-place, .lk-troy) .rk { fill: url(#lk-c-ochre); }
+.lk-map--c :is(.lk-place, .lk-troy) .rk2 { fill: url(#lk-c-olive); }
+.lk-map--c :is(.lk-place, .lk-troy) .bd { fill: url(#lk-c-cream); }
+.lk-map--c :is(.lk-place, .lk-troy) .dk { fill: #1b1714; }
+.lk-map--c :is(.lk-place, .lk-troy) .gl { fill: #ffd27a; stroke: #1b1714; stroke-width: 1.5; }
+.lk-map--c :is(.lk-place, .lk-troy) .fx { fill: url(#lk-c-terra); }
+.lk-map--c :is(.lk-place, .lk-troy) .halo { display: none; }
+.lk-map--c :is(.lk-place, .lk-troy) .sm { stroke: #8d9696; stroke-width: 7; stroke-dasharray: 0.1 9; }
+.lk-map--c :is(.lk-place, .lk-troy) .fm { stroke: #f3f7f5; stroke-width: 5; stroke-dasharray: 0.1 8; }
+.lk-map--c :is(.lk-place, .lk-troy) .ln { stroke: #1b1714; stroke-width: 2.2; }
+.lk-map--c :is(.lk-place, .lk-troy) .nk { stroke: #4d5a2e; stroke-width: 8; }
+.lk-map--c :is(.lk-place, .lk-troy) .bn { stroke: #f3efe6; stroke-width: 4; stroke-dasharray: 0.1 6; }
+.lk-map--c .lk-stop:is(:hover:not(:disabled), :focus-visible) .lk-place { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 10px rgba(255, 244, 207, 0.9)); }
+.lk-map--c .lk-stop .lbl { padding: 2px 10px 3px; border: 2px solid #1b1714; border-radius: 8px; background: #f2e9d6; color: #1b1410; box-shadow: 0 2px 0 #1b1714; }
+.lk-map--c .lk-stop .lbl small { color: #5a3a1e; }
+.lk-map--c .lk-stop.cleared .lbl { background: #f2c56e; }
+.lk-map--c .lk-badge { background: #b8553a; color: #fff4dc; }
+.lk-map--c .lk-stop.cleared .lk-badge { background: #1b1714; color: #f2c56e; }
+.lk-map--c .lk-port { padding: 1px 10px; border: 2px solid #1b1714; border-radius: 8px; background: #f2e9d6; color: #1b1410; }
+html[data-look="c"] .menu > .lk-head { top: 30px; left: 50%; right: auto; transform: translateX(-50%); padding: 10px 34px 12px; border: 3px solid #1b1714; border-radius: 12px; background: #f2e9d6; box-shadow: 0 4px 0 #1b1714; }
+html[data-look="c"] .menu > .lk-head { width: max-content; }
+html[data-look="c"] .menu .lk-title { color: #1b1714; font-size: clamp(2rem, 3.6vw, 3rem); text-shadow: 0 2px 0 rgba(184, 85, 58, 0.55); }
+.lk-map--c .lk-head p { color: #2a1d12; font-weight: 600; }
+.lk-map--c .lk-foot { bottom: 34px; }
+.lk-map--c .lk-ship .f { fill: url(#lk-c-black); stroke: #0a0807; stroke-width: 1.5; }
+.lk-map--c .lk-ship .l { stroke: #1b1714; }
+.lk-map--c .lk-ship .s { stroke: #f3efe6; }
+.lk-map--c .lk-ship .e { fill: #f3efe6; }
+.lk-map--c .lk-home-glow { fill: #ffd27a; opacity: 0.35; }
+.lk-map--c.is-home .lk-stop--suitors .lk-place { filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 16px rgba(255, 236, 160, 1)); }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-look] .lk-course-flow, html[data-look] .lk-stop.is-next .halo { animation: none; }
+  html[data-look] .lk-place { transition: none; }
+}

@@ -3,7 +3,7 @@ import type { EnemySpec } from "../core/types";
 import { Button, Panel, PebbleHeading } from "../ui/pebble";
 import { Isle } from "./Isle";
 import { draftCleared, look } from "../ui/lookSwitch";
-import { ChartFrame, MapDecor, MapToken } from "./questMapLooks";
+import { MapScene } from "./mapScene";
 
 const W = 1000;
 const H = 420;
@@ -50,20 +50,19 @@ export function QuestMap(props: {
   const at = (p: Point) => ({ left: `${String(p[0] / 10)}%`, top: `${String((p[1] / H) * 100)}%` });
   // Every stop won: the journey is done and Ithaca is lit.
   const home = enemies.length > 0 && enemies.every((enemy) => cleared.includes(enemy.id));
+  if (look) return <MapScene look={look} {...props} cleared={cleared} home={home} />;
   const lit = home ? { fill: "var(--pb-ochre-light)", stroke: "var(--pb-cream)", filter: "drop-shadow(0 0 10px var(--pb-ochre-light))" } : undefined;
   return (
     <Panel as="main" ornament className="menu menu--map">
       <PebbleHeading as="h1" text="The Road Home" px={60} tone="ochre" />
       <p>{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
       <div className="chart">
-        {look && <ChartFrame />}
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
           {[62, 150, 238, 326, 392].map((y, i) => <path key={y} className="wave" d={wave(y, i % 2 === 0 ? 0 : 15)} />)}
           <path className="route" d={pathThrough(points)} />
           {[0, points.length - 1].map((i) => (
             <circle key={i} className="harbour" cx={pos(i)[0]} cy={pos(i)[1]} r={home && i > 0 ? "17" : "12"} style={i > 0 ? lit : undefined} />
           ))}
-          {look && <MapDecor points={points} next={Math.max(0, enemies.findIndex((enemy) => !cleared.includes(enemy.id)))} home={home} />}
         </svg>
         <span className="port" style={at(pos(0))}>Troy</span>
         <span className="port" style={home ? { ...at(pos(points.length - 1)), color: "var(--pb-ochre-light)" } : at(pos(points.length - 1))}>Ithaca</span>
@@ -79,7 +78,7 @@ export function QuestMap(props: {
               disabled={!open}
               onClick={() => { props.onEnter(i); }}
             >
-              <span className="dot">{look ? <MapToken id={enemy.id} /> : <Isle state={state} />}<b>{state === "cleared" ? "✓" : i + 1}</b></span>
+              <span className="dot"><Isle state={state} /><b>{state === "cleared" ? "✓" : i + 1}</b></span>
               <span className="lbl">
                 {enemy.name}
                 {/* Short lines, so neighbouring labels fit side by side on one line each. */}
