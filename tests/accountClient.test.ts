@@ -3,7 +3,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { createAccountClient } from "../src/account/client";
+import { BUSY_RETRIES, BUSY_SPREAD_MS, BUSY_WAIT_MAX_S, createAccountClient } from "../src/account/client";
 import type { AccountFetch } from "../src/account/client";
 import { SAVE_MAX_BYTES } from "../src/account/contracts";
 import type { Save } from "../src/account/contracts";
@@ -70,6 +70,81 @@ test("sign-in: 200 gives the session; 401, 429 and 503 are named", async () => {
   expect(await answering(503, { error: "unavailable" }).client.signIn("Luv", "x")).toEqual({ ok: false, error: "unavailable" });
   expect(await answering(500).client.signIn("Luv", "x")).toEqual({ ok: false, error: "unreachable" });
   expect(await answering(200, { token: "short", name: "Luv" }).client.signIn("Luv", "x")).toEqual({ ok: false, error: "unreachable" });
+});
+
+/** A client whose server gives these answers in turn (the last one again after that), the requests it was sent and the waits it made. */
+function inTurn(answers: readonly { status: number; body?: unknown; retryAfter?: string }[]) {
+  const sent: { url: string; init: Init }[] = [];
+  const waits: number[] = [];
+  const fetch: AccountFetch = (url, init) => {
+    const answer = answers[Math.min(sent.length, answers.length - 1)];
+    sent.push({ url, init });
+    return Promise.resolve({
+      status: answer?.status ?? 500,
+      headers: { get: (name: string) => (name.toLowerCase() === "retry-after" ? answer?.retryAfter ?? null : null) },
+      json: () => Promise.resolve(answer?.body ?? null),
+    });
+  };
+  const client = createAccountClient(fetch, "", (ms) => { waits.push(ms); return Promise.resolve(); });
+  return { client, sent, waits };
+}
+
+test("a sign-in or sign-up the server had no place for is sent again by itself, twice at most, after the wait it named", async () => {
+  const busy = { status: 429, body: { error: "slow_down" }, retryAfter: "1" };
+  const session = { token: TOKEN, name: "Luv" };
+  // Many sign in in the same second: the second try gets a place.
+  const once = inTurn([busy, { status: 200, body: session }]);
+  expect(await once.client.signIn("Luv", "correct horse")).toEqual({ ok: true, value: session });
+  expect(once.sent).toHaveLength(2);
+  expect(once.sent[1]?.url).toBe("/api/account/signin");
+  expect(once.sent[1]?.init.body).toBe(once.sent[0]?.init.body);
+  expect(once.waits).toHaveLength(1);
+  expect(once.waits[0]).toBeGreaterThanOrEqual(1000);
+  expect(once.waits[0]).toBeLessThan(1000 + BUSY_SPREAD_MS);
+  // The same for a new account, on the third try.
+  const twice = inTurn([busy, busy, { status: 201, body: session }]);
+  expect(await twice.client.signUp("Luv", "correct horse")).toEqual({ ok: true, value: session });
+  expect(twice.sent.map((request) => request.url)).toEqual(["/api/account/signup", "/api/account/signup", "/api/account/signup"]);
+  // Still no place after that: said as before, and never a fourth request.
+  const never = inTurn([busy]);
+  expect(await never.client.signIn("Luv", "x")).toEqual({ ok: false, error: "slow_down" });
+  expect(never.sent).toHaveLength(1 + BUSY_RETRIES);
+  expect(never.waits).toHaveLength(BUSY_RETRIES);
+  // A wrong password after the wait is a wrong password, and is not tried again.
+  const wrong = inTurn([busy, { status: 401, body: { error: "wrong_name_or_password" } }]);
+  expect(await wrong.client.signIn("Luv", "x")).toEqual({ ok: false, error: "wrong_name_or_password" });
+  expect(wrong.sent).toHaveLength(2);
+});
+
+test("a longer wait is a budget used up: shown at once and never sent again", async () => {
+  const cases = [
+    { status: 429, body: { error: "slow_down" }, retryAfter: "59" },
+    { status: 429, body: { error: "slow_down" }, retryAfter: String(BUSY_WAIT_MAX_S + 1) },
+    { status: 429, body: { error: "signups_closed" }, retryAfter: "600" },
+    // No Retry-After, or one that is no number of seconds: not sent again either.
+    { status: 429, body: { error: "slow_down" } },
+    { status: 429, body: { error: "slow_down" }, retryAfter: "soon" },
+    { status: 429, body: { error: "slow_down" }, retryAfter: "0" },
+    { status: 429, body: { error: "slow_down" }, retryAfter: "-1" },
+    // Only a 429 is: a server that is down says so at once.
+    { status: 503, body: { error: "unavailable" }, retryAfter: "1" },
+    { status: 401, body: { error: "wrong_name_or_password" }, retryAfter: "1" },
+  ];
+  for (const answer of cases) {
+    for (const enter of ["signIn", "signUp"] as const) {
+      const { client, sent, waits } = inTurn([answer]);
+      const result = await client[enter]("Luv", "x");
+      expect(result.ok, JSON.stringify(answer)).toBe(false);
+      expect(sent, JSON.stringify(answer)).toHaveLength(1);
+      expect(waits).toHaveLength(0);
+    }
+  }
+  // The save is never sent again here: the sync does that later, on its own clock.
+  const save = inTurn([{ status: 429, body: { error: "slow_down" }, retryAfter: "1" }]);
+  expect(await save.client.load(TOKEN)).toEqual({ ok: false, error: "slow_down" });
+  expect(await save.client.store(TOKEN, SAVE)).toEqual({ ok: false, error: "slow_down" });
+  expect(save.sent).toHaveLength(2);
+  expect(save.waits).toHaveLength(0);
 });
 
 test("sign-out sends the token and never fails, whatever comes back", async () => {

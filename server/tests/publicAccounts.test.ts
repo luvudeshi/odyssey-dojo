@@ -2,7 +2,9 @@
 // of heroes from a socket that is not this machine's: the hosted copy (docs/accounts.md, "On a public server").
 // Off, which is the default, the guard is what it has always been. On, it opens those paths and nothing else, a
 // caller is counted by the address the proxy took the request from, and the limits hold.
+import { spawnSync } from "node:child_process";
 import { once } from "node:events";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, expect, test, vi } from "vitest";
@@ -374,4 +376,25 @@ test("with the proxy inside the server's own network (a loopback socket): either
   for (let index = 0; index < SIGNINS_PER_NAME + 2; index += 1) answers.push((await guess(call, index)).status);
   expect(answers.filter((status) => status === 401)).toHaveLength(SIGNINS_PER_NAME);
   expect(answers.slice(SIGNINS_PER_NAME)).toEqual([429, 429]);
+});
+
+// The doc's commands read the connection string from the environment, and one is run on the public server right after
+// the string was typed in by hand. Node's own "Invalid URL" error prints the whole string it was given, password and
+// all; a slip of the hand must never put that on a screen. So each command is run here as the doc has it, with a
+// made-up string that is no URL. Nothing is reached: the command stops at its first statement.
+test("no command in the doc prints the connection string when the string is not a URL", () => {
+  const doc = readFileSync(new URL("../../docs/accounts.md", import.meta.url), "utf8");
+  const commands = [...doc.matchAll(/^\s*node (?:--env-file=\.env )?-e "(.*)"\s*$/gm)].map((found) => found[1] ?? "").filter((script) => script.includes("DATABASE_URL"));
+  // The laptop's CA file, the public server's CA file, and the database tests.
+  expect(commands).toHaveLength(3);
+  const user = "madeupuser7", password = "madeuppass7", host = "madeup-host7.example";
+  for (const bad of [`postgres://${user}:${password}@${host}:notaport/tsdb?sslmode=require`, `postgres://${user}:${password}@${host} :5432/tsdb`, ""]) {
+    for (const script of commands) {
+      const ran = spawnSync(process.execPath, ["-e", script], { env: { PATH: process.env.PATH ?? "", DATABASE_URL: bad }, encoding: "utf8", timeout: 20_000 });
+      const said = ran.stdout + ran.stderr;
+      expect(ran.status, said.slice(0, 200)).toBe(1);
+      expect(said.trim()).toBe("DATABASE_URL is not a URL");
+      for (const part of [user, password, host]) expect(said).not.toContain(part);
+    }
+  }
 });
