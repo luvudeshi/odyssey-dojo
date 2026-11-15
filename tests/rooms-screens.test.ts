@@ -107,9 +107,9 @@ test("the page's net deps send a beacon, and report the page gone only when it i
   vi.unstubAllGlobals();
 });
 
-test("a failed room call reads as a developer hint only on localhost", () => {
-  for (const host of ["localhost", "127.0.0.1", "[::1]"]) expect(roomMessage("unreachable", host)).toBe(ROOM_MESSAGES.unreachable);
-  for (const host of ["dojo.test", "odyssey.vercel.app"]) expect(roomMessage("unreachable", host)).toMatch(/^Rooms are not open on this site yet/);
-  expect(roomMessage("room_full", "odyssey.vercel.app")).toBe(ROOM_MESSAGES.room_full);
-  expect(roomMessage("nonsense", "localhost")).toBe("");
+test("a failed room call reads as a player line on every host", () => {
+  expect(roomMessage("unreachable")).toBe(ROOM_MESSAGES.unreachable);
+  expect(ROOM_MESSAGES.unreachable).not.toMatch(/running|npm/);
+  expect(roomMessage("room_full")).toBe(ROOM_MESSAGES.room_full);
+  expect(roomMessage("nonsense")).toBe("");
 });

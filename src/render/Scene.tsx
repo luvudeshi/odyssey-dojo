@@ -21,6 +21,7 @@ import { MonsterRig } from "./MonsterRig";
 import { finisherSpot } from "./strikeReach";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { Hero } from "./hero/Hero";
+import { SecondFigure } from "../duo/SecondFigure";
 import { GhostFigure } from "./GhostFigure";
 import { MOVE_GHOST_ON } from "./ghost/ghostSwitch";
 import { QualityContext, useQualityToggle } from "./quality";
@@ -104,6 +105,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           <PowerStrike />
           <CameraRig />
           <Hero poseRef={poseRef} />
+          <SecondFigure />
           <GuardShield />
           <DefendBurst />
           {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}

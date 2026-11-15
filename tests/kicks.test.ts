@@ -10,7 +10,7 @@ import type { Side } from "../src/moves/handSignals";
 import { KICK_IDS, legsVisible, styleForLegs } from "../src/moves/legSignals";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, JOINT, pushFrame } from "../src/pose/signals";
-import { style as pankration } from "../src/styles/defs/pankration";
+import { style as taekwondo } from "../src/styles/defs/taekwondo";
 import { frameAt } from "./poseFixture";
 
 const J = JOINT;
@@ -187,7 +187,7 @@ test("a faster, higher kick rates higher, and quality stays between 0 and 1", ()
   expect(drive).toBeGreaterThan(rate(knee, legs(700, HALF_UP), legs(1000, KNEE_UP), legs(1150, KNEE_UP)));
 });
 
-test("the kicks have their own keys, a teaching line and leg points; Pankration names real strikes", () => {
+test("the kicks have their own keys, a teaching line and leg points; Taekwondo names real strikes", () => {
   const keys = [...MOVES.values()].map((move) => move.key);
   expect(new Set(keys).size).toBe(keys.length);
   for (const move of [frontKick, knee]) {
@@ -202,14 +202,14 @@ test("the kicks have their own keys, a teaching line and leg points; Pankration 
       for (const value of point ?? []) expect(value >= 0 && value <= 100, `${move.id} diagram`).toBe(true);
     }
   }
-  for (const id of pankration.strikes) expect(MOVES.get(id)?.kind, id).toBe("strike");
-  for (const id of KICK_IDS) expect(pankration.strikes).toContain(id);
-  const hands = styleForLegs(pankration, false);
-  expect(styleForLegs(pankration, true)).toBe(pankration);
+  for (const id of taekwondo.strikes) expect(MOVES.get(id)?.kind, id).toBe("strike");
+  for (const id of KICK_IDS) expect(taekwondo.strikes).toContain(id);
+  const hands = styleForLegs(taekwondo, false);
+  expect(styleForLegs(taekwondo, true)).toBe(taekwondo);
   expect(hands.strikes.length).toBeGreaterThan(0);
   expect(hands.strikes.some((id) => KICK_IDS.includes(id))).toBe(false);
   // A style with no kicks is left alone, and a style of only kicks keeps them, so there is always a strike to ask for.
-  const kicksOnly: FightingStyle = { ...pankration, strikes: ["front_kick", "knee"] };
+  const kicksOnly: FightingStyle = { ...taekwondo, strikes: ["front_kick", "knee"] };
   expect(styleForLegs(kicksOnly, false)).toBe(kicksOnly);
 });
 
@@ -233,17 +233,17 @@ function askedIn(style: FightingStyle): Set<string> {
   return asked;
 }
 
-test("Pankration is asked for kicks and hand strikes; with the legs out of view, only hand strikes", () => {
-  const whole = askedIn(pankration);
-  for (const id of pankration.strikes) expect([...whole], id).toContain(id);
-  const hands = askedIn(styleForLegs(pankration, false));
+test("Taekwondo is asked for kicks and hand strikes; with the legs out of view, only hand strikes", () => {
+  const whole = askedIn(taekwondo);
+  for (const id of taekwondo.strikes) expect([...whole], id).toContain(id);
+  const hands = askedIn(styleForLegs(taekwondo, false));
   expect(hands.size).toBeGreaterThan(0);
   for (const id of hands) expect(KICK_IDS, id).not.toContain(id);
-  // Against every enemy on main, every weak spot leaves a Pankration player a hand strike to throw.
+  // Against every enemy on main, every weak spot leaves a Taekwondo player a hand strike to throw.
   for (const enemy of ENEMIES) {
     for (const spot of enemy.weakSpots) {
-      const fitting = spot.moves.filter((id) => pankration.strikes.includes(id));
-      const pool = fitting.length > 0 ? fitting : pankration.strikes;
+      const fitting = spot.moves.filter((id) => taekwondo.strikes.includes(id));
+      const pool = fitting.length > 0 ? fitting : taekwondo.strikes;
       expect(pool.some((id) => !KICK_IDS.includes(id)), `${enemy.id}/${spot.id}`).toBe(true);
     }
   }

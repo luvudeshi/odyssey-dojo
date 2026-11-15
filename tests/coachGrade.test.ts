@@ -9,9 +9,9 @@ test("an attempt the detector did not count needs improvement, whatever its qual
   }
 });
 
-test("a counted attempt is at least Good: there is no way to count and be told it needs improvement", () => {
+test("a counted attempt is at least Great: there is no way to count and be told it needs improvement", () => {
   for (const quality of [-1, 0, 0.01, 0.3, 0.69, 0.699999, Number.NaN, Number.NEGATIVE_INFINITY]) {
-    expect(gradeFor(true, quality), String(quality)).toEqual({ tier: "good", label: "Good", points: 100 });
+    expect(gradeFor(true, quality), String(quality)).toEqual({ tier: "good", label: "Great!", points: 100 });
   }
 });
 
@@ -30,7 +30,7 @@ test("better grades earn more points, and even a miss earns some", () => {
 });
 
 test("the points and the word always go with the tier", () => {
-  const words: Record<GradeTier, string> = { excellent: "Excellent!", good: "Good", needs_work: "Needs improvement" };
+  const words: Record<GradeTier, string> = { excellent: "Excellent!", good: "Great!", needs_work: "Needs improvement" };
   for (const counted of [true, false]) {
     for (let quality = 0; quality <= 1; quality += 0.05) {
       const grade = gradeFor(counted, quality);
