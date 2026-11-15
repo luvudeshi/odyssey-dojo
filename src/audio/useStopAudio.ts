@@ -4,17 +4,19 @@
 import { useEffect } from "react";
 import { setEventOverride } from "./sfx";
 import { pauseStopAmbience, playStopEvent, startStopAmbience, stopStopAmbience } from "./stopAudio";
-import { pauseFightVoice, stopFightVoice } from "./voice";
+import { enterFightVoice, leaveFightVoice, pauseFightVoice } from "./voice";
 
 export function useStopAudio(enemyId: string, paused: boolean): void {
   useEffect(() => {
+    enterFightVoice();
     startStopAmbience(enemyId);
     setEventOverride((event) => playStopEvent(enemyId, event));
     return () => {
       setEventOverride(null);
       stopStopAmbience();
       // The fight is gone, so nothing of it is heard on the next screen. That screen's own lines start after this.
-      stopFightVoice();
+      // Homer's line before the stop is the one exception: it plays on if a fight screen mounts again at once.
+      leaveFightVoice();
     };
   }, [enemyId]);
   useEffect(() => {

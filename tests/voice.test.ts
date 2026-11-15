@@ -1,7 +1,7 @@
 // Athena's voice: which line each combat event calls for, and that lines never overlap or get stuck.
 import { afterEach, expect, test, vi } from "vitest";
 import { ATHENA_LINES } from "../src/audio/athenaLines";
-import { audioPlayer, createVoice, lineFor, parseClipIndex, playVoice, speakLine } from "../src/audio/voice";
+import { audioPlayer, createVoice, lineFor, parseClipIndex, playVoice, powerLineId, speakLine } from "../src/audio/voice";
 import type { ClipAudio } from "../src/audio/voice";
 import { startFight, step } from "../src/combat/engine";
 import type { CombatEvent, EnemyAttack, EnemySpec, FightingStyle, WeakSpot } from "../src/core/types";
@@ -515,6 +515,85 @@ test("an index answered with an error status is not trusted, whatever its body s
   expect(voice.speak("win")).toBe(false);
   expect(opened).not.toHaveBeenCalled();
   expect(warn).not.toHaveBeenCalled();
+});
+
+// Homer's line before a stop tells that stop's story while its fight opens. Since the intro screen went it is the only
+// place the story is spoken, and Athena's first call, 1.5 s into the fight, used to cut it.
+const BEFORE_LINES = ["homer_intro_polyphemus", "homer_before_circe", "homer_before_suitors"] as const;
+const WITH_HOMER = [...ALL_IDS, ...BEFORE_LINES, "homer_title", "homer_after_circe", "homer_loss"];
+
+test.each(BEFORE_LINES)("%s is heard out under the fight start, calls, praise and warnings, and none of them is spoken when it ends", (before) => {
+  const { voice, started, stopped, end } = fakeVoice(WITH_HOMER);
+  expect(voice.speak(before)).toBe(true);
+  expect(voice.speak("fight_start")).toBe(false);
+  voice.handle([telegraph]);
+  voice.handle([playerHit]);
+  voice.handle([telegraph]);
+  voice.handle([opening]);
+  voice.handle([enemyHit]);
+  expect(started).toEqual([before]);
+  expect(stopped).toEqual([]);
+  end();
+  // Dropped, not queued: nothing bursts out when he ends. The next call is spoken on its own beat.
+  expect(voice.playing()).toBeNull();
+  expect(started).toEqual([before]);
+  voice.handle([telegraph]);
+  expect(started).toEqual([before, "call_duck"]);
+});
+
+test("a power line, a phase line and the result each cut Homer's before-line", () => {
+  const speakers: readonly [string, (voice: ReturnType<typeof fakeVoice>["voice"]) => void][] = [
+    ["call_trident_sweep", (voice) => { voice.speak(powerLineId("trident_sweep")); }],
+    ["phase_1", (voice) => { voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]); }],
+    ["win", (voice) => { voice.handle([{ type: "won" }], { kind: "won" }); }],
+    ["loss", (voice) => { voice.handle([{ type: "lost" }], { kind: "lost" }); }],
+  ];
+  for (const [clip, speak] of speakers) {
+    const { voice, order } = fakeVoice(WITH_HOMER);
+    voice.speak("homer_before_circe");
+    speak(voice);
+    expect(order, clip).toEqual(["start:homer_before_circe", "stop:homer_before_circe", `start:${clip}`]);
+  }
+});
+
+test("Homer's before-line takes the voice no harder than his other lines: it cuts praise and a warning, and waits for the rest", () => {
+  for (const busyWith of ["fight_start", "call_duck", "call_trident_sweep", "phase_1", "win", "loss"]) {
+    const { voice, started, stopped } = fakeVoice(WITH_HOMER);
+    expect(voice.speak(busyWith === "call_trident_sweep" ? powerLineId("trident_sweep") : busyWith), busyWith).toBe(true);
+    expect(voice.speak("homer_before_circe"), busyWith).toBe(false);
+    expect(started, busyWith).toEqual([busyWith]);
+    expect(stopped, busyWith).toEqual([]);
+  }
+  for (const event of [enemyHit, playerHit]) {
+    const { voice, started, stopped } = fakeVoice(WITH_HOMER);
+    voice.handle([event]);
+    expect(voice.speak("homer_before_circe")).toBe(true);
+    expect(stopped).toEqual([started[0]]);
+  }
+});
+
+test("Homer's other lines stay where they were: a call cuts them, and they do not hold out the fight start any longer than before", () => {
+  for (const line of ["homer_title", "homer_after_circe", "homer_loss"]) {
+    const { voice, order } = fakeVoice(WITH_HOMER);
+    voice.speak(line);
+    expect(voice.speak("fight_start"), line).toBe(false);
+    voice.handle([telegraph]);
+    expect(order, line).toEqual([`start:${line}`, `stop:${line}`, "start:call_duck"]);
+  }
+});
+
+test("the finisher's call is tried again until Homer's before-line ends, and is then spoken once", () => {
+  const { voice, started, stopped, end } = fakeVoice(WITH_HOMER);
+  const finisher = { kind: "finisher", move: "stake_thrust", msLeft: 6000, totalMs: 6000 } as const;
+  voice.speak("homer_before_circe");
+  voice.handle([enemyHit], finisher);
+  voice.handle([], finisher);
+  expect(started).toEqual(["homer_before_circe"]);
+  end();
+  voice.handle([], finisher);
+  voice.handle([], finisher);
+  expect(started).toEqual(["homer_before_circe", "call_stake_thrust"]);
+  expect(stopped).toEqual([]);
 });
 
 test("the shared voice is silent, not broken, where there is no audio", () => {

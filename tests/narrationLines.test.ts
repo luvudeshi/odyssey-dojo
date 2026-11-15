@@ -7,6 +7,7 @@ import { ATHENA_LINES } from "../src/audio/athenaLines";
 import {
   ALL_STORY_LINES,
   HOMECOMING_ID,
+  isBeforeLine,
   isStoryLine,
   NARRATION_LINES,
   narrationId,
@@ -101,6 +102,14 @@ test("every stop has one line before and one after, and Polyphemus's opening lin
     expect(line.id, line.id).toMatch(new RegExp(`^homer_(before|after)_${line.enemyId}$`));
     expect(QUEST_ORDER as readonly string[], line.id).toContain(line.enemyId);
   }
+});
+
+test("every stop's before line counts as one, and no other line does", () => {
+  const before = QUEST_ORDER.map((enemyId) => narrationId(enemyId, "before"));
+  expect(before).toHaveLength(6);
+  for (const id of before) expect(id !== null && isBeforeLine(id), String(id)).toBe(true);
+  for (const line of ALL_STORY_LINES.filter((each) => !before.includes(each.id))) expect(isBeforeLine(line.id), line.id).toBe(false);
+  for (const id of ["fight_start", "call_block", "win", "phase_1", ""]) expect(isBeforeLine(id), id).toBe(false);
 });
 
 test("a stop the quest does not have gets no narration", () => {

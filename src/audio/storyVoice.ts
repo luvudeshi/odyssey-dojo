@@ -179,8 +179,8 @@ const shared = createStoryVoice({
 });
 
 /**
- * Homer's line before or after a stop. On the intro screen, with the cleanup so he does not talk into the fight:
- * `useEffect(() => { void speakNarration(enemy.id, "before"); return stopStory; }, [enemy.id]);`
+ * Homer's line before or after a stop. The before-line is asked for by the click on a stop and plays on into the fight,
+ * where Athena's calls do not cut it (see `urgency` in voice.ts). Call `stopStory` when the fight is left for the map.
  */
 export function speakNarration(enemyId: string, moment: NarrationMoment, waitMs?: number): Promise<boolean> {
   return shared.speakNarration(enemyId, moment, waitMs);

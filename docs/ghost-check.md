@@ -11,9 +11,9 @@ The move ghost is the gold stick figure that shows the pose a prompt asks for. T
 | counted, the natural way (ghost: fast from arms hanging; guide: first time round the loop) | 7 of 26 | 26 of 26 |
 | ...of the 21 strikes | 2 of 21 | 21 of 21 |
 | counted at best (ghost: any start, any speed; guide: within two loops) | 10 of 26 | 26 of 26 |
-| also sets off some other move, way back out included | 15 of 26 | 19 of 26 |
+| also sets off some other move, way back out included | 15 of 26 | 21 of 26 |
 
-The last row is the one thing the guide does not win: following its figure sets off some other move as well for 19 of 26. The per-move table is under [The still ghost beside the guide's figure](#the-still-ghost-beside-the-guides-figure).
+The last row is the one thing the guide does not win: following its figure sets off some other move as well for 21 of 26. Two of those are the jab and the cross setting each other off, which is allowed: since #272 both read a straight punch on either hand. The per-move table is under [The still ghost beside the guide's figure](#the-still-ghost-beside-the-guides-figure).
 
 Everything here is from made-up frames in `tests/ghostVsDetectors.test.ts` and `tests/helpers/ghostCopy.ts`. Nobody stood in front of a camera and neither figure was looked at in a browser.
 
@@ -21,23 +21,30 @@ Everything here is from made-up frames in `tests/ghostVsDetectors.test.ts` and `
 
 The numbers on this page are a measurement of the detectors as they are, so they move when the detectors do. The pins in the test were changed to the new readings; no detector, diagram or ghost code was changed to get them.
 
-| | first run | this run |
-| --- | --- | --- |
-| literal copy counts, fast, from arms down | 9 of 26 (4 of 21 strikes) | 7 of 26 (2 of 21 strikes) |
-| counts from either start at either speed | 13 of 26 (8 strikes) | 10 of 26 (5 strikes) |
-| never counts while in the pose | 13 | 16 |
-| sets off some other move while in the pose | 19 of 26 | 12 of 26 |
+| | first run | second run | after #272 |
+| --- | --- | --- | --- |
+| literal copy counts, fast, from arms down | 9 of 26 (4 of 21 strikes) | 7 of 26 (2 of 21 strikes) | the same |
+| counts from either start at either speed | 13 of 26 (8 strikes) | 10 of 26 (5 strikes) | the same |
+| never counts while in the pose | 13 | 16 | 16 |
+| sets off some other move while in the pose | 19 of 26 | 12 of 26 | 13 of 26 |
 
-Between the two runs the detectors changed in #215 (pairs of moves told apart), #242 and #251 (defends), #247 (finisher and god gestures) and #255 (rough Boxer strikes). #215 made look-alike moves harder to mix up; the others made the detectors easier on a rough attempt at the real move. None of it made the ghost's flat pose count, and three moves that used to count for the wrong reason stopped.
+Between the first two runs the detectors changed in #215 (pairs of moves told apart), #242 and #251 (defends), #247 (finisher and god gestures) and #255 (rough Boxer strikes). #215 made look-alike moves harder to mix up; the others made the detectors easier on a rough attempt at the real move. None of it made the ghost's flat pose count, and three moves that used to count for the wrong reason stopped.
 
-What changed, move by move:
+What changed between the first two runs, move by move:
 
 - **Uppercut, rising palm:** counted from arms down, now never. The ghost draws the other hand up in a guard, so the copy lifts both hands together, and `risingHand` now reads two hands coming up from low as a guard going up. (The mirrored copy still counts from arms down. Why was not looked into.)
 - **Spear thrust:** counted from the chest, now never. The detector now returns 0 when both arms are flung out to their own sides, which is exactly what the ghost shows. This is the fix item 2 below asked for. The copy still sets off sun burst.
 - **Counted the same as before:** the other 23. Block, both dodges, duck, jump, knee and swift dash from arms down; reverse punch, stake thrust and sun burst from the chest only; the remaining 13 never.
 - **Fewer wrong moves set off:** block, cross, jab, hook, knife hand, moon arrow and sun burst now set off nothing while in the pose (each set off one to three moves before). Double palm and front kick set off block only (block, rising palm and uppercut before).
-- **More wrong moves set off:** hammer fist now also fires jab, and overhead strike and thunderbolt now also fire cross. New since the first run; which change brought it was not traced.
+- **More wrong moves set off:** hammer fist now also fired jab, and overhead strike and thunderbolt now also fired cross. New since the first run; which change brought it was not traced.
 - **Closeness of the move done right** moved a little for aegis push, cross, jab, duck, stake thrust, sun burst, uppercut and rising palm, because the frame at which each detector peaks moved. No conclusion changes: 13 of 21 strikes are still under 0.2 as the strike lands and none reaches 0.7.
+
+Measured a third time after #272, which made the jab and the cross read a straight punch on either hand and the hook read either hand. Only the "others fired" columns moved; what counts, the peaks and every closeness number are the same.
+
+- **Jab and cross now fire together, everywhere.** By the owner's ruling they are one detector under two names, so a body that fires one fires the other. The fight counts only the strike it asked for. This is the one pair allowed to fire together, the same as in `docs/cross-fire.md`, and the test checks every row for it: both or neither.
+- **Still ghost:** hammer fist had jab and now has cross too; overhead strike and thunderbolt had cross and now have jab too.
+- **Guide's figure:** the jab sets off the cross and the cross the jab, where each set off nothing before. The reverse punch, which already read as a cross, now reads as a jab too. That takes the guide from 19 to 21 of 26 that set off some other move. No guide figure was changed, and all 26 are still counted for their own move.
+- **Trident sweep, still ghost:** now fires the hook while in the pose, where before it fired it only on the way back out. This is the hook reading either hand. It is not an allowed pair, only written down as measured, and it takes "sets off some other move while in the pose" from 12 to 13 of 26. Why the pose itself now reads as a hook was not traced further.
 
 ## What the ghost is today
 
@@ -84,22 +91,22 @@ The made-up player stands still with arms hanging for 20 frames (the baseline), 
 | double_palm | Kung Fu | no/no | no/no | no/no | no/no | 0.00 | block | 0.56 (0.56) | 0.61 | 0.81 |
 | duck | defend | yes/yes | yes/yes | yes/yes | no/no | 1.00 | none | 0.81 (0.94) | 0.97 | 0.00 |
 | front_kick | Pankration | no/no | no/no | no/no | no/no | 0.00 | block | 0.00 (1.00) | 1.00 | 0.72 |
-| hammer_fist | Karate, Pankration | no/no | no/no | no/no | yes/yes | 0.00 | block, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
+| hammer_fist | Karate, Pankration | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
 | hook | Boxer | no/no | no/no | no/no | no/no | 0.00 | none | 0.25 (0.85) | 0.88 | 0.82 |
 | jab | Boxer | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.46) | 0.47 | 0.79 |
 | jump | defend | yes/yes | yes/yes | yes/yes | no/no | 1.00 | none | 0.62 (0.96) | 0.96 | 0.31 |
 | knee | Pankration | yes/yes | yes/yes | yes/yes | no/no | 1.00 | stake_thrust | 0.47 (1.00) | 1.00 | 0.40 |
 | knife_hand | Karate | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.49) | 0.69 | 0.85 |
 | moon_arrow | god power | no/no | no/no | no/no | yes/no | 0.00 | none | 0.43 (0.43) | 0.62 | 0.92 |
-| overhead_strike | Hoplite | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
+| overhead_strike | Hoplite | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
 | reverse_punch | Karate | no/no | yes/yes | no/no | no/no | 1.00 | none | 0.34 (0.34) | 0.39 | 0.60 |
 | rising_palm | Kung Fu | no/no | no/no | yes/no | no/no | 0.00 | block, uppercut | 0.13 (0.74) | 0.78 | 0.64 |
 | spear_thrust | Hoplite | no/no | no/no | no/no | no/no | 0.00 | sun_burst | 0.00 (0.00) | 0.00 | 0.86 |
 | stake_thrust | finisher | no/no | yes/yes | no/yes | no/no | 1.00 | none | 0.43 (0.43) | 0.59 | 0.46 |
 | sun_burst | god power | no/no | yes/yes | no/yes | no/no | 1.00 | none | 0.00 (0.00) | 0.31 | 0.79 |
 | swift_dash | god power | yes/no | yes/no | yes/yes | no/no | 1.00 | dodge_right | 0.60 (0.98) | 0.98 | 0.34 |
-| thunderbolt | god power | no/no | no/no | no/no | yes/yes | 0.00 | cross, uppercut | 0.03 (0.16) | 0.73 | 0.26 |
-| trident_sweep | god power | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.00) | 0.37 | 0.70 |
+| thunderbolt | god power | no/no | no/no | no/no | yes/yes | 0.00 | cross, jab, uppercut | 0.03 (0.16) | 0.73 | 0.26 |
+| trident_sweep | god power | no/no | no/no | no/no | no/no | 0.00 | hook | 0.00 (0.00) | 0.37 | 0.70 |
 | uppercut | Boxer, Pankration | no/no | no/no | yes/no | no/no | 0.00 | block, rising_palm | 0.13 (0.74) | 0.78 | 0.64 |
 
 Counts:
@@ -110,7 +117,7 @@ Counts:
 | literal copy counts from either start at either speed | 10 | 5 |
 | never counts while in the pose | 16 | 16 |
 | ...of those, counts only as the player lets go | 4 | 4 |
-| literal copy sets off some other move | 12 | 10 |
+| literal copy sets off some other move | 13 | 11 |
 | ...the same with the drop back out of the pose counted | 15 | 12 |
 
 All five defends count, at both speeds, from both starts.
@@ -130,27 +137,27 @@ The made-up player here is the one `tests/coachGuide.test.ts` already uses (`too
 | aegis_push | god power | no | no | yes/yes | none | double_palm, spear_thrust |
 | block | defend | yes | yes | yes/yes | hammer_fist, overhead_strike, thunderbolt | overhead_strike, thunderbolt |
 | chain_punch | Kung Fu | no | no | yes/yes | moon_arrow | cross, jab, trident_sweep |
-| cross | Boxer | no | no | yes/yes | none | none |
+| cross | Boxer | no | no | yes/yes | none | jab |
 | dodge_left | defend | yes | yes | yes/yes | swift_dash | swift_dash |
 | dodge_right | defend | yes | yes | yes/yes | swift_dash | swift_dash |
 | double_palm | Kung Fu | no | no | yes/yes | block | aegis_push, spear_thrust |
 | duck | defend | yes | yes | yes/yes | none | none |
 | front_kick | Pankration | no | no | yes/yes | block | block, knee |
-| hammer_fist | Karate, Pankration | no | no | yes/yes | block, jab, rising_palm, thunderbolt, uppercut | block, thunderbolt, uppercut |
+| hammer_fist | Karate, Pankration | no | no | yes/yes | block, cross, jab, rising_palm, thunderbolt, uppercut | block, thunderbolt, uppercut |
 | hook | Boxer | no | no | yes/yes | none | block, thunderbolt, uppercut |
-| jab | Boxer | no | no | yes/yes | none | none |
+| jab | Boxer | no | no | yes/yes | none | cross |
 | jump | defend | yes | yes | yes/yes | none | none |
 | knee | Pankration | yes | yes | yes/yes | stake_thrust | stake_thrust |
 | knife_hand | Karate | no | no | yes/yes | none | block |
 | moon_arrow | god power | no | no | yes/yes | none | none |
-| overhead_strike | Hoplite | no | no | yes/yes | block, cross, rising_palm, thunderbolt, uppercut | block, rising_palm, thunderbolt |
-| reverse_punch | Karate | no | yes | yes/yes | none | cross |
+| overhead_strike | Hoplite | no | no | yes/yes | block, cross, jab, rising_palm, thunderbolt, uppercut | block, rising_palm, thunderbolt |
+| reverse_punch | Karate | no | yes | yes/yes | none | cross, jab |
 | rising_palm | Kung Fu | no | no | yes/yes | block, hammer_fist, thunderbolt, uppercut | block, hammer_fist, thunderbolt |
 | spear_thrust | Hoplite | no | no | yes/yes | sun_burst | none |
 | stake_thrust | finisher | no | yes | yes/yes | none | none |
 | sun_burst | god power | no | yes | yes/yes | none | knife_hand, overhead_strike, thunderbolt |
 | swift_dash | god power | yes | yes | yes/yes | dodge_right | dodge_right |
-| thunderbolt | god power | no | no | yes/yes | cross, overhead_strike, uppercut | overhead_strike |
+| thunderbolt | god power | no | no | yes/yes | cross, jab, overhead_strike, uppercut | overhead_strike |
 | trident_sweep | god power | no | no | yes/yes | hook | hook, knife_hand |
 | uppercut | Boxer, Pankration | no | no | yes/yes | block, overhead_strike, rising_palm, thunderbolt | block, overhead_strike, thunderbolt |
 
@@ -159,12 +166,12 @@ The made-up player here is the one `tests/coachGuide.test.ts` already uses (`too
 | counted, the natural way | 7 of 26 | 26 of 26 |
 | ...of the 21 strikes | 2 of 21 | 21 of 21 |
 | counted at best | 10 of 26 | 26 of 26 |
-| also sets off some other move | 15 of 26 (12 of 21 strikes) | 19 of 26 (16 of 21 strikes) |
+| also sets off some other move | 15 of 26 (12 of 21 strikes) | 21 of 26 (18 of 21 strikes) |
 
 What this says for the decision on the ghost:
 
 - **Counting:** the guide's figure teaches a movement the detectors count, for every move. The still ghost does that for the five defends, the knee and swift dash.
-- **Wrong moves:** the guide is no better here. Following it sets off another move for 19 of 26. Some are the way to the move (hands coming up read as a block for seven strikes), some are near twins (aegis push and double palm set off each other and spear thrust; thunderbolt and overhead strike set off each other). Whether that costs the player anything in a fight depends on what the fight does with a move it did not ask for, which this check does not look at.
+- **Wrong moves:** the guide is no better here. Following it sets off another move for 21 of 26. Some are the way to the move (hands coming up read as a block for seven strikes), some are near twins (aegis push and double palm set off each other and spear thrust; thunderbolt and overhead strike set off each other), and the jab and the cross set each other off on purpose, since both read a straight punch on either hand. Whether that costs the player anything in a fight depends on what the fight does with a move it did not ask for, which this check does not look at.
 - **Not compared:** how each looks on screen, and the guide's live checklist, which the ghost has no match for.
 
 
