@@ -46,6 +46,8 @@ const fakes = vi.hoisted(() => {
       const stop = effect();
       if (stop) cleanups.push(stop);
     },
+    /** Set by a test: the next made level cannot be turned into a fight. */
+    unplayable: false,
     prepareLine: vi.fn<(speaker: string, line: string) => Promise<string | null>>(),
     speakLine: vi.fn<(speaker: string, line: string) => Promise<boolean>>(),
     stopNarration: vi.fn<() => void>(),
@@ -61,6 +63,18 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("../../src/audio/narration", () => ({ prepareLine: fakes.prepareLine, speakLine: fakes.speakLine, stopNarration: fakes.stopNarration }));
 vi.mock("../../src/core/log", () => ({ log: fakes.log }));
+// The real adapter, except that a test can make it fail once.
+vi.mock("../../src/ai/adapt", async (original) => {
+  const real = await original<typeof import("../../src/ai/adapt")>();
+  const fightFromLevel: typeof real.fightFromLevel = (...given) => {
+    if (fakes.unplayable) {
+      fakes.unplayable = false;
+      throw new Error("this level has no playable move");
+    }
+    return real.fightFromLevel(...given);
+  };
+  return { ...real, fightFromLevel };
+});
 
 class FakeRecognizer {
   static made: FakeRecognizer[] = [];
@@ -125,7 +139,7 @@ function fire(element: El | undefined, handler: string, ...args: unknown[]): voi
 }
 
 /** Loads the screen fresh (it looks for speech recognition once, when the module loads) and renders it with the stand-in hooks. */
-async function mount(extra: { epithet?: string; onBack?: () => void } = {}, options: { speech?: boolean } = {}) {
+async function mount(extra: { epithet?: string; onBack?: () => void; backLabel?: string } = {}, options: { speech?: boolean } = {}) {
   const ticks: (() => void)[] = [];
   const clearInterval = vi.fn<(id: number) => void>();
   vi.stubGlobal("window", {
@@ -179,6 +193,7 @@ afterEach(() => {
   vi.resetAllMocks();
   FakeRecognizer.made = [];
   FakeRecognizer.brokenMicrophone = false;
+  fakes.unplayable = false;
 });
 
 test("the first step asks, offers four different examples and will not build from an empty box", async () => {
@@ -297,6 +312,23 @@ test("a server that refuses the request or answers with something that is not a 
   }
 });
 
+test("a made fight the game cannot play still starts a fight: Fight hands back the bundled one for the same phrase", async () => {
+  const screen = await mount({ epithet: "Stormcaller" });
+  screen.type(PHRASE);
+  screen.submit();
+  screen.calls[0]?.answer(fromServer(LEVEL));
+  const card = await screen.card();
+
+  fakes.unplayable = true;
+  fire(card.button("Fight"), "onClick");
+  expect(screen.done).toHaveLength(1);
+  const spare = fallbackLevel({ phrase: PHRASE, god: "zeus", rival_god: "poseidon" });
+  expect(screen.done[0]?.source).toBe("fallback");
+  expect(screen.done[0]?.level).toEqual(spare);
+  expect(screen.done[0]?.enemy).toEqual(fightFromLevel(spare, ENEMIES, MOVES));
+  expect(fakes.log).toHaveBeenCalledWith("error", "level_unplayable", expect.any(Error));
+});
+
 test("an epithet longer than the server allows is cut to fit, and an empty one is left out", async () => {
   const long = await mount({ epithet: "e".repeat(MAX_EPITHET_LENGTH + 40) });
   long.type(PHRASE);
@@ -408,6 +440,13 @@ test("Back is offered when the caller gives onBack, and calls it", async () => {
   const screen = await mount({ onBack });
   fire(screen.show().button("Back"), "onClick");
   expect(onBack).toHaveBeenCalledOnce();
+  fakes.unmount();
+
+  // The caller can name where Back goes.
+  const named = await mount({ onBack, backLabel: "Main menu" });
+  expect(named.show().button("Back")).toBeUndefined();
+  fire(named.show().button("Main menu"), "onClick");
+  expect(onBack).toHaveBeenCalledTimes(2);
 });
 
 test("Speak it puts the surest thing heard in the box, and stops listening when the recogniser ends", async () => {
