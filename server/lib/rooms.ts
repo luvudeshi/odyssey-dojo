@@ -31,6 +31,7 @@ export const POLL_HOLD_MS = 20_000;
 /**
  * A member with no stream open and no poll for this long has gone: the other member is told, and a guest's seat is
  * given back so a new guest can join. A reconnect with the same token inside this time keeps the seat. The host's seat is never given back.
+ * A member that says it is leaving (`leave`) does not wait for this.
  */
 export const AWAY_MS = 20_000;
 /** No I, L or O: a code read aloud or off a screen cannot be mistyped. 23^4 = 279,841 codes; ./roomLimits has the guessing odds. */
@@ -41,7 +42,7 @@ export type RelayMessage = Readonly<Record<string, unknown>>;
 export interface Listener {
   /** `seq` is the message's number at this seat; a stream sends it as the event id. */
   readonly message: (message: RelayMessage, seq: number) => void;
-  /** The room is gone, or this member opened a newer stream. */
+  /** The room is gone, this member opened a newer stream, or it said it is leaving. */
   readonly end: () => void;
 }
 export interface Attached { readonly peerJoined: boolean; readonly detach: () => void }
@@ -71,17 +72,8 @@ interface Member {
   readonly backlog: { readonly seq: number; readonly text: string }[];
   sendsFromMs: number;
   sends: number;
-  /** Set when this member said it is leaving (the leave call). Only the host's seat is kept after that, closed. */
-  left: boolean;
 }
-interface Room {
-  readonly owner: string;
-  readonly host: Member;
-  guest: Member | null;
-  activeMs: number;
-  /** The token of the guest who last left by the leave call, so the same call made twice is answered the same way. */
-  leftGuest: string | null;
-}
+interface Room { readonly owner: string; readonly host: Member; guest: Member | null; activeMs: number }
 interface Seat { readonly room: Room; readonly self: Member; readonly other: () => Member | null }
 
 /** The one message the relay itself sends: whether the other member is connected. */
@@ -100,7 +92,7 @@ function sameToken(given: string, held: string): boolean {
 }
 
 function newMember(nowMs: number): Member {
-  return { token: randomBytes(18).toString("base64url"), listener: null, poll: null, here: false, seenMs: nowMs, seq: 0, backlog: [], sendsFromMs: 0, sends: 0, left: false };
+  return { token: randomBytes(18).toString("base64url"), listener: null, poll: null, here: false, seenMs: nowMs, seq: 0, backlog: [], sendsFromMs: 0, sends: 0 };
 }
 
 export function createRoomStore(now: () => number = Date.now) {
@@ -132,10 +124,8 @@ export function createRoomStore(now: () => number = Date.now) {
           if (room.guest !== null) deliver(room.guest, peerEvent(false));
         }
         if (room.guest !== null && gone(room.guest)) {
-          const guest = room.guest;
-          // The seat is emptied before the host is told, so a held poll this answers says the guest is not here.
+          if (room.guest.here) deliver(room.host, peerEvent(false));
           room.guest = null;
-          if (guest.here) deliver(room.host, peerEvent(false));
         }
         continue;
       }
@@ -158,8 +148,7 @@ export function createRoomStore(now: () => number = Date.now) {
     sweep();
     const room = rooms.get(code.toUpperCase());
     if (room === undefined) return "unknown";
-    // A host who left has closed its seat: a poll of its that was still on the way must not bring it back.
-    if (sameToken(token, room.host.token)) return room.host.left ? "denied" : { room, self: room.host, other: () => room.guest };
+    if (sameToken(token, room.host.token)) return { room, self: room.host, other: () => room.guest };
     if (room.guest !== null && sameToken(token, room.guest.token)) return { room, self: room.guest, other: () => room.host };
     return "denied";
   };
@@ -171,17 +160,6 @@ export function createRoomStore(now: () => number = Date.now) {
     self.here = true;
     const peer = other();
     if (peer !== null) deliver(peer, peerEvent(true));
-  };
-
-  /** Ends the member's stream and answers its held poll: it has said it is going, so nothing more is coming for it. */
-  const hangUp = (member: Member): void => {
-    const stream = member.listener;
-    const held = member.poll;
-    // Emptied first, so the stream's detach and the poll's stop find nothing left to undo.
-    member.listener = null;
-    member.poll = null;
-    stream?.end();
-    held?.reply(held.result());
   };
 
   /** Nobody is connected to the room, and it was last used `graceMs` ago or longer. */
@@ -230,14 +208,13 @@ export function createRoomStore(now: () => number = Date.now) {
         code = Array.from({ length: CODE_LENGTH }, () => ALPHABET.charAt(randomInt(ALPHABET.length))).join("");
       } while (rooms.has(code));
       const host = newMember(now());
-      rooms.set(code, { owner, host, guest: null, activeMs: now(), leftGuest: null });
+      rooms.set(code, { owner, host, guest: null, activeMs: now() });
       return { code, token: host.token };
     },
     join: (code: string): { token: string } | "unknown" | "full" => {
       sweep();
       const room = rooms.get(code.toUpperCase());
-      // A room its host closed takes nobody: a friend who walked in would wait for a host who cannot come back.
-      if (room === undefined || room.host.left) return "unknown";
+      if (room === undefined) return "unknown";
       if (room.guest !== null) return "full";
       room.guest = newMember(now());
       room.activeMs = now();
@@ -308,37 +285,32 @@ export function createRoomStore(now: () => number = Date.now) {
       };
     },
     /**
-     * The member says it is going, so nobody has to wait AWAY_MS to find out (a proxy in front of the server can hide
-     * a stream closing, and a poll says nothing when it stops). The other member is told at once, as when a stream closes.
-     * The host's seat is closed for good: its token is refused from then on, except by this call, and the room takes
-     * no new guest. A guest's seat is given back at once, so the code takes a new guest. Made twice with the same
-     * token it changes nothing the second time. Not counted as use of the room.
+     * The member says it is going (its page is closing): what AWAY_MS would do, done now. Its stream and its held
+     * poll are ended. A guest's seat is free at once and its token stops working, so it joins as new if it comes
+     * back. The host keeps its seat and its token, as after any other absence, and is here again with its next
+     * stream or poll. The other member hears "peer: false" if it had been told this one was here.
+     * A guest's leave is not use of the room. A host's leave is: the room it left is covered for the same grace as a
+     * room whose host just asked (a public server gives AWAY_MS), so a host whose page reloads finds its room there.
+     * Without a grace, a room that both have left can go to the owner's next create at once.
      */
     leave: (code: string, token: string): "left" | Refusal => {
-      sweep();
-      const room = rooms.get(code.toUpperCase());
-      if (room === undefined) return "unknown";
-      if (sameToken(token, room.host.token)) {
-        const host = room.host;
-        if (host.left) return "left";
-        host.left = true;
-        hangUp(host);
-        host.seenMs = now();
-        const wasHere = host.here;
-        // Before the guest is told, so a poll this answers says the host is not here.
-        host.here = false;
-        if (wasHere && room.guest !== null) deliver(room.guest, peerEvent(false));
-        return "left";
-      }
-      const guest = room.guest;
-      if (guest !== null && sameToken(token, guest.token)) {
-        room.guest = null;
-        room.leftGuest = guest.token;
-        hangUp(guest);
-        if (guest.here) deliver(room.host, peerEvent(false));
-        return "left";
-      }
-      return room.leftGuest !== null && sameToken(token, room.leftGuest) ? "left" : "denied";
+      const found = seat(code, token);
+      if (typeof found === "string") return found;
+      const { room, self, other } = found;
+      const stream = self.listener;
+      const held = self.poll;
+      const told = self.here;
+      self.listener = null;
+      self.poll = null;
+      self.here = false;
+      self.seenMs = now();
+      if (self === room.host) room.activeMs = now();
+      else room.guest = null;
+      const peer = other();
+      if (told && peer !== null) deliver(peer, peerEvent(false));
+      stream?.end();
+      held?.reply(held.result());
+      return "left";
     },
     /**
      * A message sent while the other member is not connected is "dropped": it is kept for a poll to read, but the sender is told nobody got it.
