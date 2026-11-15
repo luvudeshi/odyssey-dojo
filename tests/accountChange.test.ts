@@ -1,7 +1,7 @@
 // Changing the sign-in name and the password while signed in (rename and changePassword in src/account/session.ts).
 import { expect, test } from "vitest";
 import { createAccountClient } from "../src/account/client";
-import { createAccountSync, ERROR_TEXT, MISMATCH_TEXT, NAME_TEXT, PASSWORD_CHANGED_TEXT, PASSWORD_TEXT, RENAME_TAKEN_TEXT, renamedText, SESSION_KEY } from "../src/account/session";
+import { createAccountSync, ERROR_TEXT, MISMATCH_TEXT, NAME_TEXT, PASSWORD_BUSY_TEXT, PASSWORD_CHANGED_TEXT, PASSWORD_TEXT, RENAME_TAKEN_TEXT, renamedText, SESSION_KEY } from "../src/account/session";
 import { browser, fakeServer, memory } from "./helpers/accountKit";
 import type { FakeServer } from "./helpers/accountKit";
 
@@ -59,6 +59,14 @@ test("a wrong current password keeps the player signed in", async () => {
   expect(await account.changePassword("not it at all", NEXT, NEXT)).toEqual({ ok: false, text: ERROR_TEXT.wrong_password });
   expect(account.get()).toMatchObject({ status: "signedIn", name: "Luv" });
   expect(storage.data.has(SESSION_KEY)).toBe(true);
+});
+
+test("a 409 on the password route says another change was made, not that a name is taken", async () => {
+  const { server, account } = await signedIn();
+  server.fail = 409;
+  server.failAs = "conflict";
+  expect(await account.changePassword(PASSWORD, NEXT, NEXT)).toEqual({ ok: false, text: PASSWORD_BUSY_TEXT });
+  expect(account.get()).toMatchObject({ status: "signedIn" });
 });
 
 test("a mismatch, a short password and an empty current one never send a request", async () => {

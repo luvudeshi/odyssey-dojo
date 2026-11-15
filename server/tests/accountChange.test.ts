@@ -37,7 +37,7 @@ interface Stand {
   readonly renamed: (readonly [string, string])[];
   readonly changed: (readonly [string, boolean, string])[];
   /** What the next call does instead of what it would: a failure, a full gate, an account that is gone. */
-  next: "ok" | "unavailable" | "busy" | "gone";
+  next: "ok" | "unavailable" | "busy" | "gone" | "conflict";
 }
 
 function stand(): Stand {
@@ -60,6 +60,7 @@ function stand(): Stand {
       },
       changePassword: (accountId, current, _next, keepToken) => {
         made.changed.push([accountId, current === RIGHT, keepToken]);
+        if (made.next === "conflict") return Promise.resolve("conflict" as const);
         return scripted(current === RIGHT ? "changed" as const : "wrong_password" as const, "gone" as const);
       },
       close: () => Promise.resolve(),
@@ -221,6 +222,18 @@ test("password: a right password and a try that never reached a check are given 
   expect((await post(PASSWORD, { current: "wrong", next: NEXT }, { headers: visitor })).status).toBe(403);
 });
 
+test("password: 409 conflict when another change got in first, and it counts as no wrong try", async () => {
+  const s = stand();
+  const post = await serve(s.accounts);
+  const visitor = from("203.0.113.40");
+  s.next = "conflict";
+  for (let index = 0; index < 3 * WRONG_PASSWORDS_PER_ACCOUNT; index += 1) {
+    expect(await post(PASSWORD, { current: RIGHT, next: NEXT }, { headers: visitor })).toEqual({ status: 409, body: { error: "conflict" }, retry: null });
+  }
+  s.next = "ok";
+  expect((await post(PASSWORD, { current: "wrong", next: NEXT }, { headers: visitor })).status).toBe(403);
+});
+
 test("the wrong-password count is per account and runs out with its window", () => {
   let clock = 1_000_000;
   const limits = createAccountLimits(() => clock, () => false);
@@ -251,6 +264,16 @@ test("the memory of known sessions forgets every session of an account but the o
   known.forgetAccount(ACCOUNT_ID, "none of them");
   expect(known.get("b")).toBeNull();
   expect(known.get("c")).toBe(OTHER_ID);
+});
+
+test("forgetting an account raises the epoch, so a lookup begun before it can tell its answer is old", () => {
+  const known = createKnownSessions(() => 0);
+  const before = known.epoch();
+  known.remember("a", ACCOUNT_ID);
+  known.forget("a");
+  expect(known.epoch()).toBe(before);
+  known.forgetAccount(ACCOUNT_ID, "x");
+  expect(known.epoch()).toBe(before + 1);
 });
 
 test("a new name goes by the sign-up rule, and a change of password body by 8 to 200 characters", () => {

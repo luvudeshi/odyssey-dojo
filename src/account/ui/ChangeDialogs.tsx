@@ -31,7 +31,7 @@ function ChangeForm(props: Props & { title: string; send: () => Promise<ChangeRe
     });
   };
   return createPortal(
-    <Dialog title={props.title} onEscape={props.onClose}>
+    <Dialog title={props.title} onEscape={busy ? undefined : props.onClose}>
       <form className="acc-signin__form" onSubmit={(event) => { event.preventDefault(); submit(); }}>
         {props.children}
         <p className="acc-signin__say" role="status" aria-live="polite">{props.note}</p>

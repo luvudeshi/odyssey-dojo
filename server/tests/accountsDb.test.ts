@@ -273,7 +273,7 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
 
   test("signing out ends that session and no other, and always answers 204", async () => {
     const name = hero();
-    const first = await signUp(name);
+    await signUp(name);
     const second = await signIn(name);
     expect(await call("POST", "/api/account/signout", { token: first.token })).toEqual({ status: 204, body: null });
     expect((await call("GET", "/api/account/save", { token: first.token })).status).toBe(401);
@@ -485,4 +485,42 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
       second.closeAllConnections();
     }
   }, 30_000);
+  test("a sign-in whose password was changed while it checked makes no session, and a change twice at once is a conflict, not a wrong password", async () => {
+    const accounts = createAccounts(() => Promise.resolve(db), { prefix, now: () => clock });
+    const name = hero();
+    await signUp(name);
+    const [row] = await sql<{ id: string }>(`select id::text as id from ${t.accounts} where name = $1::text`, [name]);
+    const id = row?.id ?? "";
+    // The password changes after sign-in has read the old hash and before it writes its session.
+    const sessions = (): Promise<unknown[]> => sql(`select 1 from ${t.sessions} where account_id = $1::uuid`, [id]);
+    const before = (await sessions()).length;
+    const moved = await accounts.signIn(name, PASSWORD, false, async (work) => {
+      await sql(`update ${t.accounts} set pass_hash = decode($2::text, 'hex') where id = $1::uuid`, [id, "ab".repeat(64)]);
+      return work();
+    });
+    expect(moved).toBeNull();
+    expect(await sessions()).toHaveLength(before);
+    // A fresh account for the next two cases.
+    await sql(`delete from ${t.accounts} where id = $1::uuid`, [id]);
+    const again = hero();
+    const second = await signUp(again);
+    const [other] = await sql<{ id: string }>(`select id::text as id from ${t.accounts} where name = $1::text`, [again]);
+    const otherId = other?.id ?? "";
+    // The second statement of changePassword (the update) finds the hash already replaced by an equal change.
+    let reached = 0;
+    const raced = await accounts.changePassword(otherId, PASSWORD, OTHER_PASSWORD, second.token, false, async (work) => {
+      reached += 1;
+      if (reached === 2) await sql(`update ${t.accounts} set pass_hash = decode($2::text, 'hex') where id = $1::uuid`, [otherId, "cd".repeat(64)]);
+      return work();
+    });
+    expect(raced).toBe("conflict");
+    // The account removed between the check and the update is gone, which the route answers 401.
+    reached = 0;
+    const lost = await accounts.changePassword(otherId, PASSWORD, OTHER_PASSWORD, second.token, false, async (work) => {
+      reached += 1;
+      if (reached === 2) await sql(`delete from ${t.accounts} where id = $1::uuid`, [otherId]);
+      return work();
+    });
+    expect(lost).toBe("gone");
+  });
 });

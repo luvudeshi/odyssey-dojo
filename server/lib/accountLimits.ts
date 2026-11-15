@@ -237,6 +237,8 @@ export interface KnownSessions {
   readonly forget: (hash: string) => void;
   /** Forgets every token hash of this account but `keep`, once the database has ended those sessions. */
   readonly forgetAccount: (accountId: string, keep: string) => void;
+  /** Goes up at every forgetAccount. An answer the database gave before it went up must not be remembered after. */
+  readonly epoch: () => number;
 }
 
 /**
@@ -245,6 +247,7 @@ export interface KnownSessions {
  */
 export function createKnownSessions(now: () => number = Date.now, keepMs: number = KNOWN_SESSION_MS, max: number = KNOWN_SESSIONS_MAX): KnownSessions {
   const known = new Map<string, { readonly accountId: string; readonly until: number }>();
+  let epoch = 0;
   return {
     get: (hash) => {
       const found = known.get(hash);
@@ -259,7 +262,9 @@ export function createKnownSessions(now: () => number = Date.now, keepMs: number
       known.set(hash, { accountId, until: now() + keepMs });
     },
     forget: (hash) => { known.delete(hash); },
+    epoch: () => epoch,
     forgetAccount: (accountId, keep) => {
+      epoch += 1;
       for (const [hash, entry] of known) if (entry.accountId === accountId && hash !== keep) known.delete(hash);
     },
   };

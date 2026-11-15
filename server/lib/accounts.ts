@@ -396,14 +396,19 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       if (found === undefined || !right) return null;
       const token = makeToken();
       const at = now();
-      await reach(async () => {
+      // The session is made only while the account still holds the hash that was checked: a password changed during the check
+      // has ended this account's sessions, and one made after that would outlive it.
+      const made = await reach(async () => {
         await makeRoom(found.id, iso(at));
-        await run(
+        return run(
           `insert into ${t.sessions} (token_hash, account_id, created_at, expires_at)
-          values (decode($1::text, 'hex'), $2::uuid, $3::timestamptz, $4::timestamptz)`,
-          [tokenHash(token), found.id, iso(at), iso(at + SESSION_MS)],
+          select decode($1::text, 'hex'), a.id, $3::timestamptz, $4::timestamptz from ${t.accounts} a
+          where a.id = $2::uuid and a.pass_hash = decode($5::text, 'hex')
+          returning 1 as made`,
+          [tokenHash(token), found.id, iso(at), iso(at + SESSION_MS), found.pass_hash],
         );
       });
+      if (made.length === 0) return null;
       return { token, name: found.name };
     },
 
@@ -414,12 +419,14 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     },
 
     accountOf: async (token) => {
+      const since = known.epoch();
       const rows = await run(
         `select account_id::text as id from ${t.sessions} where token_hash = decode($1::text, 'hex') and expires_at > $2::timestamptz`,
         [tokenHash(token), iso(now())],
       );
       const id = rowsOf(idRow, rows)[0]?.id ?? null;
-      if (id !== null) known.remember(tokenHash(token), id);
+      // Not when a password change ended sessions while the database was being asked: its answer may be from before.
+      if (id !== null && known.epoch() === since) known.remember(tokenHash(token), id);
       return id;
     },
 

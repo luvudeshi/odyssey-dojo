@@ -348,6 +348,8 @@ export const register: Register = (router, deps) => {
       }
       if (changed === "gone") signedOut(response);
       else if (changed === "wrong_password") response.status(403).json({ error: "wrong_password" });
+      // The same change made twice at once: the password was right, so it is no failed guess (passwordRight above).
+      else if (changed === "conflict") response.status(409).json({ error: "conflict" });
       else response.status(204).end();
     }),
   );
