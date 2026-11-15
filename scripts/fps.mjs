@@ -150,7 +150,8 @@ function sampleFrames(ms) {
  * It runs after the frame timing, never during it, and takes the wrappers off again.
  */
 function countDraws(ms) {
-  const gl = document.querySelector(".fight canvas")?.getContext("webgl2");
+  // The HUD draws its pebbles on 2D canvases of its own; the 3D view is the one three.js marks with data-engine.
+  const gl = (document.querySelector(".fight canvas[data-engine]") ?? document.querySelector(".fight canvas"))?.getContext("webgl2");
   if (!gl) return Promise.resolve({ calls: null, triangles: null });
   let calls = 0;
   let triangles = 0;
@@ -198,10 +199,12 @@ async function enterFight(page, base, stop) {
   const button = page.locator("button.stop").nth(stop.index);
   if (!(await button.evaluate((element) => element.classList.contains("open")))) return null;
   await button.click();
-  const heading = ((await page.locator("main.menu h1").textContent()) ?? "").trim();
-  if (heading !== stop.name) throw new Error(`the map opened "${heading}" instead of "${stop.name}"`);
+  // The heading is laid in pebbles on a canvas, in upper case: its words are in aria-label (plain text is the fallback).
+  const heading = (await page.locator("main.menu h1").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
+  if (heading.toLowerCase() !== stop.name.toLowerCase()) throw new Error(`the map opened "${heading}" instead of "${stop.name}"`);
   await page.getByRole("button", { name: `Face ${stop.name}` }).click();
-  await page.locator(".fight canvas").waitFor();
+  // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
+  await page.locator(".fight canvas").first().waitFor();
   await page.waitForLoadState("networkidle");
   await page.waitForTimeout(WARMUP_MS);
   return style;
