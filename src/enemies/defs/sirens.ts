@@ -14,10 +14,10 @@ export const enemy: EnemySpec = {
   hp: 370,
   strikeWindowMs: 2300,
   attacks: [
-    { id: "song", name: "The song", telegraphMs: 1900, damage: 12, counter: "block" },
-    { id: "swoop_left", name: "Swoop", telegraphMs: 1500, damage: 9, counter: "dodge_right" },
-    { id: "swoop_right", name: "Swoop", telegraphMs: 1500, damage: 9, counter: "dodge_left" },
-    { id: "talons", name: "Talon dive", telegraphMs: 1500, damage: 11, counter: "duck" },
+    { id: "song", name: "The song", telegraphMs: 1900, damage: 8, counter: "block" },
+    { id: "swoop_left", name: "Swoop", telegraphMs: 1500, damage: 6, counter: "dodge_right" },
+    { id: "swoop_right", name: "Swoop", telegraphMs: 1500, damage: 6, counter: "dodge_left" },
+    { id: "talons", name: "Talon dive", telegraphMs: 1500, damage: 7, counter: "duck" },
   ],
   phases: [
     // The wind drops and the sea goes flat. Only the song, and it is slow.
