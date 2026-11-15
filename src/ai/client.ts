@@ -7,8 +7,9 @@ import { fallbackLevel } from "./fallbacks";
 /**
  * How long the player may watch "The Muse is composing" before a bundled fight is used. The server gives the model
  * levelMs (server/env.ts) and then answers with a bundled fight itself, so this only runs out when the server is stuck.
+ * The stones on the waiting screen light up across about this long (src/ai/ui/styleScreen.css).
  */
-export const LEVEL_TIMEOUT_MS = 6500;
+export const LEVEL_TIMEOUT_MS = 9500;
 
 export async function generateLevel(
   request: LevelRequest,

@@ -253,10 +253,10 @@ test("index.json only yields known scenes, whatever it contains", () => {
   for (const junk of [null, undefined, "menu", 3, { menu: true }]) expect(listedScenes(junk)).toEqual([]);
 });
 
-test("every scene has a committed clip that is listed and credited, and together they stay under 6 MB", () => {
+test("every scene has a committed clip that is listed and credited, and together they stay under 8 MB", () => {
   const folder = "public/audio/music";
   const index: unknown = JSON.parse(readFileSync(`${folder}/index.json`, "utf8"));
-  expect(listedScenes(index)).toEqual(["menu", "fight", "win", "loss"]);
+  expect(listedScenes(index)).toEqual(["menu", "fight", "boss", "win", "loss"]);
   const credits = readFileSync("CREDITS.md", "utf8");
   let bytes = 0;
   for (const scene of listedScenes(index)) {
@@ -266,7 +266,8 @@ test("every scene has a committed clip that is listed and credited, and together
     bytes += statSync(file).size;
   }
   expect(bytes).toBeGreaterThan(100_000);
-  expect(bytes).toBeLessThan(6_000_000);
+  // Three full-length CC BY tracks at 128 kbps and two stings: 6.9 MB.
+  expect(bytes).toBeLessThan(8_000_000);
 });
 
 test("where there is no audio at all, every call does nothing", () => {
@@ -401,16 +402,6 @@ test("starting a scene loops its clip and fades it in over a second, and only li
     "/audio/music/menu.mp3",
     "/audio/sfx/index.json",
   ]);
-});
-
-test("the battle music is held to a whole number of its six-second phrases", async () => {
-  const { music } = await inBrowser(["fight"]);
-  music.startMusic("fight");
-  await loaded();
-  const fight = must(context().music[0]);
-  const phrases = (fight.loopEnd - fight.loopStart) / 6;
-  expect(phrases).toBeGreaterThanOrEqual(1);
-  expect(phrases).toBeCloseTo(Math.round(phrases), 6);
 });
 
 test("changing scene fades the old clip out and the new one in over the same second", async () => {

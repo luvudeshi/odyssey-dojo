@@ -2,8 +2,8 @@
 
 Every file in the game's `public` folder has a row here. There are three kinds:
 
-- Art we downloaded: skies, textures and models. All of it is CC0 (public domain).
-- Things the team made: the voices, sounds and music (generated with ElevenLabs) and the icons (drawn in code).
+- Art we downloaded: skies, textures and models. All of it is CC0 (public domain) except one model: the columns of Circe's hall are CC BY 3.0, and their row carries the credit that licence asks for.
+- Things the team made: the voices, sounds and music (generated with ElevenLabs), and the icons and the browser tab emblem (drawn in code).
 - Bundled software: the pose tracker and the mesh decoder, which Google publishes under the Apache License 2.0. They are at the end of this file.
 
 `make credits` checks that no file is missing. `docs/licences.md` has the full list and says which sources were opened to check each licence.
@@ -48,8 +48,10 @@ His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
 | Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.com/packs/universalbasecharacters.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0) | CC0 |
+| KayKit Dungeon Remastered 1.0, by Kay Lousberg: long feast table with a tablecloth, stool, chair and food platter, unchanged | `public/models/suitors/kkd_*.glb`, the feast tables in the great hall | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (its `LICENSE.txt` says CC0) | CC0 |
+| Wooden Axe (1K), by Ulan Cabanilla, from Poly Haven. The diffuse and ARM maps and the mesh are unchanged; the `.gltf` was edited to leave out the normal map | `public/models/suitors/ph/wooden_axe/`, the twelve axes for the bow contest | https://polyhaven.com/a/wooden_axe | CC0 |
 
-Their gear, the hall and its props are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens and Scylla are built in code too and ship no model file. Their logs are in `docs/models/`.
+The suitors' gear and the hall itself are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens and Scylla are built in code too and ship no model file of their own; the columns of Circe's hall are downloaded and have their own section below. The logs are in `docs/models/`.
 
 ## Charybdis
 
@@ -57,29 +59,32 @@ The whirlpool is built in code. The anglerfish, tentacles and scenery are downlo
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Anglerfish, Tentacle, Rock_4, Rock_6, Rock_Moss_4, CommonTree_5, CommonTree_Dead_3, Viking_boat, Sail_ship, by Quaternius | Charybdis and her strait, `public/models/charybdis/*.glb` | https://quaternius.com | CC0 |
-| Rock Moss Set 01, by Kless Gyzen | Rocks of the tentacle look (`?look=b`), `public/models/charybdis/rocks/` | https://polyhaven.com/a/rock_moss_set_01 | CC0 |
-| three.js Water and Sky examples | Sea and sky of the Charybdis stop | https://github.com/mrdoob/three.js | MIT |
+| Anglerfish, by Quaternius, via Poly Pizza | `public/models/charybdis/Anglerfish.glb`, the fish that lunges out of the whirlpool | https://poly.pizza/m/MRjSlwCjHM | CC0 |
+| Tentacle, by Quaternius, via Poly Pizza | `public/models/charybdis/Tentacle.glb`, the arms on the whirlpool's rim | https://poly.pizza/m/BR1vpIvvvv | CC0 |
+| Viking Boat, by Quaternius, via Poly Pizza | `public/models/charybdis/Viking_boat.glb`, a wrecked boat on the water | https://poly.pizza/m/J7SCPiNoSy | CC0 |
+| Sail Ship, by Quaternius, via Poly Pizza | `public/models/charybdis/Sail_ship.glb`, a wrecked ship on the water | https://poly.pizza/m/cIzO4MBPqI | CC0 |
+| Rock_4, Rock_6, Rock_Moss_4, CommonTree_5 and CommonTree_Dead_3, by Quaternius. The model log names the Ultimate Nature Pack as their source | `public/models/charybdis/Rock_4.glb`, `public/models/charybdis/Rock_6.glb`, `public/models/charybdis/Rock_Moss_4.glb`, `public/models/charybdis/CommonTree_5.glb`, `public/models/charybdis/CommonTree_Dead_3.glb`, the sea stacks, the cliffs and the fig tree | https://quaternius.com/packs/ultimatenature.html | CC0 |
+| Rock Moss Set 01 (1K), by Kless Gyzen, from Poly Haven, unchanged | Rocks of the tentacle look (`?look=b`), `public/models/charybdis/rocks/` | https://polyhaven.com/a/rock_moss_set_01 | CC0 |
+
+The sea and the sky of the Charybdis stop use the Water and Sky examples of three.js (https://github.com/mrdoob/three.js, MIT). They are code from the `three` npm package, compiled into the game: no file under `public` comes from them, and the water's normal map is made in code.
 
 ## Icons
 
 | Asset | File | Source | Licence |
 |---|---|---|---|
 | Ship, owl, palmette and laurel ornaments of the pottery look | `public/ui/ship.svg`, `public/ui/owl.svg`, `public/ui/palmette.svg`, `public/ui/laurel.svg` | SVG shapes written in code for PR #134 | Drawn by the team |
-| Eye icon in the browser tab | `public/favicon.svg` | Four plain SVG shapes, added by the lead in PR #105 | Drawn by the team |
+| The ship between Scylla and Charybdis, the picture behind the main menu | `public/ui/menu-scylla.webp` | Painted on the team's laptop on 2026-11-14 with the FLUX.2 Klein 4B model run locally through mflux (model licence Apache 2.0), from our own prompt, which names no artist or existing work. Rain, lightning and mist are CSS in `src/screens/menuScene.css` | Generated by the team |
+| Pebble mosaic emblem in the browser tab | `public/favicon.svg` | Written by our own script, `npx tsx scripts/gen-pebble-favicon.ts`, which draws the emblem of `src/ui/pebble/brand.ts` as SVG stones (PR #218). It replaced the eye icon of PR #105 | Drawn by the team |
+
+The pebble mosaic logo and emblem on the screens are drawn by the same code while the game runs (`src/ui/pebble/`). The guard shield, the power effects and Polyphemus's thrown boulder are drawn in code too (`src/render/effects/`). None of them ships a file.
 
 ## Circe
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| "Doric Greek Column" by Victor Vina, via Poly Pizza | `public/models/circe/doric.glb`, the six marble columns of Circe's portico | https://poly.pizza/m/5VD5-v8NBZ4 | CC BY 3.0, credit: Victor Vina |
+| "Doric Greek Column" by Victor Viña, via Poly Pizza | `public/models/circe/doric.glb`, the six marble columns of Circe's portico | https://poly.pizza/m/5VD5-v8NBZ4 | CC BY 3.0. Credit: "Doric Greek Column" by Victor Viña, CC BY 3.0, via Poly Pizza |
 
-## The Suitors
-
-| Asset | Used for | URL | Licence |
-|---|---|---|---|
-| KayKit Dungeon Remastered: long tablecloth feast table, stool, chair and food platter (Kay Lousberg) | `public/models/suitors/kkd_*.glb`, the feast tables in the great hall | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 | CC0 |
-| Wooden Axe (1K diffuse and ARM maps, Poly Haven) | `public/models/suitors/ph/wooden_axe/`, the twelve axes for the bow contest | https://polyhaven.com/a/wooden_axe | CC0 |
+The licence is Creative Commons Attribution 3.0, https://creativecommons.org/licenses/by/3.0/. The game scales the column and stands six copies of it on the portico.
 
 ## Voices and sound effects
 
@@ -96,9 +101,9 @@ A row that names a folder covers every clip in it. A clip added to one of these 
 |---|---|---|---|
 | Athena's 50 coaching lines | `public/audio/athena/` | ElevenLabs text to speech, model `eleven_v4`, voice Sarah. Made with `npx tsx server/tools/genClips.ts athena`. The 13 newest (the two kick calls, the 10 phase lines for the later stops and `phase_any`) were made with the same command on the same day. The voice and model the tool picked for those 13 were not written down; it tries Sarah and `eleven_v4` first. One of them, `call_knee.mp3`, was made again later the same day with the same command, because a speech to text check heard its first word as "Me" (`docs/audio-heard.md`). The tool logged voice Sarah and model `eleven_v4` for that take | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
 | Homer's first 4 lines and Polyphemus's 4 taunts, kept beside Athena's | `public/audio/athena/homer_*.mp3` and `public/audio/athena/taunt_polyphemus_*.mp3` | ElevenLabs text to speech, voices George (Homer) and Callum (Polyphemus). Recorded once, for PR #90. The model was not written down, and `genClips.ts` has no command that makes these eight again | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
-| Homer's 11 lines before and after the stops of the quest | `public/audio/narration/` | ElevenLabs text to speech, model `eleven_v4`, voice George. Made with `npx tsx server/tools/genClips.ts story` | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
-| 13 taunts of the later monsters | `public/audio/taunts/` | ElevenLabs text to speech, model `eleven_v4`, voices Lily (Circe), Jessica (the Sirens), Harry (Scylla), Brian (Charybdis) and Liam (the suitors). Made with `npx tsx server/tools/genClips.ts story` | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
-| 11 fight sound effects, one for each combat event | `public/audio/sfx/` | ElevenLabs sound effects. Made with `npx tsx server/tools/genClips.ts sfx` | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
+| Homer's 12 lines: 11 before and after the stops of the quest, and his closing line for the homecoming (`homer_homecoming.mp3`, made on 14 November 2026 with the same command, voice and model) | `public/audio/narration/` | ElevenLabs text to speech, model `eleven_v4`, voice George. Made with `npx tsx server/tools/genClips.ts story` | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
+| 15 taunts of the later monsters | `public/audio/taunts/` | ElevenLabs text to speech, model `eleven_v4`, voices Lily (Circe), Jessica (the Sirens), Harry (Scylla), Brian (Charybdis) and Liam (the suitors). Made with `npx tsx server/tools/genClips.ts story`. The two newest, `taunt_scylla_2.mp3` and `taunt_scylla_3.mp3`, were made later the same day with the same command; the tool logged voice Harry and model `eleven_v4` for both | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
+| 16 sound effects: 11 fight sound effects, one for each combat event, the chime for an unlocked achievement (`unlock.mp3`) and one sound for each kind of defend (`defendBlock.mp3`, `defendDodge.mp3`, `defendDuck.mp3`, `defendJump.mp3`) | `public/audio/sfx/` | ElevenLabs sound effects. Made with `npx tsx server/tools/genClips.ts sfx`. The chime and the four defend sounds were made later the same day with the same command, are 9 KB to 18 KB each (62 KB in all) and are as the endpoint returned them. The chime and the dodge are each the fifth take and the duck the second; the prompts in `server/tools/genClips.ts` are the ones that made the files, and the notes beside them say what the other takes were | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
 
 The voices, and the speech model where a row gives one, are the ones written down when the clips were made: PR #55 and PR #68 for Athena, PR #90 for the voices of the eight clips beside hers, and `docs/narration-lines.md` for the narration and the taunts. The sound effects model is the one `server/ai/elevenlabs.ts` names. The MP3 files do not record any of this.
 
@@ -106,12 +111,15 @@ The ElevenLabs Terms of Service apply to these clips as they do to the music. Wh
 
 ## Music and ambience
 
-Generated by the team on 2026-11-14 with our own ElevenLabs account (Creator plan, a paid plan), by running `npx tsx server/tools/genClips.ts music`. The prompts are in `server/tools/genClips.ts`. They describe instruments and mood only, and name no artist, film, game or existing piece. The four files total 1.2 MB.
+The three looping tracks are by Shane Ivers (Silverman Sound Studios), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Each was downloaded on 2026-11-14 from its own page, which states the licence, then re-encoded from 320 to 128 kbps with its tags removed. The game loops each one by mixing its ending into its opening. The three files total 6.8 MB.
+
+The two stings were generated by the team on 2026-11-14 with our own ElevenLabs account (Creator plan, a paid plan), by running `npx tsx server/tools/genClips.ts music`. The prompts are in `server/tools/genClips.ts`. They describe instruments and mood only, and name no artist, film, game or existing piece.
 
 | Clip | File | Source | Licence |
 |---|---|---|---|
-| Cave ambience, looped on the menu | `public/audio/music/menu.mp3` | ElevenLabs sound effects endpoint (`POST /v1/sound-generation`, model `eleven_text_to_sound_v3`, `loop: true`) | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see below |
-| Battle music, looped during a fight | `public/audio/music/fight.mp3` | ElevenLabs music endpoint (`POST /v1/music`, model `music_v1`, instrumental only) | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service and Music Terms, see below |
+| Menu music, looped on every screen outside a fight | `public/audio/music/menu.mp3` | https://www.silvermansound.com/free-music/the-paladins-underworld | "The Paladin's Underworld" by Shane Ivers, is licensed under CC BY 4.0. Music: The Paladin's Underworld by Shane Ivers - https://www.silvermansound.com |
+| Battle music, looped during a fight | `public/audio/music/fight.mp3` | https://www.silvermansound.com/free-music/passage-of-arms | "Passage Of Arms" by Shane Ivers, is licensed under CC BY 4.0. Music: Passage Of Arms by Shane Ivers - https://www.silvermansound.com |
+| Battle music for the last stop, looped | `public/audio/music/boss.mp3` | https://www.silvermansound.com/free-music/the-fall-of-heroes | "The Fall Of Heroes" by Shane Ivers, is licensed under CC BY 4.0. Music: The Fall Of Heroes by Shane Ivers - https://www.silvermansound.com |
 | Win sting | `public/audio/music/win.mp3` | ElevenLabs music endpoint (`POST /v1/music`, model `music_v1`, instrumental only) | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service and Music Terms, see below |
 | Loss sting | `public/audio/music/loss.mp3` | ElevenLabs music endpoint (`POST /v1/music`, model `music_v1`, instrumental only) | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service and Music Terms, see below |
 
@@ -155,6 +163,23 @@ The five ambience clips were asked for with `loop: true` as 30 seconds of MP3 at
 | Suitors: drawn sword | `public/audio/stops/suitors/sword.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
 | Suitors: jeering men, no words | `public/audio/stops/suitors/jeer.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
 | Suitors: struck | `public/audio/stops/suitors/hurt.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
+
+As with the music, these terms cover our own use in this game. The clips are generated, not CC0 and not CC BY.
+
+## Sounds of the gods' powers
+
+Generated by the team on 2026-11-14 with our own ElevenLabs account (Creator plan, a paid plan), by running `npx tsx server/tools/genClips.ts power`. Every clip came from the ElevenLabs sound effects endpoint (`POST /v1/sound-generation`, model `eleven_text_to_sound_v3`), as MP3 at 128 kbps. Nothing was downloaded from anywhere else. The prompts are in `server/tools/powerClips.ts`. They describe a sound only, and name no artist, film, game or existing piece. `src/audio/powerSound.ts` plays the clip of the player's god when the power goes off.
+
+The six clips are 1.2 to 2.2 seconds and 20 KB to 36 KB each, 177 KB in all, and the game loads only the clip of the god in the fight. The files are as the endpoint returned them. Artemis's clip is the second of three takes: the prompt in `server/tools/powerClips.ts` is the one that made it, and the notes beside it say what the other two takes were.
+
+| Clip | File | Source | Licence |
+|---|---|---|---|
+| Zeus, thunderbolt: a crack of thunder | `public/audio/power/zeus.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
+| Poseidon, trident sweep: a wave crashing | `public/audio/power/poseidon.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
+| Athena, aegis push: a bronze shield ringing out | `public/audio/power/athena.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
+| Hermes, swift dash: a rush of wind and wings | `public/audio/power/hermes.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
+| Artemis, moon arrow: a bowstring and an arrow | `public/audio/power/artemis.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
+| Apollo, sun burst: a blaze swelling | `public/audio/power/apollo.mp3` | ElevenLabs sound effects | Generated by the team with ElevenLabs; our use is under the ElevenLabs Terms of Service, see above |
 
 As with the music, these terms cover our own use in this game. The clips are generated, not CC0 and not CC BY.
 

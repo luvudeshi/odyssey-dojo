@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { achievements, MOVES_GOAL, SCORE_GOAL } from "../src/account/achievements";
+import { newlyUnlocked } from "../src/account/unlocks";
 import { cleanName, createProfileStore, EMPTY_PROFILE, NAME_MAX, parseProfile, PROFILE_KEY, withFight } from "../src/account/store";
 import type { EnemySpec } from "../src/core/types";
 
@@ -58,4 +59,31 @@ test("achievements follow the profile: one per stop, the whole road, moves and s
   const all = achievements({ ...EMPTY_PROFILE, wins: 2, cleared: ["a", "b"], moves, bestScore: SCORE_GOAL }, ROAD);
   expect(all.filter((feat) => !feat.done).map((feat) => feat.id)).toEqual(["second_nature"]);
   expect(achievements(EMPTY_PROFILE, []).find((feat) => feat.id === "home")?.done).toBe(false);
+});
+
+test("the counted achievements report progress toward their goal, capped at it; the rest report none", () => {
+  const by = (profile: typeof EMPTY_PROFILE) => Object.fromEntries(achievements(profile, ROAD).map((feat) => [feat.id, feat.progress]));
+  expect(by(EMPTY_PROFILE)).toEqual({
+    first_win: null, beat_a: null, beat_b: null,
+    home: { have: 0, goal: 2, unit: "stops" }, student: { have: 0, goal: MOVES_GOAL, unit: "moves" },
+    second_nature: { have: 0, goal: MOVES_GOAL, unit: "lands" }, song: { have: 0, goal: SCORE_GOAL, unit: "points" },
+  });
+  const part = by({ ...EMPTY_PROFILE, cleared: ["a", "zzz"], moves: { jab: 3, duck: 1 }, bestScore: 500 });
+  expect(part.home).toMatchObject({ have: 1 });
+  expect(part.student).toMatchObject({ have: 2 });
+  expect(part.second_nature).toMatchObject({ have: 3 });
+  expect(part.song).toMatchObject({ have: 500 });
+  expect(by({ ...EMPTY_PROFILE, moves: { jab: 40 }, bestScore: 9000 }).second_nature).toMatchObject({ have: MOVES_GOAL });
+  expect(by({ ...EMPTY_PROFILE, bestScore: 9000 }).song).toMatchObject({ have: SCORE_GOAL });
+  expect(achievements(EMPTY_PROFILE, []).find((feat) => feat.id === "home")?.progress).toBeNull();
+});
+
+test("newlyUnlocked lists only what a fight turned on, several at once, none when nothing changed", () => {
+  const before = achievements(EMPTY_PROFILE, ROAD);
+  const win = withFight(EMPTY_PROFILE, { enemyId: "a", won: true, score: SCORE_GOAL, mastery: { jab: MOVES_GOAL } });
+  expect(newlyUnlocked(before, achievements(win, ROAD)).map((feat) => feat.id)).toEqual(["first_win", "beat_a", "second_nature", "song"]);
+  const again = withFight(win, { enemyId: "a", won: true, score: SCORE_GOAL, mastery: { jab: 1 } });
+  expect(newlyUnlocked(achievements(win, ROAD), achievements(again, ROAD))).toEqual([]);
+  const last = withFight(again, { enemyId: "b", won: true, score: 1, mastery: {} });
+  expect(newlyUnlocked(achievements(again, ROAD), achievements(last, ROAD)).map((feat) => feat.id)).toEqual(["beat_b", "home"]);
 });

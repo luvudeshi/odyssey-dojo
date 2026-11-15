@@ -17,6 +17,6 @@ export type { Grade, GradeTier } from "./grade";
 // The training dojo: a session over a list of moves, graded repetition by repetition. The screen is ./ui/Dojo.
 export {
   COUNT_FROM, DOJO_DEFAULTS, DOJO_DEFENDS, DOJO_REPS, KEY_TIP, SKILL_VALUE, STRIKE_FOR_EXCELLENT, SURE_FOR_EXCELLENT, assessmentFrom, closingLine,
-  currentMove, gradeAttempt, gradeRep, gradedQuality, keyRep, movesFor, quickMoves, skillFrom, skipResult, startDojo, summariseDojo, tickDojo,
+  currentMove, gradeAttempt, gradeRep, gradedQuality, keyRep, movesFor, quickMoves, skillFrom, skipResult, startDojo, summariseDojo, tickDojo, tuningLine, tuningOf,
 } from "./dojo";
-export type { DojoConfig, DojoPhase, DojoRep, DojoState, DojoSummary, Hit, MoveReport, WorkOn } from "./dojo";
+export type { DojoConfig, DojoPhase, DojoRep, DojoState, DojoSummary, Hit, MoveReport, Tuning, WorkOn } from "./dojo";

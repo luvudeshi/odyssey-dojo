@@ -30,9 +30,11 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | A monster's taunt | Its own channel, at `TAUNT_VOLUME` 0.7 of the voice volume (`voice.ts`). It plays under Athena's calls. | -22.1 LUFS (-23.6 to -21.9) |
 | Effects (`sfx`) | The file's own level, times `LEVELS[type]`, times `MASTER_GAIN` 0.5 (`sfx.ts`). Files are not levelled. | -25.8 LUFS (-41.2 to -16.7) |
 | Stop events | Each clip is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `EVENT_GAIN` 0.5 (`stopAudio.ts`). | -22.4 LUFS (-31.4 to -17.0) |
-| Music | Each clip is brought to its scene's RMS (0.1 to 0.16), then times `MUSIC_GAIN` 0.16, times the music volume (`music.ts`). | fight -34.0, menu -36.5, loss -32.3, win -28.6 LUFS |
+| A god's power (`power`) | Each clip is raised or lowered to RMS 0.13 with its peak held to 0.9, then times `POWER_GAIN` 0.7 (`powerSound.ts`). The silence a clip starts with is skipped. It plays in place of `sfx/powerUnleashed`. | -18.9 LUFS (-22.0 to -16.7) |
+| Music | Each clip is brought to its scene's RMS (0.1 to 0.18), then times `MUSIC_GAIN` 0.3, times the music volume (`music.ts`). | fight -27.5, boss -26.7, menu -30.8, loss -26.8, win -23.1 LUFS |
 | Music under a spoken line | The two loops drop by half (`DUCK` 0.5). The stings do not. | fight -40.0, menu -42.5 LUFS |
 | Ambience | Each clip is brought to RMS 0.08, then times `AMBIENCE_GAIN` 0.16, times the music volume (`stopAudio.ts`). | -38.2 LUFS (-39.1 to -37.6) |
+| The unlock chime and the four defend sounds | Five files in the effects folder (`cues.ts` names them, `sfx.ts` plays them). Each is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `DEFEND_GAIN` 0.6 or `UNLOCK_GAIN` 0.45. The silence a clip starts with is skipped. | defends -21.4 LUFS (-24.0 to -18.8), chime -19.4 LUFS |
 
 Athena's range leaves out `athena/fight_start.mp3`, which was replaced by a shorter take while this work was under way and was levelled afterwards (see "What was changed"). It is at -15.6 LUFS, inside the range.
 
@@ -44,7 +46,31 @@ What was wanted: Athena's calls clearly on top, Homer and the monsters near her,
 - **Homer is near her now**, 3.4 LU under. Before this change he was 7 LU under (about -22.3 LUFS).
 - **A taunt is 6.5 LU under her.** The clips are 3.4 LU under hers, and `TAUNT_VOLUME` takes 3.1 dB more because a taunt plays at the same time as her calls. Before this change a taunt was 9.6 LU under her (-25.0 LUFS), quieter than most of the effects around it. It is now level with the median stop event (-22.4) and still 2.2 LU under the hit sound (`enemyHit`, -19.9). `TAUNT_VOLUME` was not changed: it is in `voice.ts`, which others are editing, and nobody has heard whether a louder taunt masks her calls.
 - **Most effects are under Athena.** The median effect is 10 LU under her, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
-- **Music and ambience are well under.** The fight music is 18 LU under Athena, and 24 LU under while she speaks. The menu loop is 17.5 LU under Homer, 23.5 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7). The dip is what gets the music past it. So the level `music.ts` picks is sensible against the voice and no constant was changed. In RMS terms the fight music comes out at -31.8 dBFS with the music volume at 1 and -34.9 dBFS at the default 0.7. If the music cannot be heard in a loud room, `MUSIC_GAIN` is the one number to raise: 0.22 is 2.8 dB more.
+- **Music is under the voice, ambience well under.** On 14 November the owner asked for music that can be heard, so `MUSIC_GAIN` went from 0.16 to 0.3 (5.5 dB more) with the three new tracks. The fight music is 8.5 LU under Athena, and 14.5 LU under while she speaks. The menu track is 12 LU under Homer, 18 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7); the music is now short of that even with the dip, by choice. If a line is hard to hear in a loud room, lower `MUSIC_GAIN` or the music volume setting.
+
+### The unlock chime and the defend sounds
+
+Added later the same day: five clips in `public/audio/sfx`, made with `npx tsx server/tools/genClips.ts sfx`. `unlock.mp3` is the chime for an unlocked achievement (`playUnlock()` in `src/audio/sfx.ts`). `defendBlock`, `defendDodge`, `defendDuck` and `defendJump` play on a `defended` event in place of `sfx/defended.mp3`, picked by the attack's counter; a defend with no clip of its own still plays `defended.mp3`. The files are as ElevenLabs returned them, between -41.1 and -16.6 LUFS, so `sfx.ts` levels each one when it loads, the way the stop events are levelled. They are listed apart from the other effects below (`sfx (unlock and defends)`) because of that.
+
+- **The defends sit between -24.0 and -18.8 LUFS at the listener, median -21.4.** The one clip they replace (`sfx/defended`) is at -23.4, a hit on the enemy (`sfx/enemyHit`) at -19.9 and Athena at -15.6. A figure in LUFS is rough on clips this short: the meter works in blocks of 0.4 s.
+- **The chime is at -19.4 LUFS**, level with Homer (-19.0), 3.8 LU under Athena and 9.2 LU over the win sting (-28.6) it plays on top of. It goes straight to the output and stops nothing: a line being spoken carries on.
+- **None can clip by itself.** The block's clang is held by the peak rule, so its loudest sample is 0.54 at the output (0.9 times 0.6). The others are held by the loudness and peak lower: the chime at about 0.35.
+- **The jump is raised as far as the rule allows, 12 times.** The file is very quiet (-41.1 LUFS, peak -26.8 dBTP), so it ends about 2.6 LU under the median of the four.
+- **Three files start late and the game skips that.** `defendDuck` has 114 ms of silence before the sound, `defendDodge` 94 ms and `defendJump` 52 ms. `sfx.ts` starts each clip at its first sample above -50 dBFS (never more than half a second in). The lead column below is the file's, not what is heard.
+- **What is heard, by the numbers.** Time is from the clip's first sound; "within 20 dB" is the stretch where a 20 ms window is within 20 dB of the loudest one.
+
+| clip | heard for | within 20 dB of its loudest | share of energy above 500 Hz | above 1 kHz | above 3 kHz |
+|---|---|---|---|---|---|
+| `unlock` | 0.98 s | 0.00 to 0.54 s; the level rises again at 0.24 and 0.34 s, which reads as more than one note | 96% | 64% | 4% |
+| `defendBlock` | 0.60 s | 0.00 to 0.22 s, loudest at the start | 90% | 80% | 33% |
+| `defendDodge` | 0.50 s | 0.03 to 0.39 s, a swell and a fade | 22% | 2% | 1% |
+| `defendDuck` | 0.57 s | 0.07 to 0.41 s | 4% | 1% | 0% |
+| `defendJump` | 0.31 s | 0.03 to 0.31 s | 34% | 20% | 8% |
+
+So the block is a bright hit that is over in a fifth of a second, the duck is the lowest of the four, the jump is the lightest and airiest, and the dodge is a soft swell between them. The dodge is not bright: almost all of it is under 1 kHz.
+- **The takes.** The chime and the dodge are each the fifth take and the duck the second, picked by these numbers; `server/tools/genClips.ts` says what the others were. The block and the jump are first takes.
+- **When a defend is heard.** The sound plays on the engine's `defended` event, which comes when the attack would have landed. The burst round the hero is drawn earlier, the moment the defend counts, so with an early dodge the two are apart by up to the attack's warning time. The old single sound was timed the same way.
+- Nobody has listened to any of the five.
 
 ### What the numbers say is wrong, and was not changed
 
@@ -58,6 +84,29 @@ These are effects, stop sounds and music. This change does not touch those files
 6. **Calls have up to 301 ms of silence after them.** Not trimmed here.
 
 At commit c34a1af no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
+
+### The gods' power sounds
+
+Added later the same day: six clips in `public/audio/power`, one for each god, made with `npx tsx server/tools/genClips.ts power`. The files are as ElevenLabs returned them. They came back between -37.8 and -12.1 LUFS, so `src/audio/powerSound.ts` levels each one when it loads, the way the stop events are levelled, and plays it through 0.7 where the other effects play through 0.5.
+
+- **At the listener they sit between -22.0 and -16.7 LUFS, median -18.9.** The usual power sound they replace (`sfx/powerUnleashed`) is at -20.4, a hit on the enemy (`sfx/enemyHit`) at -19.9, the finishing blow (`sfx/finished`) at -16.7 and Athena at -15.6. So the power is a little over the hit sounds and still under her voice.
+- **None can clip by itself.** Athena's, Hermes's and Zeus's are held by the peak rule, so their loudest sample is 0.63 at the output (0.9 times 0.7). The other three are held by the loudness and peak lower: Artemis's at 0.62, Apollo's at 0.58, Poseidon's at 0.54. A hit sound peaks at 0.24 to 0.45 there.
+- **Hermes's is the quietest, 3.1 LU under the median.** The file peaks at -19.8 dBTP and its loudness is 18 dB under that, so the peak rule stops it at -22.0. Making it louder would take a limiter, and nobody could listen to the result, so it was left.
+- **Two files start late and the game skips that.** `power/zeus.mp3` has 265 ms of silence before the thunder and `power/hermes.mp3` 341 ms. `powerSound.ts` starts each clip at its first sample above -50 dBFS (never more than half a second in). The lead column below is the file's, not what is heard.
+- **Each clip is timed to the effect on screen.** The effect winds up for 0.3 s and hits the monster 0.55 to 0.95 s after the power goes off (`POWER_SPAN` in `src/render/effects/power/powerTiming.ts`), so a clip is held back by `POWER_DELAY` until its loud moment is on its beat. `tests/powerSound.test.ts` fails if the effect's times move away from the delays.
+
+| god | loud moment, seconds after the clip's first sound | delay | lands at | the effect's beat |
+|---|---|---|---|---|
+| Zeus | the crack starts at 0.10 (loudest at 0.22) | 0.45 | 0.55 | the bolt hits at 0.55 |
+| Poseidon | loudest at 0.80 (within 6 dB of it from 0.28 to 1.42) | 0.15 | 0.95 | the wave hits at 0.95 |
+| Athena | the clang, 0.00 to 0.04 | 0.70 | 0.70 to 0.74 | the shield hits at 0.75 |
+| Hermes | the rush is loudest from 0.26 to 0.34 | 0.45 | 0.71 to 0.79 | the dash arrives at 0.80 |
+| Artemis | the snap at 0.04 | 0.26 | 0.30 | the arrow leaves at 0.30 and hits at 0.85 |
+| Apollo | loudest at 0.62 (within 6 dB of it from 0.36 to 0.88) | 0.20 | 0.82 | the burst hits at 0.85 |
+
+Nobody has watched and listened to these together: the timing is by the numbers. Artemis's snap is taken for the bowstring because its loudest 20 ms is bright (about 2 kHz), not a low thud; if it sounds like the arrow landing, change her delay to 0.80.
+- **Artemis's clip is half a second of sound and a second of silence.** It is the second of three takes (`server/tools/powerClips.ts` says why). By the numbers it is a sharp snap that dies away in 0.4 s; whether it reads as a bow is for someone to hear.
+- Nobody has listened to any of the six.
 
 ## What was changed
 
@@ -77,6 +126,8 @@ Voice clips only: `athena`, `narration`, `taunts`. 66 of the 82 were re-encoded.
 **`athena/fight_start.mp3` was levelled last, by itself.** PR #188 replaced it with a shorter take ("I am with you!") while this work was under way, so the first two runs left it alone. After #188 merged, `--write` brought the new take from -17.6 to -15.6 LUFS and from -1.7 to -1.5 dBTP through the limiter. Re-encoding added one MP3 frame (26 ms) at the end, which took the clip past the 1.3 s that `tests/athenaLines.test.ts` allows so that it ends before the first call. That last frame was dropped with `ffmpeg -t 1.24 -c copy` (no second re-encode), which is how the take in #188 was trimmed too. The clip is 49 frames again, 1.28 s as a browser counts it. If the tool ever rewrites this clip again, do the same cut afterwards. The group table below was made before this and leaves the clip out.
 
 **`athena/call_knee.mp3` is a new take, levelled by itself.** `server/tools/hearClips.ts` heard the first take's opening word as "Me" where the line says "Knee" (`docs/audio-heard.md`), so the clip was made again with `genClips.ts athena` and `--write` was run once more. It took the new take from -14.3 to -15.5 LUFS (-1.2 dB, no limiter) and its peak from -0.8 to -1.9 dBTP. Its lead is 15 ms. No other clip was touched by that run. The group table and the list of rewritten clips below show the first take; the row under "Measured now" shows the new one.
+
+**Scylla's second and third taunts came later, and are not in the two tables below.** `taunts/taunt_scylla_2.mp3` and `taunts/taunt_scylla_3.mp3` were made after the runs above. `--write` took `taunt_scylla_2` from -21.0 to -19.0 LUFS (+2.0 dB) and its peak from -5.5 to -3.5 dBTP. `taunt_scylla_3` came at -20.3 LUFS, within tolerance, and is byte for byte as ElevenLabs made it. No other clip was touched by that run. Both have a row under "Measured now", where the taunts now count 15.
 
 | group | clips | before: quietest to loudest (median) | spread | after: quietest to loudest (median) | spread |
 |---|---|---|---|---|---|
@@ -176,12 +227,14 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | athena | 50 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
 | athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
-| music | 4 | -37.7 | -12.9 | -9.8 | 27.9 | -33.1 (-36.5 to -28.6) |
-| narration | 11 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
+| music | 5 | -14.5 | -11.0 | -9.8 | 4.7 | -26.8 (-30.8 to -23.1) |
+| narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
+| power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
+| sfx (unlock and defends) | 5 | -41.1 | -23.2 | -16.6 | 24.5 | -21.1 (-24.0 to -18.8) |
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
 | stops (events) | 20 | -38.0 | -20.1 | -12.3 | 25.7 | -22.4 (-31.4 to -17.0) |
-| taunts | 13 | -20.5 | -19.0 | -18.8 | 1.7 | -22.1 (-23.6 to -21.9) |
+| taunts | 15 | -20.5 | -19.0 | -18.8 | 1.7 | -22.1 (-23.6 to -21.9) |
 
 ### Voice clips out of tolerance
 
@@ -189,8 +242,9 @@ None.
 
 ### Out of line
 
-- `music/menu.mp3`: -3.4 LU from the median of music at the listener
-- `music/win.mp3`: +4.5 LU from the median of music at the listener
+- `music/menu.mp3`: -4.0 LU from the median of music at the listener
+- `music/win.mp3`: +3.7 LU from the median of music at the listener
+- `power/hermes.mp3`: -3.1 LU from the median of power at the listener
 - `sfx/enemyHit.mp3`: +5.9 LU from the median of sfx at the listener
 - `sfx/finished.mp3`: +9.1 LU from the median of sfx at the listener
 - `sfx/lost.mp3`: -12.7 LU from the median of sfx at the listener
@@ -285,10 +339,11 @@ None.
 
 | clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
 |---|---|---|---|---|---|---|---|
-| `music/fight.mp3` | 48.07 | -14.8 | -1.2 | 30 | 17 | -19.2 | -34.0 |
-| `music/loss.mp3` | 7.55 | -9.8 | -1.4 | 206 | 1275 | -22.5 | -32.3 |
-| `music/menu.mp3` | 30.00 | -37.7 | -23.9 | 0 | 0 | 1.2 | -36.5 |
-| `music/win.mp3` | 6.03 | -11.0 | -1.0 | 24 | 1757 | -17.6 | -28.6 |
+| `music/boss.mp3` | 139.57 | -12.6 | 1.3 | 15 | 602 | -14.1 | -26.7 |
+| `music/fight.mp3` | 128.05 | -10.2 | 0.9 | 25 | 772 | -17.3 | -27.5 |
+| `music/loss.mp3` | 7.55 | -9.8 | -1.4 | 206 | 1275 | -17.0 | -26.8 |
+| `music/menu.mp3` | 156.06 | -14.5 | -0.1 | 448 | 2367 | -16.3 | -30.8 |
+| `music/win.mp3` | 6.03 | -11.0 | -1.0 | 24 | 1757 | -12.1 | -23.1 |
 
 ### narration
 
@@ -305,6 +360,28 @@ None.
 | `narration/homer_before_scylla.mp3` | 7.76 | -19.0 | -1.5 | 70 | 132 | 0.0 | -19.0 |
 | `narration/homer_before_sirens.mp3` | 6.96 | -19.0 | -1.6 | 39 | 148 | 0.0 | -19.0 |
 | `narration/homer_before_suitors.mp3` | 6.96 | -19.0 | -2.3 | 40 | 124 | 0.0 | -19.0 |
+| `narration/homer_homecoming.mp3` | 9.52 | -19.9 | -1.6 | 57 | 110 | 0.0 | -19.9 |
+
+### power
+
+| clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
+|---|---|---|---|---|---|---|---|
+| `power/apollo.mp3` | 2.00 | -26.8 | -13.0 | 0 | 186 | 8.2 | -18.6 |
+| `power/artemis.mp3` | 1.48 | -15.4 | -1.0 | 73 | 977 | -3.1 | -18.5 |
+| `power/athena.mp3` | 1.76 | -20.3 | -5.0 | 0 | 221 | 1.0 | -19.3 |
+| `power/hermes.mp3` | 1.20 | -37.8 | -19.8 | 341 | 92 | 15.8 | -22.0 |
+| `power/poseidon.mp3` | 2.20 | -12.1 | -0.4 | 0 | 0 | -4.6 | -16.7 |
+| `power/zeus.mp3` | 2.00 | -28.1 | -12.9 | 265 | 283 | 8.9 | -19.2 |
+
+### sfx (unlock and defends)
+
+| clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
+|---|---|---|---|---|---|---|---|
+| `sfx/defendBlock.mp3` | 0.60 | -16.6 | -0.3 | 0 | 0 | -5.0 | -21.6 |
+| `sfx/defendDodge.mp3` | 0.68 | -26.6 | -14.7 | 94 | 85 | 7.8 | -18.8 |
+| `sfx/defendDuck.mp3` | 0.68 | -23.2 | -7.7 | 114 | 0 | 2.1 | -21.1 |
+| `sfx/defendJump.mp3` | 0.48 | -41.1 | -26.8 | 52 | 123 | 17.1 | -24.0 |
+| `sfx/unlock.mp3` | 1.08 | -16.7 | -6.4 | 0 | 103 | -2.7 | -19.4 |
 
 ### sfx
 
@@ -368,6 +445,8 @@ None.
 | `taunts/taunt_circe_2.mp3` | 3.44 | -19.0 | -1.5 | 83 | 1 | -3.1 | -22.1 |
 | `taunts/taunt_circe_3.mp3` | 3.68 | -19.5 | -1.5 | 45 | 197 | -3.1 | -22.6 |
 | `taunts/taunt_scylla_1.mp3` | 3.04 | -20.5 | -3.7 | 39 | 133 | -3.1 | -23.6 |
+| `taunts/taunt_scylla_2.mp3` | 3.44 | -19.0 | -3.5 | 23 | 0 | -3.1 | -22.1 |
+| `taunts/taunt_scylla_3.mp3` | 4.00 | -20.3 | -4.4 | 31 | 174 | -3.1 | -23.4 |
 | `taunts/taunt_sirens_1.mp3` | 5.76 | -19.0 | -3.3 | 84 | 116 | -3.1 | -22.1 |
 | `taunts/taunt_sirens_2.mp3` | 4.40 | -19.0 | -3.0 | 33 | 126 | -3.1 | -22.1 |
 | `taunts/taunt_sirens_3.mp3` | 5.20 | -19.0 | -1.9 | 43 | 106 | -3.1 | -22.1 |

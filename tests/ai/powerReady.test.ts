@@ -7,7 +7,8 @@ import { GODS, GOD_IDS } from "../../src/ai/gods/gods";
 import type { GodId } from "../../src/ai/gods/gods";
 import { PowerReady } from "../../src/ai/power/PowerReady";
 import {
-  LENDER, MAX_ANNOUNCEMENTS, READY_START, REMIND_MS, RETRY_MS, missed, nextCheckIn, powerPrompt, powerUsable, trackReady,
+  LENDER, MAX_ANNOUNCEMENTS, READY_START, REMIND_MS, RETRY_MS, champion, isPowerKey, missed, nextCheckIn, powerLive, powerPrompt, powerUsable,
+  trackReady,
 } from "../../src/ai/power/powerPrompt";
 import type { ReadyTrack } from "../../src/ai/power/powerPrompt";
 import { ATHENA_LINES } from "../../src/audio/athenaLines";
@@ -95,6 +96,31 @@ describe("powerUsable", () => {
   });
 });
 
+describe("powerLive", () => {
+  test("the power move is taken only while a card is up: the engine's own two phases, read from its source", () => {
+    expect(["defend", "strike"].map((phase) => powerLive(phase))).toEqual([true, true]);
+    expect(["intro", "recover", "finisher", "won", "lost"].map((phase) => powerLive(phase))).toEqual([false, false, false, false, false]);
+    // No phase given (the lab page): only the meter decides, as for powerUsable.
+    expect(powerLive()).toBe(true);
+    // If the engine opens another phase to the power, this fails and the banner must follow.
+    const open = /const open = ([^;]+);/.exec(readFileSync("src/combat/engine.ts", "utf8"))?.[1] ?? "";
+    expect([...open.matchAll(/state\.phase\.kind === "(\w+)"/g)].map((match) => match[1])).toEqual(["defend", "strike"]);
+  });
+
+  test("the key on the banner's cap is the key that is kept, and no other", () => {
+    for (const god of WHO) {
+      const prompt = powerPrompt(god, true);
+      const key = MOVES.get(prompt.moveId)?.key ?? "";
+      expect(isPowerKey(prompt.key, key)).toBe(true);
+      expect(isPowerKey(prompt.key, "j")).toBe(false);
+      expect(isPowerKey(prompt.key, " ")).toBe(false);
+    }
+    expect(isPowerKey("Space", " ")).toBe(true);
+    expect(isPowerKey("J", "j")).toBe(true);
+    expect(isPowerKey(null, "3")).toBe(false);
+  });
+});
+
 /** Feeds the tracker one reading every 100 ms and returns the times it announced. */
 function run(powerAt: (ms: number) => number, untilMs: number, heard: (ms: number) => boolean = () => true): number[] {
   const said: number[] = [];
@@ -156,8 +182,36 @@ describe("trackReady", () => {
 describe("the PowerReady banner", () => {
   const html = (props: Parameters<typeof PowerReady>[0]): string => renderToStaticMarkup(createElement(PowerReady, props));
 
-  test("draws nothing until the meter is full", () => {
-    for (const power of [0, 0.4, 0.99, Number.NaN]) expect(html({ god: "zeus", power, keyboard: false })).toBe("");
+  test("with no god it draws nothing until the meter is full", () => {
+    for (const power of [0, 0.4, 0.99, Number.NaN]) expect(html({ god: null, power, keyboard: true, phase: "defend" })).toBe("");
+  });
+
+  test.each(GOD_IDS)("%s: while the meter fills, a still plate names the god the player is the champion of, in the god's colour", (god) => {
+    for (const power of [0, 0.4, 0.99]) {
+      for (const phase of ["intro", "defend", "strike", "recover", undefined]) {
+        const out = html(phase === undefined ? { god, power, keyboard: false } : { god, power, keyboard: false, phase });
+        expect(out).toMatch(new RegExp(`^<div class="power-ready power-ready--champion power-ready--${god}"`));
+        expect(out).toContain(">Champion of<");
+        expect(out).toContain(`>${GODS[god].name}<`);
+        expect(out).toContain(`--power-ready-accent:${GODS[god].accent}`);
+        // It is not the banner: nothing to press, and it is not read out.
+        expect(out).not.toContain("power-ready--live");
+        expect(out).not.toContain("<kbd");
+        expect(out).not.toContain("aria-live");
+      }
+    }
+  });
+
+  test("the plate leaves when the banner comes (it names the god itself), and for the finishing move and the result", () => {
+    expect(html({ god: "poseidon", power: 1, keyboard: false, phase: "defend" })).not.toContain("power-ready--champion");
+    for (const phase of ["finisher", "won", "lost"]) {
+      expect(html({ god: "poseidon", power: 0.5, keyboard: false, phase })).toBe("");
+      expect(champion("poseidon", 0.5, phase)).toBeNull();
+    }
+    expect(champion("poseidon", 0.5, "strike")).toEqual({ name: "Poseidon", god: "poseidon", accent: GODS.poseidon.accent });
+    expect(champion(null, 0.5, "strike")).toBeNull();
+    expect(champion("hades" as GodId, 0.5, "strike")).toBeNull();
+    expect(html({ god: "hades" as GodId, power: 0.5, keyboard: false })).toBe("");
   });
 
   test.each(WHO)("%s: shows the title, the move, the gesture and the key, in the god's colour", (god) => {
@@ -181,6 +235,26 @@ describe("the PowerReady banner", () => {
   test("leaves for the finishing move and the result, and stays through the beats between prompts", () => {
     for (const phase of ["finisher", "won", "lost"]) expect(html({ god: "zeus", power: 1, keyboard: false, phase })).toBe("");
     for (const phase of ["defend", "strike", "recover"]) expect(html({ god: "zeus", power: 1, keyboard: false, phase })).not.toBe("");
+  });
+
+  test.each(WHO)("%s: between cards a full banner stays up but waits, and with a card up it asks", (god) => {
+    for (const keyboard of [true, false]) {
+      for (const phase of ["recover", "intro"]) {
+        const out = html({ god, power: 1, keyboard, phase });
+        expect(out).toMatch(/^<div class="power-ready power-ready--live [^"]*power-ready--waiting"/);
+        expect(out).toContain('<div class="power-ready__wait" aria-hidden="false">On the next card</div>');
+        // A press is marked as kept only after it is made.
+        expect(out).not.toContain("power-ready--queued");
+        // The move's name stays; the plate is the same size, so nothing jumps when the card comes.
+        expect(out).toContain(powerPrompt(god, keyboard).move);
+        expect(out).toContain("<kbd");
+      }
+      for (const phase of ["defend", "strike", undefined]) {
+        const out = html(phase === undefined ? { god, power: 1, keyboard } : { god, power: 1, keyboard, phase });
+        expect(out).not.toContain("power-ready--waiting");
+        expect(out).toContain('<div class="power-ready__wait" aria-hidden="true">On the next card</div>');
+      }
+    }
   });
 
   test("a god it does not know draws nothing instead of throwing", () => {

@@ -31,6 +31,8 @@ const DEFEND_SCORE = 50;
 const POLL_MS = 30;
 /** A strike card still up this long after a tap gets another tap (the finisher is offered again when missed). */
 const RETAP_MS = 700;
+/** A strike whose card is gone is given this long to show on the monster's bar before it counts as missed. */
+const LAND_MS = 1000;
 /** The files src/pose/tracker.ts asks for. They are copied into public/ by `make setup`, not kept in git. */
 const POSE_FILES = ["mediapipe/pose_landmarker_lite.task", "mediapipe/wasm/vision_wasm_internal.wasm", "mediapipe/wasm/vision_wasm_internal.js"];
 
@@ -166,15 +168,25 @@ const keyFor = (label) => (label === "Space" ? " " : label.length === 1 ? label.
 /**
  * Plays by the prompt card: holds the key of a defend until the card changes, taps the key of a strike.
  * What the game accepted is read back from the HUD: a defend that held adds exactly 50 to the score and costs
- * no health; a strike that landed raises the score and shortens the enemy's bar.
+ * no health; a strike that landed shortens the enemy's bar. The score is not read for a strike: the HUD holds it
+ * back until the hero's blow lands on screen (useLandedScore in src/hud/RatingFlash.tsx), up to a second later.
  */
 async function playFight(page, log, maxMs) {
   const tally = { defends: 0, strikes: 0, finisher: false, hitsTaken: 0, strikesMissed: 0, unclear: 0, keys: new Set() };
   const started = Date.now();
   let card = null;
   let held = null;
+  // The strike whose card is gone and whose hit does not show on the monster's bar yet.
+  let flying = null;
   for (;;) {
     const hud = await page.evaluate(readHud);
+    if (flying && hud.enemy < flying.enemy) {
+      tally.strikes += 1;
+      flying = null;
+    } else if (flying && (hud.ended || Date.now() > flying.until)) {
+      tally.strikesMissed += 1;
+      flying = null;
+    }
     const id = hud.kind ? `${hud.kind}|${String(hud.key)}|${hud.word}|${hud.target}` : null;
     if (card && id !== card.id) {
       if (held !== null) {
@@ -187,13 +199,14 @@ async function playFight(page, log, maxMs) {
         else tally.unclear += 1;
       } else if (card.target === "Finish it") {
         tally.finisher = hud.ended && hud.heading.endsWith("falls");
-      } else if (hud.score > card.score && hud.enemy < card.enemy) tally.strikes += 1;
-      else tally.strikesMissed += 1;
+      } else if (hud.enemy < card.enemy) tally.strikes += 1;
+      else flying = { enemy: card.enemy, until: Date.now() + LAND_MS };
       card = null;
     }
     // A fight that runs out of time is handed back as it stands, so the tally and the requests still get printed.
     if (hud.ended || Date.now() - started > maxMs) {
       if (held !== null) await page.keyboard.up(held);
+      if (flying) tally.strikesMissed += 1;
       return { ...tally, keys: [...tally.keys], ended: hud.ended, won: hud.heading.endsWith("falls"), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
     }
     if (!card && id) {
@@ -214,7 +227,7 @@ async function playFight(page, log, maxMs) {
   }
 }
 
-/** Title -> Keyboard only -> first style -> first stop -> intro -> the fight to its end -> back to the map. */
+/** Main menu -> "Play on the keyboard instead" -> first style -> first stop (its click starts the fight) -> the fight to its end -> back to the map. */
 async function keyboardPass(browser, base, log, maxMs) {
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1 });
   await guard(context, log, "keyboard");
@@ -222,14 +235,15 @@ async function keyboardPass(browser, base, log, maxMs) {
   listen(page, log, "keyboard");
   log.stage = "title";
   await page.goto(base, { waitUntil: "load" });
-  await page.getByRole("button", { name: "Keyboard only" }).waitFor();
+  const keyboard = page.getByRole("button", { name: "Play on the keyboard instead", exact: true });
+  await keyboard.waitFor();
   await page.waitForTimeout(1500);
   const fonts = {
     heading: await platformFonts(context, page, "main.menu h1"),
     button: await platformFonts(context, page, "main.menu button"),
     webFontsDeclared: await page.evaluate(() => document.fonts.size),
   };
-  await page.getByRole("button", { name: "Keyboard only" }).click();
+  await keyboard.click();
   log.stage = "style";
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
   const styleButton = page.locator("main.menu button").first();
@@ -239,20 +253,22 @@ async function keyboardPass(browser, base, log, maxMs) {
   log.stage = "map";
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
   await page.waitForTimeout(1000);
-  await page.locator("button.stop.open").first().click();
-  log.stage = "intro";
-  await page.getByRole("button", { name: `Face ${STOP}` }).waitFor();
-  await page.waitForTimeout(1000);
+  // The first open stop on a fresh page is the first of the road; its button holds the monster's name.
+  const stop = page.locator("button.stop.open").first().filter({ hasText: STOP });
+  await stop.waitFor();
   // The fight begins with this click. The mark is set first, so nothing the click starts is timed before it.
   log.stage = "fight";
   log.fightAt = Date.now() - log.t0;
-  await page.getByRole("button", { name: `Face ${STOP}` }).click();
+  await stop.click();
   // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
   await page.locator(".fight canvas").first().waitFor();
   const fight = await playFight(page, log, maxMs);
   if (fight.ended) {
     log.stage = "result";
     await page.waitForTimeout(3000);
+    // The score of the last blow shows only once it has landed, so the score is read again here.
+    const final = (await page.evaluate(readHud)).score;
+    if (Number.isFinite(final)) fight.score = final;
     await page.getByRole("button", { name: fight.won ? "Back to the map" : "Map", exact: true }).click();
     await page.getByRole("heading", { name: "The Road Home" }).waitFor();
     await page.waitForTimeout(1500);
@@ -262,7 +278,7 @@ async function keyboardPass(browser, base, log, maxMs) {
 }
 
 /**
- * The webcam button with Chrome's fake camera (a moving test pattern, nobody in it). It shows that the pose
+ * The Story mode card with Chrome's fake camera (a moving test pattern, nobody in it). It shows that the pose
  * runtime and model load from localhost and start; it cannot show a real camera or a tracked person.
  * It stays `ms` after the tracker starts, because the pose library sends its first usage log after 60 s.
  */
@@ -273,7 +289,8 @@ async function cameraPass(browser, base, log, ms) {
   listen(page, log, "camera");
   log.stage = "camera";
   await page.goto(base, { waitUntil: "load" });
-  await page.getByRole("button", { name: "Fight with your body (webcam)" }).click();
+  // The Story mode card starts the webcam. Its name is the card's own name followed by its line of small print.
+  await page.getByRole("navigation", { name: "Main menu" }).getByRole("button", { name: /^Story mode/ }).click();
   // A tracker that starts leads to the god scan; one that fails leads straight to the style menu with a notice.
   const scan = page.getByRole("button", { name: "Reveal my god" });
   const styles = page.getByRole("heading", { name: "Choose your fighting style" });
@@ -294,8 +311,7 @@ async function cameraPass(browser, base, log, ms) {
     await begin.click();
     await styles.waitFor();
     await page.locator("main.menu button").first().click();
-    await page.locator("button.stop.open").first().click();
-    await page.getByRole("button", { name: `Face ${STOP}` }).click();
+    await page.locator("button.stop.open").first().filter({ hasText: STOP }).click();
     // Calibration feeds camera pictures to the model. Nobody is in the test pattern, so it only has to keep running.
     calibration = ((await page.locator(".calibration h1, .overlay h1").first().textContent()) ?? "").trim();
     await page.waitForTimeout(Math.max(0, ms - (Date.now() - startedAt)));

@@ -6,28 +6,28 @@ Issue #198. On demo day the venue's network may be slow, an AI service may answe
 
 | Rule | Held by |
 | --- | --- |
-| Every route the player waits on answers in under 5 seconds, whatever the AI service does: it answers when its limit is up (S3, H2), and each limit is 4.8 s or less (P1). | S3, H2, P1 |
+| Every route the player waits on answers in under 5 seconds, whatever the AI service does: it answers when its limit is up (S3, H2), and each limit is 4.8 s or less (P1). The one exception is the generated fight, which the player asks for: 8.5 s, on a screen that says "The Muse is composing..." and moves for the whole wait. | S3, H2, P1 |
 | Every server limit ends at least 1 second before the page stops waiting for that route, so the server is never still working when the page has given up. | P1 |
 | The game always has something to show: the lot for the god scan, a bundled fight for a generated one, the written line when the voice does not come. | P2, P3, P5, P6, P7 |
 | No answer and no log line contains an API key. | S12, R1, R2 |
 | No log line contains the webcam snapshot. | H8, R3 |
 
-The one limit over 5 seconds is the portrait (12 s), because a painting takes that long. Nothing waits on it: the god is on screen, with the "Begin the journey" button, before the portrait is asked for (P4, S4).
+Two limits are over 5 seconds. The portrait (12 s), because a painting takes that long: nothing waits on it, the god is on screen, with the "Begin the journey" button, before the portrait is asked for (P4, S4). And the generated fight (8.5 s), because a real one takes 3.3 to 5.2 s to write and the old 4.8 s limit sat in the middle of that: see "Measured on the real services".
 
 Test names are listed at the end of this page.
 
 ## The limits
 
-`TIMEOUTS` in `server/env.ts` is the only place the server's limits are set. P1 fails if a server limit is moved past its page wait, or past 4.8 s.
+`TIMEOUTS` in `server/env.ts` is the only place the server's limits are set. P1 fails if a server limit is moved past its page wait, or past 4.8 s (8.5 s for the generated fight).
 
 | Call | Server gives up after | Page waits | A real answer took |
 | --- | --- | --- | --- |
 | God scan (`/api/reveal`) | 4.8 s, second attempt started at 2.5 s | 6 s (`REVEAL_BUDGET_MS`, `src/ai/revealGod.ts`) | 0.85 to 1.94 s on the first attempt |
-| Generated fight (`/api/level`) | 4.8 s | 6.5 s (`LEVEL_TIMEOUT_MS`, `src/ai/client.ts`) | 2.9 to 3.6 s |
+| Generated fight (`/api/level`) | 8.5 s, all of it for the first model | 9.5 s (`LEVEL_TIMEOUT_MS`, `src/ai/client.ts`) | 3.3 to 5.2 s (2.9 to 3.6 s on the first evening) |
 | Spoken line (`/api/speech`) | 4.5 s | 9 s (`SPEECH_WAIT_MS`, `src/audio/narration.ts`) | 0.2 to 0.6 s |
 | Portrait (`/api/portrait/:id`) | 12 s after the scan answered | 13 s (`PORTRAIT_TIMEOUT_MS`, `src/ai/reveal.ts`) | not measured, see "What is not covered" |
 
-Before this issue the limits were 8 s for the scan (the page waited 6 s, so the server could still be working when the page had given up), 9 s for a fight and 8 s for speech.
+Before this issue the limits were 8 s for the scan (the page waited 6 s, so the server could still be working when the page had given up), 9 s for a fight and 8 s for speech. The fight's limit was 4.8 s until the fight was made ready for a button on the quest map (the button itself is a patch for the lead to apply); it went to 8.5 s then, with the page's wait.
 
 ## The god scan's second attempt
 
@@ -72,10 +72,10 @@ Only this call is hedged. Its request is small, and its normal answer (under 2 s
 | Failure | The server answers | In | The player sees | Proved by |
 | --- | --- | --- | --- | --- |
 | Key missing | `200` with a bundled fight that fits the phrase, `source: "fallback"` | at once | The fight card, with the line "The Muse was out of reach, so this one comes from the old songs." | S1, P5 |
-| Upstream stalls for 15 s | the same bundled fight, `200` | 4.8 s | "The Muse is composing..." for 4.8 s, then the card with that line. | S3 |
+| Upstream stalls for 15 s | the same bundled fight, `200` | 8.5 s | "The Muse is composing..." for 8.5 s, with a row of stones lighting up, then the card with that line. | S3 |
 | Upstream answers with something that is not a level | the same bundled fight, `200` | at once | The card with that line. | S6 |
 | Upstream answers with a level that is partly wrong | the model's level with the bad parts replaced or clamped, `source: "ai"` | at once | The AI's fight. | S7 |
-| The server itself stalls or answers with something else | nothing, or the wrong thing | the page gives up at 6.5 s | "The Muse is composing..." for up to 6.5 s, then a bundled fight chosen by the page. | P6 (run with a short wait), P1 (the 6.5 s) |
+| The server itself stalls or answers with something else | nothing, or the wrong thing | the page gives up at 9.5 s | "The Muse is composing..." for up to 9.5 s, then a bundled fight chosen by the page. | P6 (run with a short wait), P1 (the 9.5 s) |
 
 ### `POST /api/speech` (Homer's line on the fight card)
 
@@ -127,6 +127,7 @@ Every error an AI route logs goes through `server/lib/redact.ts` first. It repla
 
 - **God scan, 17 calls: all 17 came back with a god.** 13 were answered by the first attempt in 0.85 to 1.94 s. In 4 of the first 10 calls, sent a second apart, the first attempt had no answer after 2.5 s; the second attempt answered and the route took 3.00, 3.01, 3.31 and 3.98 s. One of those first attempts later failed with `503 ... currently experiencing high demand`. Without the second attempt those four would have waited on the slow call.
 - **Generated fight, 11 calls: 10 came back from the model** in 2.94 to 3.62 s. One had no answer at 4.8 s and came back as the bundled fight in 4.81 s.
+- **Generated fight again, later the same evening, 16 calls with 16 different phrases: all 16 came back from the model**, but slower. 8 on the server with the 4.8 s limit took 3.30, 3.79, 4.45, 4.59, 4.65, 4.78, 4.78 and 5.21 s (timed from the caller, so the last one was decided just inside the limit). 8 on a server with the 8.5 s limit took 3.90, 3.90, 4.34, 4.37, 4.78, 4.79, 4.86 and 4.91 s: the last two would have been bundled fights under the old limit. 9 of the 16 took over 4.5 s. That is why the limit is now 8.5 s.
 - **Spoken line, 3 calls:** 0.24, 0.48 and 0.56 s, the first one including the voice list.
 - **Portrait, 17 scans: none was painted.** Both image models refused in about 0.1 s each with `429 ... limit: 0 requests per day on Free Tier`. Nothing breaks: the one portrait request made answered `204` in 0.12 s, which is the answer that makes the page use the marble portrait. See below.
 - **No keys (server started with no env file):** health `200` with every service `false`, scan `503`, fight `200` with `source: "fallback"`, speech `503`, portrait `204`, room create `200`, room address `200`, replay create `200`. Each took under 0.01 s.
@@ -134,23 +135,23 @@ Every error an AI route logs goes through `server/lib/redact.ts` first. It repla
 ## What is not covered, and gaps not fixed here
 
 1. **The AI portrait does not work with the key on this laptop.** The key's project is on Gemini's free tier, which has no quota for either image model. Every scan gets the marble portrait. Turning on billing for that project is the only fix; nothing in the code is wrong. `GET /api/health` still says `"portraits": true`, because it only knows a key is present. The same project's free tier also carries the scan's own quota, so its limits (at the address in the error text) are worth a look before demo day.
-2. **The 4.8 s limit costs some generated fights.** A fight takes about 3 s to generate, so the limit leaves about 1.2 s of room, and 1 call in 11 ran out of it. With the old 9 s limit that call might have been rescued by the second model at about 8 s. The Gemini client gives each model 5 s (`JSON_ATTEMPT_MS`), which is now longer than the route's limit, so for a fight the second model is only reached when the first fails fast, never when it stalls. Raising `levelMs` (and `LEVEL_TIMEOUT_MS` with it) trades a longer worst wait on "The Muse is composing..." for fewer bundled fights. This issue asked for under 5 seconds, so 4.8 s is what is set. Generated fights are only reached from the lab page on `main` today, not from the game's own screens. If the team decides to show one to a judge, set `levelMs` to 8500 and `LEVEL_TIMEOUT_MS` to 9500, list the fight beside the portrait as a second limit over 5 seconds, and loosen the checks that pin 4.8 s for it (S3 and P1).
+2. **A generated fight may now take up to 8.5 s, and a stalled model is not rescued.** The limit was 4.8 s, which left about 1.2 s of room on the first evening and none on the second: real fights took 3.3 to 5.2 s. It is 8.5 s now (`levelMs`), the page waits 9.5 s (`LEVEL_TIMEOUT_MS`), and S3 and P1 hold those two numbers. The first model gets the whole 8.5 s (`attemptMs` in `server/routes/level.ts`), because a second model started at 5 s could not write a fight in what is left. So the second model is only reached when the first fails fast, never when it stalls: a stall ends in the bundled fight at 8.5 s. The god scan and the preflight check still give each model 5 s.
 3. **The room screens can wait for ever on a server that accepts a request and never answers.** `post` in `src/net/transport.ts` and `fetchLanBase` in `src/screens/roomNet.ts` pass no time limit to `fetch`. Neither file is in this issue's list. The server's own room routes answer in under a millisecond, so this only shows if the server process is stuck or a tunnel holds the request. The two lines are in issue #226.
 4. **The measurements are from one evening, one network and a small picture.** The scans above sent a 17 KB test pattern. A real webcam frame is several times bigger, and earlier real webcam scans took up to 2.3 s, close to the 2.5 s at which the second attempt starts. On a slow venue network most scans could cross 2.5 s, and then most would send two requests; an answer that takes 4.8 to 6 s is now lost to the lot, where the old code would still have used it. On demo morning a person should run about five real scans at the venue and count the `reveal_second_attempt` lines in the server's log. If most scans show one, raise `revealHedgeMs` in `server/env.ts` and the bounds in the tests that pin it (H3 and P1) together, in one small change.
 5. **A real stall was not reproduced against the real services.** The stalls and wrong answers in the tests come from made-up clients that ignore their abort signal. The real clients (`server/ai/gemini.ts`, `server/ai/elevenlabs.ts`) are not covered by any test, and the new `gemini_model_failed` log line in `gemini.ts` was only seen in the real run above.
 6. **A request body that is not JSON gets a `500` from an AI route**, at once (`server/tests/roomsRoute.test.ts` pins this). The page never sends one, and it falls back on any answer that is not `200`.
 7. **The page keeps a spoken line that came back `200` but is not audio**, and plays nothing for it. The server now refuses to send such a line (S8), so this needs something between the two to go wrong.
-8. **Nothing here was looked at on screen.** The player-facing text in the tables was read from `src/ai/ui/RevealScreen.tsx` and `src/ai/ui/StyleScreen.tsx`, not seen in a browser.
+8. **Only the generated fight was looked at on screen.** Its waiting screen, its card and the bundled-fight card with its line were seen in headless Chrome at 1440 by 900 with the quest-map button patched in on a test copy, once against the real service and once with `/api/level` blocked. The god scan's text in the tables was read from `src/ai/ui/RevealScreen.tsx`, not seen in a browser.
 
 ## The tests
 
-Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/revealHedge.test.ts server/tests/hedge.test.ts server/tests/redact.test.ts tests/ai/failureDrill.test.ts`. They need no server and no keys. S3, H1 and H2 run on the real limits and take about five seconds.
+Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/revealHedge.test.ts server/tests/hedge.test.ts server/tests/redact.test.ts tests/ai/failureDrill.test.ts`. They need no server and no keys. S3, H1 and H2 run on the real limits: S3 takes about nine seconds, the other two about five.
 
 `server/tests/failureDrill.test.ts`
 
 - S1: key missing: every route answers at once, the AI routes with their fallback and the rest as if nothing were wrong
 - S2: key for the scan but not for speech, and the other way round: each service falls back by itself
-- S3: upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback when their limit is up, each limit is under five seconds, and the other routes answer meanwhile
+- S3: upstream stalled for 15 s, on the real limits: level, scan and speech each answer with their fallback when their limit is up, the scan and speech in under five seconds and the level in under nine, and the other routes answer meanwhile
 - S4: a stalled portrait: the god is answered at once, and the portrait request ends with no picture when the painting's time is up
 - S5: a stalled voice service is not waited on again: once it answers, the next line is spoken
 - S6: upstream answers with the wrong thing: a level that is not a level gives the bundled fight, a god that is not a god gives unavailable
@@ -182,7 +183,7 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 
 `tests/ai/failureDrill.test.ts` (the page's side)
 
-- P1: every server limit ends at least a second before the page stops waiting, and all but the portrait end in under five seconds
+- P1: every server limit ends at least a second before the page stops waiting, and all but the portrait and the generated fight end in under five seconds
 - P2: god scan, server stalled for 15 s: the lot is cast when the page's six seconds are up, not a moment later
 - P3: god scan, no key or a wrong answer: the lot is cast at once, with the portrait drawn in the browser
 - P4: the god is on screen before the portrait: a portrait that stalls, fails or is not a picture never delays it, and the marble one takes its place
@@ -192,4 +193,4 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 
 `server/tests/hedge.test.ts` has twelve more tests of the second-attempt helper by itself.
 
-A note on the timing tests: S3, H1 and H2 check that the answer comes no earlier than the limit and no later than 1 s after it. The second is room for a busy machine running the whole test suite; on a quiet one the answer comes within a few milliseconds of the limit (4.81 s measured for the fight above). The "under five seconds" in the rules rests on the limits being 4.8 s or less, which P1 and S3 check as numbers.
+A note on the timing tests: S3, H1 and H2 check that the answer comes no earlier than the limit and no later than 1 s after it. The second is room for a busy machine running the whole test suite; on a quiet one the answer comes within a few milliseconds of the limit (4.81 s measured for the fight above). The "under five seconds" in the rules rests on the scan's and the speech's limits being 4.8 s or less, which P1 and S3 check as numbers, beside the 8.5 s for the generated fight.

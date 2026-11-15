@@ -6,6 +6,7 @@ import doc from "../docs/narration-lines.md?raw";
 import { ATHENA_LINES } from "../src/audio/athenaLines";
 import {
   ALL_STORY_LINES,
+  HOMECOMING_ID,
   isStoryLine,
   NARRATION_LINES,
   narrationId,
@@ -17,7 +18,7 @@ import {
   tauntIds,
 } from "../src/audio/narrationLines";
 import { STORY_LINES } from "../src/audio/storyLines";
-import { createStoryVoice, NARRATION_WAIT_MS, speakMonsterTaunt, speakNarration, speakResult, stopStory, TAUNT_WAIT_MS } from "../src/audio/storyVoice";
+import { createStoryVoice, NARRATION_WAIT_MS, speakHomecoming, speakMonsterTaunt, speakNarration, speakResult, stopStory, TAUNT_WAIT_MS } from "../src/audio/storyVoice";
 import type { StoryVoiceDeps } from "../src/audio/storyVoice";
 import { audioPlayer, browserDeps, createVoice, speakTaunt, stopLine, voicePlaying } from "../src/audio/voice";
 import type { ClipAudio } from "../src/audio/voice";
@@ -91,10 +92,12 @@ test("every stop has one line before and one after, and Polyphemus's opening lin
       if (id !== null) reached.add(id);
     }
   }
-  // No new line is left over: each one is some stop's before or after line.
-  expect(NARRATION_LINES.map((line) => line.id).sort()).toEqual([...reached].filter((id) => id !== "homer_intro_polyphemus").sort());
+  // No new line is left over: each one is some stop's before or after line, or Homer's one closing line.
+  const stopLines = NARRATION_LINES.filter((line) => line.id !== HOMECOMING_ID);
+  expect(stopLines.length).toBe(NARRATION_LINES.length - 1);
+  expect(stopLines.map((line) => line.id).sort()).toEqual([...reached].filter((id) => id !== "homer_intro_polyphemus").sort());
   expect(NARRATION_LINES.some((line) => line.id === "homer_before_polyphemus")).toBe(false);
-  for (const line of NARRATION_LINES) {
+  for (const line of stopLines) {
     expect(line.id, line.id).toMatch(new RegExp(`^homer_(before|after)_${line.enemyId}$`));
     expect(QUEST_ORDER as readonly string[], line.id).toContain(line.enemyId);
   }
@@ -127,12 +130,11 @@ test("every taunt is one of that monster's own taunts, word for word", () => {
   }
 });
 
-test("every monster but Scylla has two or three spoken taunts, each different", () => {
+test("every monster has two or three spoken taunts, each different", () => {
   for (const enemy of ENEMIES) {
     const ids = tauntIds(enemy.id);
-    // Polyphemus's four were recorded first. Scylla's file has one taunt, so she has one clip until it has more:
-    // that part of issue #86 is open. Once her file has three, record them and make her range [2, 3].
-    const [least, most] = enemy.id === "polyphemus" ? [4, 4] : enemy.id === "scylla" ? [1, 3] : [2, 3];
+    // Polyphemus's four were recorded first. Every other monster has two or three, Scylla too since her file got three.
+    const [least, most] = enemy.id === "polyphemus" ? [4, 4] : [2, 3];
     expect(ids.length, enemy.id).toBeGreaterThanOrEqual(least);
     expect(ids.length, enemy.id).toBeLessThanOrEqual(most);
     // Numbered from 1 with no gaps, so a picked id always has a line.
@@ -502,6 +504,28 @@ test("every monster can taunt, and the dice pick which taunt", async () => {
   }
 });
 
+test("a monster does not say the same taunt at two phase changes running, whatever the dice pick", async () => {
+  for (const enemy of ENEMIES) {
+    for (const roll of [0, 0.5, 0.999]) {
+      const { taunts, story, started } = fakeStory({ random: () => roll });
+      // A fight has at most three phase changes; the rematch after it starts on a different line too.
+      for (let change = 0; change < 4; change += 1) {
+        const taunt = watch(story.speakMonsterTaunt(enemy.id));
+        await vi.advanceTimersByTimeAsync(100);
+        taunts.stop(started.at(-1) ?? "");
+        await vi.advanceTimersByTimeAsync(100);
+        expect(taunt.settled, enemy.id).toBe(true);
+      }
+      expect(started.length, enemy.id).toBe(4);
+      for (const [at, id] of started.entries()) {
+        expect(tauntIds(enemy.id), enemy.id).toContain(id);
+        if (at > 0) expect(id, `${enemy.id} at roll ${String(roll)}`).not.toBe(started[at - 1]);
+      }
+      expect(vi.getTimerCount()).toBe(0);
+    }
+  }
+});
+
 test("a taunt waits for Athena's phase line to end, and then her next call does not cut it", async () => {
   const { voice, taunts, story, started, stopped, end } = fakeStory();
   // As the fight screen does it: the taunt is asked for first, and the phase line starts later in the same frame.
@@ -820,6 +844,7 @@ test("where there is no audio at all, the shared functions are silent, not broke
   expect(await speakNarration("nobody", "after", 0)).toBe(false);
   expect(await speakResult("circe", true, 0)).toBe(false);
   expect(await speakResult("circe", false, 0)).toBe(false);
+  expect(await speakHomecoming(0)).toBe(false);
   expect(await speakMonsterTaunt("sirens", 0)).toBe(false);
   for (const enemy of ENEMIES) expect(speakTaunt(enemy.id), enemy.id).toBe(false);
   expect(speakTaunt("nobody")).toBe(false);
