@@ -160,3 +160,25 @@ test("every class the banner uses has a rule, and every rule is for a class the 
   ].sort());
   expect([...styled].sort()).toEqual([...used].sort());
 });
+
+test("no text in the banner is under 18px on any screen", () => {
+  let sized = 0;
+  for (const rule of RULES) {
+    const size = rule.declarations.get("font-size");
+    if (size === undefined) continue;
+    sized += 1;
+    // A fixed size, or a clamp whose first number is the smallest it gets.
+    const least = /^(?:clamp\()?(\d+(?:\.\d+)?)px/.exec(size)?.[1];
+    expect(Number(least), `${rule.selector}: ${size}`).toBeGreaterThanOrEqual(18);
+  }
+  expect(sized).toBeGreaterThanOrEqual(6);
+  // Every element that holds words sets its own size; the key cap and the "or press" inherit it.
+  for (const part of ["title", "move", "how", "wait", "of", "god"]) {
+    expect(RULES.find((rule) => rule.selector === `.power-ready .power-ready__${part}`)?.declarations.has("font-size"), part).toBe(true);
+  }
+});
+
+test("the type follows the width of the strip the banner stands in, so a long move name still fits", () => {
+  expect(RULES.find((rule) => rule.selector === ".power-ready.power-ready--live")?.declarations.get("container-type")).toBe("inline-size");
+  expect(RULES.find((rule) => rule.selector === ".power-ready .power-ready__move")?.declarations.get("font-size")).toContain("cqi");
+});

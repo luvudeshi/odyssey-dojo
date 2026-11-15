@@ -1,8 +1,9 @@
 // Tells the player a defend counted, the moment it counts: a small chip with one word for the defend made (DODGED,
-// BLOCKED, DUCKED, JUMPED) and a green rim round the screen. Getting hit is red and shakes the picture, so the two cannot be mixed up.
+// BLOCKED, DUCKED, JUMPED) on ice-edged glass and an ice-blue rim round the screen. Getting hit is red and shakes the picture, so the two cannot be mixed up.
 // It reads the fight state only, so the camera, the keyboard and a guest's copy of the fight all show the same thing.
 import { useEffect, useState } from "react";
 import type { CombatPhase } from "../core/types";
+import { RiftPlate } from "./sky/rift/RiftPlate";
 
 const SHOW_MS = 1100;
 const WORDS: Readonly<Record<string, string>> = {
@@ -47,7 +48,7 @@ export function DefendFlash({ phase }: { phase: CombatPhase }) {
   return (
     <div className="hb-defend" key={shown.id} data-move={shown.move} role="status">
       <div className="hb-defend__rim" />
-      <div className="hb-defend__word">{defendWord(shown.move)}</div>
+      <div className="hb-defend__word"><RiftPlate tone="lava" />{defendWord(shown.move)}</div>
     </div>
   );
 }
