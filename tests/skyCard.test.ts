@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { keyLabel } from "../src/hud/Hud";
-import { SkyPromptCard } from "../src/hud/sky/SkyPromptCard";
+import { SkyPromptCard, longestWord } from "../src/hud/sky/SkyPromptCard";
 import { MOVES } from "../src/moves/registry";
 
 function move(id: string) {
@@ -40,5 +40,15 @@ describe("SkyPromptCard kinds", () => {
     expect(finish).toContain("sky-card--finish");
     expect(finish).toContain("sky-card__burst");
     expect(strike).not.toContain("sky-card__burst");
+  });
+});
+
+describe("SkyPromptCard move names", () => {
+  it("sizes the name by its longest word, so it breaks only between words", () => {
+    expect(longestWord("OVERHEAD STRIKE")).toBe(8);
+    expect(longestWord("DODGE LEFT")).toBe(5);
+    expect(longestWord("")).toBe(1);
+    const html = renderToStaticMarkup(createElement(SkyPromptCard, { move: move("hook"), target: "t", successes: 0, left: 1 }));
+    expect(html).toContain(`--chars:${String(longestWord(move("hook").prompt))}`);
   });
 });

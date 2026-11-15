@@ -1,50 +1,57 @@
-// The Forge Fire health bars: health is molten bronze in a carved channel. What was just lost stays red-hot for a moment
-// (the hot layer follows the metal down after a delay, see forge.css), and older losses have cooled to dark slag.
-// The monster owns the top of the screen; the player's bar is a crescent on the floor under the hero, left of the power ring.
-// Every word and number is HTML text, so it stays sharp at any size. Only clip-path, transform and opacity move.
+// The Obsidian Rift health bars: health is lava welling up through a jagged fissure in black volcanic glass. What was
+// just lost stays red-hot for a moment (the hot layer follows the melt down after a delay, see rift.css), and older
+// losses have cooled to dark slag. The monster's bar is a glass slab across the top with glass blades at its ends;
+// the player's is a glass sickle on the floor under the hero, left of the power disc.
+// Frame-rate rules: the glass, cracks and fissure edge are fixed shapes computed once (rift/geometry.ts); the melt is a
+// texture painted once (rift/lava.ts). A health change moves only clip-path, a mask offset or a transform; the drift
+// and sparks loop on transform and opacity. Every word and number is HTML text.
 import type { CSSProperties, ReactNode } from "react";
 import type { EnemySpec } from "../../core/types";
 import { useLandedScore } from "../RatingFlash";
+import { CRES, CRESCENT, END_BLADES, FISSURE, SLAB } from "./rift/geometry";
+import { installRiftTextures, riftTextures } from "./rift/lava";
 import { roman } from "./SkyBanners";
-import "./forge.css";
+import "./rift.css";
 
-const SPARKS = 4;
+if (typeof document !== "undefined") installRiftTextures();
+
+const SPARKS = 6;
 const clamp01 = (v: number): number => Math.max(0, Math.min(1, v));
+const kept = (v: number): CSSProperties => ({ "--kept": String(v) }) as CSSProperties;
 
-/** The molten channel itself. `value` is 0 to 1 and fills from the left. */
-export function Molten({ value, children }: { value: number; children?: ReactNode }): ReactNode {
-  const style = { "--kept": String(clamp01(value)) } as CSSProperties;
-  return (
-    <div className="fg-channel" style={style} aria-hidden="true">
-      <div className="fg-slag" />
-      <div className="fg-hot" />
-      <div className="fg-metal"><div className="fg-flame" /></div>
-      <div className="fg-front">
-        <i className="fg-glow" />
-        {Array.from({ length: SPARKS }, (_, i) => <i key={i} className="fg-spark" />)}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-/** Where the phase wedges sit: the health share at which each phase after the first starts, and whether it has begun. */
+/** Where the phase spikes sit: the health share at which each phase after the first starts, and whether it has begun. */
 export function phaseMarks(enemy: EnemySpec, phaseIndex: number): { at: number; passed: boolean }[] {
   return (enemy.phases ?? []).slice(1).map((p, i) => ({ at: clamp01(p.belowHp), passed: i + 1 <= phaseIndex }));
 }
 
-/** A cast bronze scroll at one end of the boss bar. */
-function Cap({ side }: { side: "left" | "right" }): ReactNode {
+const Sparks = (): ReactNode => <>{Array.from({ length: SPARKS }, (_, i) => <i key={i} className="fg-spark" />)}</>;
+
+/** Hot cracks spreading from the fissure into the glass, as glow plus a bright core line. */
+const Cracks = ({ d }: { d: string }): ReactNode => (
+  <>
+    <path d={d} className="fg-crack fg-crack--glow" vectorEffect="non-scaling-stroke" />
+    <path d={d} className="fg-crack" vectorEffect="non-scaling-stroke" />
+  </>
+);
+
+/** Three glass blades fanning out from one end of the boss bar. */
+function Ends({ side }: { side: "left" | "right" }): ReactNode {
   return (
-    <svg className={`fg-cap fg-cap--${side}`} viewBox="0 0 40 44" aria-hidden="true">
-      <path d="M2 8 C14 8 24 14 38 22 C24 30 14 36 2 36 Z" className="fg-bronze" />
-      <path d="M8 14 C-2 -4 26 -8 24 6 C22 14 14 10 17 6 M8 30 C-2 48 26 52 24 38 C22 30 14 34 17 38" className="fg-scroll" />
-      <circle cx="14" cy="22" r="4" className="fg-stud" />
+    <svg className={`fg-ends fg-ends--${side}`} viewBox="0 0 130 60" aria-hidden="true">
+      {END_BLADES.map((b) => (
+        <g key={b.body}>
+          <path d={b.body} className="fg-blade" />
+          <path d={b.light} className="fg-blade__light" />
+          <path d={b.edge} className="fg-blade__edge" />
+          <path d={b.vein} className="fg-vein fg-vein--glow" />
+          <path d={b.vein} className="fg-vein" />
+        </g>
+      ))}
     </svg>
   );
 }
 
-/** The monster's bar across the top: name in cast bronze, percent, phase, and the long molten channel with its wedges. */
+/** The monster's bar across the top: name in ember letters, percent, phase, and the long rift with its phase spikes. */
 export function BossBar({ enemy, value, phaseIndex }: { enemy: EnemySpec; value: number; phaseIndex: number }): ReactNode {
   const v = clamp01(value);
   const pct = Math.round(v * 100);
@@ -56,14 +63,32 @@ export function BossBar({ enemy, value, phaseIndex }: { enemy: EnemySpec; value:
         <span className="fg-boss__name">{enemy.name}</span>
         <span className="fg-boss__phase">{phases > 1 ? `Phase ${roman(phaseIndex + 1)}` : ""}</span>
       </div>
-      <div className="fg-boss__bar">
-        <Cap side="left" />
-        <Molten value={v}>
+      <div className="fg-boss__bar" style={kept(v)}>
+        <svg className="fg-defs" width="0" height="0" aria-hidden="true">
+          <clipPath id="fg-rift-fissure" clipPathUnits="objectBoundingBox"><path d={FISSURE} transform="scale(0.001)" /></clipPath>
+        </svg>
+        <Ends side="left" />
+        <div className="fg-slab">
+          <svg className="fg-slab__glass" viewBox="0 0 1000 56" preserveAspectRatio="none" aria-hidden="true">
+            <path d={SLAB.outline} className="fg-slab__shade" />
+            {SLAB.facets.map((f) => <path key={f.d} d={f.d} fill={f.fill} />)}
+            <path d={SLAB.top} className="fg-slab__edge" vectorEffect="non-scaling-stroke" />
+            <path d={SLAB.bottom} className="fg-slab__under" vectorEffect="non-scaling-stroke" />
+          </svg>
+          <svg className="fg-slab__cracks" viewBox="0 0 1000 56" preserveAspectRatio="none" aria-hidden="true"><Cracks d={SLAB.cracksUp + SLAB.cracksDown} /></svg>
+          <div className="fg-channel" aria-hidden="true">
+            <div className="fg-fissure">
+              <div className="fg-slag" />
+              <div className="fg-hot"><div className="fg-flow" /></div>
+              <div className="fg-metal"><div className="fg-flow" /></div>
+            </div>
+            <div className="fg-front"><i className="fg-glow" /><Sparks /></div>
+          </div>
           {phaseMarks(enemy, phaseIndex).map((m) => (
             <i key={m.at} className={m.passed ? "fg-wedge fg-wedge--passed" : "fg-wedge"} style={{ left: `${String(m.at * 100)}%` }} />
           ))}
-        </Molten>
-        <Cap side="right" />
+        </div>
+        <Ends side="right" />
       </div>
     </div>
   );
@@ -80,8 +105,8 @@ function Helmet(): ReactNode {
   );
 }
 
-// The crescent's geometry, in the 240 x 60 box it is drawn in: the front half of an ellipse lying on the floor.
-const CX = 120, CY = 20, RX = 100, RY = 26;
+// The crescent's centre line: the front half of an ellipse lying on the floor, in the 240 x 60 box it is drawn in.
+const { cx: CX, cy: CY, rx: RX, ry: RY } = CRES;
 const ARC = `M${String(CX - RX)} ${String(CY)} A${String(RX)} ${String(RY)} 0 0 0 ${String(CX + RX)} ${String(CY)}`;
 const SAMPLES: readonly (readonly [number, number])[] = Array.from({ length: 65 }, (_, i): readonly [number, number] => [CX - RX * Math.cos((Math.PI * i) / 64), CY + RY * Math.sin((Math.PI * i) / 64)]);
 const RUN: readonly number[] = SAMPLES.reduce<number[]>((acc, p, i) => {
@@ -108,26 +133,38 @@ export function crescentPoint(share: number): [number, number] {
 const Arc = ({ k }: { k: string }): ReactNode => <path d={ARC} pathLength={100} className={`fg-arc fg-arc--${k}`} />;
 
 /**
- * The player's bar: a molten crescent on the floor under the hero's feet, with the helmet, YOU and the number at its
- * left tip. Like the boss bar, the hot layer follows the metal down after a pause, so a fresh loss lingers red-hot.
+ * The player's bar: a glass sickle on the floor under the hero's feet with lava in its fissure, and the helmet, YOU and
+ * the number at its left tip. Like the boss bar, the hot layer follows the melt down after a pause.
  */
 export function PlayerCrescent({ hp, maxHp }: { hp: number; maxHp: number }): ReactNode {
   const v = clamp01(hp / maxHp);
   const [fx, fy] = crescentPoint(v);
+  const tex = riftTextures();
   return (
-    <div className="fg-crescent" style={{ "--kept": String(v) } as CSSProperties} role="meter" aria-label="You health" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)}>
+    <div className="fg-crescent" style={kept(v)} role="meter" aria-label="You health" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)}>
       <svg className="fg-crescent__arc" viewBox="0 0 240 60" aria-hidden="true">
-        <mask id="fg-cres-hot" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="60"><Arc k="hotmask" /></mask>
-        <mask id="fg-cres-kept" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="60"><Arc k="keptmask" /></mask>
-        <Arc k="rim" /><Arc k="lip" /><Arc k="bed" /><Arc k="slag" /><Arc k="crack" />
-        <g mask="url(#fg-cres-hot)"><Arc k="hot" /></g>
-        <g mask="url(#fg-cres-kept)">
-          <Arc k="glow" /><Arc k="outer" /><Arc k="mid" /><Arc k="core" /><Arc k="streak" /><Arc k="shine" /><Arc k="fire" />
+        <defs>
+          <mask id="fg-cres-hot" maskUnits="userSpaceOnUse" x="-20" y="-20" width="280" height="100"><Arc k="hotmask" /></mask>
+          <mask id="fg-cres-kept" maskUnits="userSpaceOnUse" x="-20" y="-20" width="280" height="100"><Arc k="keptmask" /></mask>
+          <radialGradient id="fg-cres-shade"><stop offset=".55" stopColor="#000" stopOpacity=".5" /><stop offset="1" stopColor="#000" stopOpacity="0" /></radialGradient>
+          <clipPath id="fg-cres-fissure"><path d={CRESCENT.fissure} /></clipPath>
+          <pattern id="fg-cres-lava" patternUnits="userSpaceOnUse" width="128" height="12" y="14"><image href={tex.lava} width="128" height="12" preserveAspectRatio="none" /></pattern>
+          <pattern id="fg-cres-hottex" patternUnits="userSpaceOnUse" width="128" height="12" y="14"><image href={tex.hot} width="128" height="12" preserveAspectRatio="none" /></pattern>
+        </defs>
+        <ellipse cx="120" cy="32" rx="132" ry="36" fill="url(#fg-cres-shade)" />
+        {CRESCENT.facets.map((f) => <path key={f.d} d={f.d} fill={f.fill} />)}
+        <path d={CRESCENT.edge} className="fg-slab__edge" />
+        <g mask="url(#fg-cres-kept)"><Arc k="glow" /><Cracks d={CRESCENT.cracks} /></g>
+        <g clipPath="url(#fg-cres-fissure)">
+          <Arc k="bed" /><Arc k="slag" />
+          <g mask="url(#fg-cres-hot)"><Arc k="hot" /></g>
+          <g mask="url(#fg-cres-kept)"><Arc k="outer" /><Arc k="lava" /><Arc k="core" /><Arc k="vein" /><Arc k="crust" /></g>
         </g>
+        <g mask="url(#fg-cres-kept)"><Arc k="fire" /></g>
       </svg>
       <div className="fg-spot" style={{ transform: `translate(${String(fx)}px, ${String(fy)}px)` }}>
         <i className="fg-glow" />
-        {Array.from({ length: SPARKS }, (_, i) => <i key={i} className="fg-spark" />)}
+        <Sparks />
       </div>
       <div className="fg-tag">
         <span className="fg-tag__name">You</span>
@@ -138,16 +175,16 @@ export function PlayerCrescent({ hp, maxHp }: { hp: number; maxHp: number }): Re
   );
 }
 
-/** Score at the top right in molten figures, the combo stamped on a struck coin when there is one. */
+/** Score at the top right burning in a glass shard; the combo glows in a burst of glass spikes, which pops on each rise. */
 export function ForgeScore({ score, combo }: { score: number; combo: number }): ReactNode {
   const shown = useLandedScore(score);
   return (
     <div className="fg-score">
       <div className="fg-score__text">
         <small>Score</small>
-        <span className="fg-score__num">{shown}</span>
+        <span className="fg-score__num" data-n={shown}>{shown}</span>
       </div>
-      {combo > 1 && <span className="fg-coin"><b>x{combo}</b><small>combo</small></span>}
+      {combo > 1 && <span key={combo} className="fg-coin"><b>x{combo}</b><small>combo</small></span>}
     </div>
   );
 }
