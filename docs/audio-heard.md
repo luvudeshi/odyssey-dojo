@@ -19,6 +19,8 @@ npx tsx --env-file=<path to .env> server/tools/hearClips.ts --check    # the sam
 | After `call_knee` was made again | 80 | 0 | 2 | not read |
 | Now: all 82 sent again, with sound tagging on and the word probabilities read | 51 | 0 | 2 | 29 |
 
+Scylla's second and third taunts (`taunts/taunt_scylla_2.mp3` and `taunts/taunt_scylla_3.mp3`) were added later the same day and sent once each, after levelling. Both came back "same": every word of the line, none under 0.95, and no sign of a cut end. That makes 84 clips: 53 same, 0 differ, 2 may be cut, 29 unsure. The counts in the rest of this page are for the first 82.
+
 No clip has a word that speech to text heard differently from its line. **One clip is not confirmed all the same: `athena/call_knee.mp3`.** ElevenLabs hears "Knee"; a second engine hears "Me" more often than "Knee". A person has to listen to it.
 
 "unsure" is new in the last row: the words came back right, but speech to text gave one of them a probability under 0.95. It is a weak signal (see "The 29 unsure clips"), and it is the only signal that pointed at `call_knee`.
