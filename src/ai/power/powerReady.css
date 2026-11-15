@@ -56,7 +56,7 @@
 .power-ready .power-ready__edge { transition: opacity 0.12s ease-out; }
 .power-ready .power-ready__wait {
   grid-area: how; visibility: hidden; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 700; line-height: 1.2; letter-spacing: 0.08em; text-transform: uppercase; white-space: normal; max-width: clamp(11em, 40cqi, 14.5em);
   color: var(--white, #f2e4c8);
 }
 .power-ready.power-ready--waiting .power-ready__frame { animation-play-state: running, paused; }
