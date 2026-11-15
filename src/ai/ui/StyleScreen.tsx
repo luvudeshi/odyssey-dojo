@@ -178,7 +178,7 @@ export function StyleScreen(props: {
           >
             Fight
           </button>
-          <button className="style-quiet" onClick={() => { silence(); setStep({ kind: "ask" }); }}>Try another phrase</button>
+          <button className="quiet style-quiet" onClick={() => { silence(); setStep({ kind: "ask" }); }}>Try another phrase</button>
         </div>
       </main>
     );
@@ -212,7 +212,7 @@ export function StyleScreen(props: {
           {Recognition && (
             <button
               type="button"
-              className={listening ? "style-quiet style-listening" : "style-quiet"}
+              className={listening ? "quiet style-quiet style-listening" : "quiet style-quiet"}
               onClick={listening ? stopListening : listen}
             >
               {listening ? "Listening..." : "Speak it"}
@@ -221,7 +221,7 @@ export function StyleScreen(props: {
           <button type="submit" className="style-primary" disabled={cleanPhrase(phrase) === ""}>Build my fight</button>
         </div>
       </form>
-      {onBack && <button className="style-quiet style-back" onClick={onBack}>Back</button>}
+      {onBack && <button className="quiet style-quiet style-back" onClick={onBack}>Back</button>}
     </main>
   );
 }
