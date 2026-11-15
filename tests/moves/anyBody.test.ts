@@ -164,8 +164,9 @@ const TURN_LIMITS: Record<string, TurnLimit> = {
   knife_hand: { signs: [1], good: 26, then: ["cross", "uppercut"] },
   // The sun burst itself fires at every angle. Its hands-together start has the right wrist 0.125 widths on its own
   // side of the centre line face on; a left turn carries it across (0.105 at 3 degrees, 0.099 at 4), and under 0.1
-  // is the knife hand's chamber, so the right arm flung wide then reads as a knife hand as well.
-  sun_burst: { signs: [1], good: 3, then: ["knife_hand", "spear_thrust", "sun_burst"] },
+  // is the knife hand's chamber, so the right arm flung wide then reads as a knife hand as well. (Until #191 the
+  // spear thrust fired here too, as it did face on: both arms flung wide no longer count as a thrust.)
+  sun_burst: { signs: [1], good: 3, then: ["knife_hand", "sun_burst"] },
   // Calibrating side-on makes the baseline's PICTURE shoulder width narrower (0.16 of the frame face on, 0.154 at
   // 16 degrees, 0.139 at 30), so the fixture's dodge step counts for more shoulder widths and reaches the swift
   // dash's 0.7 as well: 0.674 face on, 0.698 at 15 degrees, 0.701 at 16, 0.778 at 30. The dodge still holds.

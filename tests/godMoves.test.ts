@@ -267,13 +267,13 @@ interface Gesture {
    * offer both moves of a pair. The fight only looks for the move it prompted, so an extra move costs nothing.
    * - overhead_strike is the right-hand thunderbolt and hammer_fist the left-hand one: the same motion by design.
    * - aegis_push is a spear thrust with the palms close together, and double_palm is the same push by design.
-   * - spear_thrust does not check that the arms went forward, so arms flung wide count too.
+   * - arms flung wide used to count as a spear thrust; since #191 both wrists out past their own sides do not.
    * - hook reads any bent left arm crossing the body at shoulder height.
    * - knife_hand reads the right arm alone: across the body at chest height or above, then straight out to the
    *   right. That is the right arm of a chest-high sweep to the right; a belly-high sweep starts too low for it.
    * - uppercut and rising_palm share risingHand (handSignals.ts), which reads a hand brought up from the waist
-   *   with a bent elbow. Drawing the bow does that with the string hand: the right hand is an uppercut, the left
-   *   a rising palm. Both fire on the draw, before the arrow is loosed.
+   *   with a bent elbow. Drawing the bow does that with the string hand, and used to fire them; since #191 two
+   *   hands coming up together are not a rising hand, so the draw (bow arm and string hand together) is quiet.
    * - a dash is also a dodge.
    */
   readonly also: readonly string[];
@@ -294,16 +294,16 @@ const GESTURES: readonly Gesture[] = [
   { move: "aegis_push", how: "both palms", poses: aegisPush, at: 8, also: ["double_palm", "spear_thrust"] },
   { move: "swift_dash", how: "to the right", poses: swiftDash, at: 2, also: ["dodge_right"] },
   { move: "swift_dash", how: "to the left", poses: swiftDash.map(mirrored), at: 2, also: ["dodge_left"] },
-  { move: "moon_arrow", how: "left bow arm", poses: moonArrow, at: 10, also: ["uppercut"] },
-  { move: "moon_arrow", how: "right bow arm", poses: moonArrow.map(mirrored), at: 10, also: ["rising_palm"] },
+  { move: "moon_arrow", how: "left bow arm", poses: moonArrow, at: 10, also: [] },
+  { move: "moon_arrow", how: "right bow arm", poses: moonArrow.map(mirrored), at: 10, also: [] },
   {
     move: "moon_arrow",
     how: "a small release",
     poses: [...hold(bowDrawn, 10), ...hold(bowEased, 8), ...hold(stand, 20)],
     at: 10,
-    also: ["uppercut"],
+    also: [],
   },
-  { move: "sun_burst", how: "both arms", poses: sunBurst, at: 8, also: ["spear_thrust"] },
+  { move: "sun_burst", how: "both arms", poses: sunBurst, at: 8, also: [] },
   { move: "jump", how: "a hop", poses: jump, at: 4, also: [] },
 ];
 
