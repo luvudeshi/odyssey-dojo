@@ -27,6 +27,14 @@ export interface UploadOptions {
   readonly fetcher?: typeof fetch;
   readonly timeoutMs?: number;
   readonly videoTimeoutMs?: number;
+  /** Aborting this stops the upload: the request on its way is cancelled, and a video not yet started is not sent. */
+  readonly signal?: AbortSignal;
+}
+
+/** Ends a request when its time is up or when the caller stops the upload, whichever comes first. */
+function until(timeoutMs: number, stop: AbortSignal | undefined): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return stop === undefined ? timeout : AbortSignal.any([timeout, stop]);
 }
 
 async function cardDataUrl(card: Blob | null): Promise<string | null> {
@@ -49,7 +57,7 @@ async function cardDataUrl(card: Blob | null): Promise<string | null> {
 }
 
 /** The page is already worth showing without its video, so a failure here is only logged. */
-async function uploadVideo(fetcher: typeof fetch, id: string, video: Blob, timeoutMs: number): Promise<void> {
+async function uploadVideo(fetcher: typeof fetch, id: string, video: Blob, signal: AbortSignal): Promise<void> {
   if (video.size === 0 || video.size > MAX_VIDEO_BYTES) {
     log("warn", "replay_video_skipped", video.size);
     return;
@@ -60,7 +68,7 @@ async function uploadVideo(fetcher: typeof fetch, id: string, video: Blob, timeo
       // A recorder reports its codecs too ("video/webm;codecs=vp9"); the server only needs the container.
       headers: { "Content-Type": video.type.startsWith("video/mp4") ? "video/mp4" : "video/webm" },
       body: video,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal,
     });
     if (!response.ok) throw new Error(`video upload failed with ${String(response.status)}`);
   } catch (error) {
@@ -77,12 +85,13 @@ export async function uploadReplay(input: ReplayUpload, options: UploadOptions =
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(options.timeoutMs ?? CREATE_TIMEOUT_MS),
+      signal: until(options.timeoutMs ?? CREATE_TIMEOUT_MS, options.signal),
     });
     if (!response.ok) throw new Error(`replay request failed with ${String(response.status)}`);
     const created = CreateReplayResponseSchema.parse(await response.json());
-    if (input.video !== null) {
-      await uploadVideo(fetcher, created.id, input.video, options.videoTimeoutMs ?? VIDEO_TIMEOUT_MS);
+    // A share that was stopped while the page was being made does not go on to send up to 64 MB of video.
+    if (input.video !== null && options.signal?.aborted !== true) {
+      await uploadVideo(fetcher, created.id, input.video, until(options.videoTimeoutMs ?? VIDEO_TIMEOUT_MS, options.signal));
     }
     return { pageUrl: created.page_url, qrUrl: created.qr_url };
   } catch (error) {

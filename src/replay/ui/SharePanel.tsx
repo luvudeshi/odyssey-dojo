@@ -1,10 +1,10 @@
-// The result-screen share panel: the player's god card, a link that saves it, and a button that shares the fight by QR.
+// The result-screen share panel: the player's god card, a button that saves it, and a button that shares the fight by QR.
 // Nothing is sent until Share is pressed. With no server, the card and Save still work.
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { GodReveal } from "../../ai/revealGod";
 import { godCardBlob } from "../godCard";
-import { IDLE, canShare, cardFileName, cardWords, replayMeta, runShare, sendsCard, sendsVideo, shareStep, statusLine } from "./shareFlow";
-import type { ShareFight } from "./shareFlow";
+import { IDLE, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, portraitWithin, replayMeta, runShare, sendsCard, sendsVideo, shareStep, statusLine } from "./shareFlow";
+import type { PaintedFrom, ShareFight } from "./shareFlow";
 import "./sharePanel.css";
 
 export interface SharePanelProps extends ShareFight {
@@ -12,12 +12,24 @@ export interface SharePanelProps extends ShareFight {
   readonly god: GodReveal | null;
   /** The recorded fight, when there is one. It is uploaded only if Share is pressed. */
   readonly video?: Blob | null;
+  /** Taking the panel off the page (this, or anything else that unmounts it) stops an upload that is running. */
   readonly onClose?: () => void;
 }
 
 interface Card {
   readonly blob: Blob;
   readonly url: string;
+}
+
+/** A portrait that has finished loading (or failed, or timed out: image null), and the god it belongs to. */
+interface Portrait {
+  readonly god: GodReveal | null;
+  readonly image: HTMLImageElement | null;
+}
+
+/** The last paint that finished, and what it was painted from. `card` is null when nothing could be painted (no canvas). */
+interface Paint extends PaintedFrom<HTMLImageElement> {
+  readonly card: Card | null;
 }
 
 /** Loads a picture for the card. Resolves with null, and never rejects, when there is none or it is broken. */
@@ -38,12 +50,21 @@ function loadImage(url: string | null): Promise<HTMLImageElement | null> {
   });
 }
 
+/** Saves the card as a PNG file. A real button does this, so Save looks like the theme's other buttons. */
+function saveCard(url: string, name: string): void {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+}
+
 export function SharePanel(props: SharePanelProps) {
   const { god, won, enemyName, fightTitle, score, style, video = null, onClose } = props;
   const [state, send] = useReducer(shareStep, IDLE);
-  const [portrait, setPortrait] = useState<HTMLImageElement | null>(null);
+  const [loaded, setLoaded] = useState<Portrait | null>(null);
   const [qr, setQr] = useState<HTMLImageElement | null>(null);
-  const [card, setCard] = useState<Card | null>(null);
+  const [paint, setPaint] = useState<Paint | null>(null);
+  const stop = useRef<AbortController | null>(null);
   const qrUrl = state.kind === "shared" ? state.links.qrUrl : null;
   // A code the canvas cannot draw (an SVG with no size, in some browsers) is left off the card, and so is "Scan".
   const qrOnCard = qr !== null && qr.naturalWidth > 0;
@@ -51,12 +72,14 @@ export function SharePanel(props: SharePanelProps) {
     () => cardWords({ god, won, enemyName, fightTitle, score, style }, qrOnCard),
     [god, won, enemyName, fightTitle, score, style, qrOnCard],
   );
+  // A portrait counts only for the god it was loaded for.
+  const settled = loaded !== null && loaded.god === god;
+  const portrait = settled ? loaded.image : null;
 
-  // The portrait can arrive after the god does. Until then the card shows its placeholder emblem.
+  // The portrait can arrive after the god does. Until it settles the card shows its placeholder emblem and Share is held.
   useEffect(() => {
     let alive = true;
-    const url = god?.portrait ?? Promise.resolve(null);
-    void url.then(loadImage, () => null).then((image) => { if (alive) setPortrait(image); });
+    void portraitWithin(god?.portrait, loadImage).then((image) => { if (alive) setLoaded({ god, image }); });
     return () => { alive = false; };
   }, [god]);
 
@@ -71,44 +94,60 @@ export function SharePanel(props: SharePanelProps) {
   useEffect(() => {
     let alive = true;
     void godCardBlob({ ...words, portrait, qr }).then((blob) => {
+      if (!alive) return;
+      const card = blob === null ? null : { blob, url: URL.createObjectURL(blob) };
       // A card that cannot be painted (no canvas) leaves whatever was there before.
-      if (alive && blob !== null) setCard({ blob, url: URL.createObjectURL(blob) });
+      setPaint((before) => ({ card: card ?? before?.card ?? null, words, portrait, settled }));
     });
     return () => { alive = false; };
-  }, [words, portrait, qr]);
+  }, [words, portrait, qr, settled]);
 
+  const card = paint?.card ?? null;
   useEffect(() => {
     const url = card?.url;
     return () => { if (url !== undefined) URL.revokeObjectURL(url); };
   }, [card]);
 
+  // An upload the player walked away from is stopped: closing the panel cancels the request on its way.
+  useEffect(() => {
+    const controller = new AbortController();
+    stop.current = controller;
+    return () => { controller.abort(); };
+  }, []);
+
+  // Share is held until the card on screen is the finished one: painted from these words and the settled portrait.
+  const view = heldUntilReady(state, cardFinished(paint, { words, portrait, settled }));
   const blob = card?.blob ?? null;
   const share = (): void => {
-    if (canShare(state)) void runShare({ meta: replayMeta(words), card: blob, video }, send);
+    const signal = stop.current?.signal;
+    if (canShare(view)) void runShare({ meta: replayMeta(words), card: blob, video }, send, signal ? { signal } : {});
   };
-  const busy = state.kind === "uploading";
+  const busy = view.kind === "uploading";
+  const waiting = view.kind === "preparing";
 
   return (
-    <section className="share" aria-label="Your god card">
+    <section className="share-panel" aria-label="Your god card">
       {card ? (
         <img className="share-card" src={card.url} alt={`The god card of ${words.godName}`} />
       ) : (
         <div className="share-card share-empty">Painting your card...</div>
       )}
       <div className="share-side">
-        {state.kind === "shared" ? (
+        {view.kind === "shared" ? (
           <>
             {qr && <img className="share-qr" src={qr.src} alt="QR code that opens the replay page" />}
-            <a className="share-link" href={state.links.pageUrl} target="_blank" rel="noreferrer">{state.links.pageUrl}</a>
+            <a className="share-link" href={view.links.pageUrl} target="_blank" rel="noreferrer">{view.links.pageUrl}</a>
           </>
         ) : (
-          // With no card and no video that the server would take, there is nothing to share.
-          (sendsCard(blob) || sendsVideo(video)) && <button onClick={share} disabled={busy}>{busy ? "Sharing..." : "Share"}</button>
+          // Once the card is finished: with no card and no video that the server would take, there is nothing to share.
+          (waiting || sendsCard(blob) || sendsVideo(video)) && (
+            <button className="share-action" onClick={share} disabled={busy || waiting}>{busy ? "Sharing..." : "Share"}</button>
+          )
         )}
-        {busy && <div className={`share-progress share-${state.stage}`} role="progressbar" aria-label="Uploading"><span /></div>}
-        <p className="share-small" role="status">{statusLine(state, blob, video)}</p>
-        {card && <a className="share-save" href={card.url} download={cardFileName(words.godName)}>Save card</a>}
-        {onClose && <button className="share-quiet" onClick={onClose}>Close</button>}
+        {busy && <div className={`share-progress share-stage-${view.stage}`} role="progressbar" aria-label="Uploading"><span /></div>}
+        <p className="share-small" role="status">{statusLine(view, blob, video, qr !== null)}</p>
+        {card && <button className="share-action" onClick={() => { saveCard(card.url, cardFileName(words.godName)); }}>Save card</button>}
+        {onClose && <button className="quiet share-quiet" onClick={onClose}>Close</button>}
       </div>
     </section>
   );

@@ -13,13 +13,20 @@ import type { GodReveal } from "../revealGod";
 import { RevealScreen } from "../ui/RevealScreen";
 import "../../index.css";
 
+/** A god whose portrait takes four seconds to arrive, as the AI's painting can. Share should wait for it. */
+function slowGod(): GodReveal {
+  const picture = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect width='256' height='256' fill='%23887766'/><circle cx='128' cy='110' r='60' fill='%23eeddcc'/></svg>";
+  const portrait = new Promise<string | null>((resolve) => { setTimeout(() => { resolve(picture); }, 4000); });
+  return { god: "athena", epithet: "grey-eyed", reason: "A sample for the lab.", rivalGod: "poseidon", source: "offline", portrait };
+}
+
 /** The share panel with sample fight data. `god` null is a player who skipped the scan. */
-function ShareLab(props: { god: GodReveal | null }) {
+function ShareLab(props: { god: GodReveal | null; onClose?: () => void }) {
   const [won, setWon] = useState(true);
   return (
     <>
-      <SharePanel god={props.god} won={won} enemyName="Polyphemus" fightTitle="The Cyclops of the Cave" score={12340} style="Boxer" />
-      <button className="reveal-quiet" onClick={() => { setWon(!won); }}>{won ? "Show a defeat" : "Show a victory"}</button>
+      <SharePanel god={props.god} won={won} enemyName="Polyphemus" fightTitle="The Cyclops of the Cave" score={12340} style="Boxer" {...(props.onClose ? { onClose: props.onClose } : {})} />
+      <button className="quiet" onClick={() => { setWon(!won); }}>{won ? "Show a defeat" : "Show a victory"}</button>
     </>
   );
 }
@@ -31,14 +38,14 @@ function Lab() {
   const [phrase, setPhrase] = useState("like a Texas thunderstorm");
   const [level, setLevel] = useState<LevelResponse | null>(null);
   const [busy, setBusy] = useState(false);
-  const [shareOnly, setShareOnly] = useState(false);
+  // undefined: the panel is not open. null: open with no god. A god: open with a portrait that comes late.
+  const [shareOnly, setShareOnly] = useState<GodReveal | null | undefined>(undefined);
 
-  if (shareOnly) {
+  if (shareOnly !== undefined) {
     return (
       <main className="menu">
-        <h1>Share panel, no god</h1>
-        <ShareLab god={null} />
-        <button onClick={() => { setShareOnly(false); }}>Back</button>
+        <h1>{shareOnly ? "Share panel, slow portrait" : "Share panel, no god"}</h1>
+        <ShareLab god={shareOnly} onClose={() => { setShareOnly(undefined); }} />
       </main>
     );
   }
@@ -51,7 +58,8 @@ function Lab() {
         <h1>AI lab</h1>
         <button onClick={withCamera}>Start with the camera</button>
         <button onClick={() => { setStarted(true); }}>Start without a camera</button>
-        <button onClick={() => { setShareOnly(true); }}>Share panel only (no scan)</button>
+        <button onClick={() => { setShareOnly(null); }}>Share panel only (no scan)</button>
+        <button onClick={() => { setShareOnly(slowGod()); }}>Share panel with a slow portrait</button>
       </main>
     );
   }

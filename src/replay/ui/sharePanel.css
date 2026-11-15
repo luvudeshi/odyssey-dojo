@@ -1,15 +1,22 @@
-/* The share panel. Every class starts with share so nothing here can collide with src/index.css. */
-.share { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; justify-content: center; margin: 0.8rem 0; }
-.share-card { height: min(50vh, 30rem); aspect-ratio: 4 / 5; display: block; border: 2px solid var(--gold); box-shadow: 0 0 2rem #000a; }
-.share-empty { display: grid; place-items: center; opacity: 0.7; }
-.share-side { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; width: 17rem; }
-.share-save { font-size: 1.3rem; color: var(--ink); background: var(--gold); padding: 0.8rem 1.6rem; margin: 0.4rem; text-decoration: none; }
-.share-quiet { background: transparent; color: var(--marble); border: 1px solid var(--marble); font-size: 1rem; }
-.share-small { font: 0.95rem system-ui, sans-serif; opacity: 0.75; margin: 0.2rem 0; min-height: 3.6em; }
-.share-qr { width: 11rem; height: 11rem; display: block; }
-.share-link { color: var(--gold); font: 0.9rem ui-monospace, monospace; word-break: break-all; }
-.share-progress { width: 100%; height: 6px; background: #0008; }
-.share-progress span { display: block; height: 100%; width: 35%; background: var(--gold); transition: width 0.5s; animation: share-pulse 1.2s ease-in-out infinite; }
-.share-progress.share-video span { width: 80%; }
+/* The share panel. Its colours come only from the theme's variables (src/theme.css) or from where the panel is mounted, so it follows the theme.
+   Every rule sits under .share-panel with two classes, so each one outranks the theme's "button", ".menu p" and ".overlay p" rules and touches nothing else.
+   Share, Save and Close are theme buttons: only their size is set here. Text is not faded. */
+section.share-panel { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; justify-content: center; margin: 0.8rem 0; }
+.share-panel .share-card { display: block; height: min(40vh, 22rem); aspect-ratio: 4 / 5; border: 2px solid var(--ink); }
+.share-panel .share-empty { display: grid; place-items: center; padding: 1rem; font-size: 1rem; }
+.share-panel .share-side { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; width: 17rem; max-width: 100%; }
+/* Share and Save fill the column, whatever width the theme gives a button. */
+.share-panel .share-action { min-width: 0; width: 100%; margin: 0.3rem 0; }
+.share-panel .share-action:disabled { opacity: 0.45; }
+/* Close is a small button: it undoes the theme button's width, capitals and letter spacing. */
+.share-panel .share-quiet { min-width: 0; text-transform: none; letter-spacing: normal; font-size: 1rem; padding: 0.35rem 0.9rem; margin: 0.3rem 0; }
+.share-panel .share-small { margin: 0.2rem 0; min-height: 3.9em; font-size: 0.95rem; line-height: 1.3; }
+.share-panel .share-qr { display: block; width: 11rem; height: 11rem; }
+.share-panel .share-link { color: inherit; font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.9rem; word-break: break-all; }
+.share-panel .share-progress { width: 100%; height: 6px; background: var(--ink); }
+.share-panel .share-progress span { display: block; height: 100%; width: 35%; background: var(--clay-light); transition: width 0.5s; animation: share-pulse 1.2s ease-in-out infinite; }
+.share-panel .share-stage-video span { width: 80%; }
 @keyframes share-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .share * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) {
+  .share-panel .share-progress span { animation: none; }
+}
