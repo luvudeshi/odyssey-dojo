@@ -71,7 +71,7 @@ Spoken words on the main path: 203 today, 225 with every tagged line in. At 150 
 
 **Judge:** stands on the tape. The tab is already on "Choose your fighting style".
 
-**Say (34 words):** "This is Odyssey Fighter. You are Odysseus, fighting your way home from Troy. No controller: the camera tracks your body. First stop is the Cyclops's cave. Stand still, arms down, until his name clears."
+**Say (34 words):** "This is Odyssey Dojo. You are Odysseus, fighting your way home from Troy. No controller: the camera tracks your body. First stop is the Cyclops's cave. Stand still, arms down, until his name clears."
 
 Then click Boxer and say nothing until the banner "Polyphemus, The Cyclops of the Cave" is gone (a second and a half). The game takes the resting stance from the first 20 camera frames of the fight and never measures it again.
 

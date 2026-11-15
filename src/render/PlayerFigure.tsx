@@ -8,7 +8,9 @@ import { MathUtils, Vector3 } from "three";
 import type { Group, Mesh } from "three";
 import type { Landmark, PoseFrame } from "../core/types";
 import { JOINT, joint } from "../pose/signals";
-import { battle, decay, nowSeconds } from "./battle";
+import { defendSeen } from "../hud/DefendFlash";
+import { battle, calmMotion, decay, nowSeconds } from "./battle";
+import { LOOK, dodge, stepDodge } from "./effects/dodge/dodgeMotion";
 import { HURT_SECONDS, STRIKE_SECONDS, blendPose, chooseAction, makePose, syntheticPose } from "./heroPose";
 import type { HeroAction } from "./heroPose";
 
@@ -121,8 +123,13 @@ export function PlayerFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null>
     const targetZ = 0.6 * decay(now, battle.playerHitAt, 0.4) + (action === "defeat" ? 0.4 : 0) - (action === "victory" ? 0.3 : 0);
     // The webcam lean already shows a dodge; only the stance needs help sliding.
     const targetX = live ? 0 : action === "dodgeLeft" ? -DODGE_X : action === "dodgeRight" ? DODGE_X : 0;
-    // Dodges snap aside and back; the other steps ease.
-    battle.heroX = MathUtils.damp(battle.heroX, targetX, 18, dt);
+    // Dodges snap aside and back; the other steps ease. the dodge look carries him on a spring instead (effects/dodge).
+    const look = calmMotion() ? null : LOOK;
+    stepDodge(dodge, look, {
+      now, dt, held: battle.held, seen: defendSeen(phase ?? { kind: "intro", msLeft: 0 }), defendedAt: battle.defendedAt,
+      defendedMove: battle.defendedMove, live,
+    });
+    battle.heroX = look ? dodge.x : MathUtils.damp(battle.heroX, targetX, 18, dt);
     battle.heroZ = MathUtils.damp(battle.heroZ, targetZ, 9, dt);
     // A counted strike's leap to the monster is measured on the GLB hero (hero/reach.ts); this figure rides along.
     figure.current?.position.set(battle.heroX + battle.reachX, battle.reachY, HOME_Z + battle.heroZ + battle.reachZ);

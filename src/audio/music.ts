@@ -1,13 +1,13 @@
 // Background music: one clip per scene from public/audio/music, crossfaded when the scene changes.
 // Only clips listed in index.json there are requested. A missing file, no audio or a blocked context means silence, never an error.
-// To replace a clip, drop <scene>.mp3 into public/audio/music (or run "genClips.ts music") and keep "<scene>" in index.json.
+// To replace a clip, drop <scene>.mp3 into public/audio/music and keep "<scene>" in index.json. The three loops are CC BY tracks (CREDITS.md).
 // Each clip's loudness is measured when it loads, so a replacement that is louder or quieter needs no retuning here.
 import { log } from "../core/log";
 import { sharedAudioContext } from "./sfx";
 import { tabHidden } from "./tab";
 import { watchVoice } from "./voice";
 
-export type MusicScene = "menu" | "fight" | "win" | "loss";
+export type MusicScene = "menu" | "fight" | "boss" | "win" | "loss";
 
 interface SceneSpec {
   /** How loud the clip should come out before MUSIC_GAIN, as an RMS level. The clip is raised or lowered to meet it. */
@@ -19,8 +19,8 @@ interface SceneSpec {
 }
 
 const CLIP_DIR = "/audio/music";
-/** Effects play through a gain of 0.5 and the voice at full level; music sits well under both. */
-const MUSIC_GAIN = 0.16;
+/** Effects play through a gain of 0.5 and the voice at full level; music sits under both, and DUCK drops it further under a spoken line. */
+const MUSIC_GAIN = 0.3;
 /** How far a loop drops again while a line is spoken, and how fast it gets there (a time constant, in seconds). */
 const DUCK = 0.5;
 const DUCK_SECONDS = 0.12;
@@ -44,10 +44,11 @@ const STOP_MARGIN_SECONDS = 0.05;
 const SILENCE = 0.0002;
 
 const SCENES: Readonly<Record<MusicScene, SceneSpec>> = {
-  // The cave sits about 4 dB under the battle music. The committed clip is very quiet (RMS 0.0098), so it is raised about ten times.
-  menu: { loudness: 0.1, fadeIn: FADE_SECONDS, loop: { seam: 2 } },
-  // The battle clip repeats its rhythm every 6 seconds, so a pass of 42 seconds joins on the beat.
-  fight: { loudness: 0.16, fadeIn: FADE_SECONDS, loop: { seam: 0.75, period: 42 } },
+  // The menu track sits about 4 dB under the battle music. Each track runs to its ending, which is mixed into its opening.
+  menu: { loudness: 0.1, fadeIn: FADE_SECONDS, loop: { seam: 3 } },
+  fight: { loudness: 0.16, fadeIn: FADE_SECONDS, loop: { seam: 2 } },
+  // The last stop's own track, a little over the other fights.
+  boss: { loudness: 0.18, fadeIn: FADE_SECONDS, loop: { seam: 2 } },
   // The stings are not dipped under the voice, so they are set a little under the battle music instead.
   win: { loudness: 0.14, fadeIn: STING_FADE_SECONDS },
   loss: { loudness: 0.14, fadeIn: STING_FADE_SECONDS },
@@ -313,7 +314,7 @@ function createRig(): Rig | null {
 }
 
 /**
- * Fades to the music for a scene: "menu" (cave ambience, looped), "fight" (battle music, looped), "win" or "loss"
+ * Fades to the music for a scene: "menu", "fight" or "boss" (the last stop's fight), all looped, and "win" or "loss"
  * (a short sting, played once). Asking for the scene already wanted does nothing, so this can be called on every render.
  * A sting that plays to its end is followed by the menu loop, faded in slowly, so the result screen is not left silent.
  */

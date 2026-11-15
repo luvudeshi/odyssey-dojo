@@ -4,10 +4,13 @@
 //   npx tsx server/tools/genClips.ts story           Homer's lines   -> public/audio/narration/<id>.mp3
 //                                                    monster taunts  -> public/audio/taunts/<id>.mp3
 //   npx tsx server/tools/genClips.ts sfx             sound effects   -> public/audio/sfx/<event>.mp3
+//                                                    (--only=<clip> makes just that one; with --force, only that one again)
 //   npx tsx server/tools/genClips.ts music           music, ambience -> public/audio/music/<scene>.mp3
 //   npx tsx server/tools/genClips.ts stops           each later stop's ambience and monster sounds
 //                                                    -> public/audio/stops/<enemy id>/<clip>.mp3
 //                                                    (--only=<enemy id>/<clip> makes just that one; --max=<n> caps the calls)
+//   npx tsx server/tools/genClips.ts power           each god's power     -> public/audio/power/<god id>.mp3
+//                                                    (--only=<god id> makes just that one)
 // Existing clips are kept (add --force to redo them). Each folder's index.json lists what exists.
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -19,6 +22,7 @@ import type { AiClients } from "../ai/types";
 import { forcedMonsterVoice, forcedVoice, pickMonsterVoice, pickVoice } from "../ai/voices";
 import { loadConfig } from "../env";
 import { withTimeout } from "../lib/timeout";
+import { POWER_CLIPS } from "./powerClips";
 import { STOP_AMBIENCE_FORMAT, STOP_CLIP_MAX_BYTES, STOP_CLIPS } from "./stopClips";
 
 interface Line {
@@ -35,7 +39,10 @@ interface Job {
 
 // Best first. The first model the key is allowed to use wins.
 const SPEECH_MODELS = ["eleven_v4", "eleven_multilingual_v2"] as const;
-/** What each combat event should sound like, and for how many seconds. */
+/**
+ * What each combat event should sound like, and for how many seconds. The last five are not events: the chime for an
+ * unlocked achievement and one sound for each kind of defend (src/audio/cues.ts names them).
+ */
 const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]>> = {
   telegraph: ["A giant winding up a heavy wooden club in a stone cave, low ominous whoosh rising in tension", 1],
   defended: ["A bronze shield blocking a heavy blow, sharp metallic clang with a short ring", 0.8],
@@ -48,6 +55,17 @@ const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]
   powerUnleashed: ["A divine thunderclap with a burst of crackling holy energy", 2],
   won: ["A short triumphant ancient Greek fanfare of brass horns and drums", 3],
   lost: ["A dark low descending drone with distant thunder, the sound of defeat", 3],
+  // The chime is the fifth take, picked by measurement, not by ear (docs/audio-levels.md has the numbers). Asking for
+  // "plucked lyre notes ending on a bell tone" and for "plucked harp notes" gave one low pluck each; "small bells" and
+  // "a glockenspiel" gave a thin sparkle nearly all above 3 kHz. This one has several notes in its first 0.4 s.
+  unlock: ["A short achievement chime: a quick upward arpeggio of four bright notes on a lyre and small bells, warm and sparkling, ending on a clear high note", 1.1],
+  defendBlock: ["A sword striking a bronze shield, one short sharp metallic clang at once, dry with almost no ring", 0.6],
+  // The dodge is the fifth take. The four before ("a body moving past", "something swinging past and missing", "a thin
+  // fast swish", "a thin stick swung very fast") each came back as one thump of under 0.1 s; this one swells and fades over 0.35 s.
+  defendDodge: ["A quick breathy swoosh, a short gust of wind sweeping past, bright and airy, like a cloak whipped aside", 0.7],
+  // The duck is the second take: the first ("one deep low swish of air, short", asked for as 0.5 s) was a 0.1 s thump.
+  defendDuck: ["A heavy wooden club swung hard through the air just overhead, one deep low whoosh passing by", 0.7],
+  defendJump: ["A light quick leap off the ground, a soft springy upward whoosh with a faint flutter of cloth, short", 0.5],
 };
 
 interface Track {
@@ -57,20 +75,8 @@ interface Track {
   readonly seconds: number;
 }
 
-/** One clip per music scene in src/audio/music.ts. Prompts describe the sound only: no artist, film, game or existing piece. */
+/** The two stings. The menu, fight and boss loops are CC BY tracks by Shane Ivers (CREDITS.md), so they are not made here. Prompts describe the sound only: no artist, film, game or existing piece. */
 const MUSIC: Readonly<Record<string, Track>> = {
-  menu: {
-    kind: "ambience",
-    prompt:
-      "Ambience inside a huge stone sea cave: water drips echoing off the rock, a low wind drone through the tunnels, surf rolling outside the cave mouth. Continuous and even, no music, no voices",
-    seconds: 30,
-  },
-  fight: {
-    kind: "music",
-    prompt:
-      "Instrumental battle music with an ancient Greek feel, for a fight against a giant in a cave. Driving frame drums and low war drums at a steady fast tempo, a plucked lyre ostinato, a shrill aulos reed melody, a low drone underneath. Tense and heroic. Full intensity from the first beat to the last, with no intro, no outro and no fade out, so it can loop. No vocals.",
-    seconds: 48,
-  },
   win: {
     kind: "music",
     prompt:
@@ -266,7 +272,11 @@ async function main(): Promise<void> {
   if (command === "sfx") {
     const folder = join(PUBLIC, "sfx");
     mkdirSync(folder, { recursive: true });
+    const only = flags.filter((flag) => flag.startsWith("--only=")).map((flag) => flag.slice("--only=".length));
+    const unknown = only.filter((event) => !Object.hasOwn(SOUNDS, event));
+    if (unknown.length > 0) throw new Error(`no such sound effect: ${unknown.join(", ")}`);
     for (const [event, [prompt, seconds]] of Object.entries(SOUNDS)) {
+      if (only.length > 0 && !only.includes(event)) continue;
       const target = join(folder, `${event}.mp3`);
       if (existsSync(target) && !force) continue;
       try {
@@ -281,7 +291,31 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error("usage: genClips.ts voices | athena | story | sfx | music | stops [--force]");
+  if (command === "power") {
+    const folder = join(PUBLIC, "power");
+    mkdirSync(folder, { recursive: true });
+    const only = flags.filter((flag) => flag.startsWith("--only=")).map((flag) => flag.slice("--only=".length));
+    const unknown = only.filter((god) => !Object.hasOwn(POWER_CLIPS, god));
+    if (unknown.length > 0) throw new Error(`no such power clip: ${unknown.join(", ")}`);
+    for (const [god, { prompt, seconds }] of Object.entries(POWER_CLIPS)) {
+      if (only.length > 0 && !only.includes(god)) continue;
+      const target = join(folder, `${god}.mp3`);
+      if (existsSync(target) && !force) continue;
+      try {
+        const bytes = await withTimeout(60000, (signal) => sound({ prompt, seconds, signal }));
+        writeFileSync(target, bytes);
+        log("info", "clip_written", { id: god, bytes: bytes.length });
+      } catch (error) {
+        log("warn", "clip_failed", { id: god, error: error instanceof Error ? error.message : String(error) });
+        // A refused key, a spent quota or a malformed request fails the same way for every clip, so stop spending calls.
+        if (error instanceof ElevenLabsError && (REFUSED.has(error.httpStatus) || error.httpStatus === 422 || error.httpStatus === 429)) throw error;
+      }
+    }
+    writeIndex(folder);
+    return;
+  }
+
+  throw new Error("usage: genClips.ts voices | athena | story | sfx | music | stops | power [--force]");
 }
 
 main().catch((error: unknown) => {

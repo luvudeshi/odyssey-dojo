@@ -2,10 +2,11 @@
 // With nothing in the address a made-up player (./player) takes each turn: one repetition done well, one sloppy,
 // one missed, so every grade and the work-on list can be seen with no camera.
 // In the address: ?quick=1 trains five moves, ?style=karate picks the style (?style=ask lets the screen ask), ?reps=2, ?camera=1 uses the real camera,
+// ?player=strong makes every try well and ?player=weak makes sloppy punches and misses every defend (for the line on what the session changes in the fights),
 // ?keyboard=1 has no player at all (press the key shown), ?slow=1 uses the game's own timings (the page's are shorter).
 import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { movesFor, quickMoves } from "../../src/coach/dojo";
+import { DOJO_DEFENDS, movesFor, quickMoves } from "../../src/coach/dojo";
 import type { DojoSummary } from "../../src/coach/dojo";
 import { Dojo } from "../../src/coach/ui/Dojo";
 import type { DojoTracker } from "../../src/coach/ui/Dojo";
@@ -13,17 +14,21 @@ import { startTracker } from "../../src/pose/tracker";
 import { STYLES } from "../../src/styles/registry";
 import "../../src/theme.css";
 import { scriptedPlayer } from "./player";
+import type { Effort } from "./player";
 
 const query = new URLSearchParams(window.location.search);
 // ?style=ask leaves the style out, as when training is opened from the title screen: the screen asks.
 const asking = query.get("style") === "ask";
 const style = STYLES.find((each) => each.id === query.get("style")) ?? STYLES.find((each) => each.id === "boxer") ?? STYLES[0];
 const reps = Number(query.get("reps")) || undefined;
+// ?player=strong: every try done well. ?player=weak: sloppy punches and no defend seen. Else one try of each grade.
+const who = query.get("player");
+const plan = who === "strong" ? (): Effort => "good" : who === "weak" ? (_rep: number, moveId: string): Effort => (DOJO_DEFENDS.includes(moveId) ? "miss" : "sloppy") : undefined;
 const FAST = { showMs: 1600, againMs: 800, goMs: 2600, resultMs: 1500 };
 
 /** A tracker that reads where the session is off the page (the screen writes it on its root) and plays the made-up player. */
 function madeUpTracker(): DojoTracker {
-  const player = scriptedPlayer();
+  const player = scriptedPlayer(plan);
   return {
     read: () => {
       const at = document.querySelector<HTMLElement>(".dojo")?.dataset;

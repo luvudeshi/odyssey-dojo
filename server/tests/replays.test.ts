@@ -140,7 +140,7 @@ test("a video is stored, shown on the page and served in ranges", async () => {
 
   const html = await (await call(`/replays/${made.id}`)).text();
   expect(html).toContain(`<video controls playsinline preload="metadata" src="/replays/${made.id}/video"`);
-  expect(html).toContain('download="odyssey-fighter-replay.webm"');
+  expect(html).toContain('download="odyssey-dojo-replay.webm"');
 
   const whole = await call(`/replays/${made.id}/video`);
   expect(whole.status).toBe(200);

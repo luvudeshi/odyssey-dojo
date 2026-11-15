@@ -1,0 +1,44 @@
+/* The scene behind the main menu (MenuScene.tsx). Only transforms and opacity move, so it costs almost nothing.
+   The menu is centred in the space above a band kept for the ship: the band is thin on a short window and grows with the
+   height, so the menu neither hugs the top nor leaves a blank gap below. The picture keeps its subjects in the corners,
+   the sides and that band. */
+.menu--title { background: #05090c; justify-content: safe center; padding-top: 2.8rem; padding-bottom: clamp(1.4rem, calc(36vh - 200px), 20rem); }
+.menu--title > .pb-panel__wave { z-index: 1; }
+.menu > .menu-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; --mx: 0; --my: 0; }
+.menu-scene > * { position: absolute; inset: 0; }
+
+/* The painting: a slow push in and out, and a small slide against the pointer. */
+.menu-scene__sea { inset: -3% -3% -7%; background: url("/ui/menu-scylla.webp") 50% 100% / cover no-repeat; transform: translate3d(calc(var(--mx) * -22px), calc(var(--my) * -10px), 0); transform-origin: 50% 100%; transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1); animation: menu-scene-drift 34s ease-in-out infinite alternate; will-change: transform; }
+@keyframes menu-scene-drift { from { scale: 1; translate: -0.5% 0; } to { scale: 1.06; translate: 0.6% 0; } }
+
+/* Lightning, where the bolt is in the picture (top right). */
+.menu-scene__glow { mix-blend-mode: screen; opacity: 0; background: radial-gradient(ellipse 40% 46% at 84% 20%, rgba(255, 244, 205, 0.7), transparent 72%); animation: menu-scene-flash 9s linear infinite; will-change: opacity; }
+@keyframes menu-scene-flash { 0%, 61% { opacity: 0; } 61.6% { opacity: 1; } 62.6% { opacity: 0.15; } 63.6% { opacity: 0.85; } 67% { opacity: 0; } 100% { opacity: 0; } }
+
+/* Spray and mist rolling along the water. */
+.menu-scene__mist { inset: auto -10% -4% -10%; height: 34%; background: radial-gradient(60% 100% at 28% 100%, rgba(205, 232, 236, 0.24), transparent 70%), radial-gradient(52% 90% at 76% 100%, rgba(205, 232, 236, 0.2), transparent 70%); transform: translate3d(calc(var(--mx) * -40px), 0, 0); animation: menu-scene-mist 19s ease-in-out infinite alternate; }
+@keyframes menu-scene-mist { from { translate: -4% 0; opacity: 0.6; } to { translate: 4% -3%; opacity: 1; } }
+
+/* Rain: two sheets of slanted streaks. Each slides down by exactly one tile, so the loop has no seam. */
+.menu-scene__rain { inset: -40%; rotate: 11deg; }
+.menu-scene__rain::before { content: ""; position: absolute; inset: 0; will-change: transform; }
+.menu-scene__rain--far { opacity: 0.5; transform: translate3d(calc(var(--mx) * -34px), 0, 0); }
+.menu-scene__rain--far::before { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150'><g stroke='%23cfe4f5' stroke-width='1' stroke-linecap='round' opacity='0.55'><path d='M12 4v26M48 70v30M82 18v22M118 96v30M136 40v20M66 118v24M28 104v18'/></g></svg>"); animation: menu-scene-rain-far 0.5s linear infinite; }
+.menu-scene__rain--near { opacity: 0.6; transform: translate3d(calc(var(--mx) * -64px), 0, 0); }
+.menu-scene__rain--near::before { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><g stroke='%23e6f1fb' stroke-width='1.6' stroke-linecap='round' opacity='0.6'><path d='M30 10v58M150 120v70M222 30v52M92 176v60'/></g></svg>"); animation: menu-scene-rain-near 0.36s linear infinite; }
+@keyframes menu-scene-rain-far { to { transform: translate3d(0, 150px, 0); } }
+@keyframes menu-scene-rain-near { to { transform: translate3d(0, 260px, 0); } }
+
+/* Darkens only the middle, behind the logo and the cards; the corners, the sides and the band below stay clear. */
+.menu-scene__shade { background: radial-gradient(ellipse 46% 50% at 50% 36%, rgba(3, 7, 9, 0.66), rgba(3, 7, 9, 0.4) 58%, transparent 100%); }
+
+.menu--title .verse, .menu--title .lead, .menu--title .notice { text-shadow: 0 2px 6px #000, 0 0 18px rgba(0, 0, 0, 0.9); }
+.menu--title .menu-card { background: rgba(24, 18, 14, 0.92); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55); }
+.menu--title .menu-link { padding: 6px 14px; border-radius: 999px; background: rgba(8, 6, 5, 0.7); }
+.menu--title .menu-link:hover, .menu--title .menu-link:focus-visible { background: rgba(8, 6, 5, 0.85); }
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-scene__sea, .menu-scene__mist, .menu-scene__rain::before { animation: none; transition: none; transform: none; }
+  .menu-scene__glow { animation: none; opacity: 0.4; }
+  .menu-scene__rain { display: none; }
+}

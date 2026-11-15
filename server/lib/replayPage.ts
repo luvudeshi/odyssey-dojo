@@ -39,7 +39,7 @@ function shell(title: string, body: string): string {
     "</head>",
     "<body>",
     "<main>",
-    '<p class="kicker">Odyssey Fighter</p>',
+    '<p class="kicker">Odyssey Dojo</p>',
     body,
     "</main>",
     "</body>",
@@ -65,17 +65,17 @@ export function replayPage(replay: StoredReplay): string {
   parts.push(resultLine(replay));
   if (replay.video !== null) parts.push(`<video controls playsinline preload="metadata" src="${base}/video"></video>`);
   const links: string[] = [];
-  if (replay.hasCard) links.push(`<a href="${base}/card.png" download="odyssey-fighter-card.png">Save the card</a>`);
+  if (replay.hasCard) links.push(`<a href="${base}/card.png" download="odyssey-dojo-card.png">Save the card</a>`);
   if (replay.video !== null) {
-    links.push(`<a href="${base}/video" download="odyssey-fighter-replay.${replay.video}">Save the replay</a>`);
+    links.push(`<a href="${base}/video" download="odyssey-dojo-replay.${replay.video}">Save the replay</a>`);
   }
   if (links.length > 0) parts.push(`<div class="links">${links.join("")}</div>`);
   parts.push("<footer>Fought with a webcam at HackUTA 2026.</footer>");
-  return shell(`${godName} | Odyssey Fighter`, parts.join("\n"));
+  return shell(`${godName} | Odyssey Dojo`, parts.join("\n"));
 }
 
 export function missingPage(): string {
-  return shell("Replay not found | Odyssey Fighter", [
+  return shell("Replay not found | Odyssey Dojo", [
     "<h1>Lost at sea</h1>",
     "<p>This replay is gone. Only the newest fights are kept, so ask for a fresh code.</p>",
   ].join("\n"));

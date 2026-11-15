@@ -49,7 +49,8 @@ async function main(): Promise<void> {
     const voices = config.elevenLabsKey === null ? null : createElevenLabs(config.elevenLabsKey).voices;
     // Both at once, so a dead network costs one timeout, not two.
     const [gemini, eleven] = await Promise.all([
-      checkGemini(json, config.timeouts.levelMs),
+      // The scan's limit: this is one tiny call, and the level's own limit is the long one.
+      checkGemini(json, config.timeouts.revealMs),
       checkElevenLabs(voices, VOICES_MS),
     ]);
     report(gemini);

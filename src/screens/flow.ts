@@ -1,5 +1,6 @@
 // The screen flow as a pure reducer: main menu (title) -> style -> map -> fight -> result -> map.
-// A stop on the map starts its fight at once. Training and Account are panels of the title screen, kept in App.
+// A stop on the map starts its fight at once. Training, Account and Multiplayer are panels of the title screen, kept in App;
+// hosting or joining a room from Multiplayer moves to the host or join screen, which App draws as that same screen.
 import type { Assessment } from "../coach/contract";
 import { tuneFor } from "../coach/warmup";
 import type { EnemySpec, FightingStyle } from "../core/types";
@@ -53,9 +54,9 @@ export function openAt(enemies: readonly EnemySpec[], stopId: string | null, roo
 export function flowReducer(flow: Flow, action: FlowAction): Flow {
   switch (action.type) {
     case "hostRoom":
-      return flow.screen === "title" ? { ...flow, screen: "host" } : flow;
+      return flow.screen === "title" || flow.screen === "join" ? { ...flow, screen: "host" } : flow;
     case "joinRoom":
-      return flow.screen === "title" ? { ...flow, screen: "join" } : flow;
+      return flow.screen === "title" || flow.screen === "host" ? { ...flow, screen: "join" } : flow;
     case "joined":
       return flow.screen === "join" ? { ...flow, screen: "guest" } : flow;
     case "hosted":
@@ -93,20 +94,9 @@ export function flowReducer(flow: Flow, action: FlowAction): Flow {
   }
 }
 
-/** A stop is playable when its 3D model exists; the rest are shown as still ahead on the route. */
+/** A stop is playable when its 3D model exists; the rest are shown as still ahead on the route. Every playable stop is open from the start. */
 export function playable(enemies: readonly EnemySpec[], models: ReadonlyMap<string, unknown>): readonly boolean[] {
   return enemies.map((enemy) => models.has(enemy.id));
-}
-
-/** A playable stop is open once every playable stop before it has been beaten. */
-export function unlocked(
-  enemies: readonly EnemySpec[],
-  canPlay: readonly boolean[],
-  cleared: readonly string[],
-  index: number,
-): boolean {
-  if (!canPlay[index]) return false;
-  return enemies.every((enemy, i) => i >= index || !canPlay[i] || cleared.includes(enemy.id));
 }
 
 /** The monster for this fight: tuned to the player when a training session was finished, the registry's own otherwise. */

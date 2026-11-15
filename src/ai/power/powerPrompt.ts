@@ -60,6 +60,40 @@ export function powerUsable(power: number, phase?: string): boolean {
   return Number.isFinite(power) && power >= 1 && !(phase !== undefined && SPENT_PHASES.has(phase));
 }
 
+/** The fight phases in which the engine takes the power move (src/combat/engine.ts step(), `open`): while a card is up. */
+const LIVE_PHASES: ReadonlySet<string> = new Set(["defend", "strike"]);
+
+/**
+ * Whether a power move thrown now would be taken. False in the beat after a strike (0.7 s) and after a phase change
+ * (3 s), when no card is up and the engine drops the move: the banner then says to wait instead of asking for it.
+ * `phase` left out counts as live, as for powerUsable.
+ */
+export function powerLive(phase?: string): boolean {
+  return phase === undefined || LIVE_PHASES.has(phase);
+}
+
+/** Whether a pressed key (KeyboardEvent.key) is the one on the banner's key cap. */
+export function isPowerKey(cap: string | null, pressed: string): boolean {
+  return cap !== null && keyCap(pressed) === cap;
+}
+
+export interface Champion {
+  /** The god's name as written, for example "Poseidon". */
+  readonly name: string;
+  readonly god: GodId;
+  readonly accent: string;
+}
+
+/**
+ * Whose champion the player is, for the small plate beside the power ring while the meter is filling. Null with no god
+ * (keyboard play, a skipped scan), while the banner is up (it names the god itself), and in the phases with no ring.
+ */
+export function champion(god: GodId | null, power: number, phase?: string): Champion | null {
+  if (god === null || powerUsable(power, phase) || (phase !== undefined && SPENT_PHASES.has(phase))) return null;
+  const owner = (GODS as Partial<Record<string, (typeof GODS)[GodId]>>)[god];
+  return owner ? { name: owner.name, god: owner.id, accent: owner.accent } : null;
+}
+
 /** How long a full, unspent meter waits before Athena says it once more. */
 export const REMIND_MS = 10_000;
 /** How soon to try again when the voice was held by a more urgent line. Longer than the longest phase line (2.9 s). */

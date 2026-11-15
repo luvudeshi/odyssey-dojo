@@ -39,7 +39,7 @@ export function cardWords(fight: ShareFight, hasQr = false): CardWords {
     score: Number.isFinite(fight.score) ? fight.score : 0,
     won: fight.won,
     accent: god?.accent ?? GOLD,
-    footer: `${style}${hasQr ? "Scan to watch the fight" : "Odyssey Fighter, HackUTA 2026"}`,
+    footer: `${style}${hasQr ? "Scan to watch the fight" : "Odyssey Dojo, HackUTA 2026"}`,
   };
 }
 
@@ -57,7 +57,7 @@ export function replayMeta(words: CardWords): ReplayMeta {
 
 export function cardFileName(godName: string): string {
   const slug = godName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `odyssey-fighter-${slug === "" ? "card" : slug}.png`;
+  return `odyssey-dojo-${slug === "" ? "card" : slug}.png`;
 }
 
 /** True when the upload would send this card: it has been painted, and it is not too big for the server. */
