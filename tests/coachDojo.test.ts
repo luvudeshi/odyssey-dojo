@@ -2,6 +2,7 @@
 // show -> go -> result for every repetition of every move, a move copied from the outline is Excellent, a sloppy one
 // is Good, a missed one needs improvement and gets a tip, and the end says what to work on and how.
 import { describe, expect, test } from "vitest";
+import { COACHING } from "../src/coach/coaching";
 import {
   COUNT_FROM, DOJO_DEFAULTS, DOJO_DEFENDS, DOJO_REPS, KEYBOARD_REP, KEY_TIP, POINTS, PRACTICE_TIPS, STRIKE_FOR_EXCELLENT, SURE_FOR_EXCELLENT,
   assessmentFrom, closingLine, currentMove, gradeAttempt, gradeRep, gradedQuality, guideFor, keyRep, movesFor, quickMoves, skillFrom, skipResult,
@@ -136,16 +137,16 @@ describe("one repetition", () => {
     expect(state.last?.result.counted).toBe(true);
   });
 
-  test("a sloppy one still counts: Good, 100 points; a missed one needs improvement, 25 points, with one tip", () => {
-    // The cross, not the jab: a jab is asked for loosely, so even the made-up player's small left-arm movement counts as one.
-    const end = play({ moves: ["cross"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
-    expect(end.reps.map((each) => each.grade.label)).toEqual(["Excellent!", "Good", "Needs improvement"]);
+  test("a sloppy one still counts: Great, 100 points; a missed one needs improvement, 25 points, with one tip", () => {
+    // A defend, not a punch: the punches are asked for loosely, so even the made-up player's small arm movement counts as one.
+    const end = play({ moves: ["dodge_right"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
+    expect(end.reps.map((each) => each.grade.label)).toEqual(["Excellent!", "Great!", "Needs improvement"]);
     expect(end.reps.map((each) => each.grade.points)).toEqual([150, 100, 25]);
     expect(end.points).toBe(275);
     const missed = need(end.reps[2]);
     expect(missed.result.counted).toBe(false);
     expect(missed.reactMs).toBeNull();
-    expect(Object.values(PRACTICE_TIPS).map((each) => each.tip)).toContain(missed.tip);
+    expect([...Object.values(PRACTICE_TIPS).map((each) => each.tip), COACHING.cross?.whole.tip]).toContain(missed.tip);
   });
 
   test("every grade comes out for every move of the quick list, strikes and defends alike", () => {
@@ -153,10 +154,10 @@ describe("one repetition", () => {
     expect(end.reps.length).toBe(15);
     for (const id of quickMoves(boxer)) {
       const tiers = end.reps.filter((each) => each.moveId === id).map((each) => each.grade.tier);
-      // The jab is asked for loosely: the made-up player's small left-arm movement counts, as a Good one.
-      expect(tiers, id).toEqual(["excellent", "good", id === "jab" ? "good" : "needs_work"]);
+      // The jab, the cross and the block are asked for loosely: the made-up player's small arm movement counts, as a Good one.
+      expect(tiers, id).toEqual(["excellent", "good", id === "jab" || id === "cross" || id === "block" ? "good" : "needs_work"]);
     }
-    expect(end.points).toBe(5 * 275 + 75);
+    expect(end.points).toBe(5 * 275 + 3 * 75);
   });
 
   test("the order is every repetition of a move, then the next move; later repetitions show the outline for less time", () => {

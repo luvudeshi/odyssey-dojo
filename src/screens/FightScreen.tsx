@@ -22,7 +22,7 @@ import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { noteMiss } from "../hud/MissFlash";
-import { createMissWatch, watchPhase } from "../input/missWatch";
+import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -121,7 +121,7 @@ export function FightScreen(props: {
         if (gate.paused) { last = now; handle = requestAnimationFrame(tick); return; }
       }
       setLost(false);
-      const own = mergeInputs(keys, readPose(history, current.phase.kind === "strike" ? current.phase.move : null));
+      const own = mergeInputs(keys, readPose(history, askedMove(current.phase)));
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);

@@ -12,8 +12,8 @@ export interface DojoStyleDef {
 
 export const EXTRA_STYLES: readonly DojoStyleDef[] = [
   {
-    id: "taekwondo",
-    name: "Taekwondo",
+    id: "taekwondo_kicks",
+    name: "Taekwondo kicks",
     line: "Kicks first: keep people at leg length, where hands cannot reach.",
     strikes: ["front_kick", "roundhouse_kick", "side_kick", "low_kick", "knee"],
   },
