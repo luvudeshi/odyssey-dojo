@@ -6,7 +6,7 @@ Issue #156. The judging room's Wi-Fi may fail, so the judged path must need noth
 
 ## Result
 
-Run on 14 November 2026 on `main` at `130acfc`. Apple M4, macOS 15.6, Chrome 157.0.8103.51 headless on the GPU (ANGLE metal). Playwright-core 1.64.1 from another project on this machine, through `FPS_PLAYWRIGHT`.
+Run on 14 November 2026 on `main` at `2cd0666`. Apple M4, macOS 15.6, Chrome 157.0.8103.51 headless on the GPU (ANGLE metal). Playwright-core 1.64.1 from another project on this machine, through `FPS_PLAYWRIGHT`.
 
 | Path | Result |
 | --- | --- |
@@ -15,7 +15,7 @@ Run on 14 November 2026 on `main` at `130acfc`. Apple M4, macOS 15.6, Chrome 157
 
 The one request is `POST https://odml.pa.googleapis.com/v1/log`. It is a usage log sent by `@mediapipe/tasks-vision` 1.2.3, 60 seconds after the pose tracker starts. See "The pose library's log" below.
 
-Three full runs and two keyboard-only runs gave the same result each time. Two of the full runs were on an older `main` (`532abb2`), before the god scan and the music were wired in.
+Four full runs and two keyboard-only runs gave the same result each time. `main` moved while this was written: one full run was at `532abb2` (before the god scan and the music were wired in), two at `130acfc` and one at `2cd0666`. The numbers below are from the last one.
 
 ## The keyboard fight
 
@@ -25,13 +25,13 @@ The script holds the key on a defend card until the card changes, and taps the k
 
 ## What the keyboard path asked for
 
-101 requests, 77 different files, all from localhost, all answered 200 or 206.
+117 requests, 90 different files, all from localhost, all answered 200 or 206.
 
 | What | When | Files |
 | --- | --- | --- |
 | Page | title | `/`, three scripts and one stylesheet under `/assets`, `/favicon.svg` |
 | Models | title | `/models/polyphemus/giant.glb`, `/models/hero/spartan.glb` |
-| Voice | title | `/audio/athena/index.json` and its 45 clips, `/audio/narration/index.json`, `/audio/taunts/index.json` |
+| Voice | title | `/audio/athena/index.json` and its 58 clips, `/audio/narration/index.json`, `/audio/taunts/index.json` |
 | Sound effects | title | `/audio/sfx/index.json` and 11 clips |
 | Music | title | `/audio/music/index.json`, `menu.mp3`, `fight.mp3`, `win.mp3`, `loss.mp3` |
 | Pictures | title | `/ui/palmette.svg`, `/ui/ship.svg` |
@@ -42,7 +42,7 @@ The script holds the key on a defend card until the card changes, and taps the k
 - **Fetched late:** the only file first asked for after the first prompt card is `/ui/laurel.svg`, on the win screen. The loss screen was not reached, so its pictures were not seen. Voice clips are asked for again each time they play (206). The check turns the browser cache off, so a normal browser may not ask again.
 - **The Draco decoder** (`/draco/`) and **the textures** (`/textures/`) were not asked for in this fight. `/hdri/small_cave_1k.hdr` was not asked for either.
 - **The pose files** (`/mediapipe/`) are not asked for on the keyboard path.
-- **The AI server:** the keyboard path made no `/api` call. The build names two, `/api/reveal` and `/api/portrait`, both in the god scan, which only the webcam path shows.
+- **The AI server:** the keyboard path made no `/api` call. The build names three: `/api/reveal` and `/api/portrait` in the god scan, which only the webcam path shows, and `/api/rooms` behind "Fight together", which the check does not press.
 
 ## The webcam button, with a fake camera
 
@@ -50,21 +50,21 @@ Chrome's fake camera is a moving test pattern with nobody in it. No real camera 
 
 - The pose tracker started. It asked localhost for `/mediapipe/wasm/vision_wasm_internal.js`, `/mediapipe/wasm/vision_wasm_internal.wasm` and `/mediapipe/pose_landmarker_lite.task`, and nothing else.
 - The god scan sent `POST /api/reveal`. No server was there, so it got a 502. The game logged `reveal_offline`, chose a god in the browser, and went on to the style menu.
-- Calibration ran on the test pattern, gave up as it should with nobody there, and the fight started on the keyboard.
+- Calibration started on the test pattern. Nobody was there to calibrate, and 75 seconds after the tracker started the fight was on screen.
 
 ### The pose library's log
 
 `PoseLandmarker.createFromOptions` (`src/pose/tracker.ts:28`) starts a logger inside `@mediapipe/tasks-vision`. Every 60 seconds it posts what it has to `https://odml.pa.googleapis.com/v1/log`. The check saw one such request, 60 seconds after the tracker started.
 
-Offline it does no harm that the check could see: the request fails, the page does not throw, and the fight carried on for the 15 seconds the check kept watching. The library's code turns its logger off after the first failed send. `docs/webcam-smoke.md` already notes this request.
+Offline it does no harm that the check could see: the request fails, the page does not throw, and the game carried on for the 15 seconds the check kept watching. As read in the library's code, the logger turns itself off after the first failed send. `docs/webcam-smoke.md` already notes this request.
 
-It still makes the check exit 1, because the issue asks for that. A fix that was tried on the built page only (not in the source): add this line to the `<head>` of `index.html`.
+It still makes the check exit 1, because the issue asks for that. A fix that was tried on the built page only (not in the source, at `532abb2` and `130acfc`): add this line to the `<head>` of `index.html`.
 
 ```html
 <meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob: data:" />
 ```
 
-With it the browser refuses the log call before it becomes a request, the keyboard fight is won, the pose tracker and the god scan still work, and the check exits 0. Not tried with it: `make dev`, the later stops, and anything that calls a server on another address.
+With it the browser refuses the log call before it becomes a request, the keyboard fight is won, the pose tracker and the god scan still work, and the check exits 0. Not tried with it: `make dev`, the later stops, "Fight together", and anything that calls a server on another address.
 
 ## Addresses in the built code that were not asked for
 
@@ -78,7 +78,7 @@ Found by searching `dist/assets` for `http`. None was requested in any run.
 
 - A real camera, the camera permission prompt, or a person being tracked. The fake camera only shows that the pose runtime and model load from localhost and start.
 - The game with the AI server running but the internet down. The check never starts the server. The server's own calls to Gemini and ElevenLabs are not covered.
-- The five later stops, the loss screen, the pause menu, the settings panel, and the other four styles.
+- The five later stops, the loss screen, the pause menu, the settings panel, "Fight together", and the other four styles.
 - More than 75 seconds on the webcam path.
 - Windows or Linux, and any browser other than Chrome.
 - `make dev`. The check uses the built game.
