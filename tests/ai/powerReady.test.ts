@@ -50,6 +50,14 @@ describe("powerPrompt", () => {
     expect(lent.god).toBe("athena");
   });
 
+  test("with a hero the title names the hero, whatever god owns the power", () => {
+    const prompt = powerPrompt("artemis", true, "Odysseus");
+    expect(prompt.title).toBe("ODYSSEUS'S POWER IS READY");
+    expect(prompt.move).toBe("MOON ARROW");
+    expect(prompt.how).toBe(`Press ${prompt.key}`);
+    expect(powerPrompt("zeus", false, "Zeus").title).toBe("ZEUS'S POWER IS READY");
+  });
+
   test.each(WHO)("%s on camera: the god's own one-line gesture, short enough for two lines of the banner", (god) => {
     const prompt = powerPrompt(god, false);
     expect(prompt.how).toBe(GODS[god ?? LENDER].power.blurb);
@@ -204,6 +212,9 @@ describe("the PowerReady banner", () => {
 
   test("the plate leaves when the banner comes (it names the god itself), and for the finishing move and the result", () => {
     expect(html({ god: "poseidon", power: 1, keyboard: false, phase: "defend" })).not.toContain("power-ready--champion");
+    // With a hero there is no plate while the meter fills, and the full banner names the hero.
+    expect(html({ god: "artemis", hero: "Odysseus", power: 0.5, keyboard: true, phase: "strike" })).toBe("");
+    expect(html({ god: "artemis", hero: "Odysseus", power: 1, keyboard: true, phase: "defend" })).toContain("ODYSSEUS&#x27;S POWER IS READY");
     for (const phase of ["finisher", "won", "lost"]) {
       expect(html({ god: "poseidon", power: 0.5, keyboard: false, phase })).toBe("");
       expect(champion("poseidon", 0.5, phase)).toBeNull();
