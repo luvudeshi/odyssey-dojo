@@ -349,20 +349,20 @@ TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.t
 
 ## What was run against the real database
 
-All of it on the Tiger Data service (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0), from luvudeshi's Mac, on the branch with `main` (93d4587) merged in and the lead's four lines applied locally.
+All of it on the Tiger Data service (free plan, PostgreSQL 18.6, TimescaleDB 2.32.0), from luvudeshi's Mac, on the branch with `main` (b50da59) merged in and the lead's lines applied locally (four in `src/screens/Account.tsx`, two in `src/App.tsx`).
 
-- **The 25 database tests:** pass, three runs in a row (20.8 s, 21.1 s, 21.3 s). Afterwards no test table and no test index was left.
+- **The 25 database tests:** pass, three runs in a row (21.3 s, 20.5 s, 20.4 s). Afterwards no test table and no test index was left.
 - **Two browser profiles in headless Chrome, 1280 x 720, keyboard play, on the built game** (`vite build`, served by `vite preview`, the real server beside it):
   - In the first: create an account, move the music volume from 70 to 35, win a fight at Polyphemus (score 2190). The win sent one `POST /api/account/fights` (201) and the save. The Account page said "Saved to your account.", and the Hall of heroes showed the hero with 2,190 at Polyphemus, marked "You", under Tonight and under All time. Sign out: the progress stayed.
-  - In the second, with nothing stored: the hall, signed out, showed the same hero and score with nobody marked. Sign in with the name in capitals: the hero name, 1 fight, 1 win, the best score, 6 of 23 trophies, the cleared stop (ticked on the map) and the volume 35 were there, and that browser kept its own "Play with: Keyboard". The hall now marked the row "You". A second win there, then sign-in again on the first: 2 fights and 2 wins on both, one row for the hero in the hall, and the hall's count of fights this hour two higher.
+  - In the second, with nothing stored: the hall, signed out, showed the same hero and score with nobody marked. Sign in with the name in capitals: the hero name, 1 fight, 1 win, the best score, the same 5 of 23 trophies, the cleared stop (ticked on the map) and the volume 35 were there, and that browser kept its own "Play with: Keyboard". The hall now marked the row "You". A second win there, then sign-in again on the first: 2 fights and 2 wins on both, one row for the hero in the hall, and the hall's count of fights this hour two higher.
   - Both signed out at the end. No page error and no console error other than the refused sign-ins. The server logged `server_listening`, `accounts_ready`, `heroes_ready` and nothing else.
 - **Refusals, as the player reads them:** a wrong password ("Wrong name or password."), a taken name ("That hero name is taken. Pick another, or sign in."), and from a visitor through the tunnel ten wrong tries answered 401 and the eleventh 429 ("Too many tries. Wait a minute, then try again."). The right password from that address then waited too; the laptop's own browser still got in.
 - **Through the tunnel's headers** (`Cf-Connecting-Ip`, `Cf-Ray`, `X-Forwarded-For` on every request): sign-in works and is counted as a stranger, and the hall is read with the "You" mark.
 - **No request to `/api/account` or `/api/heroes` before the Account page is opened**, signed out, with the database on, off and silent. A whole fight sends none either. With the database off or silent the Account page asks the status once and never the hall.
-- **The off states:** no `DATABASE_URL`: "Accounts are not available here." after 67 ms. A database port that takes the connection and says nothing: the same after 2.8 s (the limit is 4 s). A port nothing listens on: status `false` in 8 ms, sign-up and the two hall paths 503 in 1 ms. In all three the fight was played, won and kept in the browser.
+- **The off states:** no `DATABASE_URL`: "Accounts are not available here." after 64 ms. A database port that takes the connection and says nothing: the same after 2.8 s (the limit is 4 s). A port nothing listens on: status `false` in 8 ms, sign-up and the two hall paths 503 in 1 ms. In all three the fight was played, won and kept in the browser.
 - **`npm run preflight -- --offline`:** 3 pass, 1 warn (no AI keys), 0 fail, with and without `DATABASE_URL`.
 - **The built game holds no part of the connection string:** built with the string in the environment, then searched for the host, the user, the password, the database name, "postgres", "DATABASE_URL" and "sslmode". None is in it.
-- The two accounts the runs made, with their saves and their four fights, were deleted afterwards. The tables stay, empty.
+- The accounts the runs made (one a run), with their saves and their fights, were deleted afterwards. The tables stay, empty.
 
 How long things take from this Mac (the database is a 40 ms round trip away):
 
