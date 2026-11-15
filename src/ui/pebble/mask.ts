@@ -34,6 +34,7 @@ export interface TextMask extends Mask { pad: number }
 
 /** Draws the string in white on a throwaway canvas and reads its alpha back. Needs a DOM. */
 export function textMask(text: string, px: number, spacing: number): TextMask | null {
+  if (typeof document === "undefined") return null;
   const c = document.createElement("canvas"), g = c.getContext("2d", { willReadFrequently: true });
   if (!g) return null;
   const font = `700 ${String(px)}px ${HEADING_FONT}`, pad = 6;

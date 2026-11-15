@@ -5,6 +5,7 @@ import { calibrationStalled } from "../pose/escape";
 import { COUNTDOWN_MS, countdownStep, presenceAt } from "../pose/presence";
 import { EMPTY_HISTORY, baselineOf, pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
+import { Button, Panel, PebbleHeading } from "../ui/pebble";
 
 export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Baseline) => void; onSkip: () => void }) {
   const { tracker, onDone, onSkip } = props;
@@ -40,11 +41,11 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
   }, [tracker, onDone, onSkip]);
 
   return (
-    <div className="overlay">
-      <h1>Stand still, arms down</h1>
-      <p className="prompt-word">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
+    <Panel as="div" ornament className="menu menu--small">
+      <PebbleHeading as="h1" text={"Stand still, arms down".toUpperCase()} px={38} tone="ochre" />
+      <p className="countdown">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
       <p className="notice">{hint ? hint.charAt(0).toUpperCase() + hint.slice(1) : "Hold it..."}</p>
-      <button className="quiet" onClick={onSkip}>Use keyboard instead</button>
-    </div>
+      <Button onClick={onSkip}>Use keyboard instead</Button>
+    </Panel>
   );
 }

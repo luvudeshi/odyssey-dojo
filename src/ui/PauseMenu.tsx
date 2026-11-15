@@ -1,5 +1,6 @@
 // Shown over a paused fight. Esc is handled by the fight (see pauseState.ts), so it works from any focus.
 import { Dialog } from "./Dialog";
+import { Button } from "./pebble";
 import { SettingsPanel } from "./SettingsPanel";
 import type { PauseView } from "./pauseState";
 
@@ -15,10 +16,10 @@ export function PauseMenu(props: {
   return (
     <Dialog title="Paused">
       <div className="ui-menu">
-        <button className="ui-button" onClick={props.onResume}>Resume</button>
-        <button className="ui-button" onClick={props.onRestart}>Restart fight</button>
-        <button className="ui-button" onClick={props.onSettings}>Settings</button>
-        <button className="ui-button danger" onClick={props.onQuit}>Quit to map</button>
+        <Button onClick={props.onResume}>Resume</Button>
+        <Button onClick={props.onRestart}>Restart fight</Button>
+        <Button onClick={props.onSettings}>Settings</Button>
+        <Button onClick={props.onQuit}>Quit to map</Button>
       </div>
     </Dialog>
   );
