@@ -1,5 +1,6 @@
 // Screen flow (see screens/flow.ts): title -> style -> quest map -> intro -> fight -> result -> map.
-import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import "./screens/menus.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
 import type { GodReveal } from "./ai/revealGod";
@@ -12,7 +13,7 @@ import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
 import { EndPanel } from "./screens/EndScreen";
-import { flowReducer, openAt, playable, unlocked } from "./screens/flow";
+import { enemyFor, flowReducer, openAt, playable, unlocked } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
 import { IntroScreen } from "./screens/IntroScreen";
@@ -27,6 +28,7 @@ import { TitleScreen } from "./screens/TitleScreen";
 import { WebcamGate } from "./screens/WebcamGate";
 import { useSettings } from "./settings/store";
 import { SettingsPanel } from "./ui/SettingsPanel";
+import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
@@ -50,6 +52,10 @@ export function App() {
   // Menu music on every screen but the fight and its result. Silent until the first click, then it starts.
   useEffect(() => { if (flow.screen !== "fight" && flow.screen !== "result") startMusic("menu"); }, [flow.screen]);
   useEffect(() => stopMusic, []);
+
+  // The monster for this fight: tuned to the player when the optional warm-up was done. Stable between renders so the fight does not restart.
+  const stop = ENEMIES[flow.index];
+  const tuned = useMemo(() => (stop ? enemyFor(stop, flow.assessment) : undefined), [stop, flow.assessment]);
 
   const cameraStatus = useSyncExternalStore(camera.subscribe, camera.status, camera.status);
   // The watchdog: plays the video again after a screen change paused it, restarts a camera that stopped.
@@ -129,20 +135,11 @@ export function App() {
 
   if (flow.screen === "style") {
     return (
-      <main className="menu">
-        <h1>Choose your fighting style</h1>
-        <p className="notice">{notice}</p>
-        {STYLES.map((style) => (
-          <button key={style.id} onClick={() => { dispatch({ type: "pickStyle", style }); }}>
-            {style.name}
-            <small>{style.blurb}</small>
-          </button>
-        ))}
-      </main>
+      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} />
     );
   }
 
-  const enemy = ENEMIES[flow.index];
+  const enemy = tuned;
   if (flow.screen === "map" || !enemy || !flow.style) {
     return (
       <QuestMap
@@ -159,6 +156,9 @@ export function App() {
     return (
       <IntroScreen
         enemy={enemy}
+        tracker={tracker}
+        assessment={flow.assessment}
+        onWarmed={(assessment) => { dispatch({ type: "warmed", assessment }); }}
         onBegin={() => { dispatch({ type: "begin", seed: Date.now() }); }}
         onBack={() => { dispatch({ type: "toMap" }); }}
       />

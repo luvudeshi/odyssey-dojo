@@ -1,6 +1,7 @@
 // The host's side of an online fight. The host runs the engine; this turns what the guest sends into engine
 // input and sends the fight back. Pure apart from the transport it is given.
 import type { CombatEvent, CombatInput, CombatState, Strike } from "../core/types";
+import type { HostMessage } from "./messages";
 import type { RoomTransport } from "./transport";
 
 /** How long a strike waits for the other player's, so two strikes a moment apart still land together. */
@@ -10,6 +11,8 @@ export const STATE_EVERY_MS = 66;
 const MAX_WAITING = 16;
 /** A room is removed 30 minutes after its last send; a "keep" every 5 minutes lets a quiet room live while the host is open. */
 export const KEEP_EVERY_MS = 5 * 60_000;
+/** A guest that asks which fight is on is answered at most this often, so asking fast cannot make the host send fast. */
+export const ANSWER_EVERY_MS = 1_000;
 
 interface Waiting {
   readonly strike: Strike;
@@ -19,6 +22,12 @@ interface Waiting {
 export interface HostLink {
   /** True while the guest's stream is open. */
   guestHere(): boolean;
+  /**
+   * Tells the guest which fight begins. It is kept while that fight is on and sent again, with the newest state,
+   * whenever the relay says the guest is here (joined late, or back after its page closed) or the guest asks, so a
+   * guest who was not there for the first one still gets into the fight. It is forgotten when the fight ends, the
+   * host stops it, the next one starts or the link closes: a guest who comes after that is told nothing.
+   */
   start(enemyId: string, styleId: string, seed: number): void;
   /**
    * The input to hand `step` this frame: the host's own (`local`, player 0) plus the guest's strikes as player 1.
@@ -46,11 +55,37 @@ export function createHostLink(transport: RoomTransport): HostLink {
   let lastSentAt = -Infinity;
   let unsent: CombatEvent[] = [];
   let ended = false;
+  /** The fight that is on, as it was announced; null between fights. */
+  let live: Extract<HostMessage, { type: "start" }> | null = null;
+  /** The newest state sent in that fight, so a guest who comes back while the host is paused has something to draw. */
+  let lastState: CombatState | null = null;
+  /** Each start gets the next number, beginning somewhere random so two host pages do not share them. */
+  let fightId = Math.floor(Math.random() * 1_000_000_000);
+  let asked = false;
+  let answeredAt = -Infinity;
+
+  const sendState = (state: CombatState, nowMs: number): void => {
+    seq += 1;
+    lastSentAt = nowMs;
+    lastState = state;
+    void transport.send({ type: "state", seq, state, events: unsent });
+    unsent = [];
+  };
+  /** Says again which fight is on. The guest drops it when it is already in that fight. */
+  const sayAgain = (): boolean => {
+    if (live === null) return false;
+    void transport.send(live);
+    return true;
+  };
 
   const keep = setInterval(() => { void transport.send({ type: "keep" }); }, KEEP_EVERY_MS);
 
   transport.onMessage((message) => {
-    if (message.type === "peer") here = message.joined;
+    if (message.type === "peer") {
+      here = message.joined;
+      // No frame may be running (the host can be paused), so the last state goes with it, under a new number.
+      if (here && sayAgain() && lastState !== null) sendState(lastState, lastSentAt);
+    } else if (message.type === "ask") asked = true;
     else if (message.type === "strike" && arrived.length < MAX_WAITING) {
       arrived.push({ move: message.move, quality: message.quality, player: 1 });
     }
@@ -65,7 +100,11 @@ export function createHostLink(transport: RoomTransport): HostLink {
       waiting = [];
       arrived = [];
       ended = false;
-      void transport.send({ type: "start", enemyId, styleId, seed });
+      lastState = null;
+      asked = false;
+      fightId += 1;
+      live = { type: "start", enemyId, styleId, seed, id: fightId };
+      void transport.send(live);
     },
     takeInput(local, nowMs) {
       const fresh = [...local.struck.map((strike) => ({ ...strike, player: 0 as const })), ...arrived];
@@ -82,21 +121,26 @@ export function createHostLink(transport: RoomTransport): HostLink {
       if (ended) return;
       unsent = [...unsent, ...events].slice(-32);
       const over = state.phase.kind === "won" || state.phase.kind === "lost";
-      if (!over && events.length === 0 && nowMs - lastSentAt < STATE_EVERY_MS) return;
-      seq += 1;
-      lastSentAt = nowMs;
-      void transport.send({ type: "state", seq, state, events: unsent });
-      unsent = [];
+      const answer = asked && nowMs - answeredAt >= ANSWER_EVERY_MS && sayAgain();
+      if (answer) {
+        asked = false;
+        answeredAt = nowMs;
+      }
+      if (!over && !answer && events.length === 0 && nowMs - lastSentAt < STATE_EVERY_MS) return;
+      sendState(state, nowMs);
       if (over) {
         ended = true;
+        live = null;
         void transport.send({ type: "end", won: state.phase.kind === "won" });
       }
     },
     stop() {
       ended = true;
+      live = null;
       void transport.send({ type: "stop" });
     },
     close() {
+      live = null;
       clearInterval(keep);
       transport.close();
     },

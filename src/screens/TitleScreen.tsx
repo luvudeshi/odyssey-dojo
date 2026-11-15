@@ -1,24 +1,30 @@
 import { speakLine } from "../audio/voice";
+import { Button, Logo, Panel } from "../ui/pebble";
 
 export function TitleScreen(props: { notice: string; problem: string; onCamera: () => void; onKeyboard: () => void; onSettings: () => void; onTogether?: () => void }) {
   return (
-    <main className="menu">
-      <h1>Odyssey Fighter</h1>
+    <Panel as="main" ornament className="menu menu--title">
+      <h1 className="sr-only">Odyssey Fighter</h1>
+      <Logo height={Math.min(240, Math.max(150, Math.round(window.innerHeight * 0.3)))} />
       <p className="verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
-      <p>Your body is the controller.</p>
-      <button onClick={() => { speakLine("homer_title"); props.onCamera(); }}>Fight with your body (webcam)</button>
-      <button className="quiet" onClick={() => { speakLine("homer_title"); props.onKeyboard(); }}>Keyboard only</button>
-      {props.onTogether && <button className="quiet" onClick={props.onTogether}>Fight together</button>}
-      <button className="quiet" onClick={props.onSettings}>Settings</button>
+      <p className="lead">Your body is the controller.</p>
+      <div className="menu__row">
+        <Button primary onClick={() => { speakLine("homer_title"); props.onCamera(); }}>Fight with your body (webcam)</Button>
+      </div>
+      <div className="menu__row">
+        <Button onClick={() => { speakLine("homer_title"); props.onKeyboard(); }}>Keyboard only</Button>
+        {props.onTogether && <Button onClick={props.onTogether}>Fight together</Button>}
+        <Button onClick={props.onSettings}>Settings</Button>
+      </div>
       <p className="notice">{props.notice}</p>
       {props.problem && (
         <div className="overlay">
           <h1>The camera did not start</h1>
           <p>{props.problem}</p>
-          <button onClick={props.onCamera}>Try the camera again</button>
-          <button className="quiet" onClick={props.onKeyboard}>Play on the keyboard</button>
+          <Button primary onClick={props.onCamera}>Try the camera again</Button>
+          <Button onClick={props.onKeyboard}>Play on the keyboard</Button>
         </div>
       )}
-    </main>
+    </Panel>
   );
 }

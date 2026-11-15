@@ -26,7 +26,7 @@ describe("PromptCard at every mastery level", () => {
         const html = renderToStaticMarkup(createElement(PromptCard, { move, target: "t", successes, left: 0.5 }));
         expect(html).toContain(move.prompt);
         expect(html).toContain(`<kbd>${keyLabel(move.key)}</kbd>`);
-        expect(html).toContain('class="timer"');
+        expect(html).toContain('role="meter"');
         expect(html.includes("HOLD")).toBe(move.kind === "defend");
         expect(html.includes("stick")).toBe(successes < 2);
       });
