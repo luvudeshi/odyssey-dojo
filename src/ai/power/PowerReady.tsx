@@ -1,12 +1,14 @@
 // The "your god's power is ready" banner: bottom centre of the fight, while the power meter is full.
 // It names the god, the move and how to throw it, and has Athena call the move aloud when the meter fills.
 // Mount it once inside the fight screen's root; it draws nothing until the meter is full and never takes a click.
+// While it is mounted the power also sounds like the god's own (src/audio/powerSound.ts): the engine's event does not name the god.
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
+import { holdPowerSound } from "../../audio/powerSound";
 import { speakPowerReady } from "../../audio/voice";
 import { log } from "../../core/log";
 import type { GodId } from "../gods/gods";
-import { READY_START, missed, nextCheckIn, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
+import { LENDER, READY_START, missed, nextCheckIn, powerPrompt, powerUsable, trackReady } from "./powerPrompt";
 import type { PowerPrompt } from "./powerPrompt";
 import "./powerReady.css";
 
@@ -40,6 +42,9 @@ export function PowerReady(props: PowerReadyProps) {
   const prompt = ready ? safePrompt(god, keyboard) : null;
   const moveId = prompt?.moveId ?? null;
   const track = useRef(READY_START);
+
+  // The power sounds like this god's for as long as the banner is in the fight, full meter or not. No god: Athena's, as the banner says.
+  useEffect(() => holdPowerSound(god ?? LENDER), [god]);
 
   useEffect(() => {
     if (moveId === null) {
