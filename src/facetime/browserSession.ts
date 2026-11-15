@@ -2,6 +2,8 @@
 // It outlives the Multiplayer card (which leaves the screen when the fight starts), so the call carries on through
 // the style pick, the map and the fight. While the friend is on the line a small plate on the host's screen shows
 // the time left and a hang up button; it is plain DOM added to the page, so no screen has to mount it.
+// When the call ends or fails in the middle of a fight the plate stays a few seconds and says why.
+import { gameSoundStream, stopGameSoundStream } from "../audio/soundOut";
 import { createPoseInput } from "../input/poseInput";
 import { ENEMIES } from "../enemies/registry";
 import { MOVES } from "../moves/registry";
@@ -9,7 +11,7 @@ import { rating } from "../pose/quality";
 import { pushFrame } from "../pose/signals";
 import { createFaceTimeApi } from "./api";
 import { startCallAudio } from "./callAudio";
-import { callMsLeft, clock as showClock, isLive, isOpen } from "./callMachine";
+import { PLATE_LINGER_MS, callMsLeft, clock as showClock, isLive, isOpen, partingLine } from "./callMachine";
 import { startCompositor } from "./compositor";
 import type { FrameShape } from "./frameLayout";
 import { openLivekitRoom } from "./livekitRoom";
@@ -25,13 +27,25 @@ function frameShape(): FrameShape {
   return new URLSearchParams(window.location.search).get("ftframe") === "landscape" ? "landscape" : "portrait";
 }
 
+/** ?ftvoice=on sends the host's microphone to the phone and plays the friend's voice here. Off by default: see startSound. */
+export function twoWayVoice(): boolean {
+  return new URLSearchParams(window.location.search).get("ftvoice") === "on";
+}
+
 export function browserDeps(): SessionDeps {
   return {
     api: createFaceTimeApi(),
     openRoom: openLivekitRoom,
     startPicture: () => startCompositor(frameShape()),
-    // When src/audio exports gameSoundStream(), this becomes startCallAudio({ gameSound: gameSoundStream }).
-    startSound: () => startCallAudio(),
+    // The game's one stream (src/audio/soundOut.ts) is what goes to the phone, and it is closed with the call.
+    startSound: () => {
+      // With the phone in the same room as this computer (a demo), the two voices make a loop: this computer's
+      // microphone hears the phone's speaker and sends it back, and the phone's microphone hears these speakers and
+      // is played on them again. So the voices are off unless the address says ?ftvoice=on (a friend far away).
+      const voices = twoWayVoice();
+      const sound = startCallAudio({ gameSound: gameSoundStream, microphone: voices });
+      return { ...sound, hear(track: MediaStreamTrack | null) { if (voices) sound.hear(track); }, stop() { sound.stop(); stopGameSoundStream(); } };
+    },
     watchFriend: async (track) => createRemotePlayer(track, await mediapipeDetector()),
     poseReader: () => createPoseInput(MOVES),
     pushFrame,
@@ -50,16 +64,43 @@ export function drive(session: FaceTimeSession, clock: () => number = () => perf
   let timer = 0;
   let plate: HTMLDivElement | null = null;
   let time: HTMLSpanElement | null = null;
+  /** A plate that is saying why the call is over, and the timer that takes it away. */
+  let parting: { readonly plate: HTMLDivElement; readonly timer: number } | null = null;
+  let inFight = false;
+
+  const dropParting = (): void => {
+    if (!parting) return;
+    window.clearTimeout(parting.timer);
+    parting.plate.remove();
+    parting = null;
+  };
 
   const showPlate = (): void => {
-    const live = isLive(session.state());
-    if (!live) {
-      plate?.remove();
+    const state = session.state();
+    if (!isLive(state)) {
+      const gone = plate;
       plate = null;
       time = null;
+      if (!gone) return;
+      const line = partingLine(inFight, state, clock());
+      inFight = false;
+      if (line === null) { gone.remove(); return; }
+      // In a fight the card is not on screen: without this the host would keep talking to nobody.
+      const name = document.createElement("span");
+      name.textContent = "FaceTime";
+      const why = document.createElement("span");
+      why.className = "ft-plate__time";
+      why.textContent = line;
+      gone.replaceChildren(name, why);
+      gone.classList.remove("ft-plate--late");
+      gone.classList.add("ft-plate--over");
+      dropParting();
+      parting = { plate: gone, timer: window.setTimeout(() => { if (parting?.plate === gone) dropParting(); }, PLATE_LINGER_MS) };
       return;
     }
+    inFight = state.phase === "playing";
     if (!plate) {
+      dropParting();
       plate = document.createElement("div");
       plate.className = "ft-plate";
       plate.setAttribute("role", "status");
@@ -103,6 +144,7 @@ export function drive(session: FaceTimeSession, clock: () => number = () => perf
     window.clearInterval(timer);
     timer = 0;
     plate?.remove();
+    dropParting();
   };
 }
 

@@ -14,13 +14,15 @@ import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
-import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
+import type { Baseline, CombatEvent, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
 import { CameraView } from "../hud/CameraView";
 import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
+import { noteMiss } from "../hud/MissFlash";
+import { createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -33,12 +35,16 @@ import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
 import { battle, noteInput, stampPower } from "../render/battle";
 import { Scene } from "../render/Scene";
+import { LEAP_SECONDS } from "../render/strikeReach";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
 import { fallsLine } from "../enemies/wording";
 import { Cutscene } from "./cutscene/Cutscene";
 import { CUTSCENE_ON } from "./cutscene/clock";
+
+/** A win's result panel waits this long, so the last blow is seen: the hero's leap out and back, then a beat on the falling monster. */
+const LAST_BLOW_MS = Math.round(LEAP_SECONDS * 1000) + 450;
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -55,7 +61,7 @@ export function FightScreen(props: {
   onQuit?: () => void;
   /** Online room: the guest's strikes join the fight and the state goes back to them. Left out in single play. */
   link?: HostLink | null;
-  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>) => ReactNode;
+  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>, events: readonly CombatEvent[]) => ReactNode;
 }) {
   const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
@@ -69,6 +75,8 @@ export function FightScreen(props: {
   const overRef = useRef(false);
   // What this fight adds to the profile's counters; handed to the result panel with the score.
   const tally = useRef<FightTally>(newTally());
+  // Every event of this fight, for the defence record and the result panel's "Defended X of Y".
+  const fightEvents = useRef<CombatEvent[]>([]);
   const [lost, setLost] = useState(false);
   const [lostWhy, setLostWhy] = useState("");
   const [state, setState] = useState(() => startFight(enemy, seed));
@@ -84,8 +92,10 @@ export function FightScreen(props: {
     speakLine("fight_start");
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
+    const watchMiss = createMissWatch();
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
+    fightEvents.current = [];
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
@@ -125,8 +135,10 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
+      if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
+      fightEvents.current.push(...result.events);
       result.events.forEach((event) => {
         playEvent(event); noteHit(event); notePhase(event);
         if (event.type === "won") startMusic("win");
@@ -152,6 +164,14 @@ export function FightScreen(props: {
   useEffect(() => { link?.start(enemy.id, style.id, seed); }, [link, enemy, style, seed]);
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
+  // A loss shows its panel at once; a win holds it until the finishing strike has landed and been seen.
+  const won = state.phase.kind === "won";
+  const [blowSeen, setBlowSeen] = useState(false);
+  useEffect(() => {
+    if (!won) return;
+    const timer = setTimeout(() => { setBlowSeen(true); }, LAST_BLOW_MS);
+    return () => { clearTimeout(timer); };
+  }, [won]);
   // With no god (keyboard play or a skipped scan) Athena lends her aegis, as the power-ready banner says.
   const patron: GodId = god ?? "athena";
   useEffect(() => { patronRef.current = patron; }, [patron]);
@@ -195,11 +215,11 @@ export function FightScreen(props: {
         />
       )}
       {cutting && <Cutscene enemy={enemy} onDone={() => { setCutting(false); }} />}
-      {over && (
+      {over && (!won || blowSeen) && (
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
-          {renderEnd(state.phase.kind === "won", state.score, state.mastery, tally.current)}
+          {renderEnd(state.phase.kind === "won", state.score, state.mastery, tally.current, fightEvents.current)}
         </div>
       )}
     </div>

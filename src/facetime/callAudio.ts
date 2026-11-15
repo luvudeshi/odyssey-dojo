@@ -124,6 +124,13 @@ export function startCallAudio(options: {
   install();
   const context = sharedAudioContext() ?? new AudioContext();
   void context.resume().catch(() => undefined);
+  // A hidden tab stops the game's audio clock (sfx.ts, quietWhileHidden), and the call service ends a call it hears
+  // nothing from in the 10 s after its ready sign. So while a call is on, the clock keeps running. sfx.ts added its
+  // own listener when sharedAudioContext() made the context, so this one runs after it and has the last word.
+  const keepRunning = (): void => { void context.resume().catch(() => undefined); };
+  if (typeof document !== "undefined") document.addEventListener("visibilitychange", keepRunning);
+  // The greeting's words are asked for now, seconds before the ready sign, so they follow the chime at once.
+  void prepareLine("athena", GREETING, fetch, GREETING_WAIT_MS);
   const out = context.createMediaStreamDestination();
   const meter = context.createAnalyser();
   meter.fftSize = 512;
@@ -205,6 +212,11 @@ export function startCallAudio(options: {
       if (friend) { friend.pause(); friend.srcObject = null; friend = null; }
       try { send.disconnect(); } catch { /* already gone */ }
       track.stop();
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", keepRunning);
+        // Back to the game's own rule: a hidden tab is silent.
+        if (document.hidden) void context.suspend().catch(() => undefined);
+      }
     },
   };
 }

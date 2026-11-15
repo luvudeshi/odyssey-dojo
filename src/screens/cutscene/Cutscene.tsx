@@ -32,19 +32,22 @@ export function Cutscene({ enemy, onDone }: { enemy: EnemySpec; onDone: () => vo
       if (CUT_AT === null && t >= total) { finish(); return; }
       handle = requestAnimationFrame(tick);
     };
-    // The skipping key press is swallowed here so it never reaches the fight's keyboard reader.
+    // The skipping key press is swallowed here so it never reaches the fight's keyboard reader. Browser shortcuts (Cmd, Ctrl, Alt) pass.
     const onKey = (event: KeyboardEvent): void => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       if (event.type === "keydown") finish();
     };
+    // Releases are swallowed until a moment after unmount, so a key held at skip time cannot reach the fight.
+    const onUp = (event: KeyboardEvent): void => { event.stopImmediatePropagation(); };
     window.addEventListener("keydown", onKey, true);
-    window.addEventListener("keyup", onKey, true);
+    window.addEventListener("keyup", onUp, true);
     handle = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(handle);
       window.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("keyup", onKey, true);
+      setTimeout(() => { window.removeEventListener("keyup", onUp, true); }, 400);
       cutClock.ms = null;
     };
   }, [enemy.id, reduced]);

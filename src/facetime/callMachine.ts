@@ -159,3 +159,16 @@ export function describe(state: CallState, now: number): string {
     case "failed": return FAILURE_MESSAGES[state.failure ?? "service"];
   }
 }
+
+/** How long the host's plate stays up with the reason after a call ends or fails during a fight. */
+export const PLATE_LINGER_MS = 6000;
+
+/**
+ * What the host's plate says for a few seconds once the call is over, or null when it should just go.
+ * Only owed when the call was in a fight: there the card is not on screen, so nothing else tells the host
+ * that the friend left or the call dropped. On the Multiplayer screen the card says it.
+ */
+export function partingLine(inFight: boolean, state: CallState, now: number): string | null {
+  if (!inFight || (state.phase !== "ended" && state.phase !== "failed")) return null;
+  return describe(state, now);
+}

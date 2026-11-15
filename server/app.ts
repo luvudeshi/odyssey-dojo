@@ -7,13 +7,19 @@ import type { Express, NextFunction, Request, Response, Router } from "express";
 import { log } from "../src/core/log";
 import type { AiClients } from "./ai/types";
 import type { Config } from "./env";
-import { isOpenPath, localOnly } from "./lib/localOnly";
+import type { Accounts } from "./lib/accounts";
+import type { Heroes } from "./lib/heroes";
+import { localOnly, readsOwnBody } from "./lib/localOnly";
 
 export interface Deps {
   readonly config: Config;
   readonly ai: AiClients;
   /** Replaces the local-only guard. Only tests set it, to reach the room limits with callers the guard would refuse. */
   readonly guard?: (request: Request, response: Response, next: NextFunction) => void;
+  /** Replaces the accounts made from config.databaseUrl. Only tests set it, to give the tables a prefix and move the clock. */
+  readonly accounts?: Accounts;
+  /** Replaces the hall of heroes made on top of the accounts. Only tests set it, to give its tables the same prefix and clock. */
+  readonly heroes?: Heroes;
 }
 
 export type Register = (router: Router, deps: Deps) => void;
@@ -30,11 +36,11 @@ export async function createApp(deps: Deps): Promise<Express> {
   app.use(deps.guard ?? localOnly);
   // Webcam snapshots arrive as base64 inside JSON, and only the routes this machine alone may call take them.
   // Every path another device or a tunnel can reach skips this parser, so nobody outside can make the server hold
-  // 6 MB: the room relay reads its own, much smaller bodies (routes/rooms.ts). Express matches paths without regard to case.
+  // 6 MB: the room relay and the account routes read their own, much smaller bodies (routes/rooms.ts, routes/account.ts). Express matches paths without regard to case.
   const json = express.json({ limit: "6mb" });
   app.use((request, response, next) => {
     const lower = request.path.toLowerCase();
-    if (!lower.startsWith("/api/") || isOpenPath(lower)) next();
+    if (!lower.startsWith("/api/") || readsOwnBody(lower)) next();
     else json(request, response, next);
   });
 

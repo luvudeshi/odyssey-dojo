@@ -9,7 +9,8 @@
 //    remote picture (and counts the lit pixels, to show the picture really arrived) and answers with the pose it
 //    knows it drew. The real pose model on a real FaceTime picture is NOT exercised by this page.
 // In the address: ?frame=landscape sends the wide picture; ?left=20 starts the call clock with 20 seconds left,
-// to see the goodbye and the end; ?auto=0 leaves the buttons to you.
+// to see the goodbye and the end; ?auto=0 leaves the buttons to you; ?leave=5 has the friend hang up 5 seconds
+// into the fight, to see what the host is told.
 import { StrictMode, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { guideFor } from "../../src/coach/guide";
@@ -41,6 +42,7 @@ const query = new URLSearchParams(window.location.search);
 const shape = query.get("frame") === "landscape" ? "landscape" : "portrait";
 const auto = query.get("auto") !== "0";
 const startLeft = Number(query.get("left")) || 0;
+const leaveAfter = Number(query.get("leave")) || 0;
 const enemy = ENEMIES.find((each) => each.id === (query.get("enemy") ?? "polyphemus")) ?? ENEMIES[0];
 const style = STYLES.find((each) => each.id === (query.get("style") ?? "boxer")) ?? STYLES[0];
 const FAKE_NUMBER = "+1 555 555 0100";
@@ -122,6 +124,7 @@ function Page() {
       call: () => Promise.resolve({ ok: true, value: { callId: "loopback-call" } }),
       callState: () => Promise.resolve("active"),
       standIn: () => Promise.resolve({ ok: false, why: "not_set_up", message: "The loopback page has no real room." }),
+      hangUp: () => Promise.resolve(true),
     };
     let asked: string | null = null;
     const friend = madeUpFriend(() => ({ move: asked }));
@@ -169,9 +172,15 @@ function Page() {
     let answered = false;
     let ringingSince: number | null = null;
     let defended: string | null = null;
+    let playingSince: number | null = null;
     const loop = (now: number): void => {
       const session = made.session;
       const phase = session.state().phase;
+      if (phase === "playing" && playingSince === null) playingSince = now;
+      // ?leave=N: the friend hangs up N seconds into the fight.
+      if (leaveAfter > 0 && phase === "playing" && playingSince !== null && now - playingSince > leaveAfter * 1000) {
+        made.room.emit({ type: "left", identity: "facetime-bridge" });
+      }
       meter.phase = phase;
       meter.peak = Math.max(meter.peak, sound.current?.level() ?? 0);
       made.friend.draw(now);
