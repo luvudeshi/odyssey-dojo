@@ -7,7 +7,8 @@ import { GODS, GOD_IDS } from "../../src/ai/gods/gods";
 import type { GodId } from "../../src/ai/gods/gods";
 import { PowerReady } from "../../src/ai/power/PowerReady";
 import {
-  LENDER, MAX_ANNOUNCEMENTS, READY_START, REMIND_MS, RETRY_MS, champion, missed, nextCheckIn, powerPrompt, powerUsable, trackReady,
+  LENDER, MAX_ANNOUNCEMENTS, READY_START, REMIND_MS, RETRY_MS, champion, isPowerKey, missed, nextCheckIn, powerLive, powerPrompt, powerUsable,
+  trackReady,
 } from "../../src/ai/power/powerPrompt";
 import type { ReadyTrack } from "../../src/ai/power/powerPrompt";
 import { ATHENA_LINES } from "../../src/audio/athenaLines";
@@ -92,6 +93,31 @@ describe("powerUsable", () => {
   test("a full meter is of no use in the finishing move or after the result", () => {
     expect(["intro", "defend", "strike", "recover"].map((phase) => powerUsable(1, phase))).toEqual([true, true, true, true]);
     expect(["finisher", "won", "lost"].map((phase) => powerUsable(1, phase))).toEqual([false, false, false]);
+  });
+});
+
+describe("powerLive", () => {
+  test("the power move is taken only while a card is up: the engine's own two phases, read from its source", () => {
+    expect(["defend", "strike"].map((phase) => powerLive(phase))).toEqual([true, true]);
+    expect(["intro", "recover", "finisher", "won", "lost"].map((phase) => powerLive(phase))).toEqual([false, false, false, false, false]);
+    // No phase given (the lab page): only the meter decides, as for powerUsable.
+    expect(powerLive()).toBe(true);
+    // If the engine opens another phase to the power, this fails and the banner must follow.
+    const open = /const open = ([^;]+);/.exec(readFileSync("src/combat/engine.ts", "utf8"))?.[1] ?? "";
+    expect([...open.matchAll(/state\.phase\.kind === "(\w+)"/g)].map((match) => match[1])).toEqual(["defend", "strike"]);
+  });
+
+  test("the key on the banner's cap is the key that is kept, and no other", () => {
+    for (const god of WHO) {
+      const prompt = powerPrompt(god, true);
+      const key = MOVES.get(prompt.moveId)?.key ?? "";
+      expect(isPowerKey(prompt.key, key)).toBe(true);
+      expect(isPowerKey(prompt.key, "j")).toBe(false);
+      expect(isPowerKey(prompt.key, " ")).toBe(false);
+    }
+    expect(isPowerKey("Space", " ")).toBe(true);
+    expect(isPowerKey("J", "j")).toBe(true);
+    expect(isPowerKey(null, "3")).toBe(false);
   });
 });
 
@@ -209,6 +235,26 @@ describe("the PowerReady banner", () => {
   test("leaves for the finishing move and the result, and stays through the beats between prompts", () => {
     for (const phase of ["finisher", "won", "lost"]) expect(html({ god: "zeus", power: 1, keyboard: false, phase })).toBe("");
     for (const phase of ["defend", "strike", "recover"]) expect(html({ god: "zeus", power: 1, keyboard: false, phase })).not.toBe("");
+  });
+
+  test.each(WHO)("%s: between cards a full banner stays up but waits, and with a card up it asks", (god) => {
+    for (const keyboard of [true, false]) {
+      for (const phase of ["recover", "intro"]) {
+        const out = html({ god, power: 1, keyboard, phase });
+        expect(out).toMatch(/^<div class="power-ready power-ready--live [^"]*power-ready--waiting"/);
+        expect(out).toContain('<div class="power-ready__wait" aria-hidden="false">On the next card</div>');
+        // A press is marked as kept only after it is made.
+        expect(out).not.toContain("power-ready--queued");
+        // The move's name stays; the plate is the same size, so nothing jumps when the card comes.
+        expect(out).toContain(powerPrompt(god, keyboard).move);
+        expect(out).toContain("<kbd");
+      }
+      for (const phase of ["defend", "strike", undefined]) {
+        const out = html(phase === undefined ? { god, power: 1, keyboard } : { god, power: 1, keyboard, phase });
+        expect(out).not.toContain("power-ready--waiting");
+        expect(out).toContain('<div class="power-ready__wait" aria-hidden="true">On the next card</div>');
+      }
+    }
   });
 
   test("a god it does not know draws nothing instead of throwing", () => {
