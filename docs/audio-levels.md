@@ -34,6 +34,7 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | Music | Each clip is brought to its scene's RMS (0.1 to 0.18), then times `MUSIC_GAIN` 0.3, times the music volume (`music.ts`). | fight -27.5, boss -26.7, menu -30.8, loss -26.8, win -23.1 LUFS |
 | Music under a spoken line | The two loops drop by half (`DUCK` 0.5). The stings do not. | fight -40.0, menu -42.5 LUFS |
 | Ambience | Each clip is brought to RMS 0.08, then times `AMBIENCE_GAIN` 0.16, times the music volume (`stopAudio.ts`). | -38.2 LUFS (-39.1 to -37.6) |
+| The unlock chime and the four defend sounds | Five files in the effects folder (`cues.ts` names them, `sfx.ts` plays them). Each is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `DEFEND_GAIN` 0.6 or `UNLOCK_GAIN` 0.45. The silence a clip starts with is skipped. | defends -21.4 LUFS (-24.0 to -18.8), chime -19.4 LUFS |
 
 Athena's range leaves out `athena/fight_start.mp3`, which was replaced by a shorter take while this work was under way and was levelled afterwards (see "What was changed"). It is at -15.6 LUFS, inside the range.
 
@@ -46,6 +47,30 @@ What was wanted: Athena's calls clearly on top, Homer and the monsters near her,
 - **A taunt is 6.5 LU under her.** The clips are 3.4 LU under hers, and `TAUNT_VOLUME` takes 3.1 dB more because a taunt plays at the same time as her calls. Before this change a taunt was 9.6 LU under her (-25.0 LUFS), quieter than most of the effects around it. It is now level with the median stop event (-22.4) and still 2.2 LU under the hit sound (`enemyHit`, -19.9). `TAUNT_VOLUME` was not changed: it is in `voice.ts`, which others are editing, and nobody has heard whether a louder taunt masks her calls.
 - **Most effects are under Athena.** The median effect is 10 LU under her, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
 - **Music is under the voice, ambience well under.** On 14 November the owner asked for music that can be heard, so `MUSIC_GAIN` went from 0.16 to 0.3 (5.5 dB more) with the three new tracks. The fight music is 8.5 LU under Athena, and 14.5 LU under while she speaks. The menu track is 12 LU under Homer, 18 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7); the music is now short of that even with the dip, by choice. If a line is hard to hear in a loud room, lower `MUSIC_GAIN` or the music volume setting.
+
+### The unlock chime and the defend sounds
+
+Added later the same day: five clips in `public/audio/sfx`, made with `npx tsx server/tools/genClips.ts sfx`. `unlock.mp3` is the chime for an unlocked achievement (`playUnlock()` in `src/audio/sfx.ts`). `defendBlock`, `defendDodge`, `defendDuck` and `defendJump` play on a `defended` event in place of `sfx/defended.mp3`, picked by the attack's counter; a defend with no clip of its own still plays `defended.mp3`. The files are as ElevenLabs returned them, between -41.1 and -16.6 LUFS, so `sfx.ts` levels each one when it loads, the way the stop events are levelled. They are listed apart from the other effects below (`sfx (unlock and defends)`) because of that.
+
+- **The defends sit between -24.0 and -18.8 LUFS at the listener, median -21.4.** The one clip they replace (`sfx/defended`) is at -23.4, a hit on the enemy (`sfx/enemyHit`) at -19.9 and Athena at -15.6. A figure in LUFS is rough on clips this short: the meter works in blocks of 0.4 s.
+- **The chime is at -19.4 LUFS**, level with Homer (-19.0), 3.8 LU under Athena and 9.2 LU over the win sting (-28.6) it plays on top of. It goes straight to the output and stops nothing: a line being spoken carries on.
+- **None can clip by itself.** The block's clang is held by the peak rule, so its loudest sample is 0.54 at the output (0.9 times 0.6). The others are held by the loudness and peak lower: the chime at about 0.35.
+- **The jump is raised as far as the rule allows, 12 times.** The file is very quiet (-41.1 LUFS, peak -26.8 dBTP), so it ends about 2.6 LU under the median of the four.
+- **Three files start late and the game skips that.** `defendDuck` has 114 ms of silence before the sound, `defendDodge` 94 ms and `defendJump` 52 ms. `sfx.ts` starts each clip at its first sample above -50 dBFS (never more than half a second in). The lead column below is the file's, not what is heard.
+- **What is heard, by the numbers.** Time is from the clip's first sound; "within 20 dB" is the stretch where a 20 ms window is within 20 dB of the loudest one.
+
+| clip | heard for | within 20 dB of its loudest | share of energy above 500 Hz | above 1 kHz | above 3 kHz |
+|---|---|---|---|---|---|
+| `unlock` | 0.98 s | 0.00 to 0.54 s; the level rises again at 0.24 and 0.34 s, which reads as more than one note | 96% | 64% | 4% |
+| `defendBlock` | 0.60 s | 0.00 to 0.22 s, loudest at the start | 90% | 80% | 33% |
+| `defendDodge` | 0.50 s | 0.03 to 0.39 s, a swell and a fade | 22% | 2% | 1% |
+| `defendDuck` | 0.57 s | 0.07 to 0.41 s | 4% | 1% | 0% |
+| `defendJump` | 0.31 s | 0.03 to 0.31 s | 34% | 20% | 8% |
+
+So the block is a bright hit that is over in a fifth of a second, the duck is the lowest of the four, the jump is the lightest and airiest, and the dodge is a soft swell between them. The dodge is not bright: almost all of it is under 1 kHz.
+- **The takes.** The chime and the dodge are each the fifth take and the duck the second, picked by these numbers; `server/tools/genClips.ts` says what the others were. The block and the jump are first takes.
+- **When a defend is heard.** The sound plays on the engine's `defended` event, which comes when the attack would have landed. The burst round the hero is drawn earlier, the moment the defend counts, so with an early dodge the two are apart by up to the attack's warning time. The old single sound was timed the same way.
+- Nobody has listened to any of the five.
 
 ### What the numbers say is wrong, and was not changed
 
@@ -205,6 +230,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | music | 5 | -14.5 | -11.0 | -9.8 | 4.7 | -26.8 (-30.8 to -23.1) |
 | narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
 | power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
+| sfx (unlock and defends) | 5 | -41.1 | -23.2 | -16.6 | 24.5 | -21.1 (-24.0 to -18.8) |
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
 | stops (events) | 20 | -38.0 | -20.1 | -12.3 | 25.7 | -22.4 (-31.4 to -17.0) |
@@ -346,6 +372,16 @@ None.
 | `power/hermes.mp3` | 1.20 | -37.8 | -19.8 | 341 | 92 | 15.8 | -22.0 |
 | `power/poseidon.mp3` | 2.20 | -12.1 | -0.4 | 0 | 0 | -4.6 | -16.7 |
 | `power/zeus.mp3` | 2.00 | -28.1 | -12.9 | 265 | 283 | 8.9 | -19.2 |
+
+### sfx (unlock and defends)
+
+| clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
+|---|---|---|---|---|---|---|---|
+| `sfx/defendBlock.mp3` | 0.60 | -16.6 | -0.3 | 0 | 0 | -5.0 | -21.6 |
+| `sfx/defendDodge.mp3` | 0.68 | -26.6 | -14.7 | 94 | 85 | 7.8 | -18.8 |
+| `sfx/defendDuck.mp3` | 0.68 | -23.2 | -7.7 | 114 | 0 | 2.1 | -21.1 |
+| `sfx/defendJump.mp3` | 0.48 | -41.1 | -26.8 | 52 | 123 | 17.1 | -24.0 |
+| `sfx/unlock.mp3` | 1.08 | -16.7 | -6.4 | 0 | 103 | -2.7 | -19.4 |
 
 ### sfx
 
