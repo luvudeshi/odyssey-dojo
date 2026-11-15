@@ -75,15 +75,15 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 ## 4. Gemini, ElevenLabs and Tiger Data
 
-### Google Gemini (MLH): the god scan
+### Google Gemini (MLH): a fight from a sentence
 
-**What we do with it.** Before the style menu, a webcam player gets a god scan. One snapshot goes to our own server, which asks Gemini which Olympian the player takes after (Zeus, Poseidon, Athena, Hermes, Artemis or Apollo). The god gives one power in the fight. The key stays on the server. With the server off, the scan picks a god in the browser from body measurements.
+**What we do with it.** No menu button opens this: the main menu's "Ask the Muse" button was taken out on 15 November, so it is reached only at `?ai=1`. That page opens "How do you fight?": the player types or says a sentence, our own server sends it to Gemini (`gemini-3.5-flash-lite`), and Gemini writes a fight: a title, what it heard, a named monster with its taunts, the place, the phases, and Homer's lines before and after. The page turns that into a fight on the normal fight screen. It is one call, text in and text out, made before the fight; the fight never waits on the network. The key stays on the server. With no key, or a slow or bad answer, the player gets one of five bundled fights ("A fight from the old songs").
 
-**Proof.** `server/ai/gemini.ts` (the calls and the model names), `server/routes/reveal.ts` (`POST /api/reveal`), `src/ai/revealGod.ts`, `src/screens/GodScan.tsx` (mounted in `src/App.tsx`), `server/tests/reveal.test.ts`. [FEATURES.md](FEATURES.md) lists it as in the game.
+**Proof.** `server/ai/gemini.ts` (the calls and the model names), `server/routes/level.ts` (`POST /api/level`), `src/ai/ui/museDoor.tsx` (the `?ai=1` door, drawn by `src/App.tsx`), `src/ai/ui/MuseRoute.tsx`, `src/ai/ui/StyleScreen.tsx`, `src/ai/fallbacks.ts` (the bundled fights), `tests/ai/museDoor.test.ts`, `server/tests/app.test.ts`. Pictures in `docs/screenshots/muse/`: `menu-ask-the-muse-1280x720.png`, `card-gemini-fight.png`, `fight-gemini-monster.png`. [FEATURES.md](FEATURES.md) lists it as in the game.
 
-**Show it.** On the demo laptop with the server and a key: start Story mode with the camera, stand still for the three-second count, and the god is named. `npm run preflight` prints a `gemini` line with the model that answered.
+**Show it.** On the demo laptop with the server and a key: open `http://localhost:5173/?ai=1`, type a sentence, press "Build my fight", and the card names the monster; then "Fight". `npm run preflight` prints a `gemini` line with the model that answered. Tried on 15 November: "like a Texas thunderstorm" came back from Gemini in 3.8 s as "The Wrath of Thrinacia", with the monster "Brontes the Squall".
 
-**Limits.** Camera play only, and only where the server runs with a key. On the hosted site the scan uses the browser fallback and never reaches Gemini. Fights written from a sentence by Gemini have a server route (`server/routes/level.ts`) and no menu entry: do not claim them.
+**Limits.** Only where the server runs with a key. On the hosted copy the Muse gives a bundled fight and never reaches Gemini. A Muse fight starts on the keyboard; camera play inside it was not checked on 15 November, and no Muse fight was played through to its win or loss screen that day. The god scan, the older use of Gemini, is out of the game (PR #392): `POST /api/reveal` is still on the server and no game screen reaches it, so do not claim it.
 
 ### ElevenLabs (MLH): Athena, Homer and the monsters
 
@@ -118,8 +118,8 @@ From [ARCHITECTURE.md](ARCHITECTURE.md), [FEATURES.md](FEATURES.md) and [pitch.m
 - **A full game with your body or the keyboard.** Six stops in the Odyssey's order, five fighting styles, 26 moves, each with a line on what it is for in self-defense ([moves.md](moves.md)). Pose tracking runs in the browser; every move also has a key.
 - **Training Dojo with pick-your-moves.** The Dojo card on the main menu opens a setup step where you tick the moves to practise and the tries at each (`src/coach/ui/DojoSetup.tsx`, `src/coach/catalog.ts`), then grades every try and gives one tip ([dojo.md](dojo.md), [dojo-moves.md](dojo-moves.md)).
 - **Online rooms.** Host a room, a friend joins with a four-letter code or a QR code from a laptop or a phone, and strikes thrown together do double damage ([rooms.md](rooms.md), `src/net/`, `server/routes/rooms.ts`). On the hosted copy a visitor can open a room as well as join one; what was checked there is in section 2.
-- **Two players on one camera: the logic is merged, the card is not on `main`.** `src/duo/` and its tests (`tests/duoAssign.test.ts`, `tests/duoLink.test.ts`) are in (PRs #357, #372, #381). `src/screens/Multiplayer.tsx` does not mount `DuoCard`; it has Host, Join and FaceTime only. [duo.md](duo.md) has the one diff to five lead-owned files that turns it on (`src/duo/mount.diff`). It has only been tried with a fake camera and made-up bodies, never with two real people. Do not show it as playable until the diff lands; it is not on the hosted copy either.
-- **Athena's coaching and the god scan** as in section 4, and a FaceTime friend as in section 1.
+- **Two players on one camera: mounted, never tried with two real people.** `src/duo/` and its tests (`tests/duoAssign.test.ts`, `tests/duoLink.test.ts`) are in (PRs #357, #372, #381), and `src/screens/Multiplayer.tsx` mounts `DuoCard` beside Host, Join and FaceTime ([duo.md](duo.md) names the five files). It has only been tried with a fake camera and made-up bodies. Try it with two people on the demo laptop before showing it; the hosted copy has it only once it is deployed again.
+- **Athena's coaching and the Muse's fight** as in section 4, and a FaceTime friend as in section 1.
 
 **Limits.** [FEATURES.md](FEATURES.md) "Not done" says no full webcam fight on a real body on the demo laptop was recorded in the repo, and detectors were tested on made-up poses. To confirm that this has been done since.
 

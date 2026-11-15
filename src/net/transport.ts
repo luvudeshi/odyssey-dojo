@@ -111,7 +111,7 @@ export async function createRoom(deps: NetDeps, base = ""): Promise<{ code: stri
   const answer = await post(deps, `${base}/api/rooms`);
   if (!answer) return "unreachable";
   if (answer.status === 429) return "slow_down";
-  if (answer.status === 503) return "too_many_rooms";
+  if (answer.status === 503) return field(answer.data, "error") === "too_many_rooms" ? "too_many_rooms" : "unreachable";
   const code = field(answer.data, "code");
   const token = field(answer.data, "token");
   return answer.status === 200 && code && token ? { code, token } : "unreachable";

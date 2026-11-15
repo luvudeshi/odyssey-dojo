@@ -57,6 +57,13 @@ export function EndPanel(props: {
       window.removeEventListener("keyup", guard, true);
     };
   }, []);
+  // Escape closes the open hero card, like its Close button.
+  useEffect(() => {
+    if (!showCard) return undefined;
+    const onKey = (event: KeyboardEvent): void => { if (event.key === "Escape") setShowCard(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
+  }, [showCard]);
   const learned = practisedFrom(props.mastery);
   const practised = practisedLines(learned);
   const ending = endingFor(enemyId);

@@ -8,6 +8,7 @@
 // room only the host defends. Here the defend the attack asks for counts only when both players have made it; if
 // either misses it, the attack lands on the health the two share.
 import type { CombatEvent, CombatInput, CombatState, MoveDef, PoseFrame } from "../core/types";
+import { askedMove } from "../input/missWatch";
 import { TOGETHER_MS, createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import type { NetMessage } from "../net/messages";
@@ -56,6 +57,8 @@ export function createDuoLink(source: DuoSource, moves: ReadonlyMap<string, Move
   /** The counter of the attack that is coming, or null outside a defend phase. */
   let counter: string | null = null;
   let seen: [Seen, Seen] = [undefined, undefined];
+  /** The move the prompt asks for, so player two's reads as loosely as player one's does. */
+  let asked: string | null = null;
 
   /** Reads player two's newest frame. Their strikes count only while they are in the fight. */
   const pump = (now: number): void => {
@@ -65,7 +68,7 @@ export function createDuoLink(source: DuoSource, moves: ReadonlyMap<string, Move
       toHost?.({ type: "peer", joined: here });
       if (here) reader.settle();
     }
-    const input = reader.read(source.second(now));
+    const input = reader.read(source.second(now), asked);
     secondHeld = input.held;
     if (!two) return;
     for (const strike of input.struck) toHost?.({ type: "strike", move: strike.move, quality: strike.quality });
@@ -82,6 +85,7 @@ export function createDuoLink(source: DuoSource, moves: ReadonlyMap<string, Move
     },
     start(enemyId, styleId, seed) {
       counter = null;
+      asked = null;
       seen = [undefined, undefined];
       host.start(enemyId, styleId, seed);
     },
@@ -102,6 +106,7 @@ export function createDuoLink(source: DuoSource, moves: ReadonlyMap<string, Move
       const next = state.phase.kind === "defend" ? state.phase.attack.counter : null;
       if (next === null || next !== counter || events.some((event) => event.type === "telegraph")) seen = [undefined, undefined];
       counter = next;
+      asked = askedMove(state.phase);
       host.publish(state, events, nowMs);
     },
     stop() { host.stop(); },
