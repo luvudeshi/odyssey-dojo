@@ -1,12 +1,12 @@
 import { useEffect } from "react";
 import type { FightingStyle } from "../core/types";
-import { installGround } from "../ui/pebble";
+import { Button, installGround } from "../ui/pebble";
 import { Backdrop, SetTitle } from "../ui/set/Set";
 import { STYLE_DEVICES } from "../ui/set/styleDevices";
 import { BronzeDefs, ShieldCard } from "./menuShields";
 import "../ui/set/screens-flow.css";
 
-export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: string; onPick: (style: FightingStyle) => void; onBack?: () => void }) {
+export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: string; onPick: (style: FightingStyle) => void; onBack?: () => void; onCharacter?: () => void }) {
   useEffect(() => { installGround(); }, []);
   return (
     <main className="menu menu--style flow">
@@ -20,6 +20,7 @@ export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: s
           <ShieldCard key={style.id} className="flow-style" device={STYLE_DEVICES[style.id] ?? STYLE_DEVICES.hoplite} name={style.name} line={style.blurb} onClick={() => { props.onPick(style); }} />
         ))}
       </div>
+      {props.onCharacter && <Button onClick={props.onCharacter}>Change character</Button>}
     </main>
   );
 }
