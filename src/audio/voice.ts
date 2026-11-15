@@ -4,6 +4,8 @@ import { log } from "../core/log";
 import { getSettings } from "../settings/store";
 import { clipUrl, isPhaseLine, phaseLineId } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
+import { releaseAudio } from "./release";
+import { tabHidden, watchTab } from "./tab";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
 const WARNINGS = ["warn_1", "warn_2", "warn_3"] as const;
@@ -41,17 +43,35 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
   }
 }
 
-/** Tiers of urgency, lowest first: praise and warnings, fight start and Homer, calls, phase changes, the result. */
+/**
+ * A full power meter is announced with the god move's own call, under a line id of its own so that it ranks above the
+ * calls: "power_trident_sweep" plays the clip of "call_trident_sweep".
+ */
+const POWER_LINE = "power_";
+
+export function powerLineId(moveId: string): string {
+  return `${POWER_LINE}${moveId}`;
+}
+
+/** The clip a line plays: its own, except for a power line, which borrows the move's call. */
+function clipFor(id: string): string {
+  return id.startsWith(POWER_LINE) ? `call_${id.slice(POWER_LINE.length)}` : id;
+}
+
+/** Tiers of urgency, lowest first: praise and warnings, fight start and Homer, calls, power ready, phase changes, the result. */
 const SHORT = 0;
 const MOMENT = 1;
 const CALL = 2;
-const PHASE = 3;
-const RESULT = 4;
+const POWER = 3;
+const PHASE = 4;
+const RESULT = 5;
 
 function urgency(id: string): number {
   if (id === "win" || id === "loss") return RESULT;
   // A phase line comes once or twice a fight and the calls never stop, so it outranks them or it is never heard.
   if (isPhaseLine(id)) return PHASE;
+  // The same goes for a full power meter, a few times a fight. It still gives way to a phase line.
+  if (id.startsWith(POWER_LINE)) return POWER;
   if (id.startsWith("call_")) return CALL;
   // Homer's lines sit with the fight start; a taunt sent to this voice is as easily talked over as praise.
   return id === "fight_start" || id.startsWith("homer_") ? MOMENT : SHORT;
@@ -63,8 +83,8 @@ function interrupts(next: string, playing: string): boolean {
   // The engine emits nothing after the result, so a call or fight start heard over it belongs to the next fight.
   const held = urgency(playing);
   if (held === RESULT) return tier === CALL || next === "fight_start";
-  // A new fight's first line is not kept out by the last fight's phase line (a retry from the pause menu).
-  if (held === PHASE && next === "fight_start") return true;
+  // A new fight's first line is not kept out by the last fight's phase line or power line (a retry from the pause menu).
+  if ((held === PHASE || held === POWER) && next === "fight_start") return true;
   // A newer call beats an older one, whose beat has passed, and a newer phase line beats an older one. A call does not
   // beat a phase line, which is heard to its end: the call is dropped, not queued, and the prompt card shows the move.
   return tier > held || (tier === held && (tier === CALL || tier === PHASE));
@@ -119,7 +139,8 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
   let finishing = false;
 
   const speak = (id: string): boolean => {
-    if (disposed || !deps.available(id)) return false;
+    const clip = clipFor(id);
+    if (disposed || !deps.available(clip)) return false;
     if (current && !interrupts(id, current.id)) return false;
     // Stop before starting, so two lines are never heard together.
     current?.stop();
@@ -132,7 +153,7 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
     current = line;
     onSpeaking(true, who);
     try {
-      line.stop = deps.play(id, free);
+      line.stop = deps.play(clip, free);
     } catch (error) {
       log("warn", "voice.play", error);
       free();
@@ -157,8 +178,9 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
       }
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
       if (best !== null) speak(best);
-      // A phase line holding the voice keeps the finisher's call out, so the call is tried again until it is spoken.
-      finishing = phase?.kind === "finisher" && urgency(current?.id ?? "") !== PHASE;
+      // A phase line or a power line holding the voice keeps the finisher's call out, so the call is tried again until it is spoken.
+      const holding = urgency(current?.id ?? "");
+      finishing = phase?.kind === "finisher" && holding !== PHASE && holding !== POWER;
     },
     playing: () => current?.id ?? null,
     stop(id) {
@@ -189,17 +211,22 @@ export interface ClipAudio {
   addEventListener(type: "ended" | "error", listener: () => void): void;
 }
 
-/** Plays clips through audio elements. A failed load or a blocked play() reports done, so the voice is never left waiting. */
+/**
+ * Plays clips through audio elements. A failed load or a blocked play() reports done, so the voice is never left waiting.
+ * Each element is used for one line and let go of when the line ends, fails or is cut off.
+ */
 export function audioPlayer(open: (url: string) => ClipAudio): VoiceDeps["play"] {
   return (id, done) => {
     // Homer's and the monsters' clips have folders of their own; every other id is Athena's.
     const audio = open(storyClipUrl(id));
     const timer = setTimeout(() => {
       audio.pause();
+      releaseAudio(audio);
       done();
     }, MAX_CLIP_MS);
     const finish = (): void => {
       clearTimeout(timer);
+      releaseAudio(audio);
       done();
     };
     audio.addEventListener("ended", finish);
@@ -211,7 +238,17 @@ export function audioPlayer(open: (url: string) => ClipAudio): VoiceDeps["play"]
     return () => {
       clearTimeout(timer);
       audio.pause();
+      releaseAudio(audio);
     };
+  };
+}
+
+/** The same player, except that nothing starts while the tab is hidden: the line is reported done at once. */
+function whileSeen(play: VoiceDeps["play"]): VoiceDeps["play"] {
+  return (id, done) => {
+    if (!tabHidden()) return play(id, done);
+    done();
+    return () => undefined;
   };
 }
 
@@ -240,13 +277,13 @@ export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   };
   load(INDEX_URL, true);
   for (const url of storyIndexes) load(url, false);
-  return { available: (id) => clips.has(id), play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume })), random: Math.random };
+  return { available: (id) => clips.has(id), play: whileSeen(audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume }))), random: Math.random };
 }
 
 /** The same clips at `gain` times the volume, through audio elements that no other voice's line stops. */
 function quieter(deps: VoiceDeps, gain: number): VoiceDeps {
   if (typeof Audio === "undefined") return deps;
-  return { ...deps, play: audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain })) };
+  return { ...deps, play: whileSeen(audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain }))) };
 }
 
 // Created with the module so the clip indexes are loaded before the first fight starts.
@@ -254,15 +291,19 @@ const sharedDeps = browserDeps(STORY_INDEX_URLS);
 const shared = createVoice(sharedDeps);
 
 const monsters = createVoice(quieter(sharedDeps, TAUNT_VOLUME), "taunt");
-/** True from the frame a fight is won or lost until the next fight begins. No taunt starts meanwhile. */
+/** True from the frame a fight is won or lost until the next fight begins. No taunt and no power line starts meanwhile. */
 let fightOver = false;
+/** True while the fight is in its finishing move, where a full meter cannot be spent. No power line starts meanwhile. */
+let finishingMove = false;
+/** True while the fight is paused. No taunt starts meanwhile: one that was waiting for Athena's phase line is dropped. */
+let fightPaused = false;
 
 /**
  * The monsters' own channel: a taunt plays over Athena's calls and is not cut by them, and it never holds her voice.
  * One taunt at a time: a second one asked for while the first plays is refused. So is any taunt once the fight is over.
  */
 export const tauntVoice: Pick<Voice, "speak" | "playing" | "stop"> = {
-  speak: (id) => !fightOver && monsters.speak(id),
+  speak: (id) => !fightOver && !fightPaused && monsters.speak(id),
   playing: () => monsters.playing(),
   stop: (id) => {
     monsters.stop(id);
@@ -279,13 +320,27 @@ export function playVoice(events: readonly CombatEvent[], phase?: CombatPhase): 
     // The engine emits nothing after the result, so these events are a new fight's.
     fightOver = false;
   }
+  finishingMove = phase?.kind === "finisher";
   shared.handle(events, phase);
 }
 
 /** For lines no combat event triggers, such as "fight_start" or Homer's "homer_title". */
 export function speakLine(id: string): boolean {
-  if (id === "fight_start") fightOver = false;
+  if (id === "fight_start") {
+    fightOver = false;
+    finishingMove = false;
+  }
   return shared.speak(id);
+}
+
+/**
+ * The power meter is full: Athena calls the god move that spends it ("Trident! Sweep across!"). It cuts praise, a
+ * warning or an ordinary call, and the calls that follow do not cut it. It does not cut a phase line or the result,
+ * and it is refused once the fight is over or in its finishing move. True when it started playing.
+ */
+export function speakPowerReady(moveId: string): boolean {
+  if (fightOver || finishingMove) return false;
+  return shared.speak(powerLineId(moveId));
 }
 
 /**
@@ -307,3 +362,31 @@ export function voicePlaying(): string | null {
 export function stopLine(id: string): void {
   shared.stop(id);
 }
+
+/**
+ * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. Nothing is queued, so nothing
+ * comes back afterwards. With `keepEnding`, the result line and Homer's lines play on. The fight calls this through
+ * useStopAudio when it is left.
+ */
+export function stopFightVoice(keepEnding = false): void {
+  const taunt = monsters.playing();
+  if (taunt !== null) monsters.stop(taunt);
+  const line = shared.playing();
+  if (line === null) return;
+  if (keepEnding && (urgency(line) === RESULT || line.startsWith("homer_"))) return;
+  shared.stop(line);
+}
+
+/**
+ * Called with true when the fight is paused and false when it carries on. A pause cuts the line being spoken and keeps
+ * taunts from starting. The fight counts as paused once it is over too, so the result line and Homer's lines play on.
+ */
+export function pauseFightVoice(paused: boolean): void {
+  fightPaused = paused;
+  if (paused) stopFightVoice(true);
+}
+
+// A hidden tab plays nothing: what is being said is cut, and whileSeen keeps anything new from starting until it is shown.
+watchTab((hidden) => {
+  if (hidden) stopFightVoice();
+});

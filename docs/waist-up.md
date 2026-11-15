@@ -61,7 +61,7 @@ A cell is yes or no, and in brackets the highest confidence the move's own detec
 |---|---|---|---|---|
 | jab | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | cross | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| hook | yes (0.87) | yes (0.87) | yes (0.87) | - |
+| hook | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | uppercut | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | spear_thrust | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | overhead_strike | yes (1.00) | yes (1.00) | yes (1.00) | - |
