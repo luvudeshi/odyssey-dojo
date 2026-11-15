@@ -428,4 +428,26 @@ describe.skipIf(url === "")("the hall of heroes on a real Tiger Data service", (
     // The session of the account that is gone writes nothing.
     expect((await fight(leaver, 100)).status).toBe(401);
   });
+
+  test("a row under a name that is no account's is traced to its account through the fights table, and deleting that account takes the row off", async () => {
+    // The two statements of docs/accounts.md, "Taking a row off the hall", on this run's own tables.
+    const cheat = await signUp();
+    const shown = `Nobody ${prefix.slice(1, 7)}`;
+    const sent = await call("POST", "/api/account/fights", { token: cheat.token, json: { fight: { stop: "suitors", won: true, score: 29_500, style: "boxer", hero: shown } } });
+    expect(sent.status).toBe(201);
+    expect((await hall()).allTime[0]).toMatchObject({ hero: shown, score: 29_500 });
+    // The name on the row is what the browser sent. No account has it, so deleting by that name would delete nothing.
+    expect(await sql(`select 1 from ${t.accounts} where name_key = lower($1::text)`, [shown])).toEqual([]);
+    const behind = await sql<{ account_id: string; account: string; best: number; fights: number }>(
+      `select f.account_id::text as account_id, a.name as account, max(f.score)::int as best, count(*)::int as fights
+       from ${h.fights} f join ${t.accounts} a on a.id = f.account_id
+       where f.hero = $1::text
+       group by f.account_id, a.name order by best desc`,
+      [shown],
+    );
+    expect(behind).toEqual([{ account_id: cheat.id, account: cheat.name, best: 29_500, fights: 1 }]);
+    await sql(`delete from ${t.accounts} where id = $1::uuid`, [behind[0]?.account_id]);
+    const read = await hall();
+    expect([...read.tonight, ...read.allTime].map((row) => row.hero)).not.toContain(shown);
+  });
 });
