@@ -11,13 +11,13 @@ export const enemy: EnemySpec = {
   order: 1.7,
   place: "The meadow of the Sirens",
   book: 12,
-  hp: 370,
+  hp: 315,
   strikeWindowMs: 2300,
   attacks: [
-    { id: "song", name: "The song", telegraphMs: 1900, damage: 8, counter: "block" },
-    { id: "swoop_left", name: "Swoop", telegraphMs: 1500, damage: 6, counter: "dodge_right" },
-    { id: "swoop_right", name: "Swoop", telegraphMs: 1500, damage: 6, counter: "dodge_left" },
-    { id: "talons", name: "Talon dive", telegraphMs: 1500, damage: 7, counter: "duck" },
+    { id: "song", name: "The song", telegraphMs: 1900, damage: 5, counter: "block" },
+    { id: "swoop_left", name: "Swoop", telegraphMs: 1500, damage: 3, counter: "dodge_right" },
+    { id: "swoop_right", name: "Swoop", telegraphMs: 1500, damage: 3, counter: "dodge_left" },
+    { id: "talons", name: "Talon dive", telegraphMs: 1500, damage: 3, counter: "duck" },
   ],
   phases: [
     // The wind drops and the sea goes flat. Only the song, and it is slow.

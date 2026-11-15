@@ -31,9 +31,10 @@ Scan the QR code, or open the game and press **Fight together**, **Join a room**
 - The guest draws the state the host sends, about 15 times a second, and sends its strikes back. Only the host defends.
 - Guest leaves: the host carries on alone at once.
 - Host leaves: the guest sees "The host left the room." and a button back to the start.
+- Guest comes back mid-fight (its page closed or reloaded, or it joined late): the host says which fight is on again, with the newest state, as soon as the relay reports the guest, and the guest goes straight in. A guest already in that fight ignores the repeat (each start carries the fight's `id`). A guest that hears states but knows no fight sends `ask`, and the host answers with the start, at most once a second. Once the fight is over, or the host has left it, nothing is said again: a guest who joins then waits for the next one.
 - After a fight the guest waits; when the host starts the next one, the guest goes straight in.
 - Rooms live in the server's memory and hold two people. A room is removed 30 minutes after its last use: creating it, joining it, a stream or a poll starting, or a message that was let through. The host sends a small "keep" message every 5 minutes while its fight screen is open, so a quiet room lasts as long as the host does.
-- A guest's seat is freed 20 seconds after the guest goes (no open stream and no poll for 20 seconds). Coming back with the same token inside that time keeps the seat. After it the old token is refused and the code takes a new guest, so a guest who leaves, or a stranger who took the seat, does not cost the host a new room. The host's seat is never freed this way.
+- A guest's seat is freed 20 seconds after the guest goes (no open stream and no poll for 20 seconds). Coming back with the same token inside that time keeps the seat. `joinRoomAgain` in src/net/transport.ts keeps the token for the tab and tries it first, so a reload can return to its own seat without that wait (the join screen does not call it yet: issue #222). After it the old token is refused and the code takes a new guest, so a guest who leaves, or a stranger who took the seat, does not cost the host a new room. The host's seat is never freed this way.
 
 ## How messages travel
 
@@ -57,6 +58,34 @@ The relay is built to be reachable through a tunnel, so every call is bounded (s
 - A client that gets 429 sees "Too many tries from this network. Wait a minute and try again."
 
 Through a tunnel only the room paths answer (join, events, send, poll and the address): see docs/rooms-tunnel.md.
+
+## Checking it: the rooms smoke run
+
+`scripts/rooms-smoke.mjs` plays a room in two pages of headless Chrome and prints one line per step:
+
+```
+node scripts/rooms-smoke.mjs
+node scripts/rooms-smoke.mjs --no-build --runs=rejoin
+node scripts/rooms-smoke.mjs --no-build --poll
+```
+
+It builds the game, starts the server on a free port (the same process as `npm run server`, so the built game and the relay are on one port) and opens a host page at 1280x720 on the keyboard and a guest page at phone size (390x844) with touch. Then it makes three runs, each in a new room:
+
+| Run | What it does | What must be true |
+|---|---|---|
+| `fight` | The host opens a room, the guest types the code, the host starts a fight and plays it to the end; the guest taps its strike button. | The guest sees the fight, shows the host's health after the first hit, and at the end both pages show the same health, score and result. |
+| `rejoin` | About 8 seconds in the guest's page closes. A new page opens the room's link and joins again. The host only defends while the guest is away, so the fight is still on. | The host's fight goes on alone, the guest is let back in, sees the fight again, and the end is the same on both pages. |
+| `host-leaves` | About 8 seconds in the host's page closes. | The guest is told the host left and its button leads back to the start. |
+
+A run fails, and the script exits 1, on a console error, a page error, a request that failed or answered 4xx or 5xx, a guest who never sees the fight, or health, score or result that differ between the two pages. One answer is expected and not counted: the 409 "room full" a returning guest gets while the relay still holds its old seat (20 seconds, see above); the line for that step says how many times it was refused. When a run fails the server's warnings are printed too.
+
+`--poll` keeps the guest's event stream silent, which is what a guest behind a Cloudflare quick tunnel gets, so the guest's link moves to long polling after 3 seconds. Run it both ways. `--runs=` picks runs, `--cap=` is the longest a fight may take in seconds (default 240), `--no-build` uses the `dist/` that is there.
+
+No camera is used: the host's page has none and lands on keyboard controls, and the guest's page is refused the camera and gets the touch buttons, as a phone on plain http does. It needs Chrome and Playwright. Playwright is not a dependency of this repo: if `node_modules` has none, set `FPS_PLAYWRIGHT` to a playwright-core folder. `FPS_CHANNEL` and `FPS_GL` work as in `scripts/smoke.mjs`.
+
+**Where it stands (14 Nov, `f8b1891`):** `fight` and `host-leaves` pass with the guest on the stream and with the guest polling. `rejoin` fails both ways: the guest is let back in after about 20 seconds but its page stays on "You are in. Waiting for the host to start." (#222).
+
+What it does not show: two machines, a real phone, a real network or a tunnel, a camera on either side, or sound.
 
 ## Not covered
 

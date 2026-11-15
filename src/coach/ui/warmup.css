@@ -1,19 +1,21 @@
-/* The warm-up screen. Sits inside the shared .menu vase face; colours and type come from src/theme.css only. */
+/* The warm-up screen. Sits inside the shared .menu screen; colours and type come from the --pb-* variables in src/theme.css only. */
 .warmup { padding: 3.2rem 2rem; overflow: hidden; }
 .warmup .warmup-say { font-size: clamp(1.8rem, 4.4vw, 3.4rem); max-width: 22ch; min-height: 2.2em; display: flex; flex-direction: column; justify-content: center; }
-.warmup .warmup-line { max-width: 44rem; font-size: 1.2rem; line-height: 1.35; margin: 0.45rem 0; }
+.warmup .warmup-line { max-width: 44rem; font-size: 1.2rem; line-height: 1.35; margin: 0.45rem 0; color: var(--pb-text); text-shadow: 0 0 3px var(--pb-outline); }
 
-.warmup-bar { width: min(34rem, 70vw); height: 1.1rem; margin: 0.8rem 0 0.9rem; background: var(--ink); border: var(--bw-line) solid var(--ink); box-shadow: 0 0 0 var(--bw-hair) var(--clay-light); }
-.warmup-bar-fill { height: 100%; background: var(--clay-light); transform-origin: left center; transition: transform 0.1s linear; }
+/* The timer: a trough of dark stone with an ochre run of stones laid in it. */
+.warmup-bar { width: min(34rem, 70vw); height: 1.1rem; margin: 0.8rem 0 0.9rem; background: var(--pb-ground-deep); border: 2px solid var(--pb-lead); border-radius: 0.55rem; overflow: hidden; }
+.warmup-bar-fill { height: 100%; background: var(--pb-ochre); transform-origin: left center; transition: transform 0.1s linear;
+  -webkit-mask: radial-gradient(circle, #000 0 4px, transparent 4.5px) 0 50% / 9px 9px repeat-x; mask: radial-gradient(circle, #000 0 4px, transparent 4.5px) 0 50% / 9px 9px repeat-x; }
 
 .warmup-dots { display: flex; gap: 0.7rem; margin: 0 0 0.7rem; padding: 0; list-style: none; }
-.warmup-dots li { width: 0.95rem; height: 0.95rem; border: var(--bw-line) solid var(--ink); border-radius: 50%; }
-.warmup-dots li.past { background: var(--ink); }
-.warmup-dots li.now { background: var(--white); box-shadow: 0 0 0 var(--bw-line) var(--clay-light); }
+.warmup-dots li { width: 0.95rem; height: 0.95rem; border: 2px solid var(--pb-lead); border-radius: 50%; background: var(--pb-ground-deep); }
+.warmup-dots li.past { background: var(--pb-terra); }
+.warmup-dots li.now { background: var(--pb-cream); box-shadow: 0 0 0 2px var(--pb-ochre); }
 
 /* The player's own picture, small, in the same corner as in a fight. Flipped so it moves like a mirror. */
 .warmup-camera { position: absolute; left: 3rem; bottom: 3.4rem; }
-.warmup-camera video { display: block; width: 11rem; transform: scaleX(-1); border: var(--bw-line) solid var(--ink); box-shadow: 0 0 0 var(--bw-line) var(--clay-light); }
+.warmup-camera video { display: block; width: 11rem; transform: scaleX(-1); border: 2px solid var(--pb-lead); border-radius: 6px; box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.7); }
 
 @media (prefers-reduced-motion: reduce) {
   .warmup-bar-fill { transition: none; }
