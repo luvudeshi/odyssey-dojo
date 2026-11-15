@@ -29,12 +29,12 @@ Each cell: fights won / mean length of all 200 fights / mean length of the fight
 <!-- table:now -->
 | Stop | beginner | average | good |
 | --- | --- | --- | --- |
-| Polyphemus | 88% / 91 s / 89 s when won | 100% / 53 s / 53 s when won | 100% / 30 s / 30 s when won |
-| Circe | 7% / 113 s / 142 s when won | 95% / 104 s / 103 s when won | 100% / 56 s / 56 s when won |
-| The Sirens | 3% / 99 s / 136 s when won | 91% / 105 s / 105 s when won | 100% / 58 s / 58 s when won |
-| Scylla | 2% / 78 s / 115 s when won | 85% / 88 s / 88 s when won | 100% / 49 s / 49 s when won |
-| Charybdis | 1% / 91 s / 143 s when won | 82% / 110 s / 111 s when won | 100% / 61 s / 61 s when won |
-| The Suitors | 1% / 89 s / 156 s when won | 69% / 109 s / 111 s when won | 100% / 63 s / 63 s when won |
+| Polyphemus | 88% / 95 s / 93 s when won | 100% / 58 s / 58 s when won | 100% / 35 s / 35 s when won |
+| Circe | 7% / 116 s / 146 s when won | 95% / 109 s / 108 s when won | 100% / 61 s / 61 s when won |
+| The Sirens | 3% / 101 s / 140 s when won | 91% / 110 s / 109 s when won | 100% / 62 s / 62 s when won |
+| Scylla | 2% / 80 s / 120 s when won | 85% / 93 s / 93 s when won | 100% / 54 s / 54 s when won |
+| Charybdis | 1% / 93 s / 148 s when won | 82% / 115 s / 115 s when won | 100% / 66 s / 66 s when won |
+| The Suitors | 1% / 91 s / 160 s when won | 69% / 114 s / 116 s when won | 100% / 68 s / 68 s when won |
 <!-- /table:now -->
 
 ## Polyphemus, the first stop (issue #127)
