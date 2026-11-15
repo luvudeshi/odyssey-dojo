@@ -1,0 +1,29 @@
+/* HUD look A, "Shards" (a draft, switched by ?look=a, see src/ui/lookSwitch.ts). Every piece is a broken piece of obsidian with a lit vein:
+   lava inside for a strike, ice inside for a defend, and the move's glyph (a spearhead or a shield) cut through the glass.
+   Delete this file with the rest of the looks folder when a look is picked. */
+html[data-look="a"] .sky-card { --vein: #ffc060; --glow: #ff5a10; --core: #fff2c0; width: 310px; }
+html[data-look="a"] .sky-card--defend { --vein: #bfe6ff; --glow: #4aa0ff; --core: #f4fcff; }
+html[data-look="a"] .lk-shape .lk-trough { fill: none; stroke: #020103; stroke-width: 9; stroke-linecap: round; }
+html[data-look="a"] .lk-shape .lk-timer { fill: none; stroke: var(--core); stroke-width: 3.5; stroke-linecap: round; }
+html[data-look="a"] .lk-shape .lk-timer--glow { stroke: var(--glow); stroke-width: 10; stroke-opacity: 0.6; }
+html[data-look="a"] .lk-shape--a .lk-aura { fill: none; stroke: var(--rim); stroke-width: 12; stroke-opacity: 0.2; stroke-linejoin: miter; }
+html[data-look="a"] .lk-shape--a .lk-plate { fill: #050407; stroke: #000; stroke-width: 4; stroke-linejoin: miter; }
+html[data-look="a"] .lk-shape--a .lk-rim { fill: none; stroke: var(--rim); stroke-width: 1.8; stroke-opacity: 0.9; stroke-linejoin: miter; }
+html[data-look="a"] .lk-shape--a .lk-edge { fill: none; stroke: #e0d4ff; stroke-width: 1.4; stroke-opacity: 0.7; }
+html[data-look="a"] .lk-shape--a .lk-glyph { fill: none; stroke: var(--rim); stroke-width: 4; stroke-opacity: 0.34; stroke-linejoin: round; }
+html[data-look="a"] .lk-shape--a .lk-vein { fill: none; stroke: var(--vein); stroke-width: 1.5; stroke-linejoin: round; }
+html[data-look="a"] .lk-shape--a .lk-vein--glow { stroke: var(--glow); stroke-width: 5; stroke-opacity: 0.55; }
+html[data-look="a"] .lk-shape--a .lk-vein--core { stroke: var(--core); stroke-width: 1.2; }
+html[data-look="a"] .sky-card--finish .lk-rim { stroke-width: 3.2; }
+
+/* The tag is a slanted shard of glass; the key a chipped stone with a lit edge. */
+html[data-look="a"] .sky-card__tag { --cut: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); padding: 8px 30px; }
+html[data-look="a"] .sky-key { position: relative; isolation: isolate; border: 0; border-radius: 0; background: var(--rim); box-shadow: none; clip-path: polygon(9% 0, 100% 7%, 93% 100%, 0 88%); }
+html[data-look="a"] .sky-key::after { content: ""; position: absolute; inset: 1.6px; z-index: -1; background: #14111a; clip-path: polygon(9% 0, 100% 7%, 93% 100%, 0 88%); }
+
+/* Banners and chips: a plate cut like a shard, with a vein of its colour running down each end. */
+html[data-look="a"] .rift-plate { clip-path: polygon(0 16%, 4% 0, 100% 9%, 97% 100%, 2% 90%); }
+html[data-look="a"] .rift-plate::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(104deg, transparent 1.4%, var(--rp-crack) 2.6%, #fff0c0 3.1%, var(--rp-crack) 3.6%, transparent 4.8%, transparent 95.2%, var(--rp-crack) 96.4%, #fff0c0 96.9%, var(--rp-crack) 97.4%, transparent 98.6%);
+}

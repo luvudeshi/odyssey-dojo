@@ -8,8 +8,10 @@ import { promptLevel } from "../../combat/engine";
 import { MoveGuide } from "../../coach/ui/MoveGuide";
 import type { MoveDef, PoseHistory } from "../../core/types";
 import { useSettings } from "../../settings/store";
+import { currentLook } from "../../ui/lookSwitch";
 import { useBoxSize } from "../../ui/pebble/hooks";
 import { keyLabel } from "../Hud";
+import { LookShape } from "./looks/LookShape";
 import { cardGlass, jagLine } from "./rift/geometry";
 import "./tokens.css";
 import "./card.css";
@@ -85,9 +87,12 @@ export function SkyPromptCard(props: { move: MoveDef; target: string; successes:
   const tag = kind === "defend" ? "DEFEND" : kind === "finish" ? "FINISH" : "STRIKE";
   const full = level === "full";
   const word = { "--chars": String(longestWord(move.prompt)) } as CSSProperties;
+  const look = currentLook();
+  const w = box.w || FALLBACK.w, h = box.h || FALLBACK.h, label = `${move.kind === "defend" ? "Defend" : "Strike"} time left`;
   return (
-    <div ref={ref} className={`sky-hud sky-card sky-card--${kind} sky-card--${level}`}>
-      <Shape kind={kind} w={box.w || FALLBACK.w} h={box.h || FALLBACK.h} left={left} label={`${move.kind === "defend" ? "Defend" : "Strike"} time left`} />
+    <div ref={ref} className={`sky-hud sky-card sky-card--${kind} sky-card--${level}${look === null ? "" : ` sky-card--look-${look}`}`}>
+      {look === null ? <Shape kind={kind} w={w} h={h} left={left} label={label} /> : <LookShape look={look} strike={kind !== "defend"} w={w} h={h} left={left} label={label} />}
+      {look === "b" && <div className="lk-fissure" aria-hidden="true"><div className="lk-melt" style={{ transform: `scaleX(${String(Math.max(0, Math.min(1, left)))})` }} /></div>}
       <div className="sky-card__tag">{tag}</div>
       <div className="sky-card__in">
         <MoveGuide key={move.id} move={move} history={history} />
