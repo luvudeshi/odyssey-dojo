@@ -52,8 +52,8 @@ export function emit(pool: SparkPool, at: Vec3, count: number, speed: number, ra
   }
 }
 
-/** Moves every live spark on by `dt` seconds. Returns how many are still alive. */
-export function stepPool(pool: SparkPool, dt: number): number {
+/** Moves every live spark on by `dt` seconds. Returns how many are still alive. `tint` is the sparks' colour: gold unless given. */
+export function stepPool(pool: SparkPool, dt: number, tint: Vec3 = GOLD): number {
   let alive = 0;
   for (let i = 0; i < pool.size; i++) {
     const left = (pool.life[i] ?? 0) - dt;
@@ -74,7 +74,7 @@ export function stepPool(pool: SparkPool, dt: number): number {
     }
     const whole = pool.maxLife[i] ?? 0;
     const glow = whole > 0 ? left / whole : 0;
-    for (let axis = 0; axis < 3; axis++) pool.colors[x + axis] = (GOLD[axis] ?? 0) * glow;
+    for (let axis = 0; axis < 3; axis++) pool.colors[x + axis] = (tint[axis] ?? 0) * glow;
   }
   return alive;
 }
