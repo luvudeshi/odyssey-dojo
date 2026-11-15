@@ -96,14 +96,14 @@ import { loadCharacter } from "../../characters/characters";
 
 `src/render/hero/defs/spartan.tsx` line 29 (`anchors: SPARTAN_ANCHORS,`) stays as it is: it is the fallback, and it is what Odysseus wears.
 
-**2. The picker comes before the style picker.** `src/App.tsx`. Add state beside line 43 (`const [scanned, setScanned] = useState(false);`):
+**2. The picker comes before the style picker.** `src/App.tsx`. Add state beside line 49 (`const [scanned, setScanned] = useState(false);`):
 
 ```tsx
 const [character, setCharacter] = useState<CharacterId>(loadCharacter);
 const [characterPicked, setCharacterPicked] = useState(false);
 ```
 
-and a new branch between the god scan (line 119) and `if (flow.screen === "style") {` (line 121):
+and a new branch between the god scan (line 134) and `if (flow.screen === "style") {` (line 136):
 
 ```tsx
 if (flow.screen === "style" && !characterPicked) {
