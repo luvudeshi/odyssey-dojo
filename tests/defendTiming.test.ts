@@ -3,7 +3,7 @@ import { startFight, step } from "../src/combat/engine";
 import { ENEMIES } from "../src/enemies/registry";
 import { STYLES } from "../src/styles/registry";
 import { battle, resetBattle, syncBattle } from "../src/render/battle";
-import { BURST_S, burstFade, burstKind, burstProgress, burstVariant, easeOut, shieldScale, stepShield } from "../src/render/effects/defendTiming";
+import { BURST_S, burstFade, burstKind, burstProgress, burstVariant, easeOut, shieldScale, shieldUp, stepShield } from "../src/render/effects/defendTiming";
 
 test("the shield rises in about 120 ms while held and leaves in about 150 ms once dropped", () => {
   let level = 0;
@@ -56,4 +56,25 @@ test("syncBattle stamps the move and time when a defend counts, and not before",
   expect(battle.defendedAt).toBeGreaterThanOrEqual(2);
   resetBattle();
   expect(battle.defendedAt).toBe(-Infinity);
+});
+
+test("the shield is up only on a held block while the card asks for a block, and through the flash after it counts", () => {
+  const enemy = ENEMIES[0];
+  if (!enemy) throw new Error("no enemy");
+  const attack = (counter: string) => {
+    const found = enemy.attacks.find((candidate) => candidate.counter === counter);
+    if (!found) throw new Error(`no ${counter} attack`);
+    return { kind: "defend", attack: found, msLeft: 500, totalMs: 900 } as const;
+  };
+  const other = enemy.attacks.find((candidate) => candidate.counter !== "block")?.counter ?? "";
+  const block = new Set(["block"]);
+  expect(shieldUp(block, attack("block"), -1)).toBe(true);
+  expect(shieldUp(new Set<string>(), attack("block"), -1)).toBe(false);
+  expect(shieldUp(block, attack(other), -1)).toBe(false);
+  expect(shieldUp(block, { kind: "recover", msLeft: 300 }, -1)).toBe(false);
+  expect(shieldUp(block, undefined, -1)).toBe(false);
+  // The block has just counted and the card has moved on to the strike: the shield stays for its flash, then drops.
+  expect(shieldUp(block, { kind: "recover", msLeft: 300 }, 0.2)).toBe(true);
+  expect(shieldUp(block, { kind: "recover", msLeft: 300 }, BURST_S)).toBe(false);
+  expect(shieldUp(new Set<string>(), { kind: "recover", msLeft: 300 }, 0.2)).toBe(false);
 });
