@@ -39,7 +39,7 @@ export function cardWords(fight: ShareFight, hasQr = false): CardWords {
     score: Number.isFinite(fight.score) ? fight.score : 0,
     won: fight.won,
     accent: god?.accent ?? GOLD,
-    footer: `${style}${hasQr ? "Scan to watch the fight" : "Odyssey Fighter, HackUTA 2026"}`,
+    footer: `${style}${hasQr ? "Scan to watch the fight" : "Odyssey Dojo, HackUTA 2026"}`,
   };
 }
 
