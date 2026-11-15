@@ -11,17 +11,17 @@ const disk = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number): v
 export function Emblem(props: { size?: number; className?: string; label?: string }) {
   const size = Math.round(props.size ?? 160);
   return (
-    <span className={`pb-emblem ${props.className ?? ""}`} role="img" aria-label={props.label ?? "Odyssey Fighter emblem"}>
+    <span className={`pb-emblem ${props.className ?? ""}`} role="img" aria-label={props.label ?? "Odyssey Dojo emblem"}>
       <PebbleCanvas width={size} height={size} cacheKey="emblem" draw={(ctx) => { disk(ctx, size / 2, size / 2, size * 0.49); drawLayout(ctx, emblemLayout(size)); }} />
     </span>
   );
 }
 
-/** The emblem with ODYSSEY FIGHTER beside it, `height` px tall. */
+/** The emblem with ODYSSEY DOJO beside it, `height` px tall. */
 export function Logo(props: { height?: number; className?: string }) {
   const scale = (props.height ?? 160) / 344, { w, h } = logoSize(scale);
   return (
-    <span className={`pb-logo ${props.className ?? ""}`} role="img" aria-label="Odyssey Fighter">
+    <span className={`pb-logo ${props.className ?? ""}`} role="img" aria-label="Odyssey Dojo">
       <PebbleCanvas width={w} height={h} cacheKey="logo" draw={(ctx) => { disk(ctx, 170 * scale, 170 * scale, 148 * scale); drawLayout(ctx, logoLayout(scale)); }} />
     </span>
   );

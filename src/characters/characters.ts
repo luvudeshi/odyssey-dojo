@@ -88,7 +88,7 @@ export function characterById(id: string | null | undefined): Character {
   return found;
 }
 
-export const CHARACTER_KEY = "odyssey-fighter.character";
+export const CHARACTER_KEY = "odyssey-dojo.character";
 
 /** The part of localStorage used, so a test can pass a stand-in (the same shape src/settings/store.ts uses). */
 export interface CharacterStorage {

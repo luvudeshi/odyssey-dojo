@@ -92,6 +92,7 @@ Most likely first. Each has one action.
 | Training Dojo | **Training Dojo** on the main menu. It starts the camera and grades each try of each move; **Done** at the end tunes the monsters to the player until a reload. **Quit** or Esc leaves it | It takes minutes of the 180 seconds and was mounted late Saturday; on a real body: not checked. Only if the judge asks |
 | Account | **Account** on the main menu: a hero name, achievements, friends, settings. A typed name shows on the main menu ("Welcome back") and on the result screen | Safe. It is saved in the browser: clear it after (section 7) |
 | A later stop | Add `?stop=circe` (or `sirens`, `scylla`, `charybdis`, `suitors`) to the address: the earlier stops count as beaten | Safe. It stays in the address after a reload |
+| The Muse's fight ("How do you fight?") | Open `http://localhost:5173/?ai=1`. It is not on the menu: only this address opens it. Type how you fight, **Build my fight**, wait about 4 s, **Fight**. It plays on the keyboard; **Use camera** on the fight's camera panel starts the camera and calibrates. **Main menu** leaves it for the normal game until a reload. With the AI server down a bundled fight comes at once, and after 10 s at most if the server hangs | On the keyboard: checked Saturday night, with the AI server up, down and hanging. Nothing is saved and no stop is cleared. With the camera on a real body, and "Speak it": not checked. The monster wears a quest stop's model |
 | A friend on a phone | See below | Only if you tried it with that phone this morning |
 | God card and QR code | `SharePanel` is only on the test page `/src/ai/lab/`. The game's result screen does not show it at `f654f56` | Not in the game. Look at the result screen before you promise it |
 | `?debug` | Adds a "q: quality" line to the fight and puts internals on `window` | No |
@@ -121,7 +122,7 @@ Most likely first. Each has one action.
 2. A reload clears the god, the style, the beaten stops, the dojo result and the score on screen. It keeps what the browser saved: the settings (graphics quality, three volumes, mirror, key hints), the Account (hero name, fight counts, achievements), and whatever is in the address bar.
 3. If the judge typed a hero name or you want the achievements empty again, type this in the DevTools console, then reload:
    ```js
-   localStorage.removeItem("odyssey-fighter.profile")
+   localStorage.removeItem("odyssey-dojo.profile")
    ```
 4. If anybody pressed Q or opened the settings, check them (**Account**, **Open settings**): graphics High, voice and effects full.
 5. Chrome should not ask for the camera again on `localhost` (not checked on the demo laptop; step 3 shows you).

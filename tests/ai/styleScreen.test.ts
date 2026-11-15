@@ -1,6 +1,8 @@
 // The "How do you fight?" screen itself: what it asks the server, what the card shows and what Fight hands back.
 // There is no DOM here. React's hooks are replaced by small stand-ins, the component is called as a function and its element tree is read.
 // So this checks what the screen does, not how it looks, and not React's own scheduling.
+// The panel, the heading and the buttons are the pebble kit's components (src/ui/pebble). They are not rendered here either:
+// a kit button is found by its component's name and its label, and the heading by its `text`.
 import { isValidElement } from "react";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -44,6 +46,8 @@ const fakes = vi.hoisted(() => {
       const stop = effect();
       if (stop) cleanups.push(stop);
     },
+    /** Set by a test: the next made level cannot be turned into a fight. */
+    unplayable: false,
     prepareLine: vi.fn<(speaker: string, line: string) => Promise<string | null>>(),
     speakLine: vi.fn<(speaker: string, line: string) => Promise<boolean>>(),
     stopNarration: vi.fn<() => void>(),
@@ -59,6 +63,18 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("../../src/audio/narration", () => ({ prepareLine: fakes.prepareLine, speakLine: fakes.speakLine, stopNarration: fakes.stopNarration }));
 vi.mock("../../src/core/log", () => ({ log: fakes.log }));
+// The real adapter, except that a test can make it fail once.
+vi.mock("../../src/ai/adapt", async (original) => {
+  const real = await original<typeof import("../../src/ai/adapt")>();
+  const fightFromLevel: typeof real.fightFromLevel = (...given) => {
+    if (fakes.unplayable) {
+      fakes.unplayable = false;
+      throw new Error("this level has no playable move");
+    }
+    return real.fightFromLevel(...given);
+  };
+  return { ...real, fightFromLevel };
+});
 
 class FakeRecognizer {
   static made: FakeRecognizer[] = [];
@@ -111,6 +127,11 @@ function words(node: unknown): string {
   return isValidElement<Record<string, unknown>>(node) ? words(node.props.children) : "";
 }
 
+/** A plain <button> (an example chip) or the kit's Button. The screen is loaded afresh for every test, so the kit's Button is known by name. */
+function isButton(element: El): boolean {
+  return element.type === "button" || (typeof element.type === "function" && element.type.name === "Button");
+}
+
 function fire(element: El | undefined, handler: string, ...args: unknown[]): void {
   const found = element?.props[handler];
   if (typeof found !== "function") throw new Error(`nothing on the screen has that ${handler} handler`);
@@ -118,7 +139,7 @@ function fire(element: El | undefined, handler: string, ...args: unknown[]): voi
 }
 
 /** Loads the screen fresh (it looks for speech recognition once, when the module loads) and renders it with the stand-in hooks. */
-async function mount(extra: { epithet?: string; onBack?: () => void } = {}, options: { speech?: boolean } = {}) {
+async function mount(extra: { epithet?: string; onBack?: () => void; backLabel?: string } = {}, options: { speech?: boolean } = {}) {
   const ticks: (() => void)[] = [];
   const clearInterval = vi.fn<(id: number) => void>();
   vi.stubGlobal("window", {
@@ -142,10 +163,11 @@ async function mount(extra: { epithet?: string; onBack?: () => void } = {}, opti
     const all = elements(tree);
     const withClass = (name: string): El[] => all.filter((element) => String(element.props.className).split(" ").includes(name));
     return {
-      text: words(tree),
+      /** The stone heading's words: the kit draws them from its `text`, so they are not among the children. */
+      heading: all.find((element) => typeof element.type === "function" && element.type.name === "PebbleHeading")?.props.text,
       withClass,
       lines: (name: string): string[] => withClass(name).map(words),
-      button: (label: string): El | undefined => all.find((element) => element.type === "button" && words(element) === label),
+      button: (label: string): El | undefined => all.find((element) => isButton(element) && words(element) === label),
       input: all.find((element) => element.type === "input"),
       form: all.find((element) => element.type === "form"),
     };
@@ -171,12 +193,13 @@ afterEach(() => {
   vi.resetAllMocks();
   FakeRecognizer.made = [];
   FakeRecognizer.brokenMicrophone = false;
+  fakes.unplayable = false;
 });
 
 test("the first step asks, offers four different examples and will not build from an empty box", async () => {
   const screen = await mount();
   const asked = screen.show();
-  expect(asked.text).toContain("How do you fight?");
+  expect(asked.heading).toBe("How do you fight?");
   expect(asked.input?.props.value).toBe("");
   expect(asked.input?.props.maxLength).toBe(MAX_PHRASE_LENGTH);
   expect(asked.input?.props.placeholder).toBe(EXAMPLE_PHRASES[0]);
@@ -212,6 +235,10 @@ test("Build sends the tidied phrase with the player's god, the rival and the epi
   expect(working.lines("style-working")).toEqual(["The Muse is composing..."]);
   expect(working.withClass("style-working")[0]?.props.role).toBe("status");
   expect(working.lines("style-said")).toEqual([PHRASE]);
+  // Something moves for the whole wait: a row of stones that light up in turn, and three lines that come in one by one.
+  expect(working.withClass("style-stone").map((stone) => stone.props.style)).toEqual(Array.from({ length: 12 }, (_, index) => ({ "--i": index })));
+  expect(working.lines("style-step")).toHaveLength(3);
+  expect(working.heading).toBeUndefined();
 
   expect(screen.calls).toHaveLength(1);
   expect(screen.calls[0]?.url).toBe("/api/level");
@@ -229,7 +256,9 @@ test("the card shows the fight the server made, and Fight hands back that fight 
   const card = await screen.card();
   expect(card.lines("style-title")).toEqual([LEVEL.title]);
   expect(card.lines("style-heard")).toEqual([`We heard: ${LEVEL.interpretation}`]);
+  expect(card.lines("style-kicker")).toEqual(["The Muse made this fight for you"]);
   expect(card.lines("style-monster")).toEqual([LEVEL.monster.name]);
+  expect(card.lines("style-taunt")).toEqual([LEVEL.taunts[0]]);
   expect(card.lines("style-setting")).toEqual([LEVEL.arena.setting]);
   expect(card.lines("style-phase")).toEqual(LEVEL.phases.map((phase) => phase.name));
   expect(card.withClass("style-swatch").map((swatch) => swatch.props.style)).toEqual(LEVEL.arena.palette.map((background) => ({ background })));
@@ -264,6 +293,7 @@ test("with the server out of reach the card shows a bundled fight and says so", 
   const bundled = fallbackLevel(REQUEST);
   expect(card.lines("style-title")).toEqual([bundled.title]);
   expect(card.lines("style-note")).toEqual(["The Muse was out of reach, so this one comes from the old songs."]);
+  expect(card.lines("style-kicker")).toEqual(["A fight from the old songs"]);
   fire(card.button("Fight"), "onClick");
   expect(screen.done).toEqual([{ enemy: fightFromLevel(bundled, ENEMIES, MOVES), level: bundled, source: "fallback" }]);
 });
@@ -280,6 +310,23 @@ test("a server that refuses the request or answers with something that is not a 
     expect(screen.done[0]?.source).toBe("fallback");
     fakes.unmount();
   }
+});
+
+test("a made fight the game cannot play still starts a fight: Fight hands back the bundled one for the same phrase", async () => {
+  const screen = await mount({ epithet: "Stormcaller" });
+  screen.type(PHRASE);
+  screen.submit();
+  screen.calls[0]?.answer(fromServer(LEVEL));
+  const card = await screen.card();
+
+  fakes.unplayable = true;
+  fire(card.button("Fight"), "onClick");
+  expect(screen.done).toHaveLength(1);
+  const spare = fallbackLevel({ phrase: PHRASE, god: "zeus", rival_god: "poseidon" });
+  expect(screen.done[0]?.source).toBe("fallback");
+  expect(screen.done[0]?.level).toEqual(spare);
+  expect(screen.done[0]?.enemy).toEqual(fightFromLevel(spare, ENEMIES, MOVES));
+  expect(fakes.log).toHaveBeenCalledWith("error", "level_unplayable", expect.any(Error));
 });
 
 test("an epithet longer than the server allows is cut to fit, and an empty one is left out", async () => {
@@ -310,7 +357,7 @@ test("a box with nothing visible in it sends nothing", async () => {
     screen.type(blank);
     expect(screen.show().button("Build my fight")?.props.disabled).toBe(true);
     screen.submit();
-    expect(screen.show().text).toContain("How do you fight?");
+    expect(screen.show().heading).toBe("How do you fight?");
   }
   expect(screen.calls).toHaveLength(0);
 });
@@ -324,7 +371,7 @@ test("Try another phrase goes back to the question with the phrase kept, and ask
 
   fire(card.button("Try another phrase"), "onClick");
   const asked = screen.show();
-  expect(asked.text).toContain("How do you fight?");
+  expect(asked.heading).toBe("How do you fight?");
   expect(asked.input?.props.value).toBe(PHRASE);
   expect(fakes.stopNarration).toHaveBeenCalled();
   expect(screen.done).toHaveLength(0);
@@ -393,6 +440,13 @@ test("Back is offered when the caller gives onBack, and calls it", async () => {
   const screen = await mount({ onBack });
   fire(screen.show().button("Back"), "onClick");
   expect(onBack).toHaveBeenCalledOnce();
+  fakes.unmount();
+
+  // The caller can name where Back goes.
+  const named = await mount({ onBack, backLabel: "Main menu" });
+  expect(named.show().button("Back")).toBeUndefined();
+  fire(named.show().button("Main menu"), "onClick");
+  expect(onBack).toHaveBeenCalledTimes(2);
 });
 
 test("Speak it puts the surest thing heard in the box, and stops listening when the recogniser ends", async () => {

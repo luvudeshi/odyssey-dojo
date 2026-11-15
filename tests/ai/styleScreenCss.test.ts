@@ -1,5 +1,5 @@
-// The "How do you fight?" stylesheet against the theme: colours only from theme variables, rules the theme cannot override, chips that are not theme buttons.
-// It does not check contrast: the theme is being replaced (pebble mosaic), so readability needs a look in a browser once that lands.
+// The "How do you fight?" stylesheet against the pebble look: colours only from theme variables, rules the menu's own cannot override, chips that are not kit buttons.
+// It does not check contrast or size on screen: that was looked at in a browser. It never reads src/theme.css, only that every colour is a variable.
 // This reads the CSS as text. It does not render anything.
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
@@ -59,12 +59,13 @@ test("nothing readable is faded, and a pulsing label sits on its own plaque", ()
   expect(faintest).toBeGreaterThan(0);
   expect(faintest).toBeLessThan(1);
   const pulsing = RULES.filter((rule) => rule.declarations.get("animation")?.startsWith("style-pulse") === true);
-  expect(pulsing.map((rule) => rule.selector).sort()).toEqual([".style-screen .style-listening", ".style-screen .style-working"]);
+  // Only the "Listening..." button pulses. The waiting line stands still at full strength: the stones under it do the moving.
+  expect(pulsing.map((rule) => rule.selector).sort()).toEqual([".style-screen .style-listening"]);
   // A label that fades keeps a plaque of its own, so it never fades into whatever the theme puts behind the menu.
   for (const rule of pulsing) expect(hasPlaque(rule), rule.selector).toBe(true);
 });
 
-test("every rule sits under .style-screen with two classes, so it outranks the theme's .menu p and button rules", () => {
+test("every rule sits under .style-screen with two classes, so it outranks the menu's .menu p rule", () => {
   expect(RULES.length).toBeGreaterThan(20);
   for (const { selector } of RULES) {
     if (selector === "main.style-screen") continue;
@@ -73,17 +74,20 @@ test("every rule sits under .style-screen with two classes, so it outranks the t
   }
 });
 
-test("every paragraph on the screen sets its own size, which the theme's .menu p would otherwise replace", () => {
+test("every paragraph on the screen sets its own size, which the menu's .menu p would otherwise replace, and none is under 20 px", () => {
   const paragraphs = [...SCREEN.matchAll(/<p className="(style-[\w-]+)"/g)].map((match) => match[1] ?? "");
-  expect([...paragraphs].sort()).toEqual(["style-heard", "style-lede", "style-monster", "style-note", "style-said", "style-setting", "style-working"]);
+  expect([...paragraphs].sort()).toEqual(["style-heard", "style-kicker", "style-lede", "style-monster", "style-note", "style-said", "style-setting", "style-taunt", "style-working"]);
   for (const name of paragraphs) {
     const rule = RULES.find((candidate) => candidate.selector === `.style-screen .${name}`);
-    expect(rule?.declarations.has("font-size"), name).toBe(true);
     expect(rule?.declarations.has("margin"), name).toBe(true);
+    // Read from two metres away: a size in px is 20 or more, and the one clamp() starts at 2rem.
+    const size = rule?.declarations.get("font-size") ?? "";
+    expect(size, name).toMatch(/^(\d+px|clamp\(2rem, .+\))$/);
+    if (size.endsWith("px")) expect(Number.parseInt(size, 10), name).toBeGreaterThanOrEqual(20);
   }
 });
 
-test("an example chip undoes the theme button's width, capitals and letter spacing", () => {
+test("an example chip has no width floor, capitals or letter spacing: it is a quote, not a button label", () => {
   const chip = RULES.find((rule) => rule.selector === ".style-screen .style-chip")?.declarations;
   expect(chip?.get("min-width")).toBe("0");
   expect(chip?.get("text-transform")).toBe("none");

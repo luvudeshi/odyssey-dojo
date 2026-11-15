@@ -223,6 +223,20 @@ async function openGame() {
     show,
     voice,
     startFight,
+    /** A click on a stop of the quest map: App asks for Homer's line before it, and the fight screen mounts. */
+    enter(id: string): void {
+      void story.speakNarration(id, "before");
+      startFight(id);
+    },
+    /** React's dev build mounting the fight screen a second time: every cleanup runs, then every effect again. */
+    mountAgain(): void {
+      fightHooks.unmount();
+      startFight(enemy.id);
+    },
+    /** The fight screen going, with nobody stopping the story first. */
+    unmount(): void {
+      fightHooks.unmount();
+    },
     /** One frame of FightScreen's loop with these events. */
     frame(events: readonly CombatEvent[]): void {
       for (const event of events) {
@@ -421,4 +435,68 @@ test("hiding the tab stops the one context and the voices, nothing starts while 
   expect(context.state).toBe("running");
   expect(context.started).toBeGreaterThan(before.started);
   expect(FakeContext.made).toHaveLength(1);
+});
+
+// Homer's line before a stop plays as its fight opens. In these the fight screen's own cleanup does not stop the story:
+// that is the change asked of FightScreen, without which the dev build cuts him 10 ms in.
+const BEFORE_CIRCE = "/audio/narration/homer_before_circe.mp3";
+
+test("the dev build mounts the fight twice and Homer's line before the stop plays through it, under the fight start and a call", async () => {
+  const game = await openGame();
+  const circe = enemyCalled("circe");
+  const [attack] = circe.attacks;
+  if (!attack) throw new Error("circe has no attack");
+  game.enter("circe");
+  expect(heard()).toEqual([BEFORE_CIRCE]);
+  game.mountAgain();
+  expect(heard()).toEqual([BEFORE_CIRCE]);
+  await vi.advanceTimersByTimeAsync(CLIP_MS - 500);
+  game.frame([{ type: "telegraph", attack }]);
+  expect(heard()).toEqual([BEFORE_CIRCE]);
+  // He ends on his own, nothing follows him, and the next call is spoken.
+  await vi.advanceTimersByTimeAsync(600);
+  expect(heard()).toEqual([]);
+  expect(held()).toEqual([]);
+  expect(startedClips("fight_start") + startedClips("call_")).toBe(0);
+  game.frame([{ type: "telegraph", attack }]);
+  expect(heard()).toHaveLength(1);
+  expect(startedClips("call_")).toBe(1);
+});
+
+test("leaving the fight stops Homer's before-line: at once through App, and a tick later by any other door", async () => {
+  const game = await openGame();
+  game.enter("circe");
+  game.mountAgain();
+  await vi.advanceTimersByTimeAsync(300);
+  // Quit to map: App stops the story, the fight screen unmounts.
+  game.leave();
+  expect(heard()).toEqual([]);
+  expect(held()).toEqual([]);
+
+  game.enter("circe");
+  game.mountAgain();
+  await vi.advanceTimersByTimeAsync(300);
+  expect(heard()).toEqual([BEFORE_CIRCE]);
+  game.unmount();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(heard()).toEqual([]);
+  expect(held()).toEqual([]);
+  await vi.advanceTimersByTimeAsync(8000);
+  expect(heard()).toEqual([]);
+  expect(startedClips("homer_before_circe")).toBe(2);
+});
+
+test("a pause does not cut Homer's before-line, and a restart from the pause menu keeps it", async () => {
+  const game = await openGame();
+  game.enter("circe");
+  game.mountAgain();
+  await vi.advanceTimersByTimeAsync(300);
+  game.pause(true);
+  expect(heard()).toEqual([BEFORE_CIRCE]);
+  game.pause(false);
+  game.mountAgain();
+  await vi.advanceTimersByTimeAsync(300);
+  expect(heard()).toEqual([BEFORE_CIRCE]);
+  expect(startedClips("homer_before_circe")).toBe(1);
+  expect(startedClips("fight_start")).toBe(0);
 });

@@ -1,13 +1,17 @@
 // Asks the player how they fight, in their own words, and shows the fight the Muse built from it as a title card.
+// Drawn with the pebble kit (src/ui/pebble): a panel, a stone heading and the kit's buttons. The rest is styleScreen.css.
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { prepareLine, speakLine, stopNarration } from "../../audio/narration";
 import { log } from "../../core/log";
 import type { EnemySpec } from "../../core/types";
 import { ENEMIES } from "../../enemies/registry";
 import { MOVES } from "../../moves/registry";
+import { Button, Panel, PebbleHeading } from "../../ui/pebble";
 import { fightFromLevel } from "../adapt";
 import { generateLevel } from "../client";
 import type { GodId, LevelResponse, LevelSpec } from "../contracts";
+import { fallbackLevel } from "../fallbacks";
 import { EXAMPLE_PHRASES, MAX_PHRASE_LENGTH, cleanEpithet, cleanPhrase, fromSpeech, pickExamples } from "./phrase";
 import "./styleScreen.css";
 
@@ -26,6 +30,11 @@ type Step = { readonly kind: "ask" } | { readonly kind: "working" } | { readonly
 
 const PLACEHOLDER_MS = 2800;
 const CHIPS = 4;
+// The wait is up to LEVEL_TIMEOUT_MS (src/ai/client.ts). A row of stones lights up across it and these lines come in one
+// by one, so the screen is never still. Both are timed in styleScreen.css, not here.
+const STONES = 12;
+const MAKING: readonly string[] = ["A monster takes shape", "An arena rises around it", "It learns your name"];
+const nth = (index: number): CSSProperties => ({ "--i": index } as CSSProperties);
 
 function findRecognizer(): RecognizerClass | null {
   if (typeof window === "undefined") return null;
@@ -50,8 +59,10 @@ export function StyleScreen(props: {
   epithet?: string;
   onDone: (fight: { enemy: EnemySpec; level: LevelSpec; source: "ai" | "fallback" }) => void;
   onBack?: () => void;
+  /** What the Back button says. "Back" when left out. */
+  backLabel?: string;
 }) {
-  const { god, rivalGod, epithet, onDone, onBack } = props;
+  const { god, rivalGod, epithet, onDone, onBack, backLabel = "Back" } = props;
   const [step, setStep] = useState<Step>({ kind: "ask" });
   const [phrase, setPhrase] = useState("");
   const [listening, setListening] = useState(false);
@@ -144,21 +155,45 @@ export function StyleScreen(props: {
 
   if (step.kind === "working") {
     return (
-      <main className="menu style-screen">
+      <Panel as="main" ornament className="menu style-screen">
         <p className="style-working" role="status">The Muse is composing...</p>
         <p className="style-said">{phrase}</p>
-      </main>
+        <div className="style-stones" aria-hidden="true">
+          {Array.from({ length: STONES }, (_, index) => <span key={index} className="style-stone" style={nth(index)} />)}
+        </div>
+        <ul className="style-making" aria-hidden="true">
+          {MAKING.map((line, index) => <li key={line} className="style-step" style={nth(index)}>{line}</li>)}
+        </ul>
+      </Panel>
     );
   }
 
   if (step.kind === "card") {
     const { level, source } = step.made;
+    const taunt = level.taunts[0];
+    // Fight always starts a fight. A made level the game cannot turn into one gives way to the bundled fight for the same phrase.
+    const fight = (): void => {
+      silence();
+      let made: Parameters<typeof onDone>[0];
+      try {
+        made = { enemy: fightFromLevel(level, ENEMIES, MOVES), level, source };
+      } catch (error) {
+        log("error", "level_unplayable", error);
+        const spare = fallbackLevel({ phrase, god, rival_god: rivalGod });
+        made = { enemy: fightFromLevel(spare, ENEMIES, MOVES), level: spare, source: "fallback" };
+      }
+      onDone(made);
+    };
     return (
-      <main className="menu style-screen style-card">
+      <Panel as="main" ornament className="menu style-screen style-card">
+        <p className="style-kicker">{source === "ai" ? "The Muse made this fight for you" : "A fight from the old songs"}</p>
         <h1 className="style-title">{level.title}</h1>
         <p className="style-heard">We heard: {level.interpretation}</p>
-        <p className="style-monster">{level.monster.name}</p>
-        <p className="style-setting">{level.arena.setting}</p>
+        <div className="style-foe">
+          <p className="style-monster">{level.monster.name}</p>
+          {taunt !== undefined && <p className="style-taunt">{taunt}</p>}
+          <p className="style-setting">{level.arena.setting}</p>
+        </div>
         <ul className="style-phases">
           {level.phases.map((phase, index) => <li key={index} className="style-phase">{phase.name}</li>)}
         </ul>
@@ -169,24 +204,16 @@ export function StyleScreen(props: {
           <p className="style-note">The Muse was out of reach, so this one comes from the old songs.</p>
         )}
         <div className="style-actions">
-          <button
-            autoFocus
-            onClick={() => {
-              silence();
-              onDone({ enemy: fightFromLevel(level, ENEMIES, MOVES), level, source });
-            }}
-          >
-            Fight
-          </button>
-          <button className="quiet style-quiet" onClick={() => { silence(); setStep({ kind: "ask" }); }}>Try another phrase</button>
+          <Button primary autoFocus onClick={fight}>Fight</Button>
+          <Button onClick={() => { silence(); setStep({ kind: "ask" }); }}>Try another phrase</Button>
         </div>
-      </main>
+      </Panel>
     );
   }
 
   return (
-    <main className="menu style-screen">
-      <h1>How do you fight?</h1>
+    <Panel as="main" ornament className="menu style-screen">
+      <PebbleHeading as="h1" text="How do you fight?" px={60} tone="ochre" />
       <p className="style-lede">Say it your way. The Muse will build your fight from it.</p>
       <form className="style-form" onSubmit={(event) => { event.preventDefault(); build(); }}>
         <input
@@ -210,18 +237,14 @@ export function StyleScreen(props: {
         </div>
         <div className="style-actions">
           {Recognition && (
-            <button
-              type="button"
-              className={listening ? "quiet style-quiet style-listening" : "quiet style-quiet"}
-              onClick={listening ? stopListening : listen}
-            >
+            <Button className={listening ? "style-listening" : ""} onClick={listening ? stopListening : listen}>
               {listening ? "Listening..." : "Speak it"}
-            </button>
+            </Button>
           )}
-          <button type="submit" className="style-primary" disabled={cleanPhrase(phrase) === ""}>Build my fight</button>
+          <Button primary type="submit" className="style-build" disabled={cleanPhrase(phrase) === ""}>Build my fight</Button>
         </div>
       </form>
-      {onBack && <button className="quiet style-quiet style-back" onClick={onBack}>Back</button>}
-    </main>
+      {onBack && <Button onClick={onBack}>{backLabel}</Button>}
+    </Panel>
   );
 }

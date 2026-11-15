@@ -12,7 +12,7 @@ const LENGTH: Readonly<Record<string, number>> = {
   call_cross: 2040, call_uppercut: 2190, call_block: 1880, call_dodge_right: 1490,
   phase_1: 1720, phase_2: 2430, phase_any: 2430, taunt_polyphemus_1: 3240, taunt_polyphemus_4: 2690,
   win: 3320, loss: 3790, praise_1: 1410, warn_1: 1150, fight_start: 1280, call_stake_thrust: 2770,
-  call_dodge_left: 1440, warn_3: 1360, call_trident_sweep: 1900,
+  call_dodge_left: 1440, warn_3: 1360, call_trident_sweep: 1900, homer_intro_polyphemus: 9200,
 };
 
 function attack(counter: string): CombatEvent {
@@ -545,4 +545,194 @@ test("the finisher's call waits out a warning however long that takes, and is sp
   // It waited 1260 ms, longer than an ordinary call may, because the finisher's window is six seconds.
   expect(started).toEqual(["warn_3@0", "call_stake_thrust@1360"]);
   expect(cut).toEqual([]);
+});
+
+// ---- Homer's line before a stop, which now plays as the fight opens ----
+// Measured on main in the dev build, keyboard path, a player who took every hit: Homer started on the click, the fight
+// screen mounted 20 ms later, and the line was cut 10 ms after it began. In a build without the double mount Athena's
+// first call would have cut it 1.8 s in. These replay that run's times.
+const HOMER = "homer_intro_polyphemus";
+
+/** What a click on a stop does: App asks for Homer's line, then the fight screen mounts 20 ms later. `dev` mounts it twice, as React's dev build does. */
+async function clickStop(fight: Awaited<ReturnType<typeof startFight>>, dev: boolean): Promise<void> {
+  const { voice, story } = fight;
+  void story.speakNarration("polyphemus", "before");
+  await vi.advanceTimersByTimeAsync(20);
+  voice.speakLine("fight_start");
+  voice.enterFightVoice();
+  if (!dev) return;
+  voice.leaveFightVoice();
+  voice.speakLine("fight_start");
+  voice.enterFightVoice();
+}
+
+test.each([true, false])("the keyboard path (dev build: %s): Homer's story of the stop is heard whole, and Athena's calls resume after it", async (dev) => {
+  const fight = await startFight();
+  const { frame, started, ended, cut } = fight;
+  await clickStop(fight, dev);
+  for (const [at, events] of [
+    [1790, [attack("block")]], [4060, [struck("block")]], [4760, [attack("dodge_left")]], [7020, [struck("dodge_left")]],
+    [7720, [attack("dodge_right")]], [9990, [struck("dodge_right")]], [10690, [attack("block")]],
+  ] as const) {
+    await until(at);
+    frame(events);
+  }
+  await until(14000);
+  // Three calls, two warnings and "I am with you!" were asked for under him. None was spoken, then or when he ended.
+  expect(started).toEqual([`${HOMER}@0`, "warn_1@9990", "call_block@11140"]);
+  expect(ended).toEqual([`${HOMER}@9200`, "warn_1@11140", "call_block@13020"]);
+  expect(cut).toEqual([]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("the camera path: he speaks over calibration and on into the fight, and a fight that opens after he ends gets its opening line", async () => {
+  for (const [opensAt, expected] of [
+    [3000, [`${HOMER}@0`, "call_block@10500"]],
+    // The dev build's second mount cuts the opening line the first mount started and starts it again in the same instant, as on main.
+    [10000, [`${HOMER}@0`, "fight_start@10000", "fight_start@10000", "call_block@11500"]],
+  ] as const) {
+    vi.setSystemTime(0);
+    const { voice, story, frame, started, cut } = await startFight();
+    void story.speakNarration("polyphemus", "before");
+    await until(opensAt);
+    for (let mount = 0; mount < 2; mount++) {
+      if (mount > 0) voice.leaveFightVoice();
+      voice.speakLine("fight_start");
+      voice.enterFightVoice();
+    }
+    // The first attack is shown 1.5 s into a fight, and one every 3 s after it.
+    for (let at = opensAt + 1500; at <= 12000; at += 3000) {
+      await until(at);
+      frame([attack("block")]);
+    }
+    await until(15000);
+    expect(started, String(opensAt)).toEqual(expected);
+    expect(cut, String(opensAt)).toEqual(opensAt === 3000 ? [] : ["fight_start@10000"]);
+  }
+});
+
+test("Quit to map cuts him at once, and a pause before it does not", async () => {
+  const fight = await startFight();
+  const { voice, story, started, ended, cut } = fight;
+  await clickStop(fight, true);
+  await until(3000);
+  voice.pauseFightVoice(true);
+  await until(4300);
+  // He talks on over the pause menu, as he does over the result screen.
+  expect(voice.voicePlaying()).toBe(HOMER);
+  // App's onQuit stops the story, then the fight screen unmounts.
+  story.stopStory();
+  voice.pauseFightVoice(false);
+  voice.leaveFightVoice();
+  expect(voice.voicePlaying()).toBeNull();
+  await until(15000);
+  expect(started).toEqual([`${HOMER}@0`]);
+  expect(cut).toEqual([`${HOMER}@4300`]);
+  expect(ended).toEqual([]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("a fight left by a door that does not stop the story still silences him, one tick later", async () => {
+  const fight = await startFight();
+  const { voice, cut } = fight;
+  await clickStop(fight, true);
+  await until(2000);
+  voice.leaveFightVoice();
+  // Not in the same breath: the dev build's second mount comes there, and it must find him still speaking.
+  expect(voice.voicePlaying()).toBe(HOMER);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(voice.voicePlaying()).toBeNull();
+  expect(cut).toEqual([`${HOMER}@2000`]);
+  // His promise in storyVoice sees the voice free at its next look, and nothing is left running.
+  await vi.advanceTimersByTimeAsync(100);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("the tick after a fight is left cuts only his before-line, not a line the next screen has started", async () => {
+  const fight = await startFight();
+  const { voice, story, frame, started, cut } = fight;
+  await clickStop(fight, false);
+  await until(2000);
+  frame([{ type: "lost" }]);
+  voice.leaveFightVoice();
+  // The result line was cut with the fight. The next screen speaks in the same commit, and keeps the voice.
+  voice.speakLine("fight_start");
+  await vi.advanceTimersByTimeAsync(0);
+  expect(voice.voicePlaying()).toBe("fight_start");
+  expect(started).toEqual([`${HOMER}@0`, "loss@2000", "fight_start@2000"]);
+  expect(cut).toEqual([`${HOMER}@2000`, "loss@2000"]);
+  story.stopStory();
+});
+
+test("Restart from the pause menu keeps him: the new fight screen mounts in the same moment the old one goes", async () => {
+  const fight = await startFight();
+  const { voice, started, ended, cut } = fight;
+  await clickStop(fight, true);
+  await until(2500);
+  voice.pauseFightVoice(true);
+  await until(3500);
+  voice.pauseFightVoice(false);
+  voice.leaveFightVoice();
+  expect(voice.speakLine("fight_start")).toBe(false);
+  voice.enterFightVoice();
+  await until(12000);
+  expect(started).toEqual([`${HOMER}@0`]);
+  expect(ended).toEqual([`${HOMER}@9200`]);
+  expect(cut).toEqual([]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("a phase line, a full power meter and the result each cut him: they come once and say what just happened", async () => {
+  const cutters: readonly [string, (fight: Awaited<ReturnType<typeof startFight>>) => void][] = [
+    ["phase_1", ({ frame }) => { frame([hit, phaseTwo]); }],
+    ["call_trident_sweep", ({ voice }) => { expect(voice.speakPowerReady("trident_sweep")).toBe(true); }],
+    ["win", ({ frame }) => { frame([{ type: "won" }]); }],
+    ["loss", ({ frame }) => { frame([{ type: "lost" }]); }],
+  ];
+  for (const [clip, speak] of cutters) {
+    vi.setSystemTime(0);
+    const fight = await startFight();
+    await clickStop(fight, true);
+    await until(3000);
+    speak(fight);
+    expect(fight.started.slice(0, 2), clip).toEqual([`${HOMER}@0`, `${clip}@3000`]);
+    expect(fight.cut, clip).toEqual([`${HOMER}@3000`]);
+    await until(15000);
+    // The line that cut him plays whole, and he does not come back after it.
+    expect(fight.ended[0], clip).toBe(`${clip}@${String(3000 + (LENGTH[clip] ?? 0))}`);
+    expect(fight.started.filter((each) => each.startsWith(HOMER)), clip).toHaveLength(1);
+    fight.story.stopStory();
+  }
+});
+
+test("a stop picked while the last fight's result line is still spoken: he waits for the fight start, cuts nothing, and is heard whole", async () => {
+  const fight = await startFight();
+  const { voice, frame, started, ended, cut } = fight;
+  frame([{ type: "won" }]);
+  await until(500);
+  await clickStop(fight, false);
+  // The new fight's first attack, 1.5 s in.
+  await until(2020);
+  frame([attack("block")]);
+  await until(13000);
+  // The fight start takes the voice from the old result, as it always did. He asks again every 0.1 s and starts as it ends.
+  expect(started).toEqual(["win@0", "fight_start@520", `${HOMER}@1800`]);
+  expect(cut).toEqual(["win@520"]);
+  expect(ended).toEqual(["fight_start@1800", `${HOMER}@11000`]);
+});
+
+test("a taunt asked for by a fight that has been left never starts", async () => {
+  const { voice, frame, started, cut, taunts } = await startFight();
+  voice.speakLine("fight_start");
+  voice.enterFightVoice();
+  await until(2000);
+  frame([hit, phaseTwo]);
+  await until(2500);
+  // Left with the taunt still waiting for the phase line, and nobody stopped the story.
+  voice.leaveFightVoice();
+  await until(9000);
+  expect(started).toEqual(["fight_start@0", "phase_1@2000"]);
+  expect(cut).toEqual(["phase_1@2500"]);
+  expect(taunts).toEqual([false]);
+  expect(vi.getTimerCount()).toBe(0);
 });

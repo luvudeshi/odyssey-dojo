@@ -81,10 +81,10 @@
 .dojo-dots li[data-tier="needs_work"] .dojo-dot { border-color: var(--dj-needs); border-style: dashed; }
 
 /* The end: the total, the highlights, and what to work on. */
-.dojo-end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; text-align: center; }
+.dojo-end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; text-align: center; }
 .dojo-end-title { font-size: 2.25rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dj-accent); }
 .dojo-total { font-size: 2rem; color: var(--dj-ink); }
-.dojo-total b { font-size: 5rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.dojo-total b { font-size: 4.5rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .dojo-total span { color: var(--dj-dim); }
 .dojo-closing { font-size: 1.6rem; color: var(--dj-dim); }
 .dojo-columns { display: flex; align-items: stretch; justify-content: center; gap: 1.5rem; width: 100%; max-width: 72rem; margin-top: 0.4rem; }
@@ -97,7 +97,9 @@
 .dojo-card li[data-tier="excellent"] b { color: var(--dj-excellent); }
 .dojo-card li[data-tier="good"] b { color: var(--dj-good); }
 .dojo-card li[data-tier="needs_work"] b { color: var(--dj-needs); }
-.dojo-buttons { display: flex; gap: 1.25rem; margin-top: 0.8rem; }
+/* What pressing Done changes in the fights. */
+.dojo-tuned { max-width: 72rem; font-size: 1.4rem; line-height: 1.25; text-wrap: balance; color: var(--dj-ink); }
+.dojo-buttons { display: flex; gap: 1.25rem; margin-top: 0.4rem; }
 .dojo-buttons .dojo-button { padding: 0.75rem 2rem; font-size: 1.5rem; }
 
 /* Opened before a style was chosen: one button per style. */

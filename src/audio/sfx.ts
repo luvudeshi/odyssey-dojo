@@ -1,8 +1,12 @@
 // Combat sound: plays a clip file from public/audio/sfx when index.json lists one, else the built-in synthesised clip.
 // To add a real clip, drop <type>.mp3 into public/audio/sfx and add "<type>" to index.json there.
+// The same folder holds the chime for an unlocked achievement (playUnlock) and one sound for each kind of defend, which
+// a "defended" event plays in place of its own clip (cues.ts names them).
 import { log } from "../core/log";
 import type { CombatEvent } from "../core/types";
 import { getSettings } from "../settings/store";
+import type { Cue } from "./cues";
+import { DEFEND_GAIN, defendClipFor, listedCues, prepareCue, UNLOCK_CLIP, UNLOCK_GAIN } from "./cues";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
 import { tabHidden, watchTab } from "./tab";
@@ -10,6 +14,8 @@ import { tabHidden, watchTab } from "./tab";
 interface Player {
   readonly context: AudioContext;
   readonly master: GainNode;
+  /** Settles once every listed clip file has been read, or has failed to be. */
+  readonly loaded: Promise<void>;
 }
 
 const CLIP_DIR = "/audio/sfx";
@@ -33,6 +39,10 @@ const WARM_UP_SAMPLES = 4000;
 const WARM_UP_GAP_MS = 12;
 /** What counts as a user gesture for starting audio. */
 const GESTURES = ["pointerdown", "keydown"] as const;
+/** The unlock chime waits this long for audio to start and its file to load. Later than that it would no longer go with the notice. */
+const UNLOCK_WAIT_MS = 1000;
+/** A second chime asked for this soon after one is not played: several achievements at once sound as one. */
+const UNLOCK_GAP_MS = 1000;
 
 /** Every combat event. A clip file can exist for any of them; only some also have a synthesised sound. */
 const EVENTS: Readonly<Record<CombatEvent["type"], true>> = {
@@ -42,6 +52,8 @@ const EVENTS: Readonly<Record<CombatEvent["type"], true>> = {
 const EVENT_TYPES = Object.keys(EVENTS) as CombatEvent["type"][];
 const SYNTHESISED: ReadonlySet<string> = new Set(SFX_TYPES);
 const clips = new Map<string, AudioBuffer>();
+/** The unlock chime and the defend sounds that have loaded, by clip name (cues.ts). */
+const cues = new Map<string, Cue<AudioBuffer>>();
 const synths = new Map<string, AudioBuffer>();
 /** Synthesised clips that are partly rendered. */
 const renders = new Map<string, ClipRender>();
@@ -65,12 +77,25 @@ async function loadClip(context: AudioContext, type: string): Promise<void> {
   }
 }
 
+async function loadCue(context: AudioContext, name: string): Promise<void> {
+  try {
+    const response = await fetch(`${CLIP_DIR}/${name}.mp3`);
+    if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+    cues.set(name, prepareCue(await context.decodeAudioData(await response.arrayBuffer())));
+  } catch (error) {
+    log("warn", "sfx.clipFailed", { type: name, reason: error instanceof Error ? error.message : String(error) });
+  }
+}
+
 async function loadClips(context: AudioContext): Promise<void> {
   try {
     const response = await fetch(`${CLIP_DIR}/index.json`);
     if (!response.ok) return;
     const index: unknown = await response.json();
-    await Promise.all(listedClips(index).map((type) => loadClip(context, type)));
+    await Promise.all([
+      ...listedClips(index).map((type) => loadClip(context, type)),
+      ...listedCues(index).map((name) => loadCue(context, name)),
+    ]);
   } catch (error) {
     log("warn", "sfx.indexFailed", error);
   }
@@ -145,19 +170,46 @@ function createPlayer(): Player | null {
     const master = context.createGain();
     master.gain.value = MASTER_GAIN;
     master.connect(context.destination);
-    void loadClips(context);
+    const loaded = loadClips(context);
     warmUp(context);
     unlockOnGesture(context);
     quietWhileHidden(context);
-    return { context, master };
+    return { context, master, loaded };
   } catch (error) {
     log("warn", "sfx.unavailable", error);
     return null;
   }
 }
 
-function start({ context, master }: Player, type: CombatEvent["type"]): void {
+/** A volume setting as a number from 0 to 1. Anything that is not a number counts as full. */
+function unit(value: number): number {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
+}
+
+/** Plays one of the clips of cues.ts, levelled and from its first sound. Returns false when it is not loaded or will not start. */
+function startCue({ context }: Player, name: string | null, gain: number): boolean {
   try {
+    const cue = name === null ? undefined : cues.get(name);
+    if (!cue) return false;
+    const source = context.createBufferSource();
+    source.buffer = cue.buffer;
+    const level = context.createGain();
+    level.gain.value = cue.level * gain * unit(getSettings().sfxVolume);
+    source.connect(level).connect(context.destination);
+    source.start(0, cue.offset);
+    return true;
+  } catch (error) {
+    log("warn", "sfx.cueFailed", error);
+    return false;
+  }
+}
+
+function start(player: Player, event: CombatEvent): void {
+  const { context, master } = player;
+  const { type } = event;
+  try {
+    // A defend sounds like what was done: a dodge, a block, a duck or a jump. With no clip for it, the usual sound below.
+    if (event.type === "defended" && startCue(player, defendClipFor(event), DEFEND_GAIN)) return;
     // An event with neither a clip file nor a synthesised design stays silent.
     const buffer = clips.get(type) ?? (SYNTHESISED.has(type) ? synthBuffer(context, type, Number.POSITIVE_INFINITY) : null);
     if (buffer === null) return;
@@ -198,24 +250,64 @@ export function setEventOverride(next: EventOverride | null): void {
   override = next;
 }
 
+/** The god's own sound for the power going off (powerSound.ts): returns true when it played, and the usual one is then skipped. */
+let powerSound: (() => boolean) | null = null;
+
+export function setPowerSound(next: (() => boolean) | null): void {
+  powerSound = next;
+}
+
 export function playEvent(event: CombatEvent): void {
   const { type } = event;
   if (!(type in EVENTS)) return;
   // A hidden tab stays silent, and asking the context to run again there would bring the music back with it.
   if (tabHidden()) return;
+  if (type === "powerUnleashed" && powerSound?.()) return;
   if (override?.(event)) return;
   const active = sharedPlayer();
   if (!active) return;
   if (active.context.state === "running") {
-    start(active, type);
+    start(active, event);
     return;
   }
   // Suspended until the browser allows audio. Sounds queued behind a long wait would all fire at once, so those are dropped.
   const asked = performance.now();
   active.context.resume().then(
     () => {
-      if (performance.now() - asked < STALE_MS) start(active, type);
+      if (performance.now() - asked < STALE_MS) start(active, event);
     },
     () => undefined,
   );
+}
+
+/** When the last unlock chime was asked for and let through, by the clock. */
+let unlockAt = Number.NEGATIVE_INFINITY;
+
+/**
+ * The chime for an unlocked achievement. Safe to call at any time and from anywhere: it never throws and returns at
+ * once. It stays silent in a hidden tab, with the effects volume at zero, where there is no audio, when the clip is
+ * missing, and when audio has not started (no click or key yet) or the clip has not loaded within a second. Calls
+ * that come within a second of one another give one chime. It plays beside the voice and the music and stops neither.
+ */
+export function playUnlock(): void {
+  try {
+    if (tabHidden()) return;
+    if (!(unit(getSettings().sfxVolume) > 0)) return;
+    const asked = performance.now();
+    if (asked - unlockAt < UNLOCK_GAP_MS) return;
+    const active = sharedPlayer();
+    if (!active) return;
+    unlockAt = asked;
+    const { context, loaded } = active;
+    const running = context.state === "running" ? Promise.resolve() : context.resume();
+    Promise.all([running, loaded]).then(
+      () => {
+        if (performance.now() - asked > UNLOCK_WAIT_MS || context.state !== "running" || tabHidden()) return;
+        startCue(active, UNLOCK_CLIP, UNLOCK_GAIN);
+      },
+      () => undefined,
+    );
+  } catch (error) {
+    log("warn", "sfx.unlockFailed", error);
+  }
 }

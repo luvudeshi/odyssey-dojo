@@ -29,13 +29,10 @@ function parse(css: string): Rule[] {
 /** Keyframe stops ("from", "50%") style no element of their own. */
 const RULES = parse(SHEET).filter((rule) => !/^(from|to|\d+%)$/.test(rule.selector));
 
-/** The one selector that looks outside the banner: the fight while the HUD's defend word is on the same strip. */
-const DEFEND_WORD_UP = ".fight:has(.hb-defend__word) ";
-
 test("every rule sits under .power-ready with two classes, so the theme cannot override it and nothing leaks out", () => {
   expect(RULES.length).toBeGreaterThanOrEqual(10);
   for (const rule of RULES) {
-    const selector = rule.selector.startsWith(DEFEND_WORD_UP) ? rule.selector.slice(DEFEND_WORD_UP.length) : rule.selector;
+    const selector = rule.selector;
     expect(selector).toMatch(/^\.power-ready[ .]/);
     expect(selector.match(/\.[\w-]+/g)?.length ?? 0, selector).toBeGreaterThanOrEqual(2);
     // No bare element or id selectors: only the banner's own classes, and "*" for its descendants.
@@ -43,14 +40,12 @@ test("every rule sits under .power-ready with two classes, so the theme cannot o
   }
 });
 
-test("it steps aside while the HUD's defend word (DODGED!) is on the same strip, and the names it reads are the HUD's own", () => {
-  const aside = RULES.find((rule) => rule.selector === `${DEFEND_WORD_UP}.power-ready.power-ready--live`)?.declarations;
-  expect(aside?.get("opacity")).toBe("0");
-  expect([...(aside?.keys() ?? [])]).toEqual(["opacity"]);
-  // Renaming the word or the fight's root must fail here, not silently bring the overlap back.
-  expect(readFileSync("src/hud/DefendFlash.tsx", "utf8")).toContain('className="hb-defend__word"');
-  expect(readFileSync("src/screens/FightScreen.tsx", "utf8")).toContain('<div className="fight">');
-  expect(RULES.filter((rule) => !rule.selector.startsWith(".power-ready")).map((rule) => rule.selector)).toEqual([`${DEFEND_WORD_UP}.power-ready.power-ready--live`]);
+test("it never hides for something outside the banner: a defend fills the meter, and the banner must stay up while the DODGED chip shows", () => {
+  expect(RULES.filter((rule) => !rule.selector.startsWith(".power-ready")).map((rule) => rule.selector)).toEqual([]);
+  expect(SHEET).not.toContain(":has(");
+  expect(SHEET).not.toContain("hb-defend");
+  // Nothing but the entrance keyframe ever takes the banner to opacity 0.
+  for (const rule of RULES) expect(rule.declarations.get("opacity") ?? "1", rule.selector).not.toBe("0");
 });
 
 test("keyframes carry the banner's name, so they cannot replace another stylesheet's", () => {
@@ -84,6 +79,19 @@ test("it is centred on the lower edge of the fight, and is wide, not tall: the n
   expect(plate?.get("grid-template-areas")).toBe('"title how" "move how"');
 });
 
+test("the champion plate sits just right of the power ring, level with it, still, and leaves a narrow screen", () => {
+  const ring = /\.power-circle \{[^}]*--pc-size: (clamp\([^;]+\));[^}]*bottom: (clamp\([^;]+\));/.exec(readFileSync("src/hud/powerCircle.css", "utf8"));
+  const [, size = "?", bottom = "?"] = ring ?? [];
+  const plate = RULES.find((rule) => rule.selector === ".power-ready.power-ready--champion" && rule.declarations.has("position"))?.declarations;
+  expect(plate?.get("position")).toBe("absolute");
+  // The ring's own size and bottom offset, read from the HUD's sheet: a resized ring must fail here, not slide under the plate.
+  expect(plate?.get("left")).toBe(`calc(50% + ${size} / 2 + clamp(8px, 0.9vw, 14px))`);
+  expect(plate?.get("bottom")).toBe(bottom);
+  expect(plate?.get("height")).toBe(size);
+  expect(plate?.has("animation")).toBe(false);
+  expect(SHEET).toMatch(/@media \(max-width: 760px\) \{\s*\.power-ready\.power-ready--champion \{ display: none; \}/);
+});
+
 test("colours are the god's accent or a theme variable, each with a fallback for a theme that drops the name", () => {
   let coloured = 0;
   for (const rule of RULES) {
@@ -99,6 +107,34 @@ test("colours are the god's accent or a theme variable, each with a fallback for
   expect(coloured).toBeGreaterThanOrEqual(8);
   // Every var() in the sheet has a fallback, sizes and positions included.
   for (const use of SHEET.match(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g) ?? []) expect(use).toMatch(/^var\(--[\w-]+,\s*\S/);
+});
+
+test("between cards the plate dims, holds still and says to wait, 0.8 s late so the beat after a strike changes nothing; a kept press shows at once", () => {
+  const rule = (selector: string): ReadonlyMap<string, string> | undefined => RULES.find((each) => each.selector === selector)?.declarations;
+  const waiting = ".power-ready.power-ready--waiting";
+  const queued = ".power-ready.power-ready--queued";
+  // Hidden until the banner waits; then it stands where the key or the gesture was.
+  expect(rule(".power-ready .power-ready__wait")?.get("visibility")).toBe("hidden");
+  expect(rule(".power-ready .power-ready__wait")?.get("grid-area")).toBe("how");
+  expect(rule(`${waiting} .power-ready__wait`)?.get("visibility")).toBe("visible");
+  expect(rule(`${waiting} .power-ready__how`)?.get("visibility")).toBe("hidden");
+  expect(rule(`${waiting} .power-ready__edge`)?.get("opacity")).toBe("0.55");
+  // The entrance runs on; only the pulse (the second animation of the frame) holds.
+  expect(rule(".power-ready .power-ready__frame")?.get("animation")).toMatch(/^power-ready-in [^,]+, power-ready-pulse /);
+  expect(rule(`${waiting} .power-ready__frame`)?.get("animation-play-state")).toBe("running, paused");
+  // Longer than the engine's beat after a strike, far shorter than the one after a phase change.
+  const [, recover = "?", phaseRecover = "?"] = /const RECOVER_MS = (\d+);[\s\S]*const PHASE_RECOVER_MS = (\d+);/.exec(readFileSync("src/combat/engine.ts", "utf8")) ?? [];
+  for (const part of ["edge", "how", "wait"]) {
+    const delay = /(\d+(?:\.\d+)?)s$/.exec(rule(`${waiting} .power-ready__${part}`)?.get("transition") ?? "")?.[1];
+    expect(Number(delay) * 1000, part).toBeGreaterThan(Number(recover));
+    expect(Number(delay) * 1000, part).toBeLessThan(Number(phaseRecover) / 2);
+    // Not a shorter delay: that would not move a transition that is already counting down.
+    expect(rule(`${queued} .power-ready__${part}`)?.get("transition"), part).toBe("none");
+    // Leaving the wait has no delay: the rule without --waiting carries none.
+    expect(rule(`.power-ready .power-ready__${part}`)?.get("transition") ?? "", part).not.toMatch(/s \d/);
+  }
+  // The --queued rules come after the --waiting ones, so at equal weight they win.
+  expect(SHEET.indexOf(`${queued} .power-ready__edge`)).toBeGreaterThan(SHEET.indexOf(`${waiting} .power-ready__edge`));
 });
 
 test("the god's accent reaches the sheet as --power-ready-accent, set by the banner itself", () => {
@@ -118,8 +154,9 @@ test("every class the banner uses has a rule, and every rule is for a class the 
   const styled = new Set(RULES.flatMap((rule) => rule.selector.match(/power-ready(?:__|--)[a-z]+/g) ?? []));
   // The per-god class (power-ready--zeus) is a hook for later; it is built from the god's id and has no rule yet.
   expect([...used].sort()).toEqual([
-    "power-ready--keys", "power-ready--live", "power-ready__edge", "power-ready__frame", "power-ready__how",
-    "power-ready__key", "power-ready__move", "power-ready__or", "power-ready__plate", "power-ready__title",
-  ]);
+    "power-ready--champion", "power-ready--keys", "power-ready--live", "power-ready--queued", "power-ready--waiting", "power-ready__edge",
+    "power-ready__frame", "power-ready__god", "power-ready__how", "power-ready__key", "power-ready__move", "power-ready__of",
+    "power-ready__patron", "power-ready__plate", "power-ready__or", "power-ready__title", "power-ready__wait",
+  ].sort());
   expect([...styled].sort()).toEqual([...used].sort());
 });

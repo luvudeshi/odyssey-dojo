@@ -183,12 +183,13 @@ function countDraws(ms) {
 }
 
 /**
- * Title -> Keyboard only -> first style -> this stop on the map -> intro button -> fight. Returns the style picked,
- * or null when the map keeps this stop locked (a stop with no 3D model stays locked, see `playable` in flow.ts).
+ * Main menu -> "Play on the keyboard instead" -> first style -> this stop on the map -> fight. A stop on the map
+ * starts its fight at once. Returns the style picked, or null when the map keeps this stop locked (a stop with no
+ * 3D model stays locked, see `playable` in flow.ts).
  */
 async function enterFight(page, base, stop) {
   await page.goto(`${base}/?stop=${stop.id}&debug`);
-  await page.getByRole("button", { name: "Keyboard only" }).click();
+  await page.getByRole("button", { name: "Play on the keyboard instead", exact: true }).click();
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
   const styleButton = page.locator("main.menu button").first();
   // textContent, not innerText: the CSS shows buttons and headings in upper case, and innerText returns what is shown.
@@ -198,11 +199,10 @@ async function enterFight(page, base, stop) {
   // The map draws one button per enemy in ladder order; only the one for this stop will do.
   const button = page.locator("button.stop").nth(stop.index);
   if (!(await button.evaluate((element) => element.classList.contains("open")))) return null;
+  // The click starts the fight with no screen in between, so the stop's name is checked on the button itself.
+  const label = (await button.textContent()) ?? "";
+  if (!label.toLowerCase().includes(stop.name.toLowerCase())) throw new Error(`stop ${String(stop.index + 1)} on the map reads "${label.trim()}" instead of "${stop.name}"`);
   await button.click();
-  // The heading is laid in pebbles on a canvas, in upper case: its words are in aria-label (plain text is the fallback).
-  const heading = (await page.locator("main.menu h1").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
-  if (heading.toLowerCase() !== stop.name.toLowerCase()) throw new Error(`the map opened "${heading}" instead of "${stop.name}"`);
-  await page.getByRole("button", { name: `Face ${stop.name}` }).click();
   // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
   await page.locator(".fight canvas").first().waitFor();
   await page.waitForLoadState("networkidle");
