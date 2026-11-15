@@ -1,9 +1,12 @@
-// Screen flow (see screens/flow.ts): title -> style -> quest map -> intro -> fight -> result -> map.
+// Screen flow (see screens/flow.ts): main menu -> style -> quest map -> fight -> result -> map.
 import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
+import { recordFight, useProfile } from "./account/store";
 import "./screens/menus.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
 import type { GodReveal } from "./ai/revealGod";
+import { assessmentFrom } from "./coach";
+import { Dojo } from "./coach/ui/Dojo";
 import { log } from "./core/log";
 import { ENEMIES } from "./enemies/registry";
 import { CameraPanelContext } from "./hud/cameraPanel";
@@ -12,22 +15,21 @@ import { createCameraSession } from "./pose/cameraSession";
 import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
+import { Account } from "./screens/Account";
 import { EndPanel } from "./screens/EndScreen";
 import { enemyFor, flowReducer, openAt, playable, unlocked } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
-import { IntroScreen } from "./screens/IntroScreen";
+import { narrateIntro } from "./screens/hookups";
+import { MainMenu } from "./screens/MainMenu";
 import { QuestMap } from "./screens/QuestMap";
 import { RoomHost } from "./screens/RoomHost";
 import { RoomJoin } from "./screens/RoomJoin";
 import type { Joined } from "./screens/RoomJoin";
-import { RoomMenu } from "./screens/RoomMenu";
 import { roomFromSearch } from "./screens/roomUrl";
 import type { HostLink } from "./net/host";
-import { TitleScreen } from "./screens/TitleScreen";
 import { WebcamGate } from "./screens/WebcamGate";
 import { useSettings } from "./settings/store";
-import { SettingsPanel } from "./ui/SettingsPanel";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 
@@ -39,7 +41,13 @@ export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
   const [notice, setNotice] = useState("");
   const [cameraProblem, setCameraProblem] = useState("");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The main menu's two side doors. They are panels of the title screen, not steps of the quest flow.
+  const [panel, setPanel] = useState<"account" | "training" | null>(null);
+  const profile = useProfile();
+  // Homer's line before a stop now plays as its fight opens; this stops it when the player leaves that fight.
+  const stopIntro = useRef<() => void>(() => undefined);
+  // The seed of the last fight written to the profile, so one result is counted once.
+  const recorded = useRef(0);
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search)));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
@@ -92,17 +100,39 @@ export function App() {
     );
   };
 
-  if (flow.screen === "title") {
+  const openTraining = (): void => {
+    setCameraProblem("");
+    setPanel("training");
+    if (!tracker && !keyboardOnly.current) camera.start().then(setTracker, (error: unknown) => { log("warn", "tracker_failed", error); });
+  };
+
+  if (flow.screen === "title" && panel === "training") {
     return (
-      <>
-        <TitleScreen notice={notice} problem={cameraProblem} onCamera={startCamera} onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); dispatch({ type: "ready" }); }} onSettings={() => { setSettingsOpen(true); }} onTogether={() => { dispatch({ type: "together" }); }} />
-        {settingsOpen && <SettingsPanel onClose={() => { setSettingsOpen(false); }} />}
-      </>
+      <Dojo
+        tracker={tracker}
+        style={flow.style}
+        onDone={(summary) => { dispatch({ type: "warmed", assessment: assessmentFrom(summary) }); setPanel(null); }}
+        onQuit={() => { setPanel(null); }}
+      />
     );
   }
 
-  if (flow.screen === "together") {
-    return <RoomMenu onHost={() => { dispatch({ type: "hostRoom" }); }} onJoin={() => { dispatch({ type: "joinRoom" }); }} onBack={() => { dispatch({ type: "toTitle" }); }} />;
+  if (flow.screen === "title" && panel === "account") {
+    return <Account enemies={ENEMIES} onHost={() => { dispatch({ type: "hostRoom" }); }} onJoin={() => { dispatch({ type: "joinRoom" }); }} onBack={() => { setPanel(null); }} />;
+  }
+
+  if (flow.screen === "title") {
+    return (
+      <MainMenu
+        name={profile.name}
+        notice={notice}
+        problem={cameraProblem}
+        onStory={startCamera}
+        onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); dispatch({ type: "ready" }); }}
+        onTraining={openTraining}
+        onAccount={() => { setPanel("account"); }}
+      />
+    );
   }
 
   if (flow.screen === "host") {
@@ -146,21 +176,13 @@ export function App() {
         enemies={ENEMIES}
         cleared={flow.cleared}
         open={(index) => unlocked(ENEMIES, CAN_PLAY, flow.cleared, index)}
-        onEnter={(index) => { dispatch({ type: "enter", index }); }}
+        onEnter={(index) => {
+          const next = ENEMIES[index];
+          if (next) stopIntro.current = narrateIntro(next.id);
+          dispatch({ type: "enter", index, seed: Date.now() });
+        }}
         onStyle={() => { dispatch({ type: "changeStyle" }); }}
-      />
-    );
-  }
-
-  if (flow.screen === "intro") {
-    return (
-      <IntroScreen
-        enemy={enemy}
-        tracker={tracker}
-        assessment={flow.assessment}
-        onWarmed={(assessment) => { dispatch({ type: "warmed", assessment }); }}
-        onBegin={() => { dispatch({ type: "begin", seed: Date.now() }); }}
-        onBack={() => { dispatch({ type: "toMap" }); }}
+        onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
       />
     );
   }
@@ -176,13 +198,19 @@ export function App() {
         seed={flow.seed}
         god={god?.god ?? null}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
-        onQuit={() => { hostLink?.stop(); dispatch({ type: "quit" }); }}
-        renderEnd={(won, _score, mastery) => (
+        onQuit={() => { stopIntro.current(); hostLink?.stop(); dispatch({ type: "quit" }); }}
+        renderEnd={(won, score, mastery) => (
           <EndPanel
             won={won}
             enemyId={enemy.id}
             mastery={mastery}
-            onShown={() => { dispatch({ type: "ended", enemyId: enemy.id, won }); }}
+            onShown={() => {
+              if (recorded.current !== flow.seed) {
+                recorded.current = flow.seed;
+                recordFight({ enemyId: enemy.id, won, score, mastery });
+              }
+              dispatch({ type: "ended", enemyId: enemy.id, won });
+            }}
             onRetry={() => { dispatch({ type: "retry", seed: Date.now() }); }}
             onMap={() => { dispatch({ type: "toMap" }); }}
             onStyle={() => { dispatch({ type: "changeStyle" }); }}
