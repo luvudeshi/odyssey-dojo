@@ -4,6 +4,7 @@ import type { MoveDef, PoseHistory } from "../../core/types";
 import { latest, recent } from "../../pose/signals";
 import { armOut, armReach, otherSide, strike } from "../handSignals";
 import type { Side } from "../handSignals";
+import { armWentForward } from "./cross";
 
 /** How soon the second punch must follow the first, in milliseconds. */
 const FOLLOW_MS = 700;
@@ -27,6 +28,10 @@ export const move: MoveDef = {
   teaches: "Straight is quicker than a swing, so hands kept in front of you can hold off a rush",
   detect(history) {
     return followsOther(history, "left") || followsOther(history, "right") ? 1 : 0;
+  },
+  /** Asked for: either arm opening forward. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), armWentForward(history, "left"), armWentForward(history, "right"));
   },
   quality(history) {
     const frame = latest(history);
