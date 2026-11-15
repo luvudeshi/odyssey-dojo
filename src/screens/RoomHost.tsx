@@ -6,7 +6,7 @@ import { createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createRoom, openRoom } from "../net/transport";
 import { Button } from "../ui/pebble";
-import { browserDeps, fetchLanBase } from "./roomNet";
+import { browserDeps, fetchLanBase, LAN_BASE_TIMEOUT_MS } from "./roomNet";
 import { ROOM_MESSAGES, joinUrl, reachableBase } from "./roomUrl";
 
 type Phase =
@@ -33,7 +33,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
         return;
       }
       link.current = createHostLink(openRoom(browserDeps, room));
-      const base = reachableBase(window.location.origin, window.location.hostname, await fetchLanBase());
+      const base = reachableBase(window.location.origin, window.location.hostname, await fetchLanBase(LAN_BASE_TIMEOUT_MS));
       const url = joinUrl(base, room.code);
       setPhase({ kind: "open", code: room.code, url, qr: await toDataURL(url, { margin: 1, width: 360 }) });
     })();
