@@ -86,14 +86,14 @@ test.each(NARROW)("$name: the baseline reads the narrow shoulders and the same t
 describe.each([FIXTURE, ...NARROW])("$name", ({ build, up, down }) => {
   test.each(PUNCHES)("a %s counts from level to the pinned angles, and as nothing else", (move, side) => {
     for (let degrees = -down; degrees <= up; degrees++) {
-      expect(fired(punchOn(build, side, degrees)), `${degrees} degrees above level`).toEqual([move]);
+      expect(fired(punchOn(build, side, degrees)), `${String(degrees)} degrees above level`).toEqual([move]);
     }
   });
 
   test.each(PUNCHES)("a %s any steeper does not count, and nothing else fires in its place", (_move, side) => {
     for (let past = 1; past <= BEYOND; past++) {
-      expect(fired(punchOn(build, side, up + past)), `${up + past} degrees above level`).toEqual([]);
-      expect(fired(punchOn(build, side, -down - past)), `${down + past} degrees below level`).toEqual([]);
+      expect(fired(punchOn(build, side, up + past)), `${String(up + past)} degrees above level`).toEqual([]);
+      expect(fired(punchOn(build, side, -down - past)), `${String(down + past)} degrees below level`).toEqual([]);
     }
   });
 
