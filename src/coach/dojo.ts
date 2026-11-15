@@ -3,9 +3,9 @@
 // ("result"). At the end: the total, the best move, and what to work on with one line on how. Frames and a clock in,
 // state out: no screen here. The screen is ./ui/Dojo. docs/dojo.md has the rules in plain words.
 // Every number is a first guess, not yet tuned on a real body.
-import type { EnemySpec, FightingStyle, MoveDef, PoseFrame, PoseHistory } from "../core/types";
-import { MOVES } from "../moves/registry";
+import type { EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
+import { DOJO_DEFENDS, dojoMoveOf, usualMoves } from "./catalog";
 import type { Assessment, Focus, SkillLevel, StepResult } from "./contract";
 import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
 import type { Grade, GradeTier } from "./grade";
@@ -15,8 +15,8 @@ import { AVERAGE_BELOW, BEGINNER_BELOW, STRONG_FROM, tuneFor } from "./warmup";
 
 /** Repetitions of each move. Three, not practice's ten: a whole session is about two minutes. */
 export const DOJO_REPS = 3;
-/** The four defends every style trains after its strikes. */
-export const DOJO_DEFENDS: readonly string[] = ["block", "duck", "dodge_left", "dodge_right"];
+/** The four defends every style trains after its strikes. The list is kept with the rest of what the dojo can train. */
+export { DOJO_DEFENDS };
 /** The fight counts a move at 0.7. Training counts a near miss too: it is graded Good, never Excellent. */
 export const COUNT_FROM = 0.6;
 /** The most frames kept for one repetition (the second before it and the attempt). */
@@ -27,7 +27,7 @@ const LEAD_MS = 1000;
 export const KEY_TIP = "Press the key shown for the move while the bar is running.";
 
 export interface DojoConfig {
-  /** Move ids, in the order they are trained. Ids the registry does not know are left out. */
+  /** Move ids, in the order they are trained. Ids the dojo does not know (./catalog) are left out. */
   readonly moves: readonly string[];
   readonly reps: number;
   /** How long the figure plays before the first repetition of a move, and before each later one. */
@@ -49,13 +49,16 @@ export const DOJO_DEFAULTS: Omit<DojoConfig, "moves"> = {
   reps: DOJO_REPS, showMs: 2000, againMs: 1000, goMs: 3000, settleMs: 300, resultMs: 1200, countFrom: COUNT_FROM, keyboard: false,
 };
 
+/** A style as these lists need it: the game's, or one only the dojo knows. */
+interface Strikes { readonly strikes: readonly string[] }
+
 /** The whole list for a style: its strikes, then the four defends. */
-export function movesFor(style: Pick<FightingStyle, "strikes">): string[] {
-  return [...new Set([...style.strikes, ...DOJO_DEFENDS])];
+export function movesFor(style: Strikes): string[] {
+  return usualMoves(style);
 }
 
 /** A short list for a demo: the style's first two strikes, then block, duck and one dodge. Five moves. */
-export function quickMoves(style: Pick<FightingStyle, "strikes">): string[] {
+export function quickMoves(style: Strikes): string[] {
   return [...new Set([...style.strikes.slice(0, 2), "block", "duck", "dodge_left"])];
 }
 
@@ -98,7 +101,8 @@ export interface DojoState {
 }
 
 type Lookup = (id: string) => MoveDef | undefined;
-const registry: Lookup = (id) => MOVES.get(id);
+/** Every move the dojo can train: the game's own, then the ones only the dojo knows (./catalog). */
+const registry: Lookup = (id) => dojoMoveOf(id);
 const finite = (value: number): number => (Number.isFinite(value) ? clamp01(value) : 0);
 
 export function startDojo(config: Partial<DojoConfig> & Pick<DojoConfig, "moves">, nowMs: number, moveOf: Lookup = registry): DojoState {
