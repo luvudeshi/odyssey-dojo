@@ -29,6 +29,7 @@ import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
+import { legsInView } from "../moves/waistUp";
 import { keyboardTakesOver } from "../pose/escape";
 import { sentence } from "../pose/cameraError";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
@@ -54,6 +55,8 @@ export function FightScreen(props: {
   baseline?: Baseline | null;
   /** A god for the divine power effect; null for none. The game passes none, so Athena lends her aegis. */
   god?: GodId | null;
+  /** The picked hero's name, for the power banner. Left out, the banner names the god. */
+  hero?: string;
   /** Buttons shown once the fight is over. */
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
@@ -62,7 +65,7 @@ export function FightScreen(props: {
   link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>, events: readonly CombatEvent[]) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, hero, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
@@ -95,6 +98,8 @@ export function FightScreen(props: {
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
+    // Whether the camera sees the legs (#239). Fed back each frame so it does not flip; the keyboard has every move.
+    let legs = false;
     let last = performance.now();
     let handle = 0;
 
@@ -104,6 +109,7 @@ export function FightScreen(props: {
         poseRef.current = frame;
         history = pushFrame(history, frame);
         historyRef.current = history;
+        legs = legsInView(history, legs);
       }
       const dt = Math.min(now - last, 100);
       const keys = keyboard.read();
@@ -128,7 +134,7 @@ export function FightScreen(props: {
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
       const from = current;
-      const result = step(current, enemy, style, input, dt);
+      const result = step(current, enemy, style, input, dt, !tracker || keyboardMode || legs);
       last = now;
       current = result.state;
       const missed = watchPhase(watchMiss, from.phase, input, result.events, now);
@@ -204,7 +210,7 @@ export function FightScreen(props: {
       <SkyHud enemy={enemy} state={state} history={readHistory} />
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
-      <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
+      <PowerReady god={god} hero={hero} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
       {/* The keyboard plaque has nothing to say once the fight is over; the camera picture stays. */}
       {!(over && !tracker) && <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />}
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
