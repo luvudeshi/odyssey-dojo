@@ -12,6 +12,7 @@ import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { HitEffects } from "./effects/HitEffects";
+import { GuardShield } from "./effects/GuardShield";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { finisherSpot } from "./strikeReach";
@@ -103,6 +104,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           </MonsterRig>
           <CameraRig />
           <Hero poseRef={poseRef} />
+          <GuardShield />
           {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
           <Effects />
           <QualityGovernor />
