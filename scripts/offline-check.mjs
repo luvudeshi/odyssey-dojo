@@ -179,6 +179,8 @@ async function playFight(page, log, maxMs) {
   let held = null;
   // The strike whose card is gone and whose hit does not show on the monster's bar yet.
   let flying = null;
+  // The "Finish it" card was answered; whether it landed is known when the fight is over.
+  let finishing = false;
   for (;;) {
     const hud = await page.evaluate(readHud);
     if (flying && hud.enemy < flying.enemy) {
@@ -199,7 +201,9 @@ async function playFight(page, log, maxMs) {
         else if (hud.you < card.you) tally.hitsTaken += 1;
         else tally.unclear += 1;
       } else if (card.target === "Finish it") {
-        tally.finisher = hud.ended && / falls?$/.test(hud.heading);
+        // The win panel waits for the last blow to be seen (FightScreen), so it is not up yet when this card goes:
+        // the finisher counts as landed when the fight then ends in a win.
+        finishing = true;
       } else if (hud.enemy < card.enemy) tally.strikes += 1;
       else flying = { enemy: card.enemy, until: Date.now() + LAND_MS };
       card = null;
@@ -208,7 +212,8 @@ async function playFight(page, log, maxMs) {
     if (hud.ended || Date.now() - started > maxMs) {
       if (held !== null) await page.keyboard.up(held);
       if (flying) tally.strikesMissed += 1;
-      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: / falls?$/.test(hud.heading), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
+      const won = / falls?$/.test(hud.heading);
+      return { ...tally, finisher: finishing && hud.ended && won, keys: [...tally.keys], ended: hud.ended, won, heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
     }
     if (!card && id) {
       if (hud.key === null) throw new CheckError("the prompt card shows no key: key hints are off in the saved settings");
@@ -247,11 +252,15 @@ async function keyboardPass(browser, base, log, maxMs) {
     webFontsDeclared: await page.evaluate(() => document.fonts.size),
   };
   await keyboard.click();
+  // The character screen comes between Story mode and the styles: the character already chosen is taken as it is.
+  log.stage = "character";
+  await page.locator("button.character-done").click();
   log.stage = "style";
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
-  const styleButton = page.locator("main.menu button").first();
+  // The first style card. The first button of the screen is "Back" and the last is "Change character".
+  const styleButton = page.locator("main.menu button.flow-style").first();
   // textContent of the name, not innerText: the CSS may show it in upper case.
-  const style = await styleButton.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
+  const style = await styleButton.evaluate((element) => (element.querySelector(".menu-shield__name") ?? element).textContent?.trim() ?? "");
   await styleButton.click();
   log.stage = "map";
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
@@ -294,13 +303,14 @@ async function cameraPass(browser, base, log, ms) {
   await page.goto(base, { waitUntil: "load" });
   // The Story mode card starts the webcam. Its name is the card's own name followed by its line of small print.
   await page.getByRole("navigation", { name: "Main menu" }).getByRole("button", { name: /^Story mode/ }).click();
-  // A tracker that starts leads to the god scan; one that fails leads straight to the style menu with a notice.
+  // A tracker that starts leads to the god scan; one that fails stays on the main menu, under a card that says why.
   const scan = page.getByRole("button", { name: "Reveal my god" });
   const styles = page.getByRole("heading", { name: "Choose your fighting style" });
-  await scan.or(styles).waitFor({ timeout: 90_000 });
+  const problem = page.locator("main .overlay").filter({ has: page.getByRole("button", { name: "Play on the keyboard" }) });
+  await scan.or(problem).first().waitFor({ timeout: 90_000 });
   const started = await scan.isVisible();
   const startedAt = Date.now();
-  const notice = started ? "" : (await page.locator("main.menu .notice").innerText()).trim();
+  const notice = started ? "" : (await problem.first().locator("p").first().innerText()).trim();
   let god = "";
   let calibration = "";
   let ending = "";
@@ -310,10 +320,13 @@ async function cameraPass(browser, base, log, ms) {
     const begin = page.getByRole("button", { name: "Begin the journey" });
     await begin.waitFor({ timeout: 40_000 });
     // The god's name is laid in pebbles on a canvas: its words are in aria-label (plain text is the fallback).
-    god = (await page.locator("main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
+    // The screen that names the god carries reveal-name on the page itself now; before, it was on the title.
+    god = (await page.locator("main.reveal.reveal-name h1, main.reveal .reveal-name").first().evaluate((element) => element.getAttribute("aria-label") ?? element.textContent ?? "")).trim();
     await begin.click();
+    // The five characters come between the scan and the styles; the one the god chose is taken as it is.
+    await page.locator("button.character-done").click();
     await styles.waitFor();
-    await page.locator("main.menu button").first().click();
+    await page.locator("main.menu button.flow-style").first().click();
     await page.locator("button.stop.open").first().filter({ hasText: STOP }).click();
     // Calibration feeds camera pictures to the model. Nobody is in the test pattern, so it only has to keep running.
     calibration = ((await page.locator(".calibration h1, .overlay h1").first().textContent()) ?? "").trim();

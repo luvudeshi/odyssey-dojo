@@ -173,6 +173,20 @@ ${button.getAttribute("aria-label") ?? ""}`.toLowerCase();
   return index < 0 ? null : { index, disabled: buttons[index].disabled, text: (buttons[index].textContent ?? "").trim() };
 }
 
+/**
+ * Runs in the page: which screen follows Story mode. The character screen is the one with a button that starts
+ * "Fight as" (it confirms the character already chosen); the style screen is the one with a button that starts with
+ * a style's name. The character screen is looked for first: a character's card may name a style.
+ */
+function afterStory(styleNames) {
+  const buttons = [...document.querySelectorAll("main button")];
+  const text = (button) => (button.textContent ?? "").trim();
+  const confirm = buttons.findIndex((button) => /^fight as\b/i.test(text(button)));
+  if (confirm >= 0) return { at: "character", index: confirm, text: text(buttons[confirm]) };
+  const style = buttons.findIndex((button) => styleNames.some((name) => text(button).toLowerCase().startsWith(name.toLowerCase())));
+  return style < 0 ? null : { at: "style", index: style, text: text(buttons[style]) };
+}
+
 async function waitForButton(page, texts, what) {
   try {
     await page.waitForFunction(findButton, texts, { timeout: SCREEN_TIMEOUT_MS });
@@ -184,8 +198,8 @@ async function waitForButton(page, texts, what) {
 }
 
 /**
- * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the style -> this stop on the map -> fight. A stop on the map
- * starts its fight at once. Returns the name of the style picked, or null when the map keeps this stop locked (a stop
+ * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the character ("Fight as ...", taken as it is)
+ * -> the style -> this stop on the map -> fight. A stop on the map starts its fight at once. Returns the name of the style picked, or null when the map keeps this stop locked (a stop
  * with no 3D model stays locked, see `playable` in flow.ts). `style` null means the first style the screen offers.
  *
  * Nothing here reads a heading or a CSS look. Story mode is the button whose name starts with that (see MainMenu.tsx), the
@@ -200,7 +214,17 @@ async function enterFight(page, base, stop, style, styles, query) {
   await story.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("the main menu has no Story mode card"); });
   await story.click();
 
+  // The character screen ("Fight as ...") comes between Story mode and the styles: the character already chosen is
+  // taken as it is. A build without that screen goes straight to the styles, and that will do as well.
   const offered = style ? [style] : styles;
+  await page.waitForFunction(afterStory, offered.map((one) => one.name), { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("neither the character screen nor the style screen came up after Story mode"); });
+  const confirm = await page.evaluate(afterStory, offered.map((one) => one.name));
+  if (confirm.at === "character") {
+    const done = page.locator("main button").nth(confirm.index);
+    const handle = await done.elementHandle();
+    await done.click();
+    await page.waitForFunction((element) => !element.isConnected, handle, { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the character screen did not close after "${confirm.text}" was clicked`); });
+  }
   const card = await waitForButton(page, offered.map((one) => one.name), "the style screen");
   const picked = offered.find((one) => card.text.toLowerCase().startsWith(one.name.toLowerCase())) ?? offered[0];
   await card.locator.click();
@@ -500,7 +524,7 @@ ${parts.map(section).join("\n\n")}
 
 ## How to read it
 
-- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
+- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the character screen ("Fight as ...", the character already chosen), the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
 - The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name. The keyboard link on the main menu is found by its name. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).
@@ -529,6 +553,20 @@ FPS_CHANNEL=chrome,msedge node scripts/smoke.mjs --styles=all
 
 It needs Chrome (or Edge) and Playwright. Playwright is not a dependency of this repo: if \`node_modules\` has none, set \`FPS_PLAYWRIGHT\` to a playwright-core folder (\`.../node_modules/playwright-core\`). \`FPS_GL=swiftshader\` forces software GL, \`FPS_MACHINE\` names the machine. These are the same variables \`scripts/fps.mjs\` reads.
 `;
+}
+
+/** Sections of docs/smoke.md that this script does not write: they belong to other scripts and are kept as they are. */
+const KEPT_SECTIONS = ["Training Dojo"];
+
+/** The text of those sections in the file as it stands, each from its "## " heading to the next one (or the end). */
+function keptSections() {
+  let old = "";
+  try {
+    old = readFileSync(OUT, "utf8").replaceAll("\r\n", "\n");
+  } catch {
+    return "";
+  }
+  return old.split(/^(?=## )/m).filter((part) => KEPT_SECTIONS.some((title) => part.startsWith(`## ${title}\n`))).map((part) => `${part.trimEnd()}\n`).join("\n");
 }
 
 function commit() {
@@ -612,8 +650,9 @@ async function main() {
       query,
     });
     if (!flag("no-write")) {
-      writeFileSync(OUT, text);
-      say("\nWrote docs/smoke.md");
+      const kept = keptSections();
+      writeFileSync(OUT, kept ? `${text}\n${kept}` : text);
+      say(`\nWrote docs/smoke.md${kept ? " (the sections other scripts own are kept as they were)" : ""}`);
     }
     if (parts.every((part) => passed(part.rows))) {
       say("\nPASS");

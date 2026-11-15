@@ -183,7 +183,7 @@ function countDraws(ms) {
 }
 
 /**
- * Main menu -> Story mode, with the "Play with" setting on Keyboard -> first style -> this stop on the map -> fight. A stop on the map
+ * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the character already chosen -> first style -> this stop on the map -> fight. A stop on the map
  * starts its fight at once. Returns the style picked, or null when the map keeps this stop locked (a stop with no
  * 3D model stays locked, see `playable` in flow.ts).
  */
@@ -192,10 +192,13 @@ async function enterFight(page, base, stop) {
   await page.addInitScript(() => { localStorage.setItem("odyssey-dojo.settings", JSON.stringify({ controls: "keyboard" })); });
   await page.goto(`${base}/?stop=${stop.id}&debug`);
   await page.getByRole("button", { name: /^Story mode/ }).click();
+  // The character screen comes between Story mode and the styles: the character already chosen is taken as it is.
+  await page.locator("button.character-done").click();
   await page.getByRole("heading", { name: "Choose your fighting style" }).waitFor();
-  const styleButton = page.locator("main.menu button").first();
+  // The first style card. The first button of the screen is "Back" and the last is "Change character".
+  const styleButton = page.locator("main.menu button.flow-style").first();
   // textContent, not innerText: the CSS shows buttons and headings in upper case, and innerText returns what is shown.
-  const style = await styleButton.evaluate((element) => element.firstChild?.textContent?.trim() ?? "");
+  const style = await styleButton.evaluate((element) => (element.querySelector(".menu-shield__name") ?? element).textContent?.trim() ?? "");
   await styleButton.click();
   await page.getByRole("heading", { name: "The Road Home" }).waitFor();
   // The map draws one button per enemy in ladder order; only the one for this stop will do.
