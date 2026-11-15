@@ -123,3 +123,31 @@ export function parseSaveBody(body: unknown): Save | null {
   const parsed = saveBodySchema.safeParse(body);
   return parsed.success ? parsed.data.save : null;
 }
+
+export interface Renaming {
+  readonly name: string;
+}
+
+export interface PasswordChange {
+  readonly current: string;
+  readonly next: string;
+}
+
+const renameSchema = z.object({ name: z.string() });
+const passwordChangeSchema = z.object({ current: z.string().max(PASSWORD_MAX), next: z.string().min(PASSWORD_MIN).max(PASSWORD_MAX) });
+
+/** The new sign-in name in a rename body, cleaned by the rule a sign-up name goes by, or which part is wrong. */
+export function parseRename(body: unknown): Renaming | { readonly field: "body" | "name" } {
+  const parsed = renameSchema.safeParse(body);
+  if (!parsed.success) return { field: "body" };
+  const name = accountName(parsed.data.name);
+  return name === null ? { field: "name" } : { name };
+}
+
+/** The two passwords in a change-password body. `current` is only checked to be text: whether it is right is for the account to say. */
+export function parsePasswordChange(body: unknown): PasswordChange | { readonly field: "body" | "current" | "next" } {
+  const parsed = passwordChangeSchema.safeParse(body);
+  if (parsed.success) return parsed.data;
+  const first = parsed.error.issues[0]?.path[0];
+  return { field: first === "current" || first === "next" ? first : "body" };
+}

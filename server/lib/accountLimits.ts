@@ -85,6 +85,14 @@ export const PUBLIC_WRONG_TOKENS_PER_ADDRESS = 120;
 export const REQUESTS_PER_ACCOUNT = 120;
 /** Saves written to one account, a minute, whoever sends them. One account holds one save, so this bounds writes, not size. */
 export const SAVES_PER_ACCOUNT = 60;
+/** Renames of one account, a minute, whoever sends them. */
+export const RENAMES_PER_ACCOUNT = 10;
+/**
+ * Wrong current passwords on one account's change-password route, in ten minutes, whoever sends them. A right one is not
+ * counted. So a stolen session token is not a password oracle: five guesses, then a wait, never a hash a second.
+ */
+export const WRONG_PASSWORDS_PER_ACCOUNT = 5;
+export const WRONG_PASSWORD_WINDOW_MS = 10 * MINUTE_MS;
 /** How long a token the database knew is remembered, so a read and the write after it cost one lookup, not two. */
 export const KNOWN_SESSION_MS = 5 * MINUTE_MS;
 export const KNOWN_SESSIONS_MAX = 1_000;
@@ -227,6 +235,10 @@ export interface KnownSessions {
   readonly get: (hash: string) => string | null;
   readonly remember: (hash: string, accountId: string) => void;
   readonly forget: (hash: string) => void;
+  /** Forgets every token hash of this account but `keep`, once the database has ended those sessions. */
+  readonly forgetAccount: (accountId: string, keep: string) => void;
+  /** Goes up at every forgetAccount. An answer the database gave before it went up must not be remembered after. */
+  readonly epoch: () => number;
 }
 
 /**
@@ -235,6 +247,7 @@ export interface KnownSessions {
  */
 export function createKnownSessions(now: () => number = Date.now, keepMs: number = KNOWN_SESSION_MS, max: number = KNOWN_SESSIONS_MAX): KnownSessions {
   const known = new Map<string, { readonly accountId: string; readonly until: number }>();
+  let epoch = 0;
   return {
     get: (hash) => {
       const found = known.get(hash);
@@ -249,6 +262,11 @@ export function createKnownSessions(now: () => number = Date.now, keepMs: number
       known.set(hash, { accountId, until: now() + keepMs });
     },
     forget: (hash) => { known.delete(hash); },
+    epoch: () => epoch,
+    forgetAccount: (accountId, keep) => {
+      epoch += 1;
+      for (const [hash, entry] of known) if (entry.accountId === accountId && hash !== keep) known.delete(hash);
+    },
   };
 }
 
@@ -276,6 +294,8 @@ export function createAccountLimits(now: () => number = Date.now, isPublic: () =
       wrongTokens: createCounter(open ? PUBLIC_WRONG_TOKENS_PER_ADDRESS : WRONG_TOKENS_PER_ADDRESS, MINUTE_MS, now, keys),
       requests: createCounter(REQUESTS_PER_ACCOUNT, MINUTE_MS, now, keys),
       saves: createCounter(SAVES_PER_ACCOUNT, MINUTE_MS, now, keys),
+      renames: createCounter(RENAMES_PER_ACCOUNT, MINUTE_MS, now, keys),
+      wrongPasswords: createCounter(WRONG_PASSWORDS_PER_ACCOUNT, WRONG_PASSWORD_WINDOW_MS, now, keys),
     };
   };
   let built: ReturnType<typeof build> | null = null;
@@ -298,7 +318,7 @@ export function createAccountLimits(now: () => number = Date.now, isPublic: () =
      * before the body is read. When public the two are counted apart, so sign-ups from an address never use up its
      * sign-ins; otherwise they are one count for the address, as they always were.
      */
-    attempt: (client: string, what: "signup" | "signin" = "signin"): number =>
+    attempt: (client: string, what: "signup" | "signin" | "change" = "signin"): number =>
       (local(client) ? 0 : take([c().attempts, c().open ? pair(what, client) : client])),
     /**
      * Seconds until strangers may make accounts again, or 0 while they may. More than 0 means the accounts all callers
@@ -338,5 +358,15 @@ export function createAccountLimits(now: () => number = Date.now, isPublic: () =
     request: (client: string, accountId: string): number => (local(client) ? 0 : take([c().requests, accountId])),
     /** Seconds until this account may be written again; 0 lets it and counts it. This machine is counted too: the limit protects the database. */
     save: (accountId: string): number => take([c().saves, accountId]),
+    /** Seconds until this account may be renamed again; 0 lets it and counts it. This machine is counted too, as for saves. */
+    rename: (accountId: string): number => take([c().renames, accountId]),
+    /**
+     * Seconds until this account may try a current password again; 0 lets it and counts it. This machine is never counted
+     * or refused, as for sign-in. Call passwordRight when the password was right or never checked, so only wrong ones stay counted.
+     */
+    password: (client: string, accountId: string): number => (local(client) ? 0 : take([c().wrongPasswords, accountId])),
+    passwordRight: (client: string, accountId: string): void => {
+      if (!local(client)) c().wrongPasswords.giveBack(accountId);
+    },
   };
 }

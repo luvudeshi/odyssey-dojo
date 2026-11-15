@@ -1,6 +1,6 @@
 // Talks to the account routes of the server (/api/account/*). Every call has a time limit and never throws:
 // a failure of any kind comes back as a named result. The browser's fetch is passed in, so tests use a made-up one.
-import { SAVE_MAX_BYTES, SavedResponseSchema, SaveResponseSchema, SessionResponseSchema, StatusResponseSchema } from "./contracts";
+import { RenamedResponseSchema, SAVE_MAX_BYTES, SavedResponseSchema, SaveResponseSchema, SessionResponseSchema, StatusResponseSchema } from "./contracts";
 import type { Save } from "./contracts";
 
 export type AccountFetch = (url: string, init: { method: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal }) => Promise<{
@@ -30,7 +30,7 @@ export const BUSY_SPREAD_MS = 400;
  * "signups_closed": the server makes no new accounts for now (it has made as many as it may), and sign-in still works.
  */
 export type AccountError =
-  | "invalid" | "name_taken" | "wrong_name_or_password" | "slow_down" | "signups_closed" | "unavailable" | "signed_out" | "too_big" | "unreachable";
+  | "invalid" | "name_taken" | "wrong_name_or_password" | "wrong_password" | "slow_down" | "signups_closed" | "unavailable" | "signed_out" | "too_big" | "unreachable";
 
 export type Result<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: AccountError; readonly field?: string };
 
@@ -49,6 +49,10 @@ export interface AccountClient {
   /** The account's save as the server holds it, unchecked (see readSave in ./snapshot); null when there is none yet. */
   load(token: string): Promise<Result<{ save: unknown; updatedAt: string | null }>>;
   store(token: string, save: Save): Promise<Result<{ updatedAt: string }>>;
+  /** Changes the sign-in name of the signed-in account. The answer holds the name as the server keeps it. */
+  rename(token: string, name: string): Promise<Result<{ name: string }>>;
+  /** Changes the password, given the current one. The server ends the account's other sessions. */
+  changePassword(token: string, current: string, next: string): Promise<Result<null>>;
 }
 
 interface Answer {
@@ -68,7 +72,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise<void>((resolve) => { setTimeout(resolve, ms); });
 }
 
-const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 409: "name_taken", 413: "too_big", 429: "slow_down", 503: "unavailable" };
+const FAILURES: Readonly<Record<number, AccountError>> = { 400: "invalid", 403: "wrong_password", 409: "name_taken", 413: "too_big", 429: "slow_down", 503: "unavailable" };
 
 function failure(answer: Answer | null, on401: AccountError): { ok: false; error: AccountError; field?: string } {
   if (!answer) return { ok: false, error: "unreachable" };
@@ -135,6 +139,15 @@ export function createAccountClient(fetch: AccountFetch, base = "", pause: (ms: 
       const answer = await call("PUT", "save", { token, body });
       const said = answer?.status === 200 ? SavedResponseSchema.safeParse(answer.data) : null;
       return said?.success ? { ok: true, value: said.data } : failure(answer?.status === 200 ? null : answer, "signed_out");
+    },
+    async rename(token, name) {
+      const answer = await call("POST", "rename", { token, body: JSON.stringify({ name }) });
+      const said = answer?.status === 200 ? RenamedResponseSchema.safeParse(answer.data) : null;
+      return said?.success ? { ok: true, value: said.data } : failure(answer?.status === 200 ? null : answer, "signed_out");
+    },
+    async changePassword(token, current, next) {
+      const answer = await call("POST", "password", { token, body: JSON.stringify({ current, next }) });
+      return answer?.status === 204 ? { ok: true, value: null } : failure(answer, "signed_out");
     },
   };
 }
