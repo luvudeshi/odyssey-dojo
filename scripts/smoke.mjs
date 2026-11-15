@@ -1,9 +1,11 @@
 // Smoke run: builds the game, serves it with `vite preview`, and plays every stop from start to end by keyboard
 // in a headless browser. Prints one line per fight (result, seconds, console errors) and writes docs/smoke.md.
 //
-//   node scripts/smoke.mjs [--no-build] [--stops=polyphemus,scylla] [--styles=all|boxer,karate] [--cap=240] [--no-write]
+//   node scripts/smoke.mjs [--no-build | --dev] [--stops=polyphemus,scylla] [--styles=all|boxer,karate] [--cap=240] [--no-write]
 //                          [--port=4393] [--query=ghost=1] [--shots=<folder>]
 //
+// --dev serves the source through vite's dev server instead of building (for a machine where a build is too heavy;
+// the pages then run React's development build, so the built game is still the last word).
 // --styles=all plays every stop with every fighting style (6 stops by 5 styles is 30 fights); a comma list of style
 // ids plays those; left out, each stop is played once with the first style on the style screen.
 // --query adds its text to the page address (for a switch such as ghost=1); --shots saves one picture per fight,
@@ -47,7 +49,7 @@ const POLL_TIMEOUT_MS = 10_000;
 /** Time after the result overlay for late errors to show up. */
 const AFTER_MS = 1000;
 /** How long each screen on the way into a fight may take to come up. */
-const SCREEN_TIMEOUT_MS = 15_000;
+const SCREEN_TIMEOUT_MS = process.argv.includes("--dev") ? 45_000 : 15_000;
 /** With --shots: the picture is taken on this prompt card of the fight, once it has been up this long. */
 const SHOT_CARD = 5;
 const SHOT_AFTER_MS = 500;
@@ -138,7 +140,7 @@ function build() {
 
 async function waitForServer(url, server) {
   for (let i = 0; i < 100; i += 1) {
-    if (server.exitCode !== null) throw new Error("vite preview stopped before it answered");
+    if (server.exitCode !== null) throw new Error("vite stopped before it answered");
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -146,7 +148,7 @@ async function waitForServer(url, server) {
     }
     await new Promise((next) => setTimeout(next, 200));
   }
-  throw new Error(`vite preview did not answer at ${url}`);
+  throw new Error(`vite did not answer at ${url}`);
 }
 
 function glArgs() {
@@ -173,6 +175,20 @@ ${button.getAttribute("aria-label") ?? ""}`.toLowerCase();
   return index < 0 ? null : { index, disabled: buttons[index].disabled, text: (buttons[index].textContent ?? "").trim() };
 }
 
+/**
+ * Runs in the page: which screen follows Story mode. The character screen is the one with a button that starts
+ * "Fight as" (it confirms the character already chosen); the style screen is the one with a button that starts with
+ * a style's name. The character screen is looked for first: a character's card may name a style.
+ */
+function afterStory(styleNames) {
+  const buttons = [...document.querySelectorAll("main button")];
+  const text = (button) => (button.textContent ?? "").trim();
+  const confirm = buttons.findIndex((button) => /^fight as\b/i.test(text(button)));
+  if (confirm >= 0) return { at: "character", index: confirm, text: text(buttons[confirm]) };
+  const style = buttons.findIndex((button) => styleNames.some((name) => text(button).toLowerCase().startsWith(name.toLowerCase())));
+  return style < 0 ? null : { at: "style", index: style, text: text(buttons[style]) };
+}
+
 async function waitForButton(page, texts, what) {
   try {
     await page.waitForFunction(findButton, texts, { timeout: SCREEN_TIMEOUT_MS });
@@ -184,8 +200,8 @@ async function waitForButton(page, texts, what) {
 }
 
 /**
- * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the style -> this stop on the map -> fight. A stop on the map
- * starts its fight at once. Returns the name of the style picked, or null when the map keeps this stop locked (a stop
+ * Main menu -> Story mode, with the "Play with" setting on Keyboard -> the character ("Fight as ...", taken as it is)
+ * -> the style -> this stop on the map -> fight. A stop on the map starts its fight at once. Returns the name of the style picked, or null when the map keeps this stop locked (a stop
  * with no 3D model stays locked, see `playable` in flow.ts). `style` null means the first style the screen offers.
  *
  * Nothing here reads a heading or a CSS look. Story mode is the button whose name starts with that (see MainMenu.tsx), the
@@ -200,7 +216,17 @@ async function enterFight(page, base, stop, style, styles, query) {
   await story.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("the main menu has no Story mode card"); });
   await story.click();
 
+  // The character screen ("Fight as ...") comes between Story mode and the styles: the character already chosen is
+  // taken as it is. A build without that screen goes straight to the styles, and that will do as well.
   const offered = style ? [style] : styles;
+  await page.waitForFunction(afterStory, offered.map((one) => one.name), { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("neither the character screen nor the style screen came up after Story mode"); });
+  const confirm = await page.evaluate(afterStory, offered.map((one) => one.name));
+  if (confirm.at === "character") {
+    const done = page.locator("main button").nth(confirm.index);
+    const handle = await done.elementHandle();
+    await done.click();
+    await page.waitForFunction((element) => !element.isConnected, handle, { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the character screen did not close after "${confirm.text}" was clicked`); });
+  }
   const card = await waitForButton(page, offered.map((one) => one.name), "the style screen");
   const picked = offered.find((one) => card.text.toLowerCase().startsWith(one.name.toLowerCase())) ?? offered[0];
   await card.locator.click();
@@ -212,7 +238,7 @@ async function enterFight(page, base, stop, style, styles, query) {
   await onMap.locator.click();
   await page.waitForFunction((element) => !element.isConnected, mapButton, { timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error("the map did not close after the stop was clicked"); });
 
-  // The click on the stop starts the fight: there is no screen in between.
+  // The click on the stop starts the fight. Where the build plays a boss cutscene first, it ends by itself well inside the wait.
   await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the fight did not open after "${stop.name}" was clicked on the map`); });
   return picked.name;
 }
@@ -283,9 +309,13 @@ function readHud(words) {
   return { over: false, kind: hold ? "defend" : kindOf(card), word, label: clean(card.querySelector("kbd")) };
 }
 
-/** The reverse of `keyLabel` in src/hud/Hud.tsx: "Space" is the space bar, a letter is shown in upper case. */
+/** The arrow keys are shown as glyphs on the cards (ARROWS in src/hud/sky/SkyPromptCard.tsx and src/coach/ui/keyName.ts). */
+const ARROW_KEYS = { "←": "ArrowLeft", "→": "ArrowRight", "↓": "ArrowDown", "↑": "ArrowUp" };
+
+/** The reverse of the card's key hint: "Space" is the space bar, an arrow is its glyph, a letter is shown in upper case. */
 function keyFor(hud, moveKeys) {
   if (hud.label === "Space") return " ";
+  if (ARROW_KEYS[hud.label]) return ARROW_KEYS[hud.label];
   if (hud.label.length === 1) return hud.label.toLowerCase();
   return hud.label || moveKeys[hud.word] || null;
 }
@@ -500,7 +530,7 @@ ${parts.map(section).join("\n\n")}
 
 ## How to read it
 
-- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the style, then the open stop on the map. The click on the stop starts the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
+- Each fight is opened at \`/?stop=<id>\` in a fresh browser context: the main menu with the "Play with" setting on Keyboard, Story mode, the character screen ("Fight as ...", the character already chosen), the style, then the open stop on the map. The click on the stop plays the boss cutscene, which ends by itself, and then the fight starts. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
 - The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name. The keyboard link on the main menu is found by its name. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).
@@ -516,6 +546,7 @@ ${parts.map(section).join("\n\n")}
 node scripts/smoke.mjs
 node scripts/smoke.mjs --styles=all
 node scripts/smoke.mjs --no-build --stops=polyphemus --styles=boxer,karate --cap=120 --no-write
+node scripts/smoke.mjs --dev --no-write
 \`\`\`
 
 For Edge, or both browsers one after the other, set \`FPS_CHANNEL\` first:
@@ -525,10 +556,24 @@ FPS_CHANNEL=msedge node scripts/smoke.mjs --styles=all
 FPS_CHANNEL=chrome,msedge node scripts/smoke.mjs --styles=all
 \`\`\`
 
-\`--port=4393\` serves the build on that port (a free one is picked otherwise). \`--query=ghost=1\` adds that to the page address. \`--shots=<folder>\` saves one picture per fight, taken while the fifth prompt card is up.
+\`--port=4393\` serves the build on that port (a free one is picked otherwise). \`--dev\` builds nothing and serves the source through vite's dev server, for a machine where a build is too heavy; the pages then run React's development build, so the built game is still the last word. \`--query=ghost=1\` adds that to the page address. \`--shots=<folder>\` saves one picture per fight, taken while the fifth prompt card is up.
 
 It needs Chrome (or Edge) and Playwright. Playwright is not a dependency of this repo: if \`node_modules\` has none, set \`FPS_PLAYWRIGHT\` to a playwright-core folder (\`.../node_modules/playwright-core\`). \`FPS_GL=swiftshader\` forces software GL, \`FPS_MACHINE\` names the machine. These are the same variables \`scripts/fps.mjs\` reads.
 `;
+}
+
+/** Sections of docs/smoke.md that this script does not write: they belong to other scripts and are kept as they are. */
+const KEPT_SECTIONS = ["Training Dojo"];
+
+/** The text of those sections in the file as it stands, each from its "## " heading to the next one (or the end). */
+function keptSections() {
+  let old = "";
+  try {
+    old = readFileSync(OUT, "utf8").replaceAll("\r\n", "\n");
+  } catch {
+    return "";
+  }
+  return old.split(/^(?=## )/m).filter((part) => KEPT_SECTIONS.some((title) => part.startsWith(`## ${title}\n`))).map((part) => `${part.trimEnd()}\n`).join("\n");
 }
 
 function commit() {
@@ -568,13 +613,13 @@ async function main() {
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
   try {
-    if (!flag("no-build")) {
+    if (!flag("no-build") && !flag("dev")) {
       say("Building...");
       await build();
     }
     const port = option("port", "") ? Number(option("port", "")) : await freePort();
     const base = `http://127.0.0.1:${String(port)}`;
-    server = vite(["preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
+    server = vite([...(flag("dev") ? [] : ["preview"]), "--host", "127.0.0.1", "--port", String(port), "--strictPort"], "ignore");
     await waitForServer(base, server);
     const flags = glArgs();
     const parts = [];
@@ -612,8 +657,9 @@ async function main() {
       query,
     });
     if (!flag("no-write")) {
-      writeFileSync(OUT, text);
-      say("\nWrote docs/smoke.md");
+      const kept = keptSections();
+      writeFileSync(OUT, kept ? `${text}\n${kept}` : text);
+      say(`\nWrote docs/smoke.md${kept ? " (the sections other scripts own are kept as they were)" : ""}`);
     }
     if (parts.every((part) => passed(part.rows))) {
       say("\nPASS");
