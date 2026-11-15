@@ -174,7 +174,8 @@ export interface Accounts {
    * statements (see Reach); the hash runs outside it. "full": the database holds as many accounts as it may.
    * "closed": as many were made in the last hour or day as strangers may make; the database is asked, so this holds
    * after a restart and with a second server on the same database. Only with PUBLIC_ACCOUNTS=1 (AccountsOptions.isPublic):
-   * without it the hour and the day are not asked for and "closed" is never the answer.
+   * without it the hour and the day are not asked for and "closed" is never the answer. With it a taken name is also
+   * answered before the hash; without it the hash comes first, as it always did.
    */
   readonly signUp: (name: string, password: string, urgent?: boolean, reach?: Reach) => Promise<Signed | "name_taken" | "full" | "closed">;
   /** Null for an unknown name and for a wrong password alike, after the same work. `reach` as for signUp. */
@@ -344,6 +345,9 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       // The last places are kept for this machine (`urgent`), so strangers cannot fill the database to the brim.
       if (found === undefined || found.n >= caps.total - (urgent ? 0 : caps.keptForThisMachine)) return "full";
       if (open && !urgent && (found.hour >= caps.perHour || found.day >= caps.perDay)) return "closed";
+      // With the setting on, a taken name is found by its key before any hash is spent on it, so a stranger cannot keep the
+      // one hash line busy with names that exist. Two sign-ups of a new name at once both pass here: the insert below decides.
+      if (open && (await reach(() => run(`select 1 as taken from ${t.accounts} where name_key = $1::text limit 1`, [nameKey(name)]))).length > 0) return "name_taken";
       const salt = randomBytes(SALT_BYTES);
       // No place at the strangers' gate is held while this waits its turn and runs.
       const hash = await gate(() => hashPassword(password, salt), urgent);
