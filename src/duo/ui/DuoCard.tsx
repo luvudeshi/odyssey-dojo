@@ -23,8 +23,8 @@ export function DuoCard(props: { onStart: (link: HostLink) => void }) {
     <section className="set-panel mp-card mp-card--duo">
       <RoomToken icon="helmets" size={76} />
       <h2><span className="set-kicker">Two players</span>One camera</h2>
-      <p>Stand side by side in front of this computer. The game follows both of you, and each gets a hero.</p>
-      <p className="mp-card__as"><small>How to stand</small><b>Left is player one</b><small>Both of you from the head to the waist in the picture, an arm's length apart.</small></p>
+      <p>Stand side by side in front of this computer, an arm's length apart, both in the picture from the head to the waist.</p>
+      <p className="mp-card__as"><small>Who is who</small><b>Right is the blue hero</b><small>When the monster attacks, both of you must defend.</small></p>
       <Button primary onClick={() => { props.onStart(startDuo()); }}>Play side by side</Button>
     </section>
   );

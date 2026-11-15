@@ -28,6 +28,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef<HTMLSpanElement>(null);
   const move = useRef<HTMLSpanElement>(null);
+  const tag = useRef<HTMLSpanElement>(null);
   // Never null on the fight screen: without a live picture the same frame says why, and offers the camera when it can.
   const panel = useContext(CameraPanelContext);
   const shown = panelState(tracker !== null, panel.status);
@@ -39,6 +40,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
     const context = surface?.getContext("2d");
     const label = state.current;
     const flashLabel = move.current;
+    const tagLabel = tag.current;
     if (!video || !box || !surface || !context) return;
     box.append(video);
     // The size changes rarely, so it is read when the box resizes and not every frame.
@@ -53,6 +55,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
     let handle = 0;
     let shownState = "";
     let shownMove = "";
+    let shownTag = "";
     const tick = (): void => {
       // Size the frame to the camera's real shape so the skeleton lines up with the picture whatever the aspect.
       const { videoWidth, videoHeight } = video;
@@ -71,6 +74,9 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       flash = nextFlash(flash, battle, now, nameOf);
       const text = presence.ok ? "Tracking your body" : presence.reason;
       const recognised = flashText(flash, now);
+      // Two players on one camera (src/duo): the tag says whether the second player is in.
+      const who = !duoCamera.on() || !tracking ? "Your body" : duoCamera.players(performance.now()) === 2 ? "Both seen" : "One seen";
+      if (tag.current && who !== shownTag) { shownTag = who; tag.current.textContent = who; }
       if (state.current && text !== shownState) { shownState = text; state.current.textContent = text; state.current.dataset.on = String(tracking); }
       if (move.current && recognised !== shownMove) { shownMove = recognised; move.current.textContent = recognised; }
       handle = requestAnimationFrame(tick);
@@ -82,6 +88,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       video.remove();
       if (label) label.dataset.on = "false";
       if (flashLabel) flashLabel.textContent = "";
+      if (tagLabel) tagLabel.textContent = "Your body";
     };
   }, [video, poseRef]);
 
@@ -91,7 +98,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
         <canvas ref={canvas} />
       </div>
       <figcaption>
-        <span className="camera-tag">Your body</span>
+        <span ref={tag} className="camera-tag">Your body</span>
         <i className="camera-dot" aria-hidden="true" />
         <span ref={state} className="camera-state" data-on="false">{shown === "live" ? "I can't see you" : panelNote(shown)}</span>
         <span ref={move} className="camera-move" aria-live="polite" />

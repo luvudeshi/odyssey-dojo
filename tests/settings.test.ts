@@ -1,6 +1,6 @@
 // The settings store: validating parser, field-by-field fallback, saving on change and subscribers.
 import { expect, test, vi } from "vitest";
-import { createSettingsStore, DEFAULT_SETTINGS, parseSettings, SETTINGS_KEY } from "../src/settings/store";
+import { cameraUnder, createSettingsStore, DEFAULT_SETTINGS, parseSettings, SETTINGS_KEY } from "../src/settings/store";
 import type { SettingsStorage } from "../src/settings/store";
 
 function memory(initial?: string): SettingsStorage {
@@ -25,6 +25,19 @@ test("the control choice defaults to the camera, keeps keyboard, and refuses any
   const storage = memory();
   createSettingsStore(storage).set({ controls: "keyboard" });
   expect(createSettingsStore(storage).get().controls).toBe("keyboard");
+});
+
+test("a fight gets the running camera only while Play with says Camera, so a keyboard choice is not asked to calibrate again", () => {
+  const running = { name: "tracker" };
+  expect(cameraUnder("camera", running)).toBe(running);
+  expect(cameraUnder("keyboard", running)).toBeNull();
+  expect(cameraUnder("camera", null)).toBeNull();
+  // "Use keyboard instead" sets Keyboard, so every later fight of the story gets no camera; "Use camera" sets Camera back.
+  const store = createSettingsStore(memory());
+  store.set({ controls: "keyboard" });
+  expect(cameraUnder(store.get().controls, running)).toBeNull();
+  store.set({ controls: "camera" });
+  expect(cameraUnder(store.get().controls, running)).toBe(running);
 });
 
 test("a change is saved, notifies, and survives a new store on the same storage", () => {
