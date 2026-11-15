@@ -2,7 +2,9 @@
 // each hero tonight and of all time, a podium for the first three, the rest down to ten, and how busy the road has
 // been (fights this hour, a line of the last six hours, wins at each stop). Read from the server's /api/heroes, which
 // keeps every fight as a time series on Tiger Data.
-// With no accounts on the server there is no hall and this draws nothing. It brings its own styles (./hall.css).
+// With no accounts on the server there is no hall: this draws nothing and asks nothing. It learns that from the
+// account's state (../sync), which the sign-in part beside it (AccountSignIn) asks for when the page opens, so the
+// two are put on the page together. It brings its own styles (./hall.css).
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { GODS } from "../../ai/gods/gods";
@@ -12,6 +14,7 @@ import { Dialog } from "../../ui/Dialog";
 import { Button } from "../../ui/pebble";
 import { loadHall } from "../hall";
 import type { Hall, HallRow } from "../heroes";
+import { useAccount } from "../sync";
 import { Icon } from "./icons";
 import "./hall.css";
 
@@ -24,12 +27,13 @@ type View = "tonight" | "allTime";
 
 /**
  * The hall while this component is on the screen; null until the first answer, and for good when that answer is
- * "no hall". It is read once when the page opens, to learn whether there is a hall to show, and again and again
- * only while the board is open.
+ * "no hall". Nothing is asked until the server is known to have accounts (`there`). Then it is read once, to learn
+ * whether there is a hall to show, and again and again only while the board is open.
  */
-function useHall(open: boolean): Hall | null {
+function useHall(there: boolean, open: boolean): Hall | null {
   const [hall, setHall] = useState<Hall | null>(null);
   useEffect(() => {
+    if (!there) return undefined;
     let live = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const again = (ms: number): void => { timer = setTimeout(() => { void read(); }, ms); };
@@ -49,7 +53,7 @@ function useHall(open: boolean): Hall | null {
       live = false;
       clearTimeout(timer);
     };
-  }, [open]);
+  }, [there, open]);
   return hall;
 }
 
@@ -159,9 +163,12 @@ function Board(props: { hall: Hall }) {
 }
 
 export function HallOfHeroes() {
+  const account = useAccount();
   const [open, setOpen] = useState(false);
-  const hall = useHall(open);
-  if (hall === null) return null;
+  // "unknown": nobody has asked the server yet. "off": it has no accounts, so it has no hall either.
+  const there = account.status !== "unknown" && account.status !== "off";
+  const hall = useHall(there, open);
+  if (!there || hall === null) return null;
   const close = (): void => { setOpen(false); };
   return (
     <div className="hall-door">
