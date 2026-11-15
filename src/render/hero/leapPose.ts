@@ -24,6 +24,7 @@ const KICK_MAX_UP = 0.55;
 
 const FORWARD = new Vector3(0, 0, -1);
 const X_AXIS = new Vector3(1, 0, 0);
+const Y_AXIS = new Vector3(0, 1, 0);
 const Z_AXIS = new Vector3(0, 0, 1);
 const dir = (x: number, y: number, z: number): Vector3 => new Vector3(x, y, z).normalize();
 type LegKey = "thighL" | "calfL" | "thighR" | "calfR";
@@ -161,18 +162,20 @@ class Poser implements LeapPose {
     this.stance.ease(held, dt);
     const act = this.stance.act(leap, this.act);
     act.crouch = Math.max(act.crouch, dodgeCrouch, power?.crouch ?? 0);
-    if (power) { act.lean = Math.max(act.lean, power.lean); act.roll += power.roll; }
+    // A negative power lean arches him back (Apollo); it adds to a defend's lean instead of losing to it.
+    if (power) { act.lean = power.lean < 0 ? act.lean + power.lean : Math.max(act.lean, power.lean); act.roll += power.roll; }
     act.kick = kick;
     act.target = target;
     this.undo.restore();
     const arms = power !== null && (power.wR > 1e-3 || power.wL > 1e-3);
-    if (act.crouch < 1e-3 && act.air < 1e-3 && act.lean < 1e-3 && Math.abs(act.roll) < 1e-3 && !arms) return;
-    this.pose(act);
+    const square = power?.square ?? 0;
+    if (act.crouch < 1e-3 && act.air < 1e-3 && Math.abs(act.lean) < 1e-3 && Math.abs(act.roll) < 1e-3 && square < 1e-3 && !arms) return;
+    this.pose(act, square);
     if (power && (power.wR > 1e-3 || power.wL > 1e-3)) this.armsToward(power);
     this.undo.commit();
   }
 
-  private pose(act: Act): void {
+  private pose(act: Act, square = 0): void {
     const { torso, footBones } = this.rig;
     // The feet as the clip left them: where a crouch keeps them planted.
     footBones[0].getWorldPosition(this.feet[0]); footBones[0].getWorldQuaternion(this.feetQ[0]);
@@ -187,9 +190,11 @@ class Poser implements LeapPose {
       pelvis.position.copy(parent.worldToLocal(this.v));
       pelvis.updateWorldMatrix(true, true);
     }
-    if (act.lean > 0 || act.roll !== 0) {
-      // Pitch forward about the scene's x axis (the hero faces -z) and tip sideways about z.
+    const yaw = square > 1e-3 ? square * this.squareAngle() : 0;
+    if (act.lean !== 0 || act.roll !== 0 || yaw !== 0) {
+      // Turn the chest to the monster about y, pitch forward about the scene's x axis (the hero faces -z), tip sideways about z.
       this.turn.setFromAxisAngle(X_AXIS, -LEAN * act.lean);
+      this.turn.multiply(this.q.setFromAxisAngle(Y_AXIS, yaw));
       this.q.setFromAxisAngle(Z_AXIS, act.roll);
       this.turn.premultiply(this.q);
       const spine = torso.spine1.bone;
@@ -217,6 +222,18 @@ class Poser implements LeapPose {
       // A planted foot stays flat on the floor however the knee bends.
       if (planted > 0) this.setWorld(footBones[side === "L" ? 0 : 1], side === "L" ? this.feetQ[0] : this.feetQ[1], planted * (1 - act.air));
     }
+  }
+
+  /**
+   * Radians about y that turn his chest from where the clip has it to face the monster (-z). The fight clips stand him
+   * side-on, chest to +x, so from the camera behind him his arms overlap; a power squares him up so they read.
+   */
+  private squareAngle(): number {
+    this.rig.limbs.upperarmR.bone.getWorldPosition(this.a);
+    this.rig.limbs.upperarmL.bone.getWorldPosition(this.b);
+    // Facing is up x (right shoulder - left shoulder) = (rz, 0, -rx); -z sits at azimuth pi.
+    const d = Math.PI - Math.atan2(this.a.z - this.b.z, this.b.x - this.a.x);
+    return Math.atan2(Math.sin(d), Math.cos(d));
   }
 
   /** A god's power: aims each arm along the pose's directions, upper arm first so the forearm follows it. */
