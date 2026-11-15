@@ -67,8 +67,10 @@ export function RevealScreen(props: {
   /** The running camera, or null for keyboard play: the god is then drawn by lot. */
   tracker: PoseTracker | null;
   onDone: (reveal: GodReveal) => void;
+  /** Called once the god is on screen, so a host can stop its own time limit. */
+  onRevealed?: () => void;
 }) {
-  const { tracker, onDone } = props;
+  const { tracker, onDone, onRevealed } = props;
   const [step, setStep] = useState<Step>({ kind: "ask" });
   const frame = useRef<PoseFrame | null>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -108,6 +110,7 @@ export function RevealScreen(props: {
     ).then((reveal) => {
       if (!alive.current) return;
       setStep({ kind: "revealed", reveal, portrait: null });
+      onRevealed?.();
       void reveal.portrait.then((portrait) => {
         if (alive.current) setStep((now) => (now.kind === "revealed" && now.reveal === reveal ? { ...now, portrait } : now));
       });
