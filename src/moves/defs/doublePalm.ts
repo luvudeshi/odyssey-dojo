@@ -2,7 +2,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { latest } from "../../pose/signals";
-import { armThrust, wristGap } from "../handSignals";
+import { strike, wristGap } from "../handSignals";
 
 export const move: MoveDef = {
   id: "double_palm",
@@ -15,8 +15,8 @@ export const move: MoveDef = {
   teaches: "A firm push with both open hands opens a gap, and a gap is your chance to leave",
   detect(history) {
     const frame = latest(history);
-    if (!frame || !armThrust(history, "left") || !armThrust(history, "right")) return 0;
-    return wristGap(frame) < 0.8 ? 1 : 0;
+    if (!frame || strike(history, "left") < 0.7 || strike(history, "right") < 0.7) return 0;
+    return wristGap(frame) < 1.1 ? 1 : 0;
   },
   quality(history) {
     return strikeQuality(history, { sides: ["left", "right"] });

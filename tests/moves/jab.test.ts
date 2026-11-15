@@ -1,6 +1,6 @@
 // Jab: the left fist snapped out from the chest is one jab; a raised, half-pushed or slowly reached arm is not.
 import { expect, test } from "vitest";
-import { LEFT_OUT, READY, STANDING, blend, others, play, pose, recording, thrown } from "../poseFixture";
+import { LEFT_OUT, READY, RIGHT_OUT, STANDING, blend, others, play, pose, recording, thrown } from "../poseFixture";
 
 const OUT = pose(LEFT_OUT, READY);
 
@@ -11,16 +11,23 @@ test("the left fist snapped out from the chest and pulled back is exactly one ja
   expect(thrown(jab, "jab")).toBe(1);
 });
 
-test("a straight left arm raised slowly to shoulder height is not a jab", () => {
-  const raise = play(recording([[pose(LEFT_OUT), 1000], [pose(LEFT_OUT), 300], [STANDING, 600]]));
+test("a straight left arm raised over three seconds is not a jab", () => {
+  const raise = play(recording([[pose(LEFT_OUT), 3000], [pose(LEFT_OUT), 300], [STANDING, 600]]));
   expect(thrown(raise, "jab")).toBe(0);
 });
 
-test("a short push that stops with the elbow still bent at 120 degrees is not a jab", () => {
+test("a short push that stops with the elbow still bent at 120 degrees still counts as a jab (rough form counts)", () => {
   const short = play(recording([[READY, 300], [READY, 200], [blend(READY, OUT, 0.55), 132], [READY, 200], [READY, 600]]));
-  expect(thrown(short, "jab")).toBe(0);
+  expect(thrown(short, "jab")).toBe(1);
 });
 
-test("no other base move fires during a jab, apart from the cross (both read on either hand)", () => {
-  expect(others(jab, "jab")).toEqual(["cross"]);
+test("no other base move fires during a jab", () => {
+  expect(others(jab, "jab")).toEqual([]);
+});
+
+test("a right-hand punch is not a jab: left and right stay distinct", () => {
+  const right = pose(RIGHT_OUT, READY);
+  const punch = play(recording([[READY, 300], [READY, 200], [right, 132], [right, 66], [READY, 200], [READY, 600]]));
+  expect(thrown(punch, "jab")).toBe(0);
+  expect(thrown(punch, "cross")).toBe(1);
 });

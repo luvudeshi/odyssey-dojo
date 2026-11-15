@@ -24,7 +24,7 @@ import { SIDE, TRAVEL, hipsY } from "./defs/tridentSweep";
 import { HOOK_BENT, HOOK_FLAT, HOOK_HEIGHT, HOOK_LIFT, HOOK_STRAIGHT, SWEEP_FROM, SWEEP_SPAN } from "./defs/hook";
 import {
   BENT, COVER_MS, ELBOW_LOW, FOLLOW_MS, LOW_START, RISE_BY, RISE_HIGH, RISE_LOW, RISE_MS as HAND_RISE_MS, RISING_PALM_BEND, SHOULDER_HEIGHT,
-  SIDEWAYS, SNAP_MS, STRAIGHT, THROW_DEGREES, THROW_MS, UPPERCUT_BEND, armOpening, armOut, bodyWidth, flungWide, heldReach,
+  ARM_MS, SIDEWAYS, SNAP_MS, STRAIGHT, THROW_DEGREES, THROW_MS, UPPERCUT_BEND, armOpening, armOut, bodyWidth, flungWide, heldReach,
   otherSide, otherThrowing, overBand, punchedJustNow, risingHand, sidewaysTravel, sweptAcross, throwDegrees, torsoLength, travel,
   upperArmLift, wristGap, wristOut, wristRise,
 } from "./handSignals";
@@ -158,7 +158,7 @@ const not = (name: string, check: (history: PoseHistory) => boolean): Single =>
 /** `strike` at full confidence: out on two frames, thrown fast, not from over the head, not swept sideways. */
 const strike = (side: Side): Single[] => [
   atLeast(`${side} arm out on this frame and the one before, 0 to 1`, ON, (history) => heldReach(history, side)),
-  atLeast(`${side} elbow opened or upper arm rose in ${String(THROW_MS)} ms, degrees`, THROW_DEGREES, (history) => throwDegrees(history, side)),
+  atLeast(`${side} elbow opened or upper arm rose in ${String(ARM_MS)} ms, degrees`, THROW_DEGREES, (history) => throwDegrees(history, side)),
   over(`ms since ${side} hand was over the punching band`, 500, since((frame, baseline) => overBand(frame, side, baseline))),
   under(`${side} fist's sideways travel in ${String(THROW_MS)} ms, when not mostly up, shoulder widths`, SIDEWAYS,
     (history) => sidewaysTravel(history, side)),

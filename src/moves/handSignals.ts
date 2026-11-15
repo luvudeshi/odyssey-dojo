@@ -79,17 +79,17 @@ export function wristGap(frame: PoseFrame): number {
 }
 
 /** The rising hand: where the wrist may end, in shoulder widths above the shoulder line (chin to forehead). */
-export const RISE_LOW = 0.2;
+export const RISE_LOW = 0.1;
 export const RISE_HIGH = 1.6;
 /** It came up from below the chest (LOW_START), by at least RISE_BY shoulder widths, inside RISE_MS. */
-export const LOW_START = -0.4;
-export const RISE_BY = 0.75;
+export const LOW_START = -0.3;
+export const RISE_BY = 0.6;
 export const RISE_MS = 450;
 /** The one feature that tells a rising hand from a punch: the elbow stays low, the upper arm lifted no more than this. */
-export const ELBOW_LOW = 55;
+export const ELBOW_LOW = 60;
 /** How bent each rising strike keeps its elbow, in degrees: the uppercut's fist, the rising palm's open hand. */
-export const UPPERCUT_BEND = 150;
-export const RISING_PALM_BEND = 165;
+export const UPPERCUT_BEND = 155;
+export const RISING_PALM_BEND = 170;
 
 /**
  * True when the hand came up from below the chest within the last RISE_MS and is now up in front of the body,
@@ -205,14 +205,14 @@ function upperArmSideways(frame: PoseFrame, side: Side): number {
 /** A fist may sit this many height rulers above or below its shoulder and still be punching (0.5 m on 0.5 m). */
 const PUNCH_HEIGHT = 1;
 /** A punching upper arm is lifted at least this far from hanging, in degrees: an arm dropped to the side is not out. */
-const PUNCH_LIFT = 40;
+const PUNCH_LIFT = 30;
 /** An upper arm more sideways than this (1 straight out to its own side) is not punching. */
 const SIDE_ON = 0.75;
 /** Further out to its own side than this, in shoulder widths, a fist was flung sideways, not punched forward. */
 export const PUNCH_WIDE = 1.6;
 /** The elbow reads as open from OPEN_FROM degrees and fully open at OPEN_TO. A fist at the camera reads short. */
-const OPEN_FROM = 105;
-const OPEN_TO = 120;
+const OPEN_FROM = 90;
+const OPEN_TO = 110;
 /** With the wrist lost, an upper arm lifted forward from LIFT_FROM degrees to LIFT_TO reads as a punch. */
 const LIFT_FROM = 50;
 const LIFT_TO = 70;
@@ -260,9 +260,11 @@ export function armReach(frame: PoseFrame, side: Side, baseline: Baseline | null
 
 /** A throw gets out fast: in this many milliseconds the elbow opens, or the upper arm rises, by THROW_DEGREES. */
 export const THROW_MS = 250;
-export const THROW_DEGREES = 35;
+/** A rough throw may take this long to open the elbow or lift the upper arm by THROW_DEGREES (the owner's loosening). */
+export const ARM_MS = 400;
+export const THROW_DEGREES = 20;
 /** A fist that travelled this far sideways in THROW_MS, in shoulder widths, and less far up, was swept, not punched. */
-export const SIDEWAYS = 0.6;
+export const SIDEWAYS = 0.8;
 
 /** The most the elbow opened, or the upper arm rose, over the last THROW_MS, in degrees. */
 export function throwDegrees(history: PoseHistory, side: Side): number {
@@ -270,7 +272,7 @@ export function throwDegrees(history: PoseHistory, side: Side): number {
   if (!frame) return -Infinity;
   const bend = elbowAngle(frame, side);
   const lift = upperArmLift(frame, side);
-  return Math.max(...recent(history, THROW_MS).map((old) => Math.max(bend - elbowAngle(old, side), lift - upperArmLift(old, side))));
+  return Math.max(...recent(history, ARM_MS).map((old) => Math.max(bend - elbowAngle(old, side), lift - upperArmLift(old, side))));
 }
 
 /** True when the arm opened or rose by THROW_DEGREES inside THROW_MS: anything thrown in up to about 0.7 s. A 1 s reach is not. */

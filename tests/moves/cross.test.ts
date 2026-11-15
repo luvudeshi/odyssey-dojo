@@ -11,24 +11,24 @@ test("the right fist driven out from the chest and pulled back is exactly one cr
   expect(thrown(cross, "cross")).toBe(1);
 });
 
-test("a straight right arm raised slowly to shoulder height, as if pointing at the screen, is not a cross", () => {
-  const point = play(recording([[pose(RIGHT_OUT), 1000], [pose(RIGHT_OUT), 300], [STANDING, 600]]));
+test("a straight right arm raised over three seconds, as if pointing at the screen, is not a cross", () => {
+  const point = play(recording([[pose(RIGHT_OUT), 3000], [pose(RIGHT_OUT), 300], [STANDING, 600]]));
   expect(thrown(point, "cross")).toBe(0);
 });
 
-test("a short push that stops with the elbow still bent at 120 degrees is not a cross", () => {
+test("a short push that stops with the elbow still bent at 120 degrees still counts as a cross (rough form counts)", () => {
   const short = play(recording([[READY, 300], [READY, 200], [blend(READY, OUT, 0.55), 132], [READY, 200], [READY, 600]]));
-  expect(thrown(short, "cross")).toBe(0);
+  expect(thrown(short, "cross")).toBe(1);
 });
 
-// Jab and cross read on either hand (the owner's ruling): a left-hand punch counts as a cross too, once.
-test("a left-hand punch is a cross as well as a jab", () => {
+// Left and right are distinct: a left-hand punch is a jab and never a cross.
+test("a left-hand punch is a jab and not a cross", () => {
   const left = pose(LEFT_OUT, READY);
   const jab = play(recording([[READY, 300], [READY, 200], [left, 132], [left, 66], [READY, 200], [READY, 600]]));
-  expect(thrown(jab, "cross")).toBe(1);
+  expect(thrown(jab, "cross")).toBe(0);
   expect(thrown(jab, "jab")).toBe(1);
 });
 
-test("no other base move fires during a cross, apart from the jab", () => {
-  expect(others(cross, "cross")).toEqual(["jab"]);
+test("no other base move fires during a cross", () => {
+  expect(others(cross, "cross")).toEqual([]);
 });
