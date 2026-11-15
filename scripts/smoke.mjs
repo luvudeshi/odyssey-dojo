@@ -163,10 +163,13 @@ function readRenderer() {
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Runs in the page: the first button under `main` whose text holds one of `texts`. */
+/** Runs in the page: the first button under `main` whose text, tooltip or label holds one of `texts`. */
 function findButton(texts) {
   const buttons = [...document.querySelectorAll("main button")];
-  const index = buttons.findIndex((button) => texts.some((text) => text && (button.textContent ?? "").toLowerCase().includes(text.toLowerCase())));
+  const says = (button) => `${button.textContent ?? ""}
+${button.title}
+${button.getAttribute("aria-label") ?? ""}`.toLowerCase();
+  const index = buttons.findIndex((button) => texts.some((text) => text && says(button).includes(text.toLowerCase())));
   return index < 0 ? null : { index, disabled: buttons[index].disabled, text: (buttons[index].textContent ?? "").trim() };
 }
 
@@ -186,7 +189,7 @@ async function waitForButton(page, texts, what) {
  * in flow.ts). `style` null means the first style the screen offers.
  *
  * Nothing here reads a heading or a CSS look. The style card is the button that starts with a style's name, the stop
- * is the button that holds the stop's place (or name), the intro button is the one that holds the monster's name:
+ * is the button that holds the stop's place or its monster's name, the intro button is the one that holds the monster's name:
  * all three texts come from the game's own definitions in src/. A locked stop is a disabled button.
  */
 async function enterFight(page, base, stop, style, styles, query) {
@@ -201,7 +204,8 @@ async function enterFight(page, base, stop, style, styles, query) {
   const picked = offered.find((one) => card.text.toLowerCase().startsWith(one.name.toLowerCase())) ?? offered[0];
   await card.locator.click();
 
-  const onMap = await waitForButton(page, [stop.place || stop.name], `the map with the stop "${stop.place || stop.name}"`);
+  // The map has shown the stop by its place and by its monster's name at different times: either will do.
+  const onMap = await waitForButton(page, [stop.place, stop.name], `the map with the stop "${stop.name}"`);
   if (onMap.disabled) return null;
   const mapButton = await onMap.locator.elementHandle();
   await onMap.locator.click();
@@ -504,7 +508,7 @@ ${parts.map(section).join("\n\n")}
 ## How to read it
 
 - Each fight is opened at \`/?stop=<id>\` in a fresh browser context: Keyboard only, the style, the open stop on the map, then the fight. \`--styles=all\` plays every stop with every style; without it each stop is played once, with the first style on the style screen.
-- The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place, the intro button is the one that names the monster. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
+- The script finds the screens by what the game defines in \`src/\`: the style card is the button that starts with the style's name, the stop is the button that holds the stop's place or its monster's name, the intro button is the one that names the monster. The prompt card is the box around the key hint whose class ends in defend, strike or finish, and the result panel is the layer of the fight that holds two or more buttons outside a dialog. No heading and no colour is read, so a new look should not break it.
 - The script plays for real. Every ${String(POLL_MS)} ms it reads the prompt card, holds the key of the defense it asks for until the prompt goes away, or presses the key of the strike or finisher. The key comes from the hint on the card, or from \`src/moves/defs\` when hints are off.
 - **result** is \`won\` or \`lost\` (from the result panel), \`not playable\` (the map does not offer the stop), \`never ended\` (no result inside the cap), \`hung\` (the page stopped answering) or \`crashed\` (a screen on the way in never came up).
 - **seconds** is from the fight's canvas appearing to the result panel.
