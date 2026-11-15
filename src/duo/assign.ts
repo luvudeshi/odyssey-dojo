@@ -29,7 +29,11 @@ export const LEAVE_MS = 700;
  * for that moment the fight must not let player one defend for both or take player two's stance again.
  */
 export const STOPPED_MS = 1500;
-/** Not seen for this long, the second player's steady time starts again. */
+/**
+ * Missing from the pictures for this long, the second player's steady time starts again. A break needs a picture
+ * without them: on a loaded laptop the pictures themselves can come most of a second apart, and a player seen in
+ * every one of them is standing steady however slow they come.
+ */
 const BREAK_MS = 250;
 /** The hero not seen for this long, with the other player still there: the other player becomes the hero. */
 export const PROMOTE_MS = 400;
@@ -106,6 +110,7 @@ export function createSeating(): Seating {
 
   return {
     next(found, t) {
+      const previousT = lastT;
       lastT = t;
       const bodies = distinct(found.filter(usable));
       // The shift belongs to the one body that took the hero's place. Once nobody has been seen for so long that the
@@ -137,7 +142,11 @@ export function createSeating(): Seating {
       if (firstBody && !moved) homes[0] = add(homes[0], homeOf(firstBody.image));
       if (secondBody) {
         homes[1] = add(homes[1], homeOf(secondBody.image));
-        if (t - secondSeenAt > BREAK_MS) steadyFrom = t;
+        // A break: a picture came without them and they were gone longer than BREAK_MS, or no picture came for as long
+        // as it takes the count to fall back to one player (STOPPED_MS).
+        const away = t - secondSeenAt;
+        const missed = secondSeenAt < previousT;
+        if ((missed && away > BREAK_MS) || away >= STOPPED_MS) steadyFrom = t;
         secondSeenAt = t;
         if (t - steadyFrom >= JOIN_MS) two = true;
       } else if (t - secondSeenAt >= LEAVE_MS) {
