@@ -9,6 +9,7 @@ import type { Group } from "three";
 import { battle, nowSeconds } from "../../battle";
 import { BoneMount } from "../../models/boneMount";
 import { heldGear, spearSlung } from "../gearRule";
+import { STRIKE_TIP } from "../reach";
 import { newInput, readInput } from "../heroInput";
 import { BRONZE, BRONZE_DARK, Bronze, LEATHER, WOOD } from "./spartanGear";
 import { TIMING } from "./timing";
@@ -107,8 +108,10 @@ export function HandGear() {
     <group ref={aim}>
       <group ref={spear} scale={0} visible={false}>
         <SpearBody />
+        <object3D name={STRIKE_TIP} position={[0, 1.81, 0]} />
       </group>
       <group ref={stake} scale={0} visible={false}>
+        <object3D name={STRIKE_TIP} position={[0, 1.3, 0]} />
         <mesh position={[0, 0.35, 0]} castShadow>
           <cylinderGeometry args={[0.035, 0.03, 1.3, 6]} />
           <meshStandardMaterial color={WOOD} roughness={1} flatShading />

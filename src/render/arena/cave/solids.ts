@@ -59,6 +59,11 @@ const matrixOf = (position: readonly [number, number, number], scale: readonly [
     new Vector3(...scale),
   );
 
+/** One boulder for the thrown rock (render/effects/Boulder.tsx): the cave's faceted look, radius 1, centred on the origin. */
+export function thrownRockGeometry(): BufferGeometry {
+  return paint(jitter(new IcosahedronGeometry(1, 1), 0.22, 4.1), COOL_ROCK, WARM_ROCK, (_x, y, _z, i) => 0.4 + y * 0.12 + noise2(i * 0.7, 3) * 0.4);
+}
+
 /** Boulders and stalactites share one draw call. */
 export function rockGeometry(): BufferGeometry {
   const random = mulberry(3);

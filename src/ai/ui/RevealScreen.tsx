@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { PoseFrame } from "../../core/types";
 import { JOINT } from "../../pose/signals";
 import type { PoseTracker } from "../../pose/tracker";
+import { emblemPortrait, firstPortrait } from "../gods/emblem";
 import { GODS } from "../gods/gods";
 import type { GodId } from "../gods/gods";
 import { renderPortrait } from "../gods/portrait";
@@ -107,13 +108,15 @@ export function RevealScreen(props: {
         tint: shot ? clothingTint(shot.pixels, pose) : null,
         seed: Date.now(),
       },
-      { drawPortrait: (god) => (shot ? marblePortrait(god, shot, pose) : null) },
+      // No picture (the lot, or a camera with nothing to show yet): the god's own emblem stands in for the portrait.
+      { drawPortrait: (god) => (shot ? marblePortrait(god, shot, pose) : emblemPortrait(god)) },
     ).then((reveal) => {
       if (!alive.current) return;
-      setStep({ kind: "revealed", reveal, portrait: null });
+      setStep({ kind: "revealed", reveal, portrait: firstPortrait(reveal.god, shot !== null) });
       onRevealed?.();
       void reveal.portrait.then((portrait) => {
-        if (alive.current) setStep((now) => (now.kind === "revealed" && now.reveal === reveal ? { ...now, portrait } : now));
+        const picture = portrait ?? emblemPortrait(reveal.god);
+        if (alive.current) setStep((now) => (now.kind === "revealed" && now.reveal === reveal ? { ...now, portrait: picture } : now));
       });
     });
   };
@@ -171,6 +174,7 @@ export function RevealScreen(props: {
     );
   }
 
+  // A null portrait here only ever means "still coming": with no picture taken the emblem is there from the start.
   const { reveal, portrait } = step;
   const god = GODS[reveal.god];
   return (
