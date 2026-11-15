@@ -4,11 +4,14 @@ import { useEffect, useRef } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import "./theme.css";
 import "./ui.css";
-import { installGround, PebbleHeading } from "./pebble";
+import { installGround } from "./pebble";
+import { Backdrop } from "./set/Set";
+import "./set/screens-flow.css";
 
 const FOCUSABLE = "button, input, select, [tabindex]:not([tabindex='-1'])";
 
-export function Dialog(props: { title: string; children: ReactNode; onEscape?: () => void }) {
+/** `scene` paints a full screen behind the panel and, with `onBack`, puts the kit Back button at the top left. */
+export function Dialog(props: { title: string; children: ReactNode; onEscape?: () => void; scene?: string; onBack?: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const { onEscape } = props;
 
@@ -39,10 +42,12 @@ export function Dialog(props: { title: string; children: ReactNode; onEscape?: (
   };
 
   return (
-    <div className="ui-backdrop">
-      <div ref={ref} className="ui-panel" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} onKeyDown={onKeyDown}>
-        <PebbleHeading as="h2" className="ui-title" text={props.title} px={36} tone="ochre" />
+    <div className={`ui-backdrop${props.scene ? " ui-backdrop--scene" : ""}`}>
+      {props.scene && <Backdrop src={props.scene} />}
+      <div ref={ref} className="ui-panel set-panel" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1} onKeyDown={onKeyDown}>
+        <h2 className="ui-title set-title">{props.title}</h2>
         {props.children}
+        {props.onBack && <button type="button" className="set-back" onClick={props.onBack}>Back</button>}
       </div>
     </div>
   );

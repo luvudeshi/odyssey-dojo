@@ -1,4 +1,4 @@
-// The "How do you fight?" stylesheet against the pebble look: colours only from theme variables, rules the menu's own cannot override, chips that are not kit buttons.
+// The "How do you fight?" stylesheet against the storm kit: colours only from theme variables, rules the menu's own cannot override, chips that are not kit buttons.
 // It does not check contrast or size on screen: that was looked at in a browser. It never reads src/theme.css, only that every colour is a variable.
 // This reads the CSS as text. It does not render anything.
 import { readFileSync } from "node:fs";
@@ -76,7 +76,7 @@ test("every rule sits under .style-screen with two classes, so it outranks the m
 
 test("every paragraph on the screen sets its own size, which the menu's .menu p would otherwise replace, and none is under 20 px", () => {
   const paragraphs = [...SCREEN.matchAll(/<p className="(style-[\w-]+)"/g)].map((match) => match[1] ?? "");
-  expect([...paragraphs].sort()).toEqual(["style-heard", "style-kicker", "style-lede", "style-monster", "style-note", "style-said", "style-setting", "style-taunt", "style-working"]);
+  expect([...paragraphs].sort()).toEqual(["style-heard", "style-monster", "style-note", "style-said", "style-setting", "style-taunt"]);
   for (const name of paragraphs) {
     const rule = RULES.find((candidate) => candidate.selector === `.style-screen .${name}`);
     expect(rule?.declarations.has("margin"), name).toBe(true);
