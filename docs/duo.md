@@ -6,7 +6,7 @@ The code is in `src/duo/`. It is **mounted**: the Multiplayer screen has the car
 
 ## How it works
 
-1. **The camera finds two bodies.** With the choice on, the pose model is asked for two bodies in each picture (`numPoses: 2`). With it off the model is asked for one, exactly as today.
+1. **The camera finds two bodies.** With the choice on, the pose model is asked for two bodies in each picture (`numPoses: 2`). When it gives fewer than two, two more models each read one half of the picture (see "Finding two bodies"). With it off the model is asked for one, exactly as today.
 2. **Seats** (`src/duo/assign.ts`). Every body found goes to `createSeating()`. Which body is which is decided by `assignPlayers` from `src/pose/players.ts` (PR #99): of a fresh pair, the one on the left of the picture is player one; after that each body goes to the player it moved least from, so walking past each other or the model swapping its order does not swap the players. On top of that:
    - a body with hidden shoulders, a body with shoulders under 6% of the picture (someone in the background), and one person the model found twice are dropped;
    - the second player **joins** after standing in the picture for 1 second without a break, and only with shoulders at least 0.6 of player one's (`BEHIND`). Someone smaller than that stands well behind player one, more than one and a half times as far from the camera: a spectator. They are not let in, because a defend counts only when both make it and they would cost the player every one. The widths compared are each seat's widest of the last second or so, so shoulders that go narrow in a punch change nothing. It is asked only at the join: a player who is in stays in;
@@ -54,11 +54,40 @@ The plates are not by the "You + Friend" tag because the prompt card covers that
 - Do not stand one behind the other. When two bodies overlap fully for more than a moment the model sees one person, and the two can come out swapped.
 - Player two: walk in, stand still with arms down for a second. That is when the game takes your neutral stance.
 
+## Finding two bodies
+
+Measured on 15 November with drawn figures (Chrome's fake camera, the real game, an Apple M4 GPU): asked for two bodies in the whole picture, the model gives **one** when the two touch or nearly touch (a gap under 5 to 15% of a body height, more for close-ups), and one for small figures. That is the likely reason a try with two real people showed one player. The switch from one body to two on a running model (`setOptions`) was checked and works: two bodies on the same picture, every picture.
+
+So while the choice is on, the tracker has two more models, each asked for one body in one half of the picture (55% of the width each, so they share a strip in the middle). `src/duo/halves.ts` picks the reader, picture by picture:
+
+- the whole picture is the first reader. While it shows two bodies the halves are not read at all;
+- while it shows fewer than two, one half is tried on every sixth picture. When the two halves together show more bodies than the whole picture, both are read once to be sure, and then the halves are the reader;
+- the halves hand back when the whole picture shows more than they do, or after three pictures in a row in which they found no more than it;
+- one person standing on the middle line is seen by both halves: two readings nearer than one shoulder width are one person, handed over once;
+- if a half model cannot be made or throws, both are closed and the whole picture is read as before.
+
+The same game on the same pictures, before and after (pictures with one body / with two, and when player two joined):
+
+| Picture | Before | After |
+|---|---|---|
+| 60% high, an arm's length apart | 0 / 287, joined at 1.0 s | 0 / 287, 1.0 s (whole picture) |
+| 60% high, touching | 274 / 0, never joined | 12 / 274, 1.4 s (halves) |
+| 80% high, centres 0.4 body heights apart | 270 / 0, never | 12 / 259, 1.4 s (halves) |
+| close-ups cut at the hips | 269 / 0, never | 12 / 259, 1.4 s (halves) |
+| moving for 21 s: 80% high, staying close, arms going up | 179 / 452, player two left twice | 12 / 619, never left (halves) |
+| one figure alone (on the middle line, close up, to one side) | one body | one body, never a second |
+
+Time for one picture in the game (median): 22 to 26 ms with two bodies either way, the same as before. With one body in the picture the median is unchanged and one picture in six takes about 15 ms longer (the half that is tried).
+
+With `?debug`, `window.__trackerStats` has `bodies` (found in the newest picture), `bodyFrames` (pictures with none, one, two), `reader` (`one`, `whole` or `halves`) and `halfReads`. If two people play and `bodyFrames` shows mostly one, the model is not finding the second: stand further apart.
+
+Not known: all of this with real people. Drawn figures stand square to the camera in even light; the gap at which real bodies merge, and how the halves do with a real arm reaching across the middle, were not measured. Two small figures (shoulders under 6% of the picture) are found by the halves but still not let in by the seats. Someone half outside the picture is still one body. With the camera already running when the card is pressed, the half models are made during the first pictures and player two joins about 0.7 s later than before (1.6 s). The CPU model (`?pose=cpu`) gave the same bodies in three of these pictures. Not tried: a half model failing on a real machine, three people, and any machine but this one.
+
 ## Where it is mounted
 
 Five files outside `src/duo/` (the skeleton and the plates of "What the two players see" need none: they are laid over the page from `src/duo/`). The card uses the Multiplayer screen's own card classes, so it takes the look of the other cards.
 
-- `src/pose/tracker.ts`: ask the model for `duoCamera.wanted()` bodies (it changes on the running model with `setOptions`), and while duo is on hand every body to `duoCamera.take`, which gives back player one's frame.
+- `src/pose/tracker.ts`: ask the model for `duoCamera.wanted()` bodies (it changes on the running model with `setOptions`), and while duo is on hand every body to `duoCamera.take`, which gives back player one's frame. The two half models are made when the choice is first on and closed when it goes off.
 - `src/screens/Multiplayer.tsx`: `<DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />` in the row of cards.
 - `src/render/Scene.tsx`: `<SecondFigure />` next to `<Hero>`.
 - `src/App.tsx`: one effect that turns duo off when the player leaves that way of playing. And when the camera does not start after "Play side by side", the player lands on the main menu, where the camera problem card is: not back on the Multiplayer screen with nothing said, and not in a keyboard fight as a room's host does (two players on one camera have no room to keep and cannot play without the camera).
