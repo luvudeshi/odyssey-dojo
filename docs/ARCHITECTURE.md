@@ -67,7 +67,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 3. The player is an animated rigged hero that plays real clips when a move is detected, plus a faint ghost outline of the live webcam pose.
 4. toyeshhm chooses the look and the models. Agents decide engineering only, and build model choices as candidates behind a URL flag.
 5. Hero (Saturday 5:20 PM): the spartan. His gear is not always out: the shield rides on his back and his hands are free to punch and block; the spear is drawn only for a spear move.
-6. Interface (Saturday 5:20 PM): black-figure pottery. Terracotta clay, black ink, Greek key bands, on the menu, the HUD, the prompt card and every screen. The mockup he chose from is `docs/screenshots/ui-look-pottery-mockup.png`.
+6. Interface (Saturday 6:19 PM, replacing the Saturday 5:20 PM black-figure pottery): pebble mosaic, his pick from ten boards. The whole interface is laid in small river pebbles on a dark ground, as on the floors of Pella and Olynthos, with thin lead strips and a wave scroll along the borders. In the fight only edge pieces are laid: stone-by-stone health bars, one prompt card at the right edge (a rounded slate shield for DEFEND, a pointed warm spearhead for STRIKE). Move words, keys and timers stay plain type. The kit is `src/ui/pebble/`, its notes `docs/ui-pebble.md`.
 
 ## Features
 
