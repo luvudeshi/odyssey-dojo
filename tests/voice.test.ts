@@ -268,14 +268,12 @@ test("fight start and phase lines replace praise and warnings, and are not refus
   expect(start.started).toEqual(["warn_1", "fight_start"]);
 });
 
-test("fight start yields to calls, a phase line does not, and neither is cut off by praise, warnings or the other", () => {
+test("fight start yields to calls, a phase line does not, and neither is cut off by praise or warnings", () => {
   const { voice, started, stopped, end } = fakeVoice();
   expect(voice.speak("phase_2")).toBe(true);
   voice.handle([enemyHit]);
   voice.handle([playerHit]);
   voice.handle([telegraph]);
-  expect(voice.speak("fight_start")).toBe(false);
-  expect(voice.speak("phase_1")).toBe(false);
   expect(started).toEqual(["phase_2"]);
 
   end();

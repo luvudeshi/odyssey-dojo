@@ -63,9 +63,11 @@ function interrupts(next: string, playing: string): boolean {
   // The engine emits nothing after the result, so a call or fight start heard over it belongs to the next fight.
   const held = urgency(playing);
   if (held === RESULT) return tier === CALL || next === "fight_start";
-  // A newer call beats an older one, whose beat has passed. It does not beat a phase line, which is heard to its end:
-  // the call is dropped, not queued, and the prompt card shows the move anyway.
-  return tier > held || (tier === CALL && held === CALL);
+  // A new fight's first line is not kept out by the last fight's phase line (a retry from the pause menu).
+  if (held === PHASE && next === "fight_start") return true;
+  // A newer call beats an older one, whose beat has passed, and a newer phase line beats an older one. A call does not
+  // beat a phase line, which is heard to its end: the call is dropped, not queued, and the prompt card shows the move.
+  return tier > held || (tier === held && (tier === CALL || tier === PHASE));
 }
 
 export interface VoiceDeps {
@@ -150,9 +152,10 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
         const call = `call_${phase.move}`;
         wanted.push(deps.available(call) ? call : anyCall(call, "strike"));
       }
-      finishing = phase?.kind === "finisher";
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
       if (best !== null) speak(best);
+      // A phase line holding the voice keeps the finisher's call out, so the call is tried again until it is spoken.
+      finishing = phase?.kind === "finisher" && urgency(current?.id ?? "") !== PHASE;
     },
     playing: () => current?.id ?? null,
     stop(id) {
