@@ -2,11 +2,12 @@
 // and plays an online room in two pages of headless Chrome: a host at laptop size on the keyboard and a guest at
 // phone size with touch. Prints one line per step.
 //
-//   node scripts/rooms-smoke.mjs [--no-build] [--runs=fight,rejoin,host-leaves] [--poll] [--cap=240] [--port=6040]
-//                                [--no-host-camera]
+//   node scripts/rooms-smoke.mjs [--no-build | --dev] [--runs=fight,rejoin,host-leaves] [--poll] [--cap=240]
+//                                [--port=6040] [--no-host-camera] [--shots=folder] [--url=https://the.hosted.copy]
 //
 // The three runs:
-//   fight        the host makes a room, the guest types its code, they play one whole fight
+//   fight        the host makes a room, the guest types its code, they play one whole fight; at first the host only
+//                defends, so the first hit on the monster shows that the guest's strike reached the host's fight
 //   rejoin       the guest's page closes in the middle of the fight and a new one comes back by the room's link;
 //                the host only defends while the guest is away, so the fight is still on when the guest is back
 //   host-leaves  the host's page closes in the middle of the fight; the guest must be told and get back to the start
@@ -14,20 +15,27 @@
 // --poll  the guest's event stream never delivers (as through a Cloudflare quick tunnel), so its link falls back
 //         to long polling after 3 seconds. Without it both pages use the event stream.
 //
+// --dev    no build: the server runs as before, and the pages load the source through vite's dev server on a second
+//          free port, which passes /api on to the server. For a machine where a build is too heavy. The pages then
+//          run React's development build, so the built game is still the last word.
+// --shots  a folder for pictures: one of each open page after every step, named by run, step and page.
+//
 // Exits 1 when a run has a console error, a page error, a request that failed or answered 4xx/5xx, a guest who
 // never sees the fight, or health, score or result that differ between the two pages at the end.
 // One answer is expected and not counted: 409 "room full" while a guest who dropped waits for the old seat to be
 // given back (the relay holds a seat for 20 seconds, see docs/rooms.md). The line for that step says how often.
 //
-// Both pages go through the Multiplayer card of the main menu: the host presses "Open a room" on its host card, the
-// guest types the code into its join card.
+// Both pages go through the Multiplayer shield of the main menu: the host presses "Open a room" on its host card, the
+// guest types the code into its join card. At phone width the menu's four shields overlap, so the guest presses a part
+// of the Multiplayer shield that is not covered (the step's line says so). After "Start" the host goes through the
+// god scan, the character screen ("Fight as ..."), the style screen, the map and calibration.
 //
 // No real camera is used. "Start" on the host card starts the host's webcam, so the host's page is given Chrome's
 // fake camera (a moving test pattern, nobody in it): the host skips the god scan, and at calibration takes "Use
 // keyboard instead", so it plays on the keyboard. The guest's page is refused the camera, so it gets the touch
 // buttons a phone on plain http gets.
-// --no-host-camera  refuses the host the camera too, as on a laptop with no webcam. The run then shows what the game
-//                   does with such a host after "Start" (see docs/rooms.md).
+// --no-host-camera  refuses the host the camera too, as on a laptop with no webcam. Such a host must keep its room
+//                   after "Start" and play on the keyboard; today the game drops the room (see docs/rooms.md).
 //
 // Finding Playwright and the way the fight is played are the same as in scripts/smoke.mjs. That file exports
 // nothing and runs on import, so those small parts are copied here.
@@ -37,7 +45,7 @@
 //   FPS_GL          ANGLE backend (default d3d11 on Windows, metal on macOS; "swiftshader" forces software GL)
 //   FPS_PLAYWRIGHT  folder of a playwright or playwright-core install, used when the repo has neither
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
@@ -60,10 +68,17 @@ const STRIKE_EVERY_MS = 150;
 const TAP_EVERY_MS = 100;
 /** The page must answer one read within this, or it counts as hung. */
 const POLL_TIMEOUT_MS = 10_000;
-/** How long a screen may take to come up. */
-const SCREEN_MS = 15_000;
+/**
+ * How long a screen may take to come up. With --dev a new page loads the source file by file with nothing cached,
+ * which on a busy machine has taken over 12 seconds, so it gets three times as long.
+ */
+const SCREEN_MS = process.argv.includes("--dev") ? 45_000 : 15_000;
 /** How long the host's camera and pose tracker may take to start after "Start". */
 const CAMERA_MS = 90_000;
+/** A host with no camera: how long after "Start" the room must still be there (the camera is refused within a second). */
+const NO_CAMERA_MS = 4_000;
+/** How long the host tries the god scan's Skip button before it takes the Esc key instead. */
+const SKIP_MS = 3_000;
 /** How long the guest may take to show what the host shows. */
 const FOLLOW_MS = 8_000;
 /** How long the fight may take to its first hit, on either side. */
@@ -164,6 +179,23 @@ async function waitForServer(url, server) {
   throw new Error(`the server did not answer at ${url}`);
 }
 
+/**
+ * The game's source through vite's dev server on `port`, with /api sent on to the game server at `api` (vite.config.ts
+ * reads API_URL). For a machine where a build is too heavy; the pages then run React's development build.
+ */
+function startDev(port, api) {
+  const child = spawn(process.execPath, [VITE, "--port", String(port), "--strictPort", "--host", "127.0.0.1"], {
+    cwd: ROOT,
+    env: { ...process.env, API_URL: api },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const lines = [];
+  const keep = (chunk) => { lines.push(...String(chunk).split("\n").filter(Boolean)); lines.splice(0, Math.max(0, lines.length - 200)); };
+  child.stdout.on("data", keep);
+  child.stderr.on("data", keep);
+  return { child, lines };
+}
+
 function glArgs() {
   const backend = process.env.FPS_GL ?? { win32: "d3d11", darwin: "metal" }[process.platform] ?? "";
   // Two pages draw at once: neither may be slowed down for being "in the background".
@@ -225,19 +257,54 @@ function watch(page, base, seen = { pageErrors: [], consoleErrors: [], badReques
 }
 
 /**
- * Clicks a button. The screens are being restyled, so a button is found by what it does first (`selector`, built
- * from structure and attributes) and by its words only when that finds nothing.
+ * Runs on a button in the page: a point of the button, measured from its top left corner, where a press lands on the
+ * button itself. The middle is tried first. Null when something else covers every point tried. At phone width the
+ * main menu's shields overlap, and the middle of one lies under its neighbour's name ribbon; a person presses the
+ * part they can see, and so does the script.
  */
-async function press(page, what, { selector = null, name }) {
-  const deadline = Date.now() + SCREEN_MS;
+function pressablePoint(button) {
+  const box = button.getBoundingClientRect();
+  const steps = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+  for (const fy of steps) {
+    for (const fx of steps) {
+      const x = box.x + box.width * fx;
+      const y = box.y + box.height * fy;
+      const top = document.elementFromPoint(x, y);
+      if (top && button.contains(top)) return { x: x - box.x, y: y - box.y, middle: fx === 0.5 && fy === 0.5 };
+    }
+  }
+  return null;
+}
+
+/** Runs in the page: why a button cannot be pressed (off the page, or what lies on its middle), for a step's line. */
+function coveredBy(button) {
+  const box = button.getBoundingClientRect();
+  const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+  if (!top) return `is off the page (its box is at ${String(Math.round(box.x))}, ${String(Math.round(box.y))} and the page is ${String(window.innerWidth)} x ${String(window.innerHeight)})`;
+  return `is covered by <${top.tagName.toLowerCase()}${typeof top.className === "string" && top.className ? ` class="${top.className}"` : ""}>`;
+}
+
+/**
+ * Clicks a button. The screens are being restyled, so a button is found by what it does first (`selector`, built
+ * from structure and attributes) and by its words only when that finds nothing. The click goes to a point where the
+ * button is on top (pressablePoint); a button that is covered all over fails the step.
+ */
+async function press(page, what, { selector = null, name, wait = SCREEN_MS }) {
+  const deadline = Date.now() + wait;
+  let covered = "";
   for (;;) {
     for (const target of [selector && page.locator(selector).first(), page.getByRole("button", { name }).first()].filter(Boolean)) {
       if (await target.isVisible().catch(() => false) && await target.isEnabled().catch(() => false)) {
-        await target.click();
-        return;
+        const point = await target.evaluate(pressablePoint).catch(() => null);
+        if (point === null) {
+          covered = await target.evaluate(coveredBy).catch(() => "is covered");
+          continue;
+        }
+        await target.click({ position: { x: point.x, y: point.y }, timeout: SCREEN_MS });
+        return point.middle ? "" : "pressed off its middle, which another button covers";
       }
     }
-    if (Date.now() >= deadline) throw new Error(`no button to ${what}`);
+    if (Date.now() >= deadline) throw new Error(covered ? `the button to ${what} ${covered}: no part of it can be pressed` : `no button to ${what}`);
     await sleep(100);
   }
 }
@@ -255,7 +322,8 @@ function readWhere() {
   const title = document.querySelector("main h1");
   const heading = (title?.getAttribute("aria-label") ?? title?.textContent ?? "").trim();
   const notice = [...document.querySelectorAll('main [role="alert"], main [role="status"]')].map((node) => node.textContent?.trim() ?? "").find((line) => line !== "") ?? "";
-  return `"${[heading, notice].filter(Boolean).join(": ") || document.body.innerText.trim().slice(0, 80)}"`;
+  // One line: a step's line is cut at the first line break.
+  return `"${([heading, notice].filter(Boolean).join(": ") || document.body.innerText.trim().slice(0, 80)).replace(/\s+/g, " ")}"`;
 }
 
 /**
@@ -390,8 +458,14 @@ async function until(page, read, good, ms) {
 /** A failed step ends its run. */
 class StepFailed extends Error {}
 
-function newRun(id) {
+function newRun(id, shoot) {
   const failures = [];
+  let count = 0;
+  /** With --shots: one picture of each open page after every step, named by run, step number, step and page. */
+  const snap = async (label) => {
+    count += 1;
+    await shoot(`${id} ${String(count).padStart(2, "0")} ${label}`.replace(/[^A-Za-z0-9]+/g, "-"));
+  };
   return {
     id,
     failures,
@@ -402,10 +476,12 @@ function newRun(id) {
       try {
         const detail = await action();
         say(`${id} | ${label}: ok${detail ? `, ${detail}` : ""} (${took()})`);
+        await snap(label);
       } catch (error) {
         const why = firstLine(error);
         failures.push(`${label}: ${why}`);
         say(`${id} | ${label}: FAIL, ${why} (${took()})`);
+        await snap(`${label} FAIL`);
         throw new StepFailed(why);
       }
     },
@@ -457,7 +533,7 @@ async function sendCode(page) {
 /** Main menu -> Multiplayer -> the four letters, typed into the join card. */
 async function guestTypesCode(page, base, code) {
   await page.goto(base);
-  await press(page, "open Multiplayer", MULTIPLAYER_CARD);
+  const how = await press(page, "open Multiplayer", MULTIPLAYER_CARD);
   const input = page.locator('main input[maxlength="4"], main input').first();
   await input.waitFor({ timeout: SCREEN_MS });
   await input.fill(code.toLowerCase());
@@ -465,6 +541,7 @@ async function guestTypesCode(page, base, code) {
   if (typed !== code) throw new Error(`the code box reads "${typed}" after typing "${code.toLowerCase()}"`);
   const answer = await sendCode(page);
   if (answer.refused !== null) throw new Error(`refused: "${answer.refused}"`);
+  return how ? `the Multiplayer shield was ${how}` : "";
 }
 
 /** Runs in the page: which screen the host is on after "Start". */
@@ -473,26 +550,31 @@ function readHostScreen() {
   const text = (selector) => document.querySelector(selector)?.textContent?.trim() ?? "";
   if (has(".fight canvas")) return { at: "fight" };
   if (has("button.scan-skip") || has("main.reveal")) return { at: "scan" };
+  if (has(".character-picker")) return { at: "character" };
   if (has(".calibration")) return { at: "calibration" };
   if (has("button.stop")) return { at: "map" };
   if (has("main .styles button")) return { at: "style" };
   if (has('nav[aria-label="Main menu"]')) return { at: "menu", problem: text("main .overlay p") };
-  if (has("main .rooms")) return { at: "multiplayer" };
+  if (has("main.mp, main .rooms")) return { at: "multiplayer" };
   return { at: "other" };
 }
 
 /**
- * The host's "Start" (live once the friend is in), then the way to the fight: the god scan (skipped), the first
- * style, the first open stop, calibration ("Use keyboard instead": nobody stands in the test pattern), the fight.
+ * The host's "Start" (live once the friend is in), then the way to the fight: the god scan (skipped), the character
+ * already chosen ("Fight as ..."), the first style, the first open stop, calibration ("Use keyboard instead": nobody
+ * stands in the test pattern), the fight.
  * "Start" is the button right after the room's status line; "Close the room" is live all the time and must not be
  * taken for it.
  *
- * "Start" starts the host's webcam. The style screen shows at once, and the god scan takes its place when the
- * camera is up. A style picked before that would leave the camera to come up in the middle of the fight, so the
- * script waits for the scan. If the camera fails instead, the game leaves the style screen: the step then says
- * where the page went.
+ * "Start" starts the host's webcam. The character screen shows at once, and the god scan takes its place when the
+ * camera is up. A character and a style picked before that would leave the camera to come up in the middle of the
+ * fight, so the script waits for the scan. If the camera fails instead, the game leaves that screen: the step then
+ * says where the page went.
+ *
+ * A host that is refused the camera (--no-host-camera) gets no scan and no calibration. The room must still be there
+ * NO_CAMERA_MS after "Start", with the host on the character screen; from there it plays on the keyboard.
  */
-async function hostStartsFight(page) {
+async function hostStartsFight(page, hostCamera) {
   const friend = await until(page, () => {
     const start = document.querySelector('main [role="status"] + button') ?? [...document.querySelectorAll("main button")].find((button) => /^start/i.test(button.textContent?.trim() ?? ""));
     return { live: start instanceof HTMLButtonElement && !start.disabled, notice: document.querySelector('main [role="status"]')?.textContent?.trim() ?? "" };
@@ -500,37 +582,55 @@ async function hostStartsFight(page) {
   if (!friend) throw new Error(`the host never saw the guest, the page shows ${await page.evaluate(readWhere)}`);
   await press(page, "start", { selector: 'main:has(img[data-join-url]) [role="status"] + button:enabled', name: /^start/i });
   await page.locator("img[data-join-url]").waitFor({ state: "detached", timeout: SCREEN_MS });
-  const camera = await until(page, readHostScreen, (screen) => screen.at !== "style" && screen.at !== "other", CAMERA_MS);
-  if (camera?.at !== "scan") {
+  const camera = await until(page, readHostScreen, (screen) => screen.at !== "character" && screen.at !== "style" && screen.at !== "other", hostCamera ? CAMERA_MS : NO_CAMERA_MS);
+  if (camera?.at !== "scan" && (hostCamera || camera !== null)) {
     const where = camera === null ? `still shows ${await page.evaluate(readWhere).catch(() => "nothing")} after ${String(CAMERA_MS / 1000)} s`
       : camera.at === "menu" ? `is back on the main menu${camera.problem ? `, which says "${camera.problem}"` : ""}`
       : camera.at === "multiplayer" ? "is back on the Multiplayer screen with no room open"
       : `is on the ${camera.at} screen`;
-    throw new Error(`after "Start" the host's camera did not come up: its page ${where}`);
+    throw new Error(hostCamera ? `after "Start" the host's camera did not come up: its page ${where}` : `the host has no camera, and after "Start" its page ${where}`);
   }
   // A style button is the one with a line of small print under its name (the main menu's cards have one too, but
   // they sit in a nav).
   let styleName = "";
   let enemy = "";
+  let character = "";
+  let skipped = "god scan skipped by its button";
   try {
-    await press(page, "skip the god scan", { selector: "button.scan-skip", name: /^skip/i });
+    // The scan's own Skip button first. When it cannot be pressed (off the page, or covered) the key it names is
+    // used, and the step's line says so: a person who does not know the key has no way to skip.
+    if (camera !== null) {
+      try {
+        await press(page, "skip the god scan", { selector: "button.scan-skip", name: /^skip/i, wait: SKIP_MS });
+      } catch (error) {
+        await page.keyboard.press("Escape");
+        skipped = `god scan skipped with the Esc key, because ${firstLine(error)}`;
+      }
+    }
+    // The five characters come between the scan and the styles; the one already chosen is taken as it is.
+    const done = page.locator("button.character-done").first();
+    await done.waitFor({ timeout: SCREEN_MS });
+    character = ((await done.textContent({ timeout: SCREEN_MS })) ?? "").trim().replace(/^fight as /i, "");
+    await press(page, "confirm the character", { selector: "button.character-done", name: /^fight as/i });
     const style = page.locator("main button:has(small):not(nav button)").first();
     await style.waitFor({ timeout: SCREEN_MS });
-    styleName = await style.evaluate((element) => element.firstChild?.textContent?.trim() ?? "", null, { timeout: SCREEN_MS });
+    styleName = await style.evaluate((element) => (element.querySelector(".menu-shield__name")?.textContent || element.firstChild?.textContent || "").trim(), null, { timeout: SCREEN_MS });
     await style.click({ timeout: SCREEN_MS });
     const stop = page.locator("button.stop.open").first();
     await stop.waitFor({ timeout: SCREEN_MS });
-    // The monster's name is the first text of the stop's label; the small print after it is the book.
-    enemy = await stop.evaluate((element) => (element.querySelector(".lbl")?.firstChild?.textContent ?? element.textContent ?? "").trim(), null, { timeout: SCREEN_MS });
+    // The monster's name is the first text of the stop's name plate; the small print after it is the book.
+    enemy = await stop.evaluate((element) => (element.querySelector(".qm-plate, .lbl")?.firstChild?.textContent ?? element.textContent ?? "").trim(), null, { timeout: SCREEN_MS });
     // The click on the stop starts the fight; with the camera on, calibration comes first.
     await stop.click({ timeout: SCREEN_MS });
-    await press(page, "play on the keyboard at calibration", { selector: ".calibration button", name: "Use keyboard instead" });
+    // Calibration has a "Back" button too (it leaves for the map), so the keyboard button is the one that is not it.
+    if (camera !== null) await press(page, "play on the keyboard at calibration", { selector: ".calibration button:not(.set-back)", name: "Use keyboard instead" });
     // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
     await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
   } catch (error) {
-    throw new Error(`after "Start" the host did not get from the god scan to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
+    throw new Error(`after "Start" the host did not get from ${camera === null ? "the character screen" : "the god scan"} to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
   }
-  return `"${friend.notice}", fake camera up, god scan skipped, style ${styleName}, against ${enemy}, keyboard taken at calibration`;
+  const way = camera === null ? "no camera, so no god scan and no calibration: the room is kept and the host plays on the keyboard" : `fake camera up, ${skipped}`;
+  return `"${friend.notice}", ${way}, character ${character}, style ${styleName}, against ${enemy}${camera === null ? "" : ", keyboard taken at calibration"}`;
 }
 
 /**
@@ -552,17 +652,26 @@ async function sameHealth(host, guest, ms) {
 }
 
 /** One run in two fresh browser contexts, so saved settings and errors never leak from one run into the next. */
-async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCamera) {
-  const run = newRun(`run ${String(index + 1)} ${kind}`);
+async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCamera, shots) {
+  const pages = { host: null, guest: null };
+  const run = newRun(`run ${String(index + 1)} ${kind}`, async (name) => {
+    if (!shots) return;
+    for (const [who, page] of Object.entries(pages)) {
+      if (page && !page.isClosed()) await page.screenshot({ path: join(shots, `${name}-${who}.png`), timeout: POLL_TIMEOUT_MS }).catch(() => undefined);
+    }
+  });
   const hostContext = await browser.newContext({ ...HOST_VIEW, permissions: hostCamera ? ["camera"] : [] });
   const guestContext = await browser.newContext(GUEST_VIEW);
   // The stream answers and then says nothing, which is what a guest behind a quick tunnel gets.
   if (poll) await guestContext.route("**/api/rooms/*/events*", (route) => route.fulfill({ status: 200, contentType: "text/event-stream", body: "" }));
   const host = await hostContext.newPage();
   let guest = await guestContext.newPage();
+  pages.host = host;
+  pages.guest = guest;
   const hostSeen = watch(host, base);
   const guestSeen = watch(guest, base);
-  const hostSignal = { stop: false };
+  // In the fight run the host only defends at first, so the first hit on the monster can only be the guest's.
+  const hostSignal = { stop: false, defendOnly: kind === "fight" };
   let guestSignal = { stop: false };
   let hostPlay = null;
   let room = { code: "", link: null };
@@ -573,6 +682,12 @@ async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCam
     if (!seen) throw new Error(`the guest never saw the fight, its page shows ${await guest.evaluate(readWhere).catch(() => "nothing")}`);
     void strike(guest, moveKeys, guestSignal);
     return `${seen.touch ? "touch buttons" : "keyboard"}, ${((Date.now() - fightStarted) / 1000).toFixed(1)} s after the host's fight began`;
+  };
+  const guestStrikeLands = async () => {
+    const hit = await until(host, readHud, (hud) => hud.fight === true && (hud.over === true || hud.monster < 100), FIRST_HIT_MS);
+    hostSignal.defendOnly = false;
+    if (!hit || hit.over) throw new Error(`the host threw no strike and the guest tapped its strike button for ${String(FIRST_HIT_MS / 1000)} s, but the monster on the host's page was never hit (guest strikes sent ${String(guestSeen.strikes)}, passed on ${String(guestSeen.delivered)})`);
+    return `the host threw no strike, and the monster on its page is down to ${String(hit.monster)}% (guest strikes sent ${String(guestSeen.strikes)}, passed on ${String(guestSeen.delivered)}); the host strikes too from here`;
   };
   const guestFollows = async () => {
     const both = await sameHealth(host, guest, FOLLOW_MS);
@@ -599,17 +714,18 @@ async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCam
       return `code ${room.code}`;
     });
     await run.step("guest joins by typing the code", async () => {
-      await guestTypesCode(guest, base, room.code);
+      const how = await guestTypesCode(guest, base, room.code);
       const notice = await guest.evaluate(readNotice);
-      return `phone size ${String(GUEST_VIEW.viewport.width)}x${String(GUEST_VIEW.viewport.height)} with touch, ${poll ? "polling" : "event stream"}, page says "${notice}"`;
+      return `${how ? `${how}, ` : ""}phone size ${String(GUEST_VIEW.viewport.width)}x${String(GUEST_VIEW.viewport.height)} with touch, ${poll ? "polling" : "event stream"}, page says "${notice}"`;
     });
     await run.step("host sees the guest and starts a fight", async () => {
-      const detail = await hostStartsFight(host);
+      const detail = await hostStartsFight(host, hostCamera);
       fightStarted = Date.now();
       hostPlay = play(host, moveKeys, capMs, hostSignal);
       return detail;
     });
     await run.step("guest sees the fight", guestSeesFight);
+    if (kind === "fight") await run.step("guest's strike lands in the host's fight", guestStrikeLands);
     await run.step("guest shows the host's health", guestFollows);
 
     if (kind === "rejoin") {
@@ -631,6 +747,7 @@ async function runOne(browser, base, kind, index, moveKeys, capMs, poll, hostCam
       });
       await run.step("guest comes back by the room's link", async () => {
         guest = await guestContext.newPage();
+        pages.guest = guest;
         guestSignal = { stop: false };
         watch(guest, base, guestSeen);
         guestSeen.expectFull = true;
@@ -731,23 +848,38 @@ async function main() {
   const hostCamera = !flag("no-host-camera");
   const moveKeys = readMoveKeys();
   const chromium = loadChromium();
+  const dev = flag("dev");
+  const shots = option("shots", "") ? resolve(option("shots", "")) : null;
+  if (shots) mkdirSync(shots, { recursive: true });
   let server = null;
+  let devServer = null;
   let browser = null;
-  const stopServer = () => { server?.child.kill(); };
+  const stopServer = () => { server?.child.kill(); devServer?.child.kill(); };
   process.on("exit", stopServer);
   process.on("SIGINT", () => process.exit(130));
   process.on("SIGTERM", () => process.exit(143));
   try {
-    if (!flag("no-build")) {
+    // --url: play against a copy that is already running (the hosted site), with no build and no server of our own.
+    const live = option("url", "").replace(/\/$/, "");
+    if (!live && !dev && !flag("no-build")) {
       say("Building...");
       await build();
     }
-    if (!existsSync(join(ROOT, "dist", "index.html"))) throw new Error("dist/ has no build: run without --no-build");
+    if (!live && !dev && !existsSync(join(ROOT, "dist", "index.html"))) throw new Error("dist/ has no build: run without --no-build, or with --dev");
     const port = option("port", "") ? Number(option("port", "")) : await freePort();
-    const base = `http://127.0.0.1:${String(port)}`;
-    server = startServer(port);
-    await waitForServer(base, server);
-    say(`Server and built game at ${base}; the guest's link uses ${poll ? "long polling (its event stream is kept silent)" : "the event stream"}; the host ${hostCamera ? "has Chrome's fake camera" : "is refused the camera"}`);
+    const api = `http://127.0.0.1:${String(port)}`;
+    if (!live) {
+      server = startServer(port);
+      await waitForServer(`${api}/api/health`, server);
+    }
+    let base = live || api;
+    if (!live && dev) {
+      const devPort = await freePort();
+      base = `http://127.0.0.1:${String(devPort)}`;
+      devServer = startDev(devPort, api);
+      await waitForServer(base, devServer);
+    }
+    say(`${live ? `The copy running at ${base}` : dev ? `Server at ${api}, the source through vite dev at ${base}` : `Server and built game at ${base}`}; the guest's link uses ${poll ? "long polling (its event stream is kept silent)" : "the event stream"}; the host ${hostCamera ? "has Chrome's fake camera" : "is refused the camera"}`);
     const channel = process.env.FPS_CHANNEL ?? "chrome";
     browser = await chromium.launch({ headless: true, args: glArgs(), ...(channel ? { channel } : {}) });
     // One page first, as scripts/smoke.mjs does: it names the GPU, and the browser's first page load is not timed inside a run.
@@ -758,14 +890,14 @@ async function main() {
     const rows = [];
     for (const [index, kind] of kinds.entries()) {
       say(`\n${`run ${String(index + 1)} ${kind}`}: ${RUNS[kind]}`);
-      const row = await runOne(browser, base, kind, index, moveKeys, capSeconds * 1000, poll, hostCamera);
+      const row = await runOne(browser, base, kind, index, moveKeys, capSeconds * 1000, poll, hostCamera, shots);
       rows.push(row);
       for (const line of details(row)) say(line);
       say(summary(row));
     }
     const bad = rows.filter(failed);
     if (bad.length > 0) {
-      const relay = server.lines.filter((line) => /"level":"(warn|error)"/.test(line));
+      const relay = (server?.lines ?? []).filter((line) => /"level":"(warn|error)"/.test(line));
       if (relay.length > 0) say(`\nServer warnings and errors:\n${relay.join("\n")}`);
       say(`\nFAIL: ${bad.map((row) => row.id).join(", ")}`);
       process.exitCode = 1;
