@@ -30,8 +30,13 @@ function StandInStart(props: { disabled: boolean; onStart: () => void }) {
 
 type Setup = { readonly kind: "asking" } | { readonly kind: "ready" } | { readonly kind: "missing"; readonly names: readonly string[] };
 
+/**
+ * Mounted on the Multiplayer screen as
+ *   <FaceTimeCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
+ * The flow must pass through `host` first (onOpen), or it drops the link and the fight starts without the friend.
+ */
 export function FaceTimeCard(props: {
-  /** The same as the host card's: the friend is the second player of the fight that starts. */
+  /** Starts the fight with the friend as its second player. */
   onStart: (link: HostLink) => void;
   /** The page's session by default (browserSession.ts); the demo page and tests pass their own. */
   session?: FaceTimeSession;
@@ -140,8 +145,15 @@ export function FaceTimeCard(props: {
               {" "}in a window beside this one, on this computer. No phone rings. The game waits one minute.
             </small>
           )}
-          {state.phase === "failed" && session?.detail() ? <small>{session.detail()}</small> : null}
-          {isLive(state) && <small>{session?.friendSeen() ? "The game can see your friend." : "Waiting for your friend's camera..."}</small>}
+          {/* The server's line is often the same words as the failure's own: shown once. */}
+          {state.phase === "failed" && session?.detail() && session.detail() !== describe(state, now) ? <small>{session.detail()}</small> : null}
+          {isLive(state) && (
+            <small>
+              {!session?.friendSeen() ? "Waiting for your friend's camera..."
+                : session.friendInView() ? "The game can see your friend."
+                  : "The camera is on, but no body is in view. Ask your friend to step back."}
+            </small>
+          )}
           {open && (
             <>
               <Button
