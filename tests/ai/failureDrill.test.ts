@@ -49,7 +49,7 @@ test("every server limit ends at least a second before the page stops waiting, a
   }
   // No screen the player must sit through waits on the server for longer than this.
   for (const wait of [LEVEL_TIMEOUT_MS, REVEAL_BUDGET_MS]) expect(wait).toBeLessThanOrEqual(6500);
-  // The second scan attempt starts with time left to answer, and no earlier than a real scan can take (1.0 to 2.3 s measured).
+  // The second scan attempt starts with time left to answer, and no earlier than a real scan can take (0.85 to 2.3 s measured).
   expect(TIMEOUTS.revealHedgeMs).toBeGreaterThanOrEqual(2300);
   expect(TIMEOUTS.revealMs - TIMEOUTS.revealHedgeMs).toBeGreaterThanOrEqual(2300);
 });

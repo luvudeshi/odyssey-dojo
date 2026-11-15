@@ -272,7 +272,7 @@ test("a portrait that is not a picture is no portrait, and the god is not held b
   }
 });
 
-test("a request that is not what a route asks for is refused at once, never held and never a 500", async () => {
+test("a request that is not what a route asks for is refused at once with a 400 or a 404, and never held", async () => {
   drill = await serve({ json: () => stalled(athena), voices: () => stalled(voices), speech: () => stalled(MP3) }, { timeouts: TIMEOUTS });
   const cases: [string, unknown, number][] = [
     ["/api/level", { phrase: "", god: "athena", rival_god: "zeus" }, 400],

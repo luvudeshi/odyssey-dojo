@@ -79,7 +79,7 @@ test.concurrent("both attempts stall for 15 s: unavailable at the limit, under f
 });
 
 test("the real limits leave the second attempt as long as a real scan takes, and end before the page stops waiting", () => {
-  // Measured on 14 November 2026: a real scan took 1.0 to 2.3 s.
+  // Measured on 14 November 2026: a real scan took 0.85 to 2.3 s.
   expect(TIMEOUTS.revealMs - TIMEOUTS.revealHedgeMs).toBeGreaterThanOrEqual(2300);
   expect(TIMEOUTS.revealHedgeMs).toBeGreaterThanOrEqual(2300);
   expect(TIMEOUTS.revealMs).toBeLessThanOrEqual(4800);
