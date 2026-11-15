@@ -1,0 +1,100 @@
+/* Storm and bronze, per screen: how the kit (set.css) reaches the main menu, the Training Dojo and the Account screen.
+   All under ?look=storm. The pick will keep set.css and fold these into the screens' own files. Nothing here is under 18 px. */
+:root[data-look="storm"] {
+  /* ---------- main menu: the same title, text and ribbons as the other screens; shields and painting stay ---------- */
+  .menu--title .set-title { font-size: clamp(54px, 6.4vw, 100px); letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+  .menu--title .verse { font: italic 400 clamp(21px, 1.7vw, 26px)/1.3 var(--st-body); color: var(--st-dim); }
+  .menu--title p.lead { font: 700 clamp(20px, 1.5vw, 24px)/1.3 var(--st-body); color: var(--st-gold); letter-spacing: 0.02em; }
+  .menu--title p.notice { font: 600 20px/1.3 var(--st-body); color: var(--st-dim); }
+  .menu-shield__name, .dojo-style .menu-shield__name { font-family: var(--st-display); font-weight: 400; letter-spacing: 0.06em; font-size: clamp(20px, 1.55vw, 25px); }
+  .menu .menu-shield__line, .dojo-style .menu-shield__line { font-family: var(--st-body); font-weight: 700; font-size: 18px; color: var(--st-ink); }
+
+  /* ---------- Training Dojo ---------- */
+  .dojo { --dj-font: var(--st-display); background: var(--st-abyss); }
+  .dojo > .set-backdrop { position: absolute; z-index: 0; }
+  .dojo-title { font: 400 clamp(30px, 2.6vw, 40px)/1 var(--st-display); letter-spacing: 0.03em; background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 2px 0 #1a0d06) drop-shadow(0 0 12px rgba(255, 170, 70, 0.3)); }
+  .dojo-title span { color: transparent; }
+  .dojo-progress { font: 400 24px var(--st-display); letter-spacing: 0.05em; color: var(--st-dim); text-shadow: 0 2px 6px #000; }
+  .dojo-points { display: inline-flex; align-items: baseline; gap: 10px; padding: 4px 22px 6px; clip-path: none; border: 2px solid var(--st-bronze-mid); border-radius: 12px; background: linear-gradient(rgba(224, 165, 82, 0.2), rgba(4, 18, 21, 0.9)); box-shadow: inset 0 0 0 2px rgba(6, 24, 27, 0.9); }
+  .dojo-points span { font: 700 18px var(--st-body); letter-spacing: 0.04em; text-transform: none; color: var(--st-dim); }
+  .dojo-points b { font: 400 34px/1.05 var(--st-display); color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+
+  /* pick view */
+  .dojo-pick { gap: 1.2rem; }
+  .dojo-pick > .set-title { font-size: clamp(40px, 3.8vw, 60px); }
+  .dojo-pick > .dojo-closing { max-width: 48rem; padding: 14px 40px; font: 500 22px/1.35 var(--st-body); color: var(--st-ink); text-shadow: none; }
+  .dojo-pick > .dojo-key { padding: 8px 28px; clip-path: none; font: 600 20px var(--st-body); color: var(--st-ink); }
+  .dojo-styles { --shield: clamp(112px, 10.6vw, 176px); flex-wrap: nowrap; gap: clamp(8px, 1.6vw, 28px); max-width: none; width: 100%; margin: 0.4rem 0 0; }
+  .dojo-style.menu-shield {
+    display: flex; flex-direction: column; align-items: center; flex: 0 1 calc(var(--shield) + 76px); width: auto; min-width: 0; min-height: 0; gap: 0; padding: 6px 4px 8px;
+    border: 0; border-radius: 50% 50% 18px 18px / 40% 40% 18px 18px; background: none; box-shadow: none; color: var(--st-ink); perspective: 700px; text-align: center;
+  }
+  .dojo-style.menu-shield::before, .dojo-style.menu-shield::after { display: none; }
+  .dojo-style.menu-shield:hover { transform: none; }
+  .dojo-style.menu-shield:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 6px; }
+  .dojo-style .menu-shield__line { margin-top: 8px; padding: 2px 8px; max-width: 14rem; font-size: 18px; text-shadow: 0 0 3px #000, 0 1px 4px #000, 0 0 12px #000; background: radial-gradient(closest-side, rgba(3, 7, 9, 0.7), transparent); }
+
+  /* practice view: a bronze-rimmed frame with a sea-glass inside, a panel for the words */
+  .dojo-outline { --rim: var(--st-bronze); --rim-light: var(--st-bronze-hi); }
+  .dojo-outline:has(.defend) { --rim: var(--st-teal); --rim-light: #bff3ee; }
+  .dojo-outline::before { background: linear-gradient(160deg, var(--rim-light), var(--rim) 30%, #1a0d06 62%, var(--rim)); }
+  .dojo-outline .move-guide { --mg-accent: var(--st-gold); --mg-bg: #04100f; background: radial-gradient(ellipse at 30% 92%, rgba(224, 165, 82, 0.2), transparent 45%), linear-gradient(rgba(12, 42, 46, 0.94), rgba(4, 18, 21, 0.96)); }
+  .dojo-outline .move-guide.defend { --mg-accent: #8fe6dd; background: radial-gradient(ellipse at 30% 92%, rgba(44, 138, 134, 0.3), transparent 45%), linear-gradient(rgba(12, 42, 46, 0.94), rgba(4, 18, 21, 0.96)); }
+  .dojo-outline .mg-kind { font-family: var(--st-display); letter-spacing: 0.12em; background: #04100f; }
+  .dojo-side { gap: 0.7rem; padding: 1.4rem 1.7rem 1.6rem; }
+  .dojo-cue { font: 400 22px var(--st-display); letter-spacing: 0.1em; clip-path: none; border-radius: 8px; color: var(--st-gold); background: #04100f; box-shadow: inset 0 0 0 2px var(--st-bronze-mid); }
+  .dojo[data-phase="go"] .dojo-cue { color: var(--st-bronze-dark); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); box-shadow: none; }
+  .dojo-name { font: 400 clamp(46px, 4.4vw, 64px)/1 var(--st-display); letter-spacing: 0.02em; color: var(--st-gold); text-shadow: 0 3px 0 #1a0d06; }
+  .dojo-how { font: 500 clamp(22px, 1.8vw, 28px)/1.25 var(--st-body); color: var(--st-ink); text-shadow: none; }
+  .dojo-outline .mg-match { color: var(--st-ink); }
+  .dojo-key { font: 600 20px var(--st-body); color: var(--st-dim); }
+  .dojo-key kbd { background: #04100f; border-color: var(--st-bronze); box-shadow: none; color: var(--st-gold); }
+  .dojo-time { clip-path: none; border-radius: 8px; background: #04100f; box-shadow: inset 0 0 0 2px var(--st-bronze-mid); }
+  .dojo-time-fill { background: linear-gradient(#bff3ee, var(--st-teal)); }
+  .dojo[data-phase="go"] .dojo-time-fill { background: linear-gradient(#fff1c2, var(--st-bronze) 60%, var(--st-bronze-mid)); }
+  .dojo-tip { font: 500 22px/1.3 var(--st-body); background: rgba(4, 18, 21, 0.9); box-shadow: inset 4px 0 0 var(--st-bronze), inset 0 0 0 1px rgba(224, 165, 82, 0.35); }
+  .dojo-dots li { font: 700 20px var(--st-body); }
+  .dojo-end-title { font: 400 44px var(--st-display); letter-spacing: 0.04em; }
+  .dojo-card h2 { font: 400 26px var(--st-display); letter-spacing: 0.06em; color: var(--st-gold); }
+  .dojo-card:last-child h2 { color: var(--st-gold); }
+  .dojo-card { padding: 1.3rem 1.8rem 1.5rem; background-image: var(--st-rivet), var(--st-rivet), var(--st-rivet), var(--st-rivet), linear-gradient(rgba(12, 42, 46, 0.9), rgba(4, 18, 21, 0.92)); }
+  .dojo-card li, .dojo-card p { font: 500 22px/1.3 var(--st-body); }
+  .dojo-camera video { border-color: var(--st-bronze); box-shadow: 0 0 0 4px #04100f, 0 0 18px rgba(224, 165, 82, 0.4); }
+
+  /* ---------- Account: the painted hall, a panel for each wall of trophies and for the name ---------- */
+  .acc-hall { background: var(--st-abyss); }
+  .acc-hall__stage { background: var(--st-abyss); }
+  :is(.acc-hall__frieze, .acc-hall__dado, .acc-hall__floor, .acc-hall__light, .acc-col, .acc-bow, .acc-helm, .acc-hearth) { display: none; }
+  .acc-title.set-title { left: 444px; width: 552px; top: 34px; font-size: 38px; white-space: nowrap; text-shadow: none; }
+  .acc-title.set-title span { margin: 0 0 2px; font: 700 18px var(--st-body); letter-spacing: 0.22em; -webkit-text-fill-color: var(--st-bronze); }
+  .acc-count { left: 464px; right: auto; width: 512px; top: 140px; text-align: center; font: 600 20px var(--st-body); color: var(--st-dim); text-shadow: 0 2px 6px #000; }
+  .acc-count b { font: 400 30px var(--st-display); color: var(--st-gold); }
+  .acc-herm { left: 484px; top: 182px; bottom: auto; width: 472px; height: auto; gap: 12px; padding: 18px 22px 16px; border-top-width: 2px; }
+  .acc-name span { font: 700 18px var(--st-body); letter-spacing: 0.12em; color: var(--st-bronze); }
+  .acc-name input { width: 400px; font-family: var(--st-display); font-weight: 400; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; border-bottom: 2px solid var(--st-bronze-mid); }
+  .acc-name input::placeholder { color: rgba(217, 207, 182, 0.55); }
+  .acc-name input:focus-visible { outline-color: var(--st-focus); }
+  .acc-stats { gap: 14px; }
+  .acc-stats .acc-icon { stroke: var(--st-bronze); }
+  .acc-stats > div { min-width: 118px; }
+  .acc-wall { top: 40px; bottom: 100px; width: 438px; gap: 14px; justify-content: flex-start; }
+  .acc-wall > section { flex: 1 1 auto; display: flex; flex-direction: column; padding: 12px 14px 8px; }
+  .acc-wall ul { flex: 1; align-content: space-evenly; }
+  .acc-beam { margin: 0 0 4px; padding: 0 4px 6px; font: 400 24px var(--st-display); letter-spacing: 0.04em; text-transform: none; color: var(--st-gold); background: none; border: 0; border-bottom: 1px solid rgba(224, 165, 82, 0.45); box-shadow: none; text-shadow: 0 2px 0 #1a0d06; }
+  .acc-beam b { font: 700 20px var(--st-body); color: var(--st-dim); }
+  .acc-trophy .acc-trophy__icon { width: 44px; height: 44px; }
+  .acc-trophy__name { font-size: 18px; color: var(--st-ink); text-shadow: 0 1px 3px #000; }
+  .acc-trophy.is-locked .acc-trophy__name { color: var(--st-dim); }
+  .acc-trophy__name small { font-size: 18px; color: var(--st-gold); }
+  .acc-trophy.is-active { background: rgba(224, 165, 82, 0.16); }
+  .acc-detail { left: 484px; width: 472px; top: auto; bottom: 24px; gap: 4px; padding: 14px 24px 16px; }
+  .acc-detail__tag { font: 700 18px var(--st-body); letter-spacing: 0.16em; color: var(--st-bronze); }
+  .acc-detail__name { font: 400 32px/1.1 var(--st-display); color: var(--st-gold); }
+  .acc-detail__how { font: 500 20px/1.3 var(--st-body); color: var(--st-ink); }
+  .acc-detail__progress { font-size: 18px; }
+  .acc-detail__bar { background: rgba(255, 255, 255, 0.16); }
+  .acc-detail__bar i { background: linear-gradient(#ffe6b0, var(--st-bronze)); }
+  .acc-actions { left: 44px; right: 44px; bottom: 28px; flex-direction: row-reverse; justify-content: space-between; }
+  .acc-actions .set-back .acc-btn__icon { display: none; }
+  .acc-actions .pb-btn { font-size: 21px; min-height: 52px; }
+}

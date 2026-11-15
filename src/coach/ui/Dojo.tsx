@@ -14,6 +14,10 @@ import type { DojoConfig, DojoRep, DojoState, DojoSummary } from "../dojo";
 import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
+import { BronzeDefs, ShieldCard } from "../../screens/menuShields";
+import { lookIs } from "../../ui/lookSwitch";
+import { Backdrop, SetTitle } from "../../ui/set/Set";
+import { STYLE_DEVICES } from "../../ui/set/styleDevices";
 import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
@@ -155,10 +159,11 @@ export function Dojo(props: DojoProps) {
   const tuned = useMemo(() => (summary && summary.reps.length > 0 ? tuningLine(assessmentFrom(summary), ENEMIES) : null), [summary]);
   const own = move ? view.reps.filter((rep) => rep.moveId === move.id) : [];
   const last = view.phase === "result" ? view.last : null;
+  const storm = lookIs("storm");
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      <ForgeScene />
+      {storm ? <Backdrop src="/textures/set/storm/yard.jpg" /> : <ForgeScene />}
       <header className="dojo-top">
         <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
@@ -168,10 +173,13 @@ export function Dojo(props: DojoProps) {
 
       {picking && (
         <section className="dojo-pick">
-          <h1 className="dojo-end-title">What do you want to train?</h1>
+          {storm ? <SetTitle>What do you want to train?</SetTitle> : <h1 className="dojo-end-title">What do you want to train?</h1>}
           <p className="dojo-closing">Each one is its strikes, then block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
           <div className="dojo-styles">
-            {STYLES.map((each, index) => (
+            {storm && <BronzeDefs />}
+            {STYLES.map((each, index) => storm ? (
+              <ShieldCard key={each.id} className="dojo-style" autoFocus={index === 0} device={STYLE_DEVICES[each.id] ?? STYLE_DEVICES.hoplite} name={each.name} line={each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")} onClick={() => { setChosen(each); }} />
+            ) : (
               <button key={each.id} type="button" className="dojo-button dojo-style" autoFocus={index === 0} onClick={() => { setChosen(each); }}>
                 <b>{each.name}</b>
                 <span>{each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")}</span>

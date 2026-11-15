@@ -11,6 +11,8 @@ import { Icon, type IconName } from "../account/ui/icons";
 import { Trophy, type TrophyEvents } from "../account/ui/Trophy";
 import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
+import { lookIs } from "../ui/lookSwitch";
+import { Backdrop } from "../ui/set/Set";
 import { Button, installGround } from "../ui/pebble";
 import "./account.css";
 
@@ -83,6 +85,7 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const stage = useStage();
+  const storm = lookIs("storm");
   useEffect(() => { installGround(); }, []);
   const feats = achievements(profile, props.enemies);
   const groups = GROUPS.map(([key, title]) => ({ key, title, feats: feats.filter((feat) => (GROUP_OF[feat.id] ?? "road") === key) }));
@@ -98,6 +101,7 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
   return (
     <main className="menu--account acc-hall">
       <div className="acc-hall__stage" style={style}>
+        {storm && <Backdrop src="/textures/set/storm/hall.jpg" />}
         <div className="acc-hall__frieze" aria-hidden="true" />
         <div className="acc-hall__dado" aria-hidden="true" />
         <div className="acc-hall__floor" aria-hidden="true" />
@@ -106,7 +110,7 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
           {stage.w >= 1540 && <><Column x={-36} /><Column x={1476} /></>}
           <Column x={494} />
           <Column x={946} />
-          <h1 className="acc-title"><span>Account</span>The Hall of the Hero</h1>
+          <h1 className={storm ? "acc-title set-title" : "acc-title"}><span>Account</span>The Hall of the Hero</h1>
           <Bow />
           <Helm />
           <div className="acc-herm">
@@ -125,7 +129,7 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
           <p className="acc-count"><b>{feats.filter((feat) => feat.done).length}</b> of {feats.length} trophies hung</p>
           <div className="acc-actions">
             <Button onClick={() => { setSettingsOpen(true); }}><WithIcon icon="sliders">Open settings</WithIcon></Button>
-            <Button primary onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
+            <Button primary className={storm ? "set-back" : undefined} onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
           </div>
         </div>
       </div>
