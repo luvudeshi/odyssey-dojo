@@ -8,7 +8,7 @@ Today one Vultr instance serves everything at `https://odysseydojo.club`: the pa
 - The page keeps calling `/api/...` and `/replays/...` on its own address. Vercel passes those calls on to the Vultr
   instance. The rule is in [`vercel.json`](../vercel.json).
 
-**Nothing was deployed.** No Vercel account was used and the live server was not touched. What was run on a laptop is
+**Deployed on Sunday 15 November** from a laptop with the CLI (free Hobby plan): `https://odysseydojo.club` is the page on Vercel, and `api.odysseydojo.club` is the room server. Checked on the live site: the page 200, the pose model 200, `/api/level` answers `local_only` from the room server. Not yet run there: a two-device room fight. What was run on a laptop is
 under "What was checked" at the end.
 
 `api.odysseydojo.club` in `vercel.json` is a placeholder for the room server's name. If the name is different, change

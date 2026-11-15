@@ -4,7 +4,7 @@ This puts the game on a Vultr cloud server at `https://<your domain>`. The kit i
 the instance up. Caddy gets the https certificate by itself, which matters because a browser only gives a page the
 camera over https.
 
-`odysseydojo.us` is the worked example in this page. Replace it everywhere with the domain that was registered.
+`odysseydojo.club` is the domain used in this page. It is the real one.
 
 To serve the page from Vercel and keep this instance as the room server only, see [deploy-vercel.md](deploy-vercel.md).
 
@@ -40,7 +40,7 @@ Optional keys in the instance's `.env`:
 - `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`: the server reads them, but no visitor can reach the routes that use them, so
   they change nothing on the hosted copy. Leave them empty. That also means nobody on the internet can spend them.
 - FaceTime settings (`LIVEKIT_...`, `CHERT_...`): the same. Leave them out.
-- Database: the server has no database and no accounts on `main` today. There is nothing to set.
+- Database: accounts and the hall of heroes need `DATABASE_URL` (see `docs/accounts.md`). Without it the game runs and those two are off.
 
 Keys only ever go in the `.env` on the instance. Never put one in git, in a command line or in a chat.
 
@@ -76,12 +76,12 @@ At the registrar (GoDaddy), open the DNS records for the domain and add:
 | A | `@` | the instance's IPv4 address | the lowest offered |
 
 If there is already an A record for `@` (a "Parked" one), replace it. Remove any domain forwarding.
-Only the bare domain is served (`odysseydojo.us`), not `www`.
+Only the bare domain is served (`odysseydojo.club`), not `www`.
 
 Check it from your laptop. It must print the instance's address before you go on, or Caddy cannot get a certificate:
 
 ```
-nslookup odysseydojo.us
+nslookup odysseydojo.club
 ```
 
 ## 4. Run the setup on the instance
@@ -111,7 +111,7 @@ The script stops and tells you what to do at most three times. Do what it says, 
    ```
 
    ```
-   DOMAIN=odysseydojo.us
+   DOMAIN=odysseydojo.club
    ```
 
 3. Then it builds and starts. The first build took about ten minutes on the 1 vCPU / 2 GB plan.
@@ -151,10 +151,10 @@ cloned instance.
 
 ## 5. Check it
 
-1. Open `https://odysseydojo.us`. The page loads with a padlock. The first visit can take a minute.
+1. Open `https://odysseydojo.club`. The page loads with a padlock. The first visit can take a minute.
 2. Start a fight with the camera. The browser asks for the camera, and the fighter follows you.
 3. Start a fight with the keyboard and play it to the end.
-4. Open `https://odysseydojo.us/api/level`. It must show `{"error":"local_only"}`. If it shows anything else, stop the
+4. Open `https://odysseydojo.club/api/level`. It must show `{"error":"local_only"}`. If it shows anything else, stop the
    game (`docker compose down`) and tell the team: the guard is not seeing Caddy's header.
 
 If the page does not load, on the instance:
@@ -180,7 +180,7 @@ On your laptop, leave this running:
 ssh -N -L 9000:127.0.0.1:8787 root@<instance address>
 ```
 
-Open `http://localhost:9000` on the laptop and make a room there. The guest opens `https://odysseydojo.us` and joins
+Open `http://localhost:9000` on the laptop and make a room there. The guest opens `https://odysseydojo.club` and joins
 with the room code. The room's link and QR code already use the domain.
 
 ## 6. Update after a new merge
