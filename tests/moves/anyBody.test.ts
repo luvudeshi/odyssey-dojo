@@ -160,8 +160,9 @@ const TURN_LIMITS: Record<string, TurnLimit> = {
   // lenient-strikes PR a punch may land up to PUNCH_WIDE (1.6) out, so both read at 30 degrees either way.
   // The fixture's chopping hand ends half a metre in front in 3D, so a left turn carries it back toward the body in
   // the picture: 1.81 widths out face on, 1.203 at 26 degrees, 1.176 at 27. The knife hand needs more than 1.2.
-  // Past that the arm reads as a cross alone; before the lenient-strikes PR it read as an uppercut too.
-  knife_hand: { signs: [1], good: 26, then: ["cross"] },
+  // Past that the arm reads as a straight punch alone (cross, and jab since both read on either hand); before the
+  // lenient-strikes PR it read as an uppercut too.
+  knife_hand: { signs: [1], good: 26, then: ["cross", "jab"] },
   // The sun burst itself fires at every angle. Its hands-together start has the right wrist 0.125 widths on its own
   // side of the centre line face on; a left turn carries it across (0.105 at 3 degrees, 0.099 at 4), and under 0.1
   // is the knife hand's chamber, so the right arm flung wide then reads as a knife hand as well. (Until #191 the
