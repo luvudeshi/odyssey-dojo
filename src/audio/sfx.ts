@@ -13,6 +13,7 @@ import {
 } from "./cues";
 import type { ClipRender } from "./sfxSynth";
 import { SFX_TYPES, startClip } from "./sfxSynth";
+import { tapClip, tapSound } from "./soundTap";
 import { tabHidden, watchTab } from "./tab";
 
 interface Player {
@@ -175,6 +176,7 @@ function createPlayer(): Player | null {
     const master = context.createGain();
     master.gain.value = MASTER_GAIN;
     master.connect(context.destination);
+    tapSound(master);
     const loaded = loadClips(context);
     warmUp(context);
     unlockOnGesture(context);
@@ -215,6 +217,7 @@ function startCue({ context }: Player, name: string | null, gain: number, shape?
       }
     }
     source.connect(level).connect(context.destination);
+    tapClip(level);
     source.start(0, cue.offset);
     return true;
   } catch (error) {
