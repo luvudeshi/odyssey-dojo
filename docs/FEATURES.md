@@ -14,7 +14,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **in the game** Damage scales with how well the strike is thrown, shown as GOOD, GREAT or PERFECT.
 - **in the game** Monster phases, with a 3 second pause after each change so the coach's line is heard.
 - **in the game** A finishing move ends each fight (Polyphemus: the stake, key T).
-- **in the game** Divine power: defends fill a meter, a god gesture spends it. The full-screen effect in your god's look shows only after a god scan.
+- **in the game** Divine power: defends fill a meter, a god gesture spends it. The game has no god scan now, so the power in every fight is Athena's.
 - **in the game** Every move has a key, so a whole fight plays with no camera, no network and no server.
 - **in the game** Pause menu in the fight.
 - **in the game** Balance: tuned so a first-time player wins the first fight and has a chance at the later ones. Checked with a simulated player, not with people.
@@ -65,9 +65,9 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 
 ## God scan and AI
 
-- **in the game** God scan before the style menu, webcam play only: a snapshot goes to Gemini through our server and comes back as your Olympian with one power. With the server off it falls back to body measurements in the browser. It can be skipped and ends by itself after 30 seconds.
+- **built, not mounted** God scan: a webcam snapshot goes to Gemini through our server and comes back as your Olympian with one power. It was taken out of the game (PR #392). The server route (`POST /api/reveal`) and the screen (`src/ai/ui/RevealScreen.tsx`) remain; only the developer page (`src/ai/lab/`) opens it.
 - **in the game** The AI server is optional. Every route has a fallback and a time limit, so the game plays with it off.
-- **built, not mounted** AI-made fights: describe how you fight and Gemini builds a fight the engine runs (server route, `src/ai/adapt.ts`, the screen `src/ai/ui/StyleScreen.tsx`; PR #43, #78, #92). The screen opens only from a developer page (`src/ai/lab/`), not from the game's menu.
+- **in the game** AI-made fights: the "Ask the Muse" button on the main menu (or `?ai=1`) opens "How do you fight?". Type or say a sentence and Gemini writes a fight the engine runs (`POST /api/level`, `src/ai/adapt.ts`, `src/ai/ui/museDoor.tsx`, `src/ai/ui/StyleScreen.tsx`; PR #43, #78, #92, #307, #409). With no key or a slow answer it is one of five bundled fights. Not checked: camera play inside it, and a Muse fight played through to its ending.
 
 ## Voice and sound
 
@@ -112,7 +112,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - No full webcam fight on a real body on the demo laptop yet (#7). Tracking and the body-following hero have only run on made-up frames and a fake camera in our tests.
 - Detectors are not tuned on the three of us (#17). The numbers are first guesses backed by tests.
 - A waist-up player is still asked for kicks: the swap code is merged but the fight does not call it (#239).
-- Nine things are merged but unreachable by a player: adaptive difficulty, the style figures, the character picker, waist-up swapping, two players on one camera, the fuller lesson list, practice mode, AI-made fights, and the replay and god card. Each needs a line in a screen that only the lead's agent edits.
+- Nine things are merged but unreachable by a player: adaptive difficulty, the style figures, the character picker, waist-up swapping, two players on one camera, the fuller lesson list, practice mode, the god scan, and the replay and god card. Each needs a line in a screen that only the lead's agent edits.
 - Frame rate is measured headless only, not on the demo laptop.
 - Rooms have not been shown to work between two real machines over the internet in anything this doc could check.
 - No Devpost page, demo video or backup recording yet.
