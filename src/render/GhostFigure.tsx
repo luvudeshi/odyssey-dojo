@@ -1,6 +1,6 @@
-// The move ghost: a see-through gold figure that stands to the right of the hero during a prompt and shows the pose
-// the move asks for. It brightens as the live webcam pose gets close, fades as the move is learned, and hides outside
-// prompts. The blue ghost of the live pose (hero/Hero.tsx) stands on the left; this one never overlaps the hero.
+// The move ghost: a see-through gold figure that stands at the far left during a prompt and shows the pose the move
+// asks for. It brightens as the live webcam pose gets close, fades as the move is learned, and hides outside prompts.
+// Switched on or off in one place: ghost/ghostSwitch.ts (default, and ?ghost=0 / ?ghost=1).
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import type { RefObject } from "react";
@@ -15,11 +15,11 @@ import type { GhostJoints, Vec3 } from "./ghost/ghostPose";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
 const MATERIAL = new MeshBasicMaterial({ color: "#ffd54a", transparent: true, opacity: 0.5, depthWrite: false, fog: false });
-const SCALE = 0.9;
+const SCALE = 0.75;
 /** The ghost is pinned to the camera, so every shot (the strike push-in, the finisher orbit) frames it the same way:
  * this far ahead of the lens, right of centre, with its feet this far below the middle of the view. */
 const DIST = 3.2;
-const RIGHT = 1.3;
+const RIGHT = -1.8; // far left: the prompt card sits on the right and the monsters in the middle and right
 const FEET_Y = -1.25;
 const STALE_SECONDS = 0.5;
 /** How fast the resting shoulders are tracked, per frame: slow enough that a held dodge does not become the rest. */
