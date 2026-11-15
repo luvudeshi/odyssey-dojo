@@ -9,7 +9,7 @@ Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-dojo/issues). 
 A full-body 3D fight training game. Your webcam tracks your body. You follow Odysseus's route home, fight the monsters he met in the order he met them, and learn real fighting moves as you go.
 
 1. **Meet your god.** The camera looks at you and names the Olympian you take after. That god grants you one power.
-2. **Pick a fighting style.** Boxer (jab, cross, hook), Hoplite (spear thrust, overhead strike), Karate, Kung Fu or Pankration (kicks and knees).
+2. **Pick a fighting style.** Boxer (jab, cross, hook), Jiu-jitsu (double palm, rising palm, knife hand), Karate, Kung Fu or Taekwondo (kicks and knees).
 3. **Follow the quest map.** Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca. Every stop is open from the start.
 4. **Fight.** Every exchange has two beats:
    - **Defend.** The monster winds up and a prompt says what stops it: BLOCK, DUCK, DODGE LEFT, DODGE RIGHT.
@@ -39,7 +39,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 - **Hosting:** a kit to run the game on Vultr over https, in `deploy/vultr/` (PR #332, `docs/deploy-vultr.md`). Not run on a real instance.
 - **Accounts and the Hall of heroes on Tiger Data** (PR #322): the server routes, the database code and the tests. Off unless `DATABASE_URL` is set (`docs/accounts.md`). The sign-in dialog and the hall board are built and are not on a screen yet.
 - **Built, not on a screen:** the god scan character pick, which gives each god one of the five characters (PR #340), and a defense-first progress panel with its saved history (PR #341). Both are modules with tests.
-- Earlier, still true: calibration with a keyboard escape, the live camera panel, balance and adaptive difficulty, detectors that hold for any body size and a 30 degree turn, five styles (Boxer, Hoplite, Karate, Kung Fu, Pankration), 26 moves each with a line on what it is for, the AI server (god scan, rooms relay, replay sharing), the Muse's "How do you fight?" screen, reached only at `?ai=1` (PR #307), the demo runbook (PR #286) and credits for every shipped asset (PR #283).
+- Earlier, still true: calibration with a keyboard escape, the live camera panel, balance and adaptive difficulty, detectors that hold for any body size and a 30 degree turn, five styles (Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo), 26 moves each with a line on what it is for, the AI server (god scan, rooms relay, replay sharing), the Muse's "How do you fight?" screen, where Gemini writes a fight from a sentence, reached from the main menu's "Ask the Muse" button or at `?ai=1` (PR #307), the demo runbook (PR #286) and credits for every shipped asset (PR #283).
 
 ### Still open
 - **Must:** one full webcam fight on a real body on the demo laptop, and detector tuning from real traces (#7, #17). The Devpost page, the demo video and the backup recording (#21, #130).
@@ -64,7 +64,7 @@ Branches that are not merged are not described here: other HUD looks, boss cutsc
 |---|---|---|
 | 1 | Webcam pose drives every move, with a key for each as fallback | #7 |
 | 2 | Calibration countdown; "step back, I can't see you" pause | #8 |
-| 3 | Style select: Boxer, Hoplite, Karate, Kung Fu, Pankration | built |
+| 3 | Style select: Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo | built |
 | 4 | Moves taught in the fight, prompts that fade as you learn; each move says what it teaches | built, #4 |
 | 5 | The player's movements shown live on a 3D figure | built, #7 |
 | 6 | Damage scales with how well the move is done (GOOD, GREAT, PERFECT) | #23 |
@@ -82,16 +82,16 @@ Branches that are not merged are not described here: other HUD looks, boss cutsc
 ### Should have: in this order, after the freeze (earlier if it is your own claimed area and touches nothing shared)
 | # | Feature | Issue |
 |---|---|---|
-| 16 | God scan: a webcam snapshot goes to Gemini and comes back as your god; falls back to body measurements in the browser | #20, #2 |
+| 16 | God scan: a webcam snapshot goes to Gemini and comes back as your god; falls back to body measurements in the browser. Built, then taken out of the game (PR #392) | #20, #2 |
 | 17 | Divine power: defends fill a meter, your god's gesture spends it | #30 |
-| 18 | Kicks and the Pankration style | #25 |
+| 18 | Kicks and the Taekwondo style | #25 |
 | 19 | Two players on one camera, double damage | #28 |
 | 20 | Scylla, the second stop | #27 |
 | 21 | Online rooms: host a fight, a friend joins with a code | #29 |
 | 22 | Player figure dressed for the style; real sound effects; Homer's narration and taunts | #18, #19, #2 |
 
 ### Stretch
-- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Reached from its own menu entry, never in the way of the quest.
+- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Built: reached from the main menu's "Ask the Muse" button (PR #409), never in the way of the quest.
 - Replay and god card with a QR code (#2).
 - More quest stops: Circe, the Sirens, Charybdis, the suitors.
 - Difficulty that adapts to the player. Rigged downloaded models.

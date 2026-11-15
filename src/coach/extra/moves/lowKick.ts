@@ -6,6 +6,7 @@ import { CHAMBER_LIFT, KICK_LIFT } from "../../../moves/defs/frontKick";
 import { footLift, kneeAngle, kneeLift, legsVisible } from "../../../moves/legSignals";
 import { clamp01, latest } from "../../../pose/signals";
 import { atLeast, atMost, eitherSide, footForward, now, since, yes } from "../signals";
+import { armWent, legRose } from "../../../moves/looseSignals";
 
 /** The foot is this far off the floor at least, in shoulder widths above the other foot... */
 export const LOW_FROM = 0.25;
@@ -45,6 +46,9 @@ export const move: MoveDef = {
   teaches: "A low, quick kick to the shin is hard to catch, and you can snap your foot straight back.",
   detect(history) {
     return kick.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(move.detect(history), legRose(history));
   },
   /** Better the straighter the leg and the further forward the foot. */
   quality(history) {

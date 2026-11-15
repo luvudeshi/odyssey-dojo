@@ -77,7 +77,7 @@ beforeEach(() => { vi.useFakeTimers(); fakes.camera.state = "off"; });
 afterEach(() => { fakes.unmount(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.resetAllMocks(); });
 
 test("the style is the one ?style names, otherwise the first", () => {
-  const styles = [{ id: "boxer" }, { id: "karate" }, { id: "hoplite" }] as unknown as FightingStyle[];
+  const styles = [{ id: "boxer" }, { id: "karate" }, { id: "jiu_jitsu" }] as unknown as FightingStyle[];
   expect(museStyle("?ai=1&style=karate", styles)).toBe(styles[1]);
   expect(museStyle("?ai=1", styles)).toBe(styles[0]);
   expect(museStyle("?ai=1&style=", styles)).toBe(styles[0]);

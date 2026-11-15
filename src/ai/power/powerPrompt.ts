@@ -32,8 +32,11 @@ function keyCap(key: string): string {
   return key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
 }
 
-/** The banner's words. `god` is null for keyboard play or a skipped scan; `keyboard` is true when no camera is in use. */
-export function powerPrompt(god: GodId | null, keyboard: boolean): PowerPrompt {
+/**
+ * The banner's words. `god` is null for keyboard play or a skipped scan; `keyboard` is true when no camera is in use.
+ * `hero` is the picked hero's name: the title then names the hero, whose power the god only lends.
+ */
+export function powerPrompt(god: GodId | null, keyboard: boolean, hero?: string): PowerPrompt {
   const owner = GODS[god ?? LENDER];
   const { moveId, name, blurb } = owner.power;
   const def = MOVES.get(moveId);
@@ -43,7 +46,7 @@ export function powerPrompt(god: GodId | null, keyboard: boolean): PowerPrompt {
   return {
     god: owner.id,
     accent: owner.accent,
-    title: god === null ? "ATHENA LENDS YOU HER AEGIS" : `${owner.name.toUpperCase()}'S POWER IS READY`,
+    title: hero !== undefined ? `${hero.toUpperCase()}'S POWER IS READY` : god === null ? "ATHENA LENDS YOU HER AEGIS" : `${owner.name.toUpperCase()}'S POWER IS READY`,
     moveId,
     move: name,
     how: keyboard && key !== null ? `Press ${key}` : blurb,

@@ -2,7 +2,7 @@
 
 Two people stand side by side in front of one computer. The game follows both bodies, each gets a hero of their own, and they fight one monster together. Issue #28.
 
-The code is in `src/duo/`. It is merged but **not mounted**: one diff to lead-owned files turns it on (see "What the lead applies"). Until then no screen offers it, on a laptop or on the hosted copy at `https://odysseydojo.club`.
+The code is in `src/duo/`. It is **mounted**: the Multiplayer screen has the card "Two players, one camera", and five files outside `src/duo/` turn it on (see "Where it is mounted").
 
 ## How it works
 
@@ -34,22 +34,15 @@ The code is in `src/duo/`. It is merged but **not mounted**: one diff to lead-ow
 - Do not stand one behind the other. When two bodies overlap fully for more than a moment the model sees one person, and the two can come out swapped.
 - Player two: walk in, stand still with arms down for a second. That is when the game takes your neutral stance.
 
-## What the lead applies
+## Where it is mounted
 
-One diff, five files: `src/duo/mount.diff`. From the repo's top folder:
-
-```
-git apply src/duo/mount.diff
-node scripts/duo-smoke.mjs
-```
-
-It was cut against main after the storm and bronze restyle (the first diff, on issue #179, no longer applies to `src/App.tsx`). The card uses the Multiplayer screen's own card classes, so it takes the look of the other cards.
+Five files outside `src/duo/`. The card uses the Multiplayer screen's own card classes, so it takes the look of the other cards.
 
 - `src/pose/tracker.ts`: ask the model for `duoCamera.wanted()` bodies (it changes on the running model with `setOptions`), and while duo is on hand every body to `duoCamera.take`, which gives back player one's frame.
 - `src/screens/Multiplayer.tsx`: `<DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />` in the row of cards.
 - `src/render/Scene.tsx`: `<SecondFigure />` next to `<Hero>`.
 - `src/App.tsx`: one effect that turns duo off when the player leaves that way of playing.
-- `src/hud/CameraView.tsx`: the skeleton is drawn from `duoCamera.seen(frame)`. After player two takes over as the hero, the fight's frame is moved to where the first hero stood; this draws the skeleton on the player in the picture instead. This file can be left out: the game plays the same, and only the skeleton is in the wrong place after a take-over.
+- `src/hud/CameraView.tsx`: the skeleton is drawn from `duoCamera.seen(frame)`. After player two takes over as the hero, the fight's frame is moved to where the first hero stood; this draws the skeleton on the player in the picture instead. Without this line the game plays the same, and only the skeleton is in the wrong place after a take-over.
 
 With the choice off nothing changes: the model is built with one body, the old code path returns the frame, and `duoCamera.seen` gives back the frame it was given.
 
@@ -62,9 +55,9 @@ node scripts/duo-smoke.mjs --shots=shots/duo
 
 It starts the dev server on a free port, opens the game in headless Chrome and prints one PASS or FAIL line per check; the exit code is 1 when a check fails. `--shots=<folder>` saves six pictures (the Multiplayer screen at both sizes, and the fight with two heroes, at the doubled hit, after player two left and after the take-over). It needs Chrome and Playwright, found the same way as in `scripts/smoke.mjs` (`FPS_PLAYWRIGHT`, `FPS_CHANNEL`, `FPS_GL`). One run takes about 45 seconds.
 
-When the Multiplayer screen has no two-player card, it prints `SKIP: the Multiplayer screen has no two-player card yet` and exits 0. That is what it does on main today.
+When the Multiplayer screen has no two-player card, it prints `SKIP: the Multiplayer screen has no two-player card yet` and exits 0.
 
-With the diff applied, it plays a fight with the pose path on. Chrome's fake camera runs the real tracker; the bodies the tracker hands to `duoCamera.take` are swapped for two made-up ones, built from the same frames the unit tests use. Player one calibrates and fights from a made-up body too, so the "step back" pause is live and a pause would be seen. It checks:
+With the card mounted, it plays a fight with the pose path on. Chrome's fake camera runs the real tracker; the bodies the tracker hands to `duoCamera.take` are swapped for two made-up ones, built from the same frames the unit tests use. Player one calibrates and fights from a made-up body too, so the "step back" pause is live and a pause would be seen. It checks:
 
 - the card is on the Multiplayer screen, and fits at 1280x720 and 1600x900 (inside the window once scrolled to, nothing spilling out, not over another card);
 - pressing it starts a fight, with two bodies asked for;
@@ -104,4 +97,4 @@ After the two fixes the script passed six runs out of six with the diff applied.
 ## Known rough edges
 
 - The "You + Friend" tag stays up for the rest of a fight after player two leaves, and after a take-over. It is drawn by the HUD (`src/hud/TogetherFlash.tsx`) from the fight's own state, which was started for two; nothing in `src/duo` can change it. The link knows the truth: `link.guestHere()` is false once player two has left. The smoke script prints a NOTE line while this is so.
-- At a 1280 px wide window the Multiplayer row fits two cards, so the new card is on the second row and the page must be scrolled to reach it; at 1600 px all three are in one row.
+- With the FaceTime card shown there are four cards in the Multiplayer row. They fit in one row with no scrolling from 1280x720 up; the row is then wider and its buttons are set in smaller type (`.mp-cards:has(.ft-card)` in `src/ui/set/screens-mp.css`).

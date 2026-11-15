@@ -7,8 +7,8 @@
 // "Left" is left in the mirrored picture the game shows (PoseFrame.image), which is also the left of the room as
 // the players see it: the person standing on the left is player one, the hero.
 import type { PoseFrame } from "../core/types";
-import { NO_PLAYERS, assignPlayers } from "../pose/players";
-import type { PlayerAssignment } from "../pose/players";
+import { MEMORY_MS, NO_PLAYERS, assignPlayers } from "../pose/players";
+import type { PlayerAssignment, PlayerMemory } from "../pose/players";
 import { JOINT, joint } from "../pose/signals";
 import { homeOf, rebase } from "./split";
 import type { Body, Home } from "./split";
@@ -108,6 +108,13 @@ export function createSeating(): Seating {
     next(found, t) {
       lastT = t;
       const bodies = distinct(found.filter(usable));
+      // The shift belongs to the one body that took the hero's place. Once nobody has been seen for so long that the
+      // seats are dealt afresh, whoever sits down next is read where they really stand.
+      const forgotten = (memory: PlayerMemory | null): boolean => memory === null || t - memory.t > MEMORY_MS;
+      if (moved && forgotten(assignment.memory[0]) && forgotten(assignment.memory[1])) {
+        moved = null;
+        homes = [null, null];
+      }
       assignment = assignPlayers(bodies.map((body) => body.image), t, assignment);
       let [zero, one] = assignment.bodies;
       if (zero !== null) firstSeenAt = t;
