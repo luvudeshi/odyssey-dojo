@@ -41,17 +41,9 @@
 .sky-hud .sk-score__plate svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)); }
 .sky-hud .sk-plate { fill: var(--sky-glaze); stroke: var(--sky-clay); stroke-width: 2; }
 .sky-hud .sk-score__num { position: absolute; inset: 0; display: grid; place-items: center; font: 700 32px var(--sky-display); letter-spacing: 0.08em; color: var(--sky-bone); font-variant-numeric: tabular-nums; }
-/* Small solid chips: the combo, the power meter, the two-player tag. */
-.sky-hud .sk-combo, .sky-hud .sk-power, .sky-hud .hb-duo { box-sizing: border-box; white-space: nowrap; background: var(--sky-glaze); border: 2px solid var(--sky-clay); font: 700 18px/1 var(--sky-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-bone); }
+/* Small solid chips: the combo and the two-player tag. */
+.sky-hud .sk-combo, .sky-hud .hb-duo { box-sizing: border-box; white-space: nowrap; background: var(--sky-glaze); border: 2px solid var(--sky-clay); font: 700 18px/1 var(--sky-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-bone); }
 .sky-hud .sk-combo { margin-top: 6px; padding: 6px 12px; color: var(--sky-star); }
-
-.sky-hud .sk-power { position: absolute; left: 96px; top: 94px; display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 8px; border-radius: 22px; }
-.sky-hud .sk-power strong { min-width: 3.4em; text-align: right; color: var(--sky-star); font-variant-numeric: tabular-nums; }
-.sky-hud .sk-moon__disc { fill: #3a2b1f; stroke: var(--sky-star); stroke-width: 1.5; }
-.sky-hud .sk-moon__lit { fill: var(--sky-star); }
-/* Full: unmissable. A gold rim, a pulsing chip and READY in place of the percentage. */
-.sky-hud .sk-power.is-full { border-color: var(--sky-star); box-shadow: 0 0 12px var(--sky-ember); animation: sk-pulse 1.1s ease-in-out infinite; }
-@keyframes sk-pulse { 50% { transform: scale(1.06); } }
 
 /* Banners: big display type on a solid plate, so they read over a dark cave and a bright sunset alike. */
 .sky-hud .sk-phase, .sky-hud .sk-intro, .sky-hud .hb-rating, .sky-hud .hb-together { text-shadow: none; background: var(--sky-glaze); border: 2px solid var(--sky-clay); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
@@ -69,7 +61,7 @@
 .sky-hud .hb-duo { position: absolute; right: 30px; top: 94px; left: auto; margin: 0; padding: 6px 14px; border-radius: 0; }
 @keyframes sk-pop { from { opacity: 0; transform: translateX(-50%) scale(0.8); } }
 
-/* A defend that counted: a green word at the upper left, against the left edge under the power chip (above the hero,
+/* A defend that counted: a green word at the upper left, against the left edge (above the hero,
    left of the monster, clear of the camera panel and the prompt card), and a green rim. Green is used for nothing else in the fight; a hit on the player is red. */
 .sky-hud .hb-defend__rim { position: absolute; inset: 0; box-shadow: inset 0 0 0 6px #7fe08a, inset 0 0 110px rgba(127, 224, 138, 0.45); animation: sk-rim 1.1s ease-out forwards; }
 .sky-hud .hb-defend__word { position: absolute; left: 30px; top: 24%; transform-origin: left center; white-space: nowrap; padding: 8px 28px 10px; text-align: center; font: 700 52px/1.05 var(--sky-display); letter-spacing: 0.08em; color: #a6f0ac; background: var(--sky-glaze); border: 3px solid #7fe08a; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); animation: sk-defend 0.25s ease-out; }
@@ -78,12 +70,12 @@
 @keyframes sk-defend { from { opacity: 0; transform: scale(0.8); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sky-hud .sk-node--off, .sky-hud .sk-power.is-full, .sky-hud .sk-phase, .sky-hud .hb-rating, .sky-hud .hb-together, .sky-hud .hb-defend__word { animation: none; }
+  .sky-hud .sk-node--off, .sky-hud .sk-phase, .sky-hud .hb-rating, .sky-hud .hb-together, .sky-hud .hb-defend__word { animation: none; }
   .sky-hud .sk-chain__kept { transition: none; }
 }
 
 /* Narrow screens (a phone held upright): the bars share the top row edge to edge without their emblems, and the score
-   and power chips drop under them, so a bar is never squeezed to a sliver. */
+   drops under them, so a bar is never squeezed to a sliver. */
 @media (max-width: 760px) {
   .sky-hud .sk-bar { top: 10px; width: calc(50% - 14px); height: 60px; }
   .sky-hud .sk-bar--left { left: 8px; }
@@ -95,7 +87,6 @@
   .sky-hud .sk-score { top: 78px; left: auto; right: 8px; transform: none; align-items: flex-end; }
   .sky-hud .sk-score__plate { width: 130px; height: 44px; }
   .sky-hud .sk-score__num { font-size: 26px; }
-  .sky-hud .sk-power { left: 8px; top: 80px; }
   .sky-hud .sk-phase { top: 136px; font-size: 22px; }
   .sky-hud .sk-intro { width: calc(100% - 16px); box-sizing: border-box; padding: 12px; white-space: normal; }
   .sky-hud .sk-intro h2 { font-size: 40px; }
