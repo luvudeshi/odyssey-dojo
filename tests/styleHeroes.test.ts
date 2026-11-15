@@ -2,6 +2,7 @@
 import { expect, test } from "vitest";
 import { HEROES, heroFor } from "../src/styles/heroes";
 import { STYLES } from "../src/styles/registry";
+import { STYLE_DEVICES } from "../src/ui/set/styleDevices";
 
 test("every style on the style screen has its figure and names that figure in its line", () => {
   for (const style of STYLES) {
@@ -35,4 +36,10 @@ test("every figure is complete: a title, a reason, a source, a look and two colo
     for (const colour of hero.colors) expect(colour, id).toMatch(/^#[0-9a-f]{6}$/);
     expect(hero.colors[0]).not.toBe(hero.colors[1]);
   }
+});
+
+test("every style's card on the style screen has a shield device of its own, and no device is left for an old style", () => {
+  for (const style of STYLES) expect(STYLE_DEVICES[style.id], `${style.id} has no device in src/ui/set/styleDevices.tsx`).toBeDefined();
+  expect(new Set(STYLES.map((style) => STYLE_DEVICES[style.id])).size).toBe(STYLES.length);
+  expect(Object.keys(STYLE_DEVICES).sort()).toEqual(STYLES.map((style) => style.id).sort());
 });
