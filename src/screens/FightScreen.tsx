@@ -15,7 +15,7 @@ import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
 import { createFeedbackWatch } from "../coach/extra/fightFlash";
 import { startFight, step } from "../combat/engine";
-import type { Baseline, CombatEvent, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
+import type { Baseline, CombatEvent, CombatState, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
 import { CameraView } from "../hud/CameraView";
 import { PowerCircle } from "../hud/PowerCircle";
@@ -24,6 +24,7 @@ import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { noteFeedback, noteMiss } from "../hud/MissFlash";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
+import { clearFriend, feedFromGuest, friendStage } from "../net/friendStage";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
@@ -92,6 +93,8 @@ export function FightScreen(props: {
     const readPose = createPoseInput(MOVES);
     const watchMiss = createMissWatch();
     const watchFeedback = createFeedbackWatch();
+    const room = link?.room === true ? link : null;
+    let alone: { from: CombatState; shown: CombatState } | null = null;
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
     fightEvents.current = [];
@@ -133,6 +136,11 @@ export function FightScreen(props: {
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
+      // Only an online room puts the friend's hero on stage; duo and FaceTime links already show or skip player two.
+      if (room) {
+        if (room.guestHere()) feedFromGuest(input.struck, now / 1000);
+        else if (friendStage.here) clearFriend();
+      }
       const from = current;
       const result = step(current, enemy, style, input, dt, !tracker || keyboardMode || legs);
       last = now;
@@ -161,12 +169,18 @@ export function FightScreen(props: {
         stampPower(battle, patronRef.current, now / 1000, from);
         setPowerCount((n) => n + 1);
       }
-      setState(current);
+      // In a room the "You + Friend" tag follows the guest, who may have left; reused while nothing changed.
+      if (room && current.players === 2 && !room.guestHere()) {
+        const cached = alone?.from === current ? alone : { from: current, shown: { ...current, players: 1 as const } };
+        alone = cached;
+        setState(cached.shown);
+      } else setState(current);
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(handle);
+      if (room) clearFriend();
       keyboard.dispose();
       // Homer's opening line is left to run to its end: leaving the fight (App's onQuit) and the result panel stop him.
     };
@@ -208,7 +222,7 @@ export function FightScreen(props: {
 
   return (
     <div className="fight">
-      <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
+      <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} friend={link?.room === true} />
       <SkyHud enemy={enemy} state={state} history={readHistory} />
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}

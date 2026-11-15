@@ -13,6 +13,7 @@ import { noteHit } from "../hud/RatingFlash";
 import { TouchPad } from "../hud/TouchPad";
 import { createKeyboard } from "../input/keyboard";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
+import { clearFriend, feedFromHost } from "../net/friendStage";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
 import type { GuestLink } from "../net/guest";
@@ -73,12 +74,13 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       if (view) {
         view.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
         playVoice(view.events, view.state.phase);
+        feedFromHost(view.events, now / 1000);
         setState(view.state);
       }
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(handle); keyboard.dispose(); };
+    return () => { cancelAnimationFrame(handle); keyboard.dispose(); clearFriend(); };
   }, [link, tracker, fight]);
 
   // Told once per fight, when it is won or lost: the Account counts a room fight for the guest too.
@@ -102,10 +104,10 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   return (
     <div className="fight">
-      <Scene enemy={enemy} state={state} poseRef={poseRef} />
+      <Scene enemy={enemy} state={state} poseRef={poseRef} friend />
       <SkyHud enemy={enemy} state={state} />
       {!over && <PowerCircle power={state.power} />}
-      <div className="preview mirror" ref={holder} />
+      {tracker && <div className="preview mirror" ref={holder} />}
       {!over && <Button className="room-leave" onClick={onLeave}>Leave the room</Button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
       {over && (

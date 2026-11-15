@@ -20,6 +20,8 @@ interface Waiting {
 }
 
 export interface HostLink {
+  /** True only for a link to a guest on another screen (an online room), not for two players on one camera or a FaceTime call. */
+  readonly room?: true;
   /** True while the guest's stream is open. */
   guestHere(): boolean;
   /**
@@ -47,7 +49,7 @@ export function forTwo(state: CombatState): CombatState {
   return { ...state, players: 2 };
 }
 
-export function createHostLink(transport: RoomTransport): HostLink {
+export function createHostLink(transport: RoomTransport, room = false): HostLink {
   let here = false;
   let arrived: Strike[] = [];
   let waiting: Waiting[] = [];
@@ -92,6 +94,7 @@ export function createHostLink(transport: RoomTransport): HostLink {
   });
 
   return {
+    ...(room ? { room: true as const } : {}),
     guestHere: () => here,
     start(enemyId, styleId, seed) {
       seq = 0;
