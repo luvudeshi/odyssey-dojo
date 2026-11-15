@@ -54,9 +54,6 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
     const watchMiss = createMissWatch();
     let history: PoseHistory = { frames: [], baseline: null };
     let handle = 0;
-    // The guest's own last strike, so a hit that is not theirs can be put down to the host.
-    let ownMove = "";
-    let ownAt = -Infinity;
     const tick = (now: number): void => {
       const frame = tracker?.read() ?? null;
       if (frame) {
@@ -72,14 +69,12 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history, asked) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
       noteInput(input, now / 1000);
       link.sendInput(input);
-      const own = input.struck.at(-1);
-      if (own) { ownMove = own.move; ownAt = now / 1000; }
       // The guest sends strikes only, so its held defends are not tries.
       if (view && watchPhase(watchMiss, view.state.phase, { ...input, held: new Set() }, view.events, now)) noteMiss();
       if (view) {
         view.events.forEach((event) => { playEvent(event); noteHit(event); notePhase(event); });
         playVoice(view.events, view.state.phase);
-        feedFromHost(view.events, ownMove, ownAt, now / 1000);
+        feedFromHost(view.events, now / 1000);
         setState(view.state);
       }
       handle = requestAnimationFrame(tick);
@@ -109,7 +104,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   return (
     <div className="fight">
-      <Scene enemy={enemy} state={state} poseRef={poseRef} />
+      <Scene enemy={enemy} state={state} poseRef={poseRef} friend />
       <SkyHud enemy={enemy} state={state} />
       {!over && <PowerCircle power={state.power} />}
       {tracker && <div className="preview mirror" ref={holder} />}

@@ -246,7 +246,9 @@ export function step(
           STRIKE_DAMAGE * (1 + Math.min(state.combo, 5) * 0.1) * (0.5 + quality) * (together ? 2 : 1),
         );
         const enemyHp = Math.max(0, state.enemyHp - damage);
-        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality, ...(together ? { together: true as const } : {}) };
+        // Who struck, in a two-player fight, so the guest's screen can swing the friend's hero only for the host's own strikes.
+        const byHost = state.players === 2 && landedBy.some((t) => t.player === 0);
+        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality, ...(together ? { together: true as const } : {}), ...(byHost ? { byHost: true as const } : {}) };
         const phaseIndex = phaseIndexFor(enemy, enemyHp);
         const next = {
           ...fill(learned(state, phase.move), quality >= GREAT_QUALITY ? POWER_PER_GREAT : 0),
