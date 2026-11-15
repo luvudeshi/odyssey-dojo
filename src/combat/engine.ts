@@ -10,6 +10,8 @@ import type {
 export const PLAYER_HP = 100;
 const INTRO_MS = 1500;
 const RECOVER_MS = 700;
+/** After a strike that changes the phase: long enough for Athena's phase line (the longest clip is 2.9 s). */
+const PHASE_RECOVER_MS = 3000;
 const STRIKE_DAMAGE = 12;
 const FINISHER_MS = 6000;
 /** Divine power: each defend fills a fifth of the meter, a GREAT or better strike a twentieth. */
@@ -226,7 +228,7 @@ export function step(
           STRIKE_DAMAGE * (1 + Math.min(state.combo, 5) * 0.1) * (0.5 + quality) * (together ? 2 : 1),
         );
         const enemyHp = Math.max(0, state.enemyHp - damage);
-        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality };
+        const landed: CombatEvent = { type: "enemyHit", move: phase.move, damage, quality, ...(together ? { together: true as const } : {}) };
         const phaseIndex = phaseIndexFor(enemy, enemyHp);
         const next = {
           ...fill(learned(state, phase.move), quality >= GREAT_QUALITY ? POWER_PER_GREAT : 0),
@@ -247,7 +249,8 @@ export function step(
           }
           return { state: { ...next, phase: { kind: "won" } }, events: [...events, { type: "won" }] };
         }
-        return { state: { ...next, phase: RECOVER }, events };
+        const phaseChanged = phaseIndex !== state.phaseIndex;
+        return { state: { ...next, phase: phaseChanged ? { kind: "recover", msLeft: PHASE_RECOVER_MS } : RECOVER }, events };
       }
       const msLeft = phase.msLeft - dtMs;
       if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft } }, events: [] };
