@@ -6,6 +6,7 @@ import type { PoseTracker } from "../../pose/tracker";
 import type { Assess, Assessment, WarmupStep } from "../contract";
 import { finish, nobodySeen, plainName, resultLines, startRun, tick, totalMs } from "./run";
 import type { RunState } from "./run";
+import { Button } from "../../ui/pebble";
 import "./warmup.css";
 
 /** The picture changes at most this often; the frames are collected on every animation frame. */
@@ -111,22 +112,22 @@ export function WarmUp(props: {
             ))}
           </ol>
           <p>{step ? moveName(step.moveId) : "Get ready"}, {String(Math.ceil(run.totalMsLeft / 1000))} seconds left</p>
-          <button className="quiet" onClick={onSkip}>Skip</button>
+          <Button onClick={onSkip}>Skip</Button>
         </>
       )}
       {outcome?.kind === "result" && (
         <>
           <h1 className="warmup-say">{told[0] ?? "Warm-up done"}</h1>
           {told.slice(1).map((line) => <p key={line} className="warmup-line">{line}</p>)}
-          <button autoFocus onClick={() => { onDone(outcome.assessment); }}>Continue</button>
+          <Button primary autoFocus onClick={() => { onDone(outcome.assessment); }}>Continue</Button>
         </>
       )}
       {outcome?.kind === "unseen" && (
         <>
           <h1 className="warmup-say">I can't see you</h1>
           <p className="warmup-line">Step back until your head and hips are in the picture, then try again.</p>
-          <button autoFocus onClick={again}>Try again</button>
-          <button className="quiet" onClick={onSkip}>Skip</button>
+          <Button primary autoFocus onClick={again}>Try again</Button>
+          <Button onClick={onSkip}>Skip</Button>
         </>
       )}
       <div className="warmup-camera" ref={camera} />

@@ -90,7 +90,7 @@ export function Meadow({ high }: { high: boolean }) {
         <meshStandardMaterial vertexColors flatShading roughness={0.95} side={2} />
       </mesh>
       <instancedMesh ref={flowerMesh} args={[solids.flower, undefined, blooms.length]} frustumCulled={false}>
-        <meshStandardMaterial vertexColors flatShading roughness={0.7} emissive="#3a2a10" emissiveIntensity={0.35} />
+        <meshStandardMaterial vertexColors flatShading roughness={0.7} emissive="#6a3a18" emissiveIntensity={0.55} />
       </instancedMesh>
       <instancedMesh ref={tuftMesh} args={[solids.tuft, undefined, grass.length]} frustumCulled={false}>
         <meshStandardMaterial vertexColors flatShading roughness={1} />
