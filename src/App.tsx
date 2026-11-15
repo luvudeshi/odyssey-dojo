@@ -8,13 +8,15 @@ import "./screens/menus.css";
 import "./screens/cursor.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
+import { GODS } from "./ai/gods/gods";
 import { CharacterPicker } from "./characters/CharacterPicker";
 import { characterById, loadCharacter } from "./characters/characters";
 import type { CharacterId } from "./characters/characters";
-import { confirmCharacter } from "./characters/godCharacter";
+import { HERO_POWER, confirmCharacter } from "./characters/godCharacter";
 import { assessmentFrom } from "./coach";
 import { Dojo } from "./coach/ui/Dojo";
 import { log } from "./core/log";
+import { duoCamera } from "./duo/duoCamera";
 import { ENEMIES } from "./enemies/registry";
 import { CameraPanelContext } from "./hud/cameraPanel";
 import { cameraErrorMessage } from "./pose/cameraError";
@@ -64,6 +66,8 @@ export function App() {
   const [joined, setJoined] = useState<Joined | null>(null);
   // The boss cutscene plays over the map after a stop is picked, then the fight starts.
   const [cut, setCut] = useState<number | null>(null);
+  // Two players on one camera stays on for the fights started from its card, and goes off with them.
+  useEffect(() => { if (!flow.hosting && flow.screen !== "host") duoCamera.setOn(false); }, [flow.hosting, flow.screen]);
 
   // The character shown in the picker (the stored one at first), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
@@ -98,8 +102,9 @@ export function App() {
   // Set once the player picks "Keyboard only", so a late camera grant cannot hijack the fight.
   const keyboardOnly = useRef(false);
 
-  // The title's camera button, and "Use camera" on the fight's panel. A second press while starting waits on the first.
-  const startCamera = (): void => {
+  // Starts the camera. `room` is true for the host's "Start" in a room: a camera that fails there must not cost the
+  // room and the friend waiting in it, so the host stays where it is and plays on the keyboard.
+  const beginCamera = (room: boolean): void => {
     keyboardOnly.current = false;
     setCameraProblem("");
     setNotice("Starting the camera... If the browser asks for the camera at the top of this window, choose Allow.");
@@ -115,6 +120,12 @@ export function App() {
       },
       (error: unknown) => {
         log("warn", "tracker_failed", error);
+        if (room) {
+          keyboardOnly.current = true;
+          setTracker(null);
+          setNotice("The camera did not start, so you play on the keyboard. Your friend is still in the room.");
+          return;
+        }
         setNotice("");
         // Stay put: the player chooses the keyboard, never the failure.
         setCameraProblem(cameraErrorMessage(error));
@@ -122,6 +133,8 @@ export function App() {
       },
     );
   };
+  // The title's camera button, and "Use camera" on the fight's panel. A second press while starting waits on the first.
+  const startCamera = (): void => { beginCamera(false); };
 
   // "Play on the keyboard" on the camera problem card, and Story mode when the setting says Keyboard.
   const startKeyboard = (): void => { keyboardOnly.current = true; setCameraProblem(""); setTracker(null); dispatch({ type: "ready" }); };
@@ -161,7 +174,7 @@ export function App() {
         hosting={flow.screen === "host"}
         code={roomFromSearch(window.location.search) ?? ""}
         onOpen={() => { dispatch({ type: "hostRoom" }); }}
-        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); startCamera(); }}
+        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); beginCamera(true); }}
         onSolo={() => { keyboardOnly.current = true; dispatch({ type: "hosted", together: false }); }}
         onClose={() => { setPanel("multiplayer"); dispatch({ type: "toTitle" }); }}
         onJoined={(next) => { setJoined(next); dispatch({ type: "joinRoom" }); dispatch({ type: "joined" }); }}
@@ -241,6 +254,8 @@ export function App() {
         enemy={enemy}
         style={flow.style}
         tracker={tracker}
+        god={HERO_POWER[character]}
+        hero={characterById(character).name}
         link={flow.hosting ? hostLink : null}
         seed={flow.seed}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
@@ -251,7 +266,7 @@ export function App() {
             defense={lessonsFrom(events)}
             enemyId={enemy.id}
             mastery={mastery}
-            card={(close) => <SharePanel god={null} hero={characterById(character).name} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
+            card={(close) => <SharePanel god={null} hero={characterById(character).name} power={GODS[HERO_POWER[character]].power.name} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
             onShown={() => {
               if (recorded.current !== flow.seed) {
                 recorded.current = flow.seed;

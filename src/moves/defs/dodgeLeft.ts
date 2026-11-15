@@ -1,5 +1,6 @@
 import type { Baseline, MoveDef, PoseFrame, PoseHistory } from "../../core/types";
 import { clamp01, bothNewest, headOffset, latest, meanOf, recent, shoulderCenter, shoulderWidth } from "../../pose/signals";
+import { bodyWent } from "../looseSignals";
 
 /** A webcam's landmarks shake by about 1% of the frame; the shift is also read from this many milliseconds of frames. */
 const STEADY_MS = 200;
@@ -47,5 +48,8 @@ export const move: MoveDef = {
   teaches: "Step off the line of a rush: a moving target is hard to reach and free to get away",
   detect(history) {
     return sideStep(history, -1);
+  },
+  detectAsked(history) {
+    return Math.max(sideStep(history, -1), bodyWent(history, "left"));
   },
 };

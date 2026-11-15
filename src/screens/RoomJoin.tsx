@@ -51,7 +51,7 @@ export function RoomJoin(props: { initialCode: string; onJoined: (joined: Joined
       return;
     }
     if (typeof room === "string") {
-      setProblem(roomMessage(room, window.location.hostname));
+      setProblem(roomMessage(room));
       setBusy(false);
       return;
     }

@@ -2,7 +2,7 @@
 // the fight through the same link the online rooms use. The fight is the real engine; the bodies are made up.
 import { afterEach, expect, test } from "vitest";
 import { startFight, step } from "../src/combat/engine";
-import type { CombatEvent, CombatInput, CombatState, PoseFrame, Strike } from "../src/core/types";
+import type { CombatEvent, CombatInput, CombatState, MoveDef, PoseFrame, Strike } from "../src/core/types";
 import { createDuoLink } from "../src/duo/duoLink";
 import type { DuoOptions } from "../src/duo/duoLink";
 import { STANCE_FRAMES, createBodyReader } from "../src/duo/split";
@@ -39,12 +39,12 @@ const links: HostLink[] = [];
 afterEach(() => { links.splice(0).forEach((link) => { link.close(); }); });
 
 /** A fight run the way FightScreen runs it, with player two's body on the link and player one on made-up keys. */
-function fight(options: DuoOptions = {}) {
+function fight(options: DuoOptions = {}, moves: ReadonlyMap<string, MoveDef> = MOVES) {
   const second = puppet(0.2);
   let now = 0;
   let players: 1 | 2 = 2;
   let frame: PoseFrame | null = null;
-  const link = createDuoLink({ second: () => frame, players: () => players }, MOVES, { ...options, clock: () => now });
+  const link = createDuoLink({ second: () => frame, players: () => players }, moves, { ...options, clock: () => now });
   links.push(link);
   let state: CombatState = forTwo(startFight(enemy, 7));
   link.start(enemy.id, style.id, 7);
@@ -290,4 +290,31 @@ test("a stance asked for before the reader has frames is taken from the next one
   expect(reader.history().baseline).toBeNull();
   reader.read(shifted(frameOf(STANCE_FRAMES * 66, NEUTRAL), 0.2));
   expect(reader.history().baseline?.centerX).toBeCloseTo(0.7, 3);
+});
+
+/** Every strike as a move only its loose rule sees: the strict rule never fires, the asked one always does. */
+function looseStrikes(): ReadonlyMap<string, MoveDef> {
+  return new Map([...MOVES].map(([id, move]) => [id, move.kind === "strike" ? { ...move, detect: () => 0, detectAsked: () => 1 } : move]));
+}
+
+test("a body reader reads the asked move loosely, and only the asked move", () => {
+  const moves = looseStrikes();
+  const struck = (ask: string | null): string[] => {
+    const reader = createBodyReader(moves);
+    const out: string[] = [];
+    for (let i = 0; i < 40; i++) out.push(...reader.read(shifted(frameOf(i * FRAME_MS, NEUTRAL), 0.2), ask).struck.map((strike) => strike.move));
+    return out;
+  };
+  expect(struck(null)).toEqual([]);
+  expect(struck("jab")).toEqual(["jab"]);
+});
+
+test("player two's strike is read with the move the prompt asks for, as player one's is", () => {
+  const f = fight({}, looseStrikes());
+  const move = defendTogether(f);
+  const before = f.state().enemyHp;
+  // Player two only stands there: the strict rule sees nothing, the loose rule for the asked move does.
+  const events = until(f, (now) => has("enemyHit")(now) || has("whiffed")(now));
+  expect(events.find((event) => event.type === "enemyHit")).toMatchObject({ type: "enemyHit", move });
+  expect(f.state().enemyHp).toBeLessThan(before);
 });

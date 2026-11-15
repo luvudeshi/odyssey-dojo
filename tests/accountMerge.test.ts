@@ -73,14 +73,14 @@ test("every kind of field is joined by its kind, so a field the game adds later 
     someday: { medals: 2, names: ["first"] }, motto: "local words", onlyHere: 5,
   });
   const account = save({
-    name: "Luv", cleared: ["polyphemus"], styles: ["hoplite", "boxer"], blocks: 12, dodges: 9, bestCombo: 11, unhit: 2, powers: 0, dojo: 1, dojoPerfect: 1, rooms: 0,
+    name: "Luv", cleared: ["polyphemus"], styles: ["jiu_jitsu", "boxer"], blocks: 12, dodges: 9, bestCombo: 11, unhit: 2, powers: 0, dojo: 1, dojoPerfect: 1, rooms: 0,
     someday: { medals: 5, names: ["second"], extra: true }, motto: "account words", onlyThere: [1, 2],
   });
   const merged = mergeSaves(local, account, { accountName: "Luv" });
   expect(merged.profile).toEqual({
     name: "Luv", cleared: ["polyphemus", "circe"], moves: {}, bestScore: 0, fights: 0, wins: 0,
     // Lists: both. Counts: the larger.
-    styles: ["hoplite", "boxer"], blocks: 30, dodges: 9, bestCombo: 11, unhit: 2, powers: 1, dojo: 3, dojoPerfect: 1, rooms: 1,
+    styles: ["jiu_jitsu", "boxer"], blocks: 30, dodges: 9, bestCombo: 11, unhit: 2, powers: 1, dojo: 3, dojoPerfect: 1, rooms: 1,
     // An object is joined field by field; a text is the account's; a field only one side has is kept.
     someday: { medals: 5, names: ["second", "first"], extra: true }, motto: "account words", onlyHere: 5, onlyThere: [1, 2],
   });
