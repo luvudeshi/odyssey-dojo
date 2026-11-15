@@ -326,13 +326,13 @@ test("on its first markup Share is there but held, and nothing is promised until
     renderToStaticMarkup(createElement(SharePanel, props)),
   ]) {
     expect(markup).toContain("Painting your card...");
-    expect(markup).toMatch(/<button class="share-action" disabled="">Share<\/button>/);
+    expect(markup).toMatch(/<button type="button" class="pb-btn\s+share-action" disabled=""><span class="pb-btn__label">Share<\/span><\/button>/);
     expect(markup).toContain("Painting your card. You can share it once it is finished.");
     expect(markup).not.toContain("Share uploads");
     // There is no card to save yet.
     expect(markup).not.toContain("Save card");
   }
-  expect(renderToStaticMarkup(createElement(SharePanel, { ...props, onClose: () => undefined }))).toContain(">Close</button>");
+  expect(renderToStaticMarkup(createElement(SharePanel, { ...props, onClose: () => undefined }))).toContain(">Close</span></button>");
 });
 
 test("once the card is finished the line names only what would be sent", () => {
