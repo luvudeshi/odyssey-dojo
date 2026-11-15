@@ -9,7 +9,7 @@ The code is in `src/duo/`. It is **mounted**: the Multiplayer screen has the car
 1. **The camera finds two bodies.** With the choice on, the pose model is asked for two bodies in each picture (`numPoses: 2`). With it off the model is asked for one, exactly as today.
 2. **Seats** (`src/duo/assign.ts`). Every body found goes to `createSeating()`. Which body is which is decided by `assignPlayers` from `src/pose/players.ts` (PR #99): of a fresh pair, the one on the left of the picture is player one; after that each body goes to the player it moved least from, so walking past each other or the model swapping its order does not swap the players. On top of that:
    - a body with hidden shoulders, a body with shoulders under 6% of the picture (someone in the background), and one person the model found twice are dropped;
-   - the second player **joins** after standing in the picture for 1 second without a break;
+   - the second player **joins** after standing in the picture for 1 second without a break, and only with shoulders at least 0.6 of player one's (`BEHIND`). Someone smaller than that stands well behind player one, more than one and a half times as far from the camera: a spectator. They are not let in, because a defend counts only when both make it and they would cost the player every one. The widths compared are each seat's widest of the last second or so, so shoulders that go narrow in a punch change nothing. It is asked only at the join: a player who is in stays in;
    - the second player has **left** after not being seen for 0.7 seconds in pictures that keep coming; fewer lost frames change nothing. A hitch in the pictures themselves (none at all for up to 1.5 seconds) is not a leave;
    - if **player one** walks out and the other stays, after 0.4 seconds the one who stayed becomes player one. Their picture is moved and sized to where the first hero stood, so the stance measured at calibration still fits and the fight does not stop to ask anyone to step back in.
 3. **Each body is read on its own** (`src/duo/split.ts`). Player two gets their own history, their own neutral stance (taken from their first 8 frames, and again at the moment they join) and their own `createPoseInput`, the same reader a single player gets. Standing to one side does not matter: every detector measures against the body's own stance.
@@ -31,6 +31,7 @@ The code is in `src/duo/`. It is **mounted**: the Multiplayer screen has the car
 - Side by side, about an arm's length apart, so a punch to the side does not cross the other body.
 - Both from the head to the waist in the picture. Legs are not needed, except for kicks.
 - About 2 to 2.5 metres from a laptop camera. Player one must be inside the middle half of the picture (the game's presence check); the shoulders of each should be wider than a tenth of the picture.
+- Level with each other. A second player well behind the first (shoulders under 0.6 of theirs) is taken for someone watching and is not let in until they step forward.
 - Do not stand one behind the other. When two bodies overlap fully for more than a moment the model sees one person, and the two can come out swapped.
 - Player two: walk in, stand still with arms down for a second. That is when the game takes your neutral stance.
 
@@ -41,8 +42,8 @@ Five files outside `src/duo/`. The card uses the Multiplayer screen's own card c
 - `src/pose/tracker.ts`: ask the model for `duoCamera.wanted()` bodies (it changes on the running model with `setOptions`), and while duo is on hand every body to `duoCamera.take`, which gives back player one's frame.
 - `src/screens/Multiplayer.tsx`: `<DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />` in the row of cards.
 - `src/render/Scene.tsx`: `<SecondFigure />` next to `<Hero>`.
-- `src/App.tsx`: one effect that turns duo off when the player leaves that way of playing.
-- `src/hud/CameraView.tsx`: the skeleton is drawn from `duoCamera.seen(frame)`. After player two takes over as the hero, the fight's frame is moved to where the first hero stood; this draws the skeleton on the player in the picture instead. Without this line the game plays the same, and only the skeleton is in the wrong place after a take-over.
+- `src/App.tsx`: one effect that turns duo off when the player leaves that way of playing. And when the camera does not start, the player lands on the main menu, where the camera problem card is, and not back on the Multiplayer screen with nothing said (this also holds for a room's host).
+- `src/hud/CameraView.tsx`: the skeleton is drawn from `duoCamera.seen(frame)`. After player two takes over as the hero, the fight's frame is moved to where the first hero stood; this draws the skeleton on the player in the picture instead. Without this line the game plays the same, and only the skeleton is in the wrong place after a take-over. While duo is on, the panel's tag reads "One seen" or "Both seen" instead of "Your body", so the players can tell whether the second one is in.
 
 With the choice off nothing changes: the model is built with one body, the old code path returns the frame, and `duoCamera.seen` gives back the frame it was given.
 
@@ -66,6 +67,7 @@ With the card mounted, it plays a fight with the pose path on. Chrome's fake cam
 - both bodies striking 200 ms apart give the doubled hit, with the flash;
 - a defend made by only the first body, and one made by only the second, both cost health; one made by both costs nothing;
 - the second body leaves: one hero, the fight never stands still, the first body's next strike lands;
+- the camera panel's tag reads "Both seen" with two bodies and "One seen" after the second left;
 - the second body comes back, then the first leaves: the one who stayed is the hero, drawn where the first hero stood, the fight never stands still, and their next strike lands;
 - the camera panel's skeleton is on the promoted player (skipped with a line when `CameraView.tsx` was left out of the mount);
 - no console error. Requests to `/api` are left out of this: the dev server has no game server behind it.
@@ -74,7 +76,7 @@ With the card mounted, it plays a fight with the pose path on. Chrome's fake cam
 
 ## What was tested
 
-- `npx vitest run tests/duoAssign.test.ts tests/duoLink.test.ts`: 24 tests with made-up landmark frames. Seats through a crossing and through lost frames; joining and leaving; player one leaving; where the promoted player is drawn in the camera panel; bodies that are dropped; two bodies giving two inputs; player two's strike reaching the real engine through the link; both striking for double damage; each defending for themself; the fight carrying on at once when player two leaves.
+- `npx vitest run tests/duoAssign.test.ts tests/duoLink.test.ts`: 27 tests with made-up landmark frames. Seats through a crossing and through lost frames; joining and leaving; someone well behind the player who is never let in, also while the player's shoulders are narrow in a punch; player one leaving; where the promoted player is drawn in the camera panel; bodies that are dropped; two bodies giving two inputs; player two's strike reaching the real engine through the link; both striking for double damage; each defending for themself; the fight carrying on at once when player two leaves.
 - `node scripts/duo-smoke.mjs` with the diff applied: the last two full runs passed every check (one with all five files, one without `CameraView.tsx`). Two earlier runs, made while the script was being written, went wrong in ways that are not the two-player code as far as could be told: in one the fight stood still for 23 seconds after the first body left, on a laptop that was running other browsers at the time (that run is why the script now measures the gap between the tracker's pictures; it did not happen again in four more runs); in one the dev server reloaded the page and the card could not be pressed (the script now loads everything once before it starts). A single-body strike took 14 to 18 health and a doubled one 30 to 40.
 
 ## What was not tested
@@ -96,5 +98,7 @@ After the two fixes the script passed six runs out of six with the diff applied.
 
 ## Known rough edges
 
-- The "You + Friend" tag stays up for the rest of a fight after player two leaves, and after a take-over. It is drawn by the HUD (`src/hud/TogetherFlash.tsx`) from the fight's own state, which was started for two; nothing in `src/duo` can change it. The link knows the truth: `link.guestHere()` is false once player two has left. The smoke script prints a NOTE line while this is so.
+- **Duo stays on until "Main menu".** Every fight picked from the map after a duo fight is still a duo fight: the model looks for two bodies (about twice the time per picture) and anyone who stands level with the player for a second is player two, whose defends are then needed. Before someone plays alone, go to the main menu; that turns duo off.
+- **People watching.** Someone well behind the players is not let in (see Seats), but someone standing level with them is a player as far as the game can tell. The model is asked for two bodies, so with three people in the picture it may follow one who is watching and not the second player. And of two bodies seen in the very first picture, the left one is player one whatever their size, so someone watching on the left at that moment is the hero: go to the main menu and start again. Keep people who watch out of the picture.
+- The "You + Friend" tag stays up for the rest of a fight after player two leaves, and after a take-over. It is drawn by the HUD (`src/hud/TogetherFlash.tsx`) from the fight's own state, which was started for two; nothing in `src/duo` can change it. The link knows the truth: `link.guestHere()` is false once player two has left. The smoke script prints a NOTE line while this is so. The camera panel's own tag ("One seen", "Both seen") does follow who is there.
 - With the FaceTime card shown there are four cards in the Multiplayer row. They fit in one row with no scrolling from 1280x720 up; the row is then wider and its buttons are set in smaller type (`.mp-cards:has(.ft-card)` in `src/ui/set/screens-mp.css`).
