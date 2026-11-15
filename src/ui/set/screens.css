@@ -2,7 +2,18 @@
    Nothing here is under 18 px. */
 :root:root {
   /* ---------- main menu: the same title, text and ribbons as the other screens; shields and painting stay ---------- */
-  .menu--title .set-title { margin-bottom: 0.4rem; }
+  /* Storm white: the one cold, bright thing on a bronze screen. Ivory letters, a lightning-blue halo, a bolt struck through the middle. */
+  .menu--title .menu-hero { position: relative; display: grid; place-items: center; }
+  .menu--title .menu-bolt { position: absolute; left: 63.5%; top: 50%; height: 140%; aspect-ratio: 120 / 200; transform: translate(-50%, -56%); overflow: visible; pointer-events: none; }
+  .menu--title .menu-bolt__core { fill: #f4fbff; stroke: #9fd8ff; stroke-width: 2; stroke-linejoin: round; }
+  .menu--title .menu-bolt__glow { fill: #6ec3ff; stroke: #6ec3ff; stroke-width: 10; stroke-linejoin: round; opacity: 0.55; filter: blur(6px); }
+  .menu--title .set-title {
+    position: relative; z-index: 1; margin-bottom: 0.3rem; padding-bottom: 0.1em; white-space: nowrap; font-size: clamp(60px, 6.4vw, 104px); line-height: 1; letter-spacing: 0.05em;
+    background: linear-gradient(#ffffff 10%, #f3f9ff 45%, #cfe6f7); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 0; paint-order: stroke fill;
+    filter: drop-shadow(0 0 1px #d9a441) drop-shadow(0 0 1px #d9a441) drop-shadow(0 3px 0 #0b1620) drop-shadow(0 0 14px rgba(110, 195, 255, 0.85)) drop-shadow(0 0 38px rgba(70, 150, 255, 0.55));
+  }
+  .menu--title .set-title::before, .menu--title .set-title::after { content: none; }
   .menu--title p.lead { font: 700 clamp(20px, 1.5vw, 24px)/1.3 var(--st-body); color: var(--st-gold); letter-spacing: 0.02em; }
   .menu--title p.notice { font: 600 20px/1.3 var(--st-body); color: var(--st-dim); }
   .menu-shield__name, .dojo-style .menu-shield__name { font-family: var(--st-display); font-weight: 400; letter-spacing: 0.06em; font-size: clamp(20px, 1.55vw, 25px); }

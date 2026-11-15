@@ -27,7 +27,13 @@ export function MainMenu(props: {
     <Panel as="main" className="menu menu--title">
       <MenuScene />
       <h1 className="sr-only">Odyssey Dojo</h1>
-      <SetTitle as="p">Odyssey Dojo</SetTitle>
+      <div className="menu-hero">
+        <svg className="menu-bolt" viewBox="0 0 120 200" aria-hidden="true" focusable="false">
+          <path className="menu-bolt__glow" d="M78 2 L38 84 L64 84 L30 198 L96 96 L68 96 L104 2 Z" />
+          <path className="menu-bolt__core" d="M78 2 L38 84 L64 84 L30 198 L96 96 L68 96 L104 2 Z" />
+        </svg>
+        <SetTitle as="p">Odyssey Dojo</SetTitle>
+      </div>
       <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Learn real self-defense, one monster at a time.</p>
       <nav className="menu-cards" aria-label="Main menu">
         <BronzeDefs />
