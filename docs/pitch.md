@@ -6,7 +6,7 @@ What the presenter says while one judge plays the Polyphemus fight, what to do w
 
 The ElevenLabs and Gemini parts (sound, Athena, Homer and the taunts, the god scan, the server) were checked again against `main` at commit `fd14780` and use two more tags. `[if wired]` means the code is on `main` but no game screen calls it yet, so the judge does not see or hear it. `[if built]` means it is not on `main` at all. Treat both like `[pending]`. The file paths and counts behind these parts are in the two sponsor sections of [devpost.md](devpost.md).
 
-The fight lengths quoted here come from the pacing test's own simulated player (`tests/content.test.ts`: 30 fights as Boxer), run against the engine at that commit. Measure them again if Polyphemus's health or timing changes.
+The fight lengths and phase times quoted here come from the pacing test's own simulated player (`tests/content.test.ts`: 30 fights as Boxer, on the test's seeds), played against the engine at commit `9f9e5ea` by `npx tsx scripts/fight-timings.ts`, which also prints when each phase begins. Measure them again if Polyphemus's health or timing changes.
 
 ## What is true today
 
@@ -48,24 +48,25 @@ The fight lengths quoted here come from the pacing test's own simulated player (
 
 **The presenter clicks everything. The judge never leaves the tape.** If the judge walks up and clicks, the calibration count can measure their resting stance before they are back on the tape, and every dodge and duck in the fight is judged against that.
 
-**Follow his health bar, not the clock.** The fight does not run to a fixed length. The pacing test bounds the average of 30 simulated fights (90 to 150 seconds, at least 24 won), not each fight. What the simulation gives at this commit:
+**Follow his health bar, not the clock.** The fight does not run to a fixed length. The pacing test bounds the average of 30 simulated fights (40 to 150 seconds, at least 24 won), not each fight. What the simulation gives at this commit:
 
 | Player | Result |
 |---|---|
-| The test's player: 85 percent of prompts right, 0.8 seconds to strike | Wins in about two minutes on average; single fights run from 75 to 160 seconds |
-| A slower player: 70 percent right, a full second to strike | Loses 21 fights of 30, about two and a half minutes in. The 9 wins take 2:20 to 3:20 |
-| A covered player: 95 percent right | Wins in 70 to 105 seconds |
+| The test's player: 85 percent of prompts right, 0.8 seconds to strike | Wins all 30 in about a minute on average (58 seconds); single fights run from 37 to 96 seconds |
+| A slower player: 70 percent right, a full second to strike | Wins 29 fights of 30 in about a minute and a half on average (87 seconds); the wins take 56 to 134 seconds, and the one loss comes at 158 seconds |
+| A covered player: 95 percent right | Wins in 36 to 59 seconds |
+| Every prompt right from the keys, 0.3 seconds to strike | Wins in 31 to 32 seconds |
 
-So a first-time judge left alone will most likely lose near the three-minute mark. The plan is to start the fight by 0:20 and to take over the defense from the keys in the last third, or sooner if the judge is losing. The clock times below are for the test's player with the fight starting at 0:20.
+So a first-time judge left alone will most likely win, well inside the three minutes. The plan is to start the fight by 0:20 and to take over the defense from the keys in the last third, or sooner if the judge is losing. The clock times below are for the test's player with the fight starting at 0:20.
 
 | Cue | Clock, on average | Clock, range |
 |---|---|---|
 | Fight starts | 0:20 | |
-| His bar drops to two thirds: The Club | 1:10 | 0:50 to 1:40 |
-| His bar drops to 30 percent: the last phase | 1:50 | 1:15 to 2:25 |
-| His bar is empty: the stake card | 2:15 | 1:35 to 3:00 |
+| His bar drops to two thirds: The Club | 0:40 | 0:35 to 1:00 |
+| His bar drops to 30 percent: the last phase | 1:00 | 0:45 to 1:25 |
+| His bar is empty: the stake card | 1:15 | 0:55 to 1:40 |
 
-Spoken words on the main path: 203 today, 225 with every tagged line in. At 150 words a minute that is about 80 and 90 seconds of talking, which leaves room to call moves and for Athena's clips. The count is next to each line; keep it honest when you edit.
+Spoken words on the main path: 203 today, 209 with the one tagged line in, 225 with the optional rating line as well. At 150 words a minute that is about 80 and 90 seconds of talking. The 150 words said during the fight take about a minute, as long as the test's player's whole fight now, so not every line will fit, and they leave little room to call moves or for Athena's clips. The count is next to each line; keep it honest when you edit.
 
 ### 0:00 to 0:20. Step up
 
@@ -81,7 +82,7 @@ Then click Boxer, click Polyphemus on the map ("The Road Home") and say nothing 
 
 Boxer is the style the pacing test plays, and each of its strikes uses one arm.
 
-### About 0:20 to 1:10. His bar is full. The Cave: the two beats
+### About 0:20 to 0:40. His bar is full. The Cave: the two beats
 
 **Judge:** a red card names a defense; they do it once before the blow lands. A gold card names a strike and a gold ring marks the weak spot; they throw it. In this phase he swings and grabs, with over two seconds of warning.
 
@@ -93,9 +94,9 @@ Then be quiet for three exchanges. If the judge freezes, read the card to them: 
 
 **Say after those (24 words):** "Watch the card shrink. After two clean reps the drawing goes. After five it is only a timer, and I will call the move."
 
-From here on, call any move whose card is only a timer bar (see "When the card is only a bar"). For the test's player the first one arrives about 50 seconds into the fight.
+From here on, call any move whose card is only a timer bar (see "When the card is only a bar"). For the test's player the first one arrives about 50 seconds into the fight (39 to 58), close to the stake, and in 13 fights of 30 it never does.
 
-### About 1:10 to 1:50. His bar is under two thirds. The Club
+### About 0:40 to 1:00. His bar is under two thirds. The Club
 
 **Judge:** hears the phase sound. He now throws boulders as well, which must be ducked, and every warning is about a quarter shorter.
 
@@ -107,7 +108,7 @@ From here on, call any move whose card is only a timer bar (see "When the card i
 
 If the judge's own health is under half here, start covering the defense now and say so.
 
-### About 1:50 to 2:15. His bar is under one third. The last phase
+### About 1:00 to 1:15. His bar is under one third. The last phase
 
 **Judge:** hears the phase sound. He stops grabbing and swings fast: a club swing lands 1.2 seconds after it starts.
 
@@ -119,9 +120,9 @@ Do not say the phase's name, Blinded, out loud: the stake that blinds him comes 
 
 - GOOD, GREAT or PERFECT now flashes after a hit, so this line can be said after a rated hit (16 words, not counted in the 203 above): "The word after each hit is how well you threw it. Better strikes do more damage."
 
-**Clock check at 2:15.** If his bar is still above one third, throw the strikes from the keys as well and say "I will throw with you". For Boxer, pressing J, K and L together lands whatever the card wants.
+**Clock check at 1:15.** If his bar is still above one third, throw the strikes from the keys as well and say "I will throw with you". For Boxer, pressing J, K and L together lands whatever the card wants.
 
-### About 2:15. His bar is empty. The stake
+### About 1:15. His bar is empty. The stake
 
 **Judge:** he is still standing and the card reads DRIVE THE STAKE with its drawing. Both hands together at the chest, then driven forward and down. They cannot be hit here, and the card comes back every six seconds until the move lands.
 
@@ -206,7 +207,7 @@ After five clean reps of a move its card is a thin timer bar with no word and no
 - **Polyphemus and the stake.** His weak spot is "his one eye". He swings a club, grabs, and throws boulders, as he throws them at the ship in the poem. His fight has three phases and cannot end until the sharpened olive stake is driven in. It lands at the stake card. His taunts ("Nobody? I will eat Nobody last!") are voice clips, and one plays at each later phase.
 - **Athena as coach.** Athena is Odysseus's patron. She is not with him in the cave: in Book 13 he tells her he did not see her from the fall of Troy until Scheria. She plans the fight in his hall with him and stands beside him in it as Mentor (Book 22). In the game she coaches you from the first stop: she calls each move as it is needed. Her clips are made ahead of time, so she speaks with no network. It lands the first time she speaks. Her lines and clips are on `main` and the fight screen plays them.
 - **The gods in disguise.** In the poem the gods rarely arrive as themselves: Athena comes as Mentor, as a girl, as a shepherd. We turn that around. The camera looks at the player and names the Olympian they take after, and that god grants one power for the fight. It lands before the style choice. The god scan is on `main` but the game does not open it `[if wired]`, so today nothing names the player's god.
-- **The styles.** Boxer is Odysseus against Irus (Book 18). Jiu-jitsu, Taekwondo, Karate and Kung Fu are not Greek; their one-line descriptions tie them to the bow he strings in Book 21 and to his wits. If a judge asks, say that plainly: they are there so the player can choose how to fight.
+- **The styles.** Each style's one-line description names a figure from Greek myth as its way of fighting: Boxer is Polydeuces, whom Homer calls good with his fists; Jiu-jitsu is Theseus, who threw the strongman Cercyon by skill, not strength; Karate is Heracles, who beat the Nemean lion bare-handed; Kung Fu is Proteus, the Old Man of the Sea, who fights by changing shape; Taekwondo is swift-footed Achilles. Homer names all five in the Odyssey. The styles themselves are not Greek. If a judge asks, say that plainly: they are there so the player can choose how to fight.
 
 ## If you only get three sentences in
 
@@ -223,7 +224,7 @@ Every move has a key, and the camera and the keyboard are merged into one input 
 No. Pose tracking runs in the browser: the runtime is copied and the pose model is downloaded once at setup, and after that the fight makes no network calls and plays its sounds from local files. There is an optional server for the Gemini features and for speech made on demand, and in the game only the Multiplayer rooms, the account sign-in and Hall of heroes, sharing a hero card and the fight written from a sentence (`?ai=1`) use it; our rule is that a full fight plays with the server off.
 
 **3. How do you know it works?**
-The fight rules are a pure function: state, input and elapsed time go in, the new state and a list of events come out, so we test them in plain Node. One test plays 30 simulated fights against Polyphemus and fails unless they average 90 to 150 seconds with at least 24 won; another plays 1,000 random fights and fails if one never ends; another fails if a monster or style names a move that does not exist. (Read the test count off `npm test` on the day; it was 101 at this draft.) What the tests cannot tell us is how the detectors behave on a real body in this room's light: that is `[pending #7, #17]`.
+The fight rules are a pure function: state, input and elapsed time go in, the new state and a list of events come out, so we test them in plain Node. One test plays 30 simulated fights against Polyphemus and fails unless they average 40 to 150 seconds with at least 24 won; another plays 1,000 random fights and fails if one never ends; another fails if a monster or style names a move that does not exist. (Read the test count off `npm test` on the day. At commit `9f9e5ea` it runs 259 test files, 215 in `tests/` and 44 in `server/tests/`; that is files, each holding several tests.) What the tests cannot tell us is how the detectors behave on a real body in this room's light: that is `[pending #7, #17]`.
 
 **4. How does the pose tracking work?**
 Google's MediaPipe pose model (the lite one) runs in the browser on each new webcam frame and returns 33 body points, both as positions in the picture and as 3D positions in metres from the hips. We mirror them so your left is the screen's left and keep the last second of frames. Each move is a small function over that second that returns how sure it is, from 0 to 1.
@@ -256,10 +257,10 @@ Each of us ran a coding agent, and we treated the three agents like three more t
 
 These need a change outside this document. They are listed here because the pitch depends on them.
 
-1. **The fight is longer than the judged slot for a first-time player.** If the judged fight must end inside three minutes without the presenter's help, Polyphemus's health (400) has to come down; the comment in the pacing test names `hp` as the knob.
+1. **Done: the fight fits the judged slot.** Polyphemus's health is down from 400 to 162. In the simulation a slower player (70 percent right, a second to strike) wins 29 fights of 30 in about a minute and a half, and the test's player wins in about a minute; the comment in the pacing test still names `hp` as the knob.
 2. **The card disappears after five clean reps** (bug 1 in [playtest.md](playtest.md), reported on `#24`). Either keep the word at the last level or give each of the four attacks its own animation `[pending #11]`. Until then the presenter calls the moves.
 3. **The third phase is named Blinded, but the stake that blinds him comes after it.** A judge who knows Book 9 may notice. The name now shows on screen for a moment when the phase starts, and the script avoids saying it; renaming the phase is a data change in `src/enemies/defs/polyphemus.ts`.
 4. **Athena's line at the third phase is "He is blind! Stay light!"** (`phase_2` in `src/audio/athenaLines.ts`). She is wired in now, so the judge hears point 3 said out loud before the stake.
-5. **Athena's phase lines are cut short.** Each later phase of each of the six monsters now has its own line, picked by the phase's name, so only Polyphemus hears "He takes his club!". But the next defense call cuts the line after 0.7 s, the engine's pause after a strike (`RECOVER_MS` in `src/combat/engine.ts`), and the longest phase clip is 2.9 s. A pause of about 3 s after a strike that changes the phase would let the whole line be heard. The exact line is in a NEEDS comment on `#2`.
+5. **Done in the engine: Athena's phase lines have room.** Each later phase of each of the six monsters has its own line, picked by the phase's name, so only Polyphemus hears "He takes his club!". After a strike that changes the phase the engine now pauses 3 s (`PHASE_RECOVER_MS` in `src/combat/engine.ts`) instead of 0.7 s, and the longest phase clip is 2.9 s (`phase_the_toll.mp3`), so the next defense call should no longer cut the line. Nobody has logged hearing a whole one.
 6. **Done: Homer, the taunts and Athena's fight start line are wired in.** The main menu speaks one of Homer's opening lines (`src/audio/titleLine.ts`), the fight screen calls `speakLine("fight_start")` and `speakMonsterTaunt`, and the map and the result panel call Homer's lines through `src/screens/hookups.ts`.
 7. **One of the pacing test's 30 simulated fights never throws the stake** and runs to the test's ten-minute cap, which lifts the test's average from about 120 seconds to 136. The test still passes, but its average is closer to the 150-second limit than the fights are.
