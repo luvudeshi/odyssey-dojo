@@ -49,9 +49,9 @@ export function createElevenLabs(apiKey: string): ElevenLabs {
         signal,
       );
     },
-    sound({ prompt, seconds, loop, signal }) {
+    sound({ prompt, seconds, loop, format, signal }) {
       return audio(
-        `/v1/sound-generation?output_format=${FORMAT}`,
+        `/v1/sound-generation?output_format=${format ?? FORMAT}`,
         {
           text: prompt,
           duration_seconds: Math.min(30, Math.max(0.5, seconds)),
