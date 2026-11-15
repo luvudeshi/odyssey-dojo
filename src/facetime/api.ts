@@ -31,6 +31,11 @@ export interface FaceTimeApi {
   callState(callId: string): Promise<RemoteCall>;
   /** No phone: the bridge's seat in the room, for the stand-in page. Nothing is rung. */
   standIn(room: string): Promise<Answer<RoomSeat>>;
+  /**
+   * Asks the server to close the call's room, which drops the bridge and so the phone's side. Leaving the room does
+   * not do that. Sent so that it still goes out while the page is closing. True when the room is closed or was gone.
+   */
+  hangUp(room: string): Promise<boolean>;
 }
 
 const FAILURES: readonly CallFailure[] = ["not_set_up", "bad_number", "line_busy", "unverified", "unauthorized", "network", "no_answer", "greet_late", "room_lost", "service"];
@@ -52,9 +57,9 @@ function refusal(body: unknown, fallback: CallFailure): { ok: false; why: CallFa
 }
 
 export function createFaceTimeApi(fetcher: typeof fetch = (url, init) => fetch(url, init)): FaceTimeApi {
-  const ask = async (path: string, json?: unknown): Promise<{ ok: boolean; body: unknown } | null> => {
+  const ask = async (path: string, json?: unknown, more: RequestInit = {}): Promise<{ ok: boolean; body: unknown } | null> => {
     try {
-      const response = await fetcher(path, json === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(json) });
+      const response = await fetcher(path, json === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(json), ...more });
       const body: unknown = await response.json().catch(() => null);
       return { ok: response.ok, body };
     } catch {
@@ -91,6 +96,11 @@ export function createFaceTimeApi(fetcher: typeof fetch = (url, init) => fetch(u
       if (!answer) return { ok: false, why: "network", message: "" };
       const seat = answer.ok ? seatOf(answer.body) : null;
       return seat ? { ok: true, value: seat } : refusal(answer.body, "service");
+    },
+    async hangUp(room) {
+      // keepalive: the browser finishes the request after the page has gone (pagehide).
+      const answer = await ask("/api/facetime/hangup", { room }, { keepalive: true });
+      return answer?.ok === true;
     },
   };
 }

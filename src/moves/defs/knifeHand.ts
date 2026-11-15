@@ -17,11 +17,11 @@ export const move: MoveDef = {
     const frame = latest(history);
     if (!frame) return 0;
     const out =
-      wristOut(frame, "right") > 1.2 && Math.abs(wristRise(frame, "right")) < 0.7 && elbowAngle(frame, "right") > 125;
+      wristOut(frame, "right") > 0.8 && Math.abs(wristRise(frame, "right")) < 0.9 && elbowAngle(frame, "right") > 100;
     if (!out) return 0;
     // The chamber: the hand was across the body, at chest height or above, a moment ago.
     const chambered = recent(history, 550).some(
-      (old) => wristOut(old, "right") < 0.1 && wristRise(old, "right") > -0.6,
+      (old) => wristOut(old, "right") < 0.4 && wristRise(old, "right") > -0.9,
     );
     return chambered ? 1 : 0;
   },

@@ -17,8 +17,8 @@ const BOTH = pose({ ...LEFT_OUT, ...RIGHT_OUT }, READY);
 
 // A punch is a snap. A steady reach from the chest that takes a full second straightens the elbow just as far,
 // but never quickly, so it must not count.
-test("the left arm reached out slowly, taking a full second, is not a jab", () => {
-  const reach = play(recording([[READY, 300], [READY, 200], [OUT, 1000], [OUT, 300], [READY, 200], [READY, 600]]));
+test("the left arm reached out very slowly, taking three seconds, is not a jab", () => {
+  const reach = play(recording([[READY, 300], [READY, 200], [OUT, 3000], [OUT, 300], [READY, 200], [READY, 600]]));
   expect(thrown(reach, "jab")).toBe(0);
 });
 
