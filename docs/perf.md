@@ -11,16 +11,16 @@ Written by `node scripts/fps.mjs` (`make fps`). Do not edit by hand: run it agai
 
 No measured stop is under 50 fps at the default quality (high).
 
-5 of 24 rows were sampled more than once because the machine was busy with other work or its processor was running slow at the time; the notes say which, and "How to read it" says how that is decided.
+6 of 24 rows were sampled more than once, because a sample came out slow or was taken with the machine busy or its processor running slow. The notes give every sample, and "How to read it" says how the row is chosen.
 
 ## What costs the most
 
 The three heaviest stops at each quality level, from the run with the frame cap on. Draw calls and triangles are per frame.
 
-- **high**, by draw calls: suitors (222 draw calls, 127634 triangles), polyphemus (163 draw calls, 62666 triangles), sirens (161 draw calls, 79796 triangles)
-- **high**, by triangles: suitors (222 draw calls, 127634 triangles), sirens (161 draw calls, 79796 triangles), circe (139 draw calls, 69630 triangles)
-- **low**, by draw calls: suitors (141 draw calls, 69226 triangles), sirens (98 draw calls, 50029 triangles), scylla (94 draw calls, 33419 triangles)
-- **low**, by triangles: suitors (141 draw calls, 69226 triangles), sirens (98 draw calls, 50029 triangles), circe (93 draw calls, 38973 triangles)
+- **high**, by draw calls: suitors (236 draw calls, 218268 triangles), polyphemus (133 draw calls, 60634 triangles), sirens (131 draw calls, 77764 triangles)
+- **high**, by triangles: suitors (236 draw calls, 218268 triangles), sirens (131 draw calls, 77764 triangles), circe (115 draw calls, 72926 triangles)
+- **low**, by draw calls: suitors (149 draw calls, 115055 triangles), sirens (100 draw calls, 50629 triangles), circe (84 draw calls, 43909 triangles)
+- **low**, by triangles: suitors (149 draw calls, 115055 triangles), sirens (100 draw calls, 50629 triangles), circe (84 draw calls, 43909 triangles)
 
 Every measured stop draws fewer triangles at low than at high.
 
@@ -30,18 +30,18 @@ Headless Chrome draws at most 60 frames a second, so 60 means "at the cap".
 
 | stop | quality | mean fps | slowest 1% frame (ms) | worst frame (ms) | draw calls | triangles | machine busy (%) | processor speed (%) | note |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| polyphemus | high | 60.0 | 17.0 | 17.7 | 163 | 62666 | 18 | 100 |  |
-| polyphemus | low | 60.0 | 16.9 | 17.1 | 56 | 32115 | 20 | 98 |  |
-| circe | high | 60.0 | 17.0 | 17.2 | 139 | 69630 | 13 | 93 |  |
-| circe | low | 60.0 | 16.9 | 17.0 | 93 | 38973 | 21 | 100 |  |
-| sirens | high | 60.0 | 17.0 | 18.5 | 161 | 79796 | 18 | 82 |  |
-| sirens | low | 60.0 | 17.0 | 17.4 | 98 | 50029 | 18 | 61 | sampled again 2x because the machine was busy or slow |
-| scylla | high | 60.0 | 16.9 | 17.2 | 156 | 57576 | 25 | 62 |  |
-| scylla | low | 60.0 | 16.9 | 29.8 | 94 | 33419 | 23 | 61 |  |
-| charybdis | high | 60.0 | 17.0 | 17.1 | 126 | 47200 | 23 | 63 |  |
-| charybdis | low | 60.0 | 17.0 | 17.3 | 86 | 31929 | 20 | 64 |  |
-| suitors | high | 60.0 | 17.0 | 17.1 | 222 | 127634 | 25 | 64 |  |
-| suitors | low | 60.0 | 16.9 | 17.0 | 141 | 69226 | 28 | 66 |  |
+| polyphemus | high | 60.0 | 16.9 | 17.1 | 133 | 60634 | 38 | 62 | sampled 2 times (5.9, 60.0 fps): the earlier ones were slow or taken with the machine busy |
+| polyphemus | low | 60.0 | 16.9 | 17.1 | 56 | 32115 | 26 | 57 |  |
+| circe | high | 60.0 | 17.0 | 17.2 | 115 | 72926 | 21 | 55 |  |
+| circe | low | 60.0 | 16.9 | 17.1 | 84 | 43909 | 26 | 56 |  |
+| sirens | high | 60.0 | 17.0 | 17.1 | 131 | 77764 | 22 | 56 |  |
+| sirens | low | 60.0 | 16.9 | 17.1 | 100 | 50629 | 25 | 57 |  |
+| scylla | high | 60.0 | 17.0 | 17.2 | 126 | 55544 | 24 | 60 |  |
+| scylla | low | 60.0 | 16.9 | 17.2 | 79 | 32403 | 27 | 57 |  |
+| charybdis | high | 60.0 | 17.0 | 17.1 | 96 | 45168 | 28 | 55 |  |
+| charybdis | low | 60.0 | 16.9 | 17.0 | 69 | 30585 | 29 | 57 |  |
+| suitors | high | 60.0 | 16.9 | 17.0 | 236 | 218268 | 28 | 56 |  |
+| suitors | low | 60.0 | 16.9 | 17.2 | 149 | 115055 | 26 | 58 |  |
 
 ## Headroom: the same run with the frame cap off
 
@@ -49,18 +49,18 @@ Started with `--use-gl=angle --enable-gpu --ignore-gpu-blocklist --enable-unsafe
 
 | stop | quality | mean fps | slowest 1% frame (ms) | worst frame (ms) | draw calls | triangles | machine busy (%) | processor speed (%) | note |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| polyphemus | high | 189.3 | 22.3 | 34.2 | 163 | 62666 | 39 | 65 |  |
-| polyphemus | low | 474.0 | 4.5 | 22.8 | 56 | 32115 | 49 | 65 |  |
-| circe | high | 190.4 | 23.6 | 185.3 | 139 | 69630 | 36 | 62 |  |
-| circe | low | 418.7 | 4.6 | 5.7 | 93 | 38973 | 46 | 86 |  |
-| sirens | high | 199.6 | 19.8 | 38.2 | 161 | 79796 | 32 | 61 | sampled again 1x because the machine was busy or slow |
-| sirens | low | 396.5 | 4.7 | 11.9 | 117 | 51661 | 40 | 64 |  |
-| scylla | high | 208.3 | 20.1 | 32.3 | 156 | 57576 | 32 | 63 |  |
-| scylla | low | 350.4 | 4.9 | 12.5 | 94 | 33419 | 47 | 63 |  |
-| charybdis | high | 207.2 | 18.7 | 204.9 | 126 | 47200 | 51 | 63 | sampled again 3x because the machine was busy or slow |
-| charybdis | low | 386.0 | 6.4 | 27.3 | 85 | 31761 | 59 | 77 |  |
-| suitors | high | 150.4 | 12.5 | 113.9 | 219 | 128086 | 56 | 50 | the machine was busy or slow in every sample, so the frame rate may be too low |
-| suitors | low | 264.7 | 6.7 | 31.9 | 124 | 68180 | 36 | 56 | the machine was busy or slow in every sample, so the frame rate may be too low |
+| polyphemus | high | 179.6 | 21.6 | 167.1 | 133 | 60634 | 49 | 60 |  |
+| polyphemus | low | 533.0 | 3.9 | 24.4 | 56 | 32115 | 55 | 57 |  |
+| circe | high | 188.9 | 23.2 | 44.5 | 115 | 72926 | 33 | 56 |  |
+| circe | low | 475.6 | 4.0 | 17.2 | 84 | 43909 | 45 | 57 |  |
+| sirens | high | 212.5 | 19.5 | 148.8 | 131 | 77764 | 26 | 100 | sampled 3 times (9.8, 2.1, 212.5 fps): the earlier ones were slow or taken with the machine busy |
+| sirens | low | 665.4 | 8.3 | 56.1 | 101 | 50637 | 30 | 94 |  |
+| scylla | high | 189.7 | 19.8 | 266.7 | 127 | 56056 | 24 | 63 |  |
+| scylla | low | 555.0 | 3.6 | 10.0 | 80 | 32915 | 44 | 40 |  |
+| charybdis | high | 213.2 | 22.9 | 40.4 | 96 | 45168 | 52 | 40 | sampled 2 times (215.7, 213.2 fps): the earlier ones were slow or taken with the machine busy |
+| charybdis | low | 528.6 | 17.1 | 21.2 | 69 | 30585 | 24 | 82 | sampled 2 times (487.9, 528.6 fps): the earlier ones were slow or taken with the machine busy |
+| suitors | high | 151.7 | 19.5 | 106.7 | 236 | 218268 | 44 | 55 | sampled 3 times (144.7, 152.5, 151.7 fps): the earlier ones were slow or taken with the machine busy |
+| suitors | low | 329.3 | 18.5 | 177.9 | 149 | 115055 | 41 | 85 | sampled 3 times (13.9, 10.0, 329.3 fps): the earlier ones were slow or taken with the machine busy |
 
 ## How to read it
 
@@ -68,7 +68,7 @@ Started with `--use-gl=angle --enable-gpu --ignore-gpu-blocklist --enable-unsafe
 - **mean fps** is frames drawn over time elapsed. **slowest 1% frame** is the frame time that 99% of frames beat. **worst frame** is the single longest.
 - **draw calls** and **triangles** are the median per frame over 1 s after the timing, summed over every pass (shadow map, scene, each post-processing pass). The game exposes no renderer under `/?debug`, so the script counts the draw calls on the canvas's WebGL context.
 - **machine busy** is the share of the whole machine's processor time in use during the sample, this browser included. **processor speed** is how fast one core ran a fixed loop around the sample, against the fastest it ran during the whole run: a laptop that clamps its processor (heat, a power limit) shows a low number here.
-- A sample with the machine more than 65% busy or the processor under 60% speed says more about the machine than about the scene. The script then leaves the fight, waits (up to 180 s) for the machine to go quiet and come back to speed, goes back in and samples again, up to 5 times, and keeps the least disturbed sample. The note says when that happened.
+- A sample is suspect when the machine was more than 65% busy, when the processor was under 40% speed, or when the frame rate came out under 50 fps with the cap on (with the cap off: under the same row with the cap on). Other work on the GPU cannot be measured from the script, so a low frame rate is the only sign of it. The script then leaves the fight, rests 15 s, waits (up to 180 s) for the machine to go quiet and come back to speed, goes back in and samples again, up to 5 times. The first sample that is not suspect is the row. A row whose samples were all suspect gets one more round of up to 5 at the end of the pass. If every sample is still suspect the fastest is the row, and the note lists them all: a stop that is slow every time is slow, not disturbed.
 - If a fight ends inside a sample, the script goes back into the stop and samples the full 10 s again, so every row is 10 s of fight.
 - The quality level is switched with the `q` key and checked against the `q: quality` label shown under `/?debug`.
 - Pose tracking was off. With the webcam on, MediaPipe shares the GPU and the CPU, so expect less.
