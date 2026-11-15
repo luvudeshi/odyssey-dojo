@@ -15,6 +15,7 @@ import type { StoredTrace } from "./trace";
 type Phase = "off" | "lead" | "announce" | "still" | "record" | "verdict";
 
 const IDLE_HINT = "Stand, shift your weight, scratch your nose. Make no move.";
+const MAX_GAP_MS = 500;
 const NOT_SEEN = "I could not see you: step back so head and hips show";
 
 export interface Guided {
@@ -38,6 +39,8 @@ export function createGuided(params: SessionParams, moves: ReadonlyMap<string, M
 
   let phase: Phase = "off";
   let phaseStart = 0;
+  let lastNow = 0;
+  let paused = 0;
   let index = 0;
   let attempt = 1;
   let still: PoseFrame[] = [];
@@ -75,7 +78,10 @@ export function createGuided(params: SessionParams, moves: ReadonlyMap<string, M
   function say(text: string): void {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    // Some Chrome builds drop a speak() that follows cancel() at once.
+    setTimeout(() => {
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }, 50);
   }
 
   function show(line: string, good: boolean): void {
@@ -130,7 +136,11 @@ export function createGuided(params: SessionParams, moves: ReadonlyMap<string, M
     show(wrong.length === 0 ? "Reads correctly" : wrong.join("; "), wrong.length === 0);
   }
 
-  function step(frame: PoseFrame | null, now: number): void {
+  function step(frame: PoseFrame | null, rawNow: number): void {
+    // A hidden tab pauses rAF; freeze the phase clock over the gap so the take is not cut short.
+    if (lastNow > 0 && rawNow - lastNow > MAX_GAP_MS) paused += rawNow - lastNow;
+    lastNow = rawNow;
+    const now = rawNow - paused;
     const take = plan[index];
     const spent = (now - phaseStart) / 1000;
     if (phase === "lead") {
@@ -183,7 +193,7 @@ export function createGuided(params: SessionParams, moves: ReadonlyMap<string, M
     show("", true);
     say(hint.textContent);
     renderTable();
-    enter("lead", performance.now());
+    enter("lead", performance.now() - paused);
   });
   stop.addEventListener("click", () => {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();

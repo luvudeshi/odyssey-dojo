@@ -134,6 +134,7 @@ startTracker()
       guided.frame(frame, now);
       if (guided.active()) button.disabled = true;
       else if (current === null) button.disabled = false;
+      if (!guided.active()) guidedButton.disabled = current !== null;
       if (current) {
         const elapsed = now - current.startedAt;
         if (elapsed < COUNTDOWN_MS) {
