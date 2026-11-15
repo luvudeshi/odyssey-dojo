@@ -82,7 +82,7 @@ Branches that are not merged are not described here: other HUD looks, boss cutsc
 ### Should have: in this order, after the freeze (earlier if it is your own claimed area and touches nothing shared)
 | # | Feature | Issue |
 |---|---|---|
-| 16 | God scan: a webcam snapshot goes to Gemini and comes back as your god; falls back to body measurements in the browser | #20, #2 |
+| 16 | God scan: a webcam snapshot goes to Gemini and comes back as your god; falls back to body measurements in the browser. Built, then taken out of the game (PR #392) | #20, #2 |
 | 17 | Divine power: defends fill a meter, your god's gesture spends it | #30 |
 | 18 | Kicks and the Taekwondo style | #25 |
 | 19 | Two players on one camera, double damage | #28 |
@@ -91,7 +91,7 @@ Branches that are not merged are not described here: other HUD looks, boss cutsc
 | 22 | Player figure dressed for the style; real sound effects; Homer's narration and taunts | #18, #19, #2 |
 
 ### Stretch
-- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Reached from its own menu entry, never in the way of the quest.
+- AI-made fights: describe how you fight in your own words and Gemini builds the fight (#2). Built: reached from the main menu's "Ask the Muse" button (PR #409), never in the way of the quest.
 - Replay and god card with a QR code (#2).
 - More quest stops: Circe, the Sirens, Charybdis, the suitors.
 - Difficulty that adapts to the player. Rigged downloaded models.
