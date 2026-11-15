@@ -90,6 +90,48 @@ The 24 that count read exactly as they do with the whole body: the hand moves, t
 only at the nose, shoulders, elbows and wrists. The one hand move that reads a hip is `trident_sweep` (the wrists
 must be above the hips in the picture), and it counts in both variants.
 
+## What the fight can do with it
+
+Issue #239. `src/moves/waistUp.ts` turns the table into three functions the engine can call. None of them reads a
+detector, and `tests/waistUp.test.ts` checks them.
+
+- **`NEEDS_LEGS`** is the list `front_kick`, `knee`: the rows above that say no. The test builds the table again and
+  also reads the copy on this page, and fails if either has a different set of rows that say no.
+- **`legsInView(history, was)`**: true when both knees and at least one ankle were seen (visibility 0.5 or more,
+  inside the picture) in more than half of the frames in the history, which holds the last second. With fewer
+  than 5 frames it is false. `was` is the answer it gave last time: legs that were in view stay in view until they
+  are seen in under 3 frames in 10. With that, a knee that comes and goes every other frame changes the answer at
+  most once; without it, on every frame. Legs that leave are out after about 0.7 s and back about half a second
+  after they return.
+- **`askable(moveId, legsInView)`**: false for a move in `NEEDS_LEGS` when the legs are out of view, true for
+  everything else.
+- **`swapFor(moveId, style, fitting)`**: the move to ask for in its place. A move that counts waist up comes back
+  as it is. A kick becomes the nearest hand strike of the same style: for `front_kick` the first the style has of
+  `spear_thrust`, `cross`, `reverse_punch`, `double_palm`, `jab`, `chain_punch`, `uppercut`; for `knee` the first of
+  `uppercut`, `rising_palm`, `hook`, `hammer_fist`, `cross`, `spear_thrust`, `reverse_punch`, `double_palm`. `fitting`
+  is optional, the open weak spot's `moves`: a hand strike from that list is taken first, so the swap still fits
+  the spot. A defend would become `block`; no defend needs it today.
+
+| style | `front_kick` becomes | `knee` becomes |
+|---|---|---|
+| boxer | cross | uppercut |
+| hoplite | spear_thrust | spear_thrust |
+| karate | reverse_punch | hammer_fist |
+| kung_fu | double_palm | rising_palm |
+| pankration | uppercut | uppercut |
+
+With the legs out of view, all five styles keep a hand strike, every weak spot of all six monsters gets an askable
+strike from the player's style (one that fits the spot whenever the style has one that does), every attack's
+counter is askable, and so are the three finishers.
+
+Two things to know before wiring it in:
+
+- `legsInView` asks for one ankle; the kicks' own `legsVisible` asks for both. A player with one ankle hidden can
+  be asked for a kick that then reads nothing. The kick detectors are being loosened in another change; if they
+  keep wanting both ankles, `legsInFrame` in `src/moves/waistUp.ts` is the one line to tighten.
+- `duck` and `jump` stay askable, because the table says both count without the hips. The seated table below
+  says where a duck goes wrong close to the camera: a big one takes the shoulders out of the bottom of the picture.
+
 ## The four defends, seated
 
 Shoulders 0.6 of the picture wide, hips below the picture and unseen.

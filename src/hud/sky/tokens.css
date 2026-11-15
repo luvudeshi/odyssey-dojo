@@ -1,0 +1,16 @@
+/* The fight HUD in the star-chart look (Katasterismos, the owner's pick for the gameplay screen).
+   Every part under src/hud/sky/ reads its colours and type from the .sky-hud root, so nothing here leaks into other screens. */
+.sky-hud {
+  --sky-glaze: #17110d;
+  --sky-glaze-2: #221912;
+  --sky-clay: #c8612f;
+  --sky-ember: #e58a4e;
+  --sky-clay-lo: #8e3d1c;
+  --sky-bone: #f2e4c8;
+  --sky-star: #ffd9a0;
+  --sky-sand: #f6d5a8;
+  --sky-wine: #7a1f1a;
+  --sky-display: Optima, "Gill Sans", Candara, Palatino, Georgia, serif;
+  --sky-label: "Gill Sans", "Gill Sans MT", "Trebuchet MS", sans-serif;
+  --sky-verse: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}

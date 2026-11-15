@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import { ENEMIES } from "../enemies/registry";
 import { endingFor } from "../enemies/endings";
-import { Button, PebbleHeading, WaveBorder, installGround } from "../ui/pebble";
-import { Ornament } from "../ui/pebble/Ornament";
+import { Button, PebbleHeading, installGround } from "../ui/pebble";
 import "./endPanel.css";
 import { narrateResult } from "./hookups";
 import { practisedFrom, practisedLines } from "./practised";
@@ -29,9 +28,7 @@ export function EndPanel(props: {
   const name = ENEMIES.find((enemy) => enemy.id === enemyId)?.name ?? enemyId;
   return (
     <>
-      <WaveBorder className={`end-wave ${won ? "" : "end-lost"}`} />
-      <PebbleHeading as="div" className="end-title" text={won ? `${name} falls`.toUpperCase() : "YOU ARE STRUCK DOWN"} px={40} tone={won ? "ochre" : "terra"} />
-      <Ornament kind={won ? "wreath" : "rosette"} size={120} className="end-ornament" />
+      <PebbleHeading as="div" className={`end-title ${won ? "" : "end-lost"}`} text={won ? `${name} falls` : "You are struck down"} px={40} tone={won ? "ochre" : "terra"} />
       <div className="end-ending">
         <p className="end-line">{won ? ending.win : ending.loss}</p>
         <p className="end-lesson">{ending.lesson}</p>
