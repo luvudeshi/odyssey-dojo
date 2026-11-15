@@ -68,6 +68,12 @@ Nobody has logged listening to the sound in the game ([audio-levels.md](audio-le
 4. **You click everything. The judge stays on the tape.** Wait on the main menu until the judge is on the mark, then click **Story mode**.
 5. There is no god scan between the menu and the fight now. On **Choose your character** click **Fight as** with the name shown, then pick **Boxer**. Do not press **Esc** on the character screen: it goes back to the main menu.
 6. Before you click the stop on the map, say: "Stand still, arms down, for three seconds." The cutscene with the monster's name comes first; the count starts after it.
+7. **Show the move feedback** once, early in the fight, on a gold card that asks for a jab. It is on the screen only, never spoken. Tagged parts are not on `main` at `9f9e5ea`: if one has not landed, skip it and say nothing about it.
+   - Ask the judge for a sloppy jab: the right hand dropped to the belt. The judge should see `[pending branch feedback-popup, no PR yet]` **GOOD**, "Guard hand by your chin", +50. A dropped guard hand alone never goes lower than GOOD; a jab with the arm left half bent is **NEEDS IMPROVEMENT**, "Extend your arm fully", +25.
+   - Then a clean one: arm all the way out, right fist at the chin. The judge should see `[pending branch feedback-popup]` **EXCELLENT**, +150, no tip.
+   - At the end of the fight: `[pending: the lead's end-screen change, no PR yet]` a report card with a grade for each move and one thing to work on. The card itself is on `main` (PR 404); no screen shows it yet.
+   - In the **Training Dojo** (section 6), pick Boxer and only Jab. A slow, lazy jab should be **Great!** with a tip such as "Too slow. Snap it out fast from a bent arm, then straight back to your guard."; a fast, straight one **Excellent!**. These words and tips are on `main` (PR 405). The strip and the end screen still say "Good" for **Great!** `[pending: the lead's two-line diff, no PR yet]`, and the praise line under **Excellent!** is not shown `[pending: the follow-up to PR 405, no PR yet]`. The Dojo counts leniently: a half-straight jab can still be **Excellent!** with no tip.
+   - None of this has been tried on a real body: try it yourself in the warm-up (section 3).
 
 ## 5. If something goes wrong
 
