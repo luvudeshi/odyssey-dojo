@@ -35,7 +35,7 @@ function Notice(props: { line: string; onLeave: () => void; button: string }) {
   );
 }
 
-function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; tracker: PoseTracker | null; onLeave: () => void }) {
+function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; tracker: PoseTracker | null; onOver: () => void; onLeave: () => void }) {
   const { link, fight, mode, tracker, onLeave } = props;
   const enemy = ENEMIES.find((candidate) => candidate.id === fight.enemyId);
   const style = STYLES.find((candidate) => candidate.id === fight.styleId);
@@ -72,6 +72,12 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
     return () => { cancelAnimationFrame(handle); keyboard.dispose(); };
   }, [link, tracker, fight]);
 
+  // Told once per fight, when it is won or lost: the Account counts a room fight for the guest too.
+  const ended = state?.phase.kind === "won" || state?.phase.kind === "lost";
+  const onOver = useRef(props.onOver);
+  useEffect(() => { onOver.current = props.onOver; });
+  useEffect(() => { if (ended) onOver.current(); }, [ended]);
+
   const holder = useRef<HTMLDivElement>(null);
   const started = state !== null;
   useEffect(() => {
@@ -105,7 +111,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   );
 }
 
-export function GuestFight(props: { joined: Joined; onLeave: () => void }) {
+export function GuestFight(props: { joined: Joined; onOver: () => void; onLeave: () => void }) {
   const { link, mode, tracker } = props.joined;
   const [, tick] = useState(0);
   const [sawHost, setSawHost] = useState(false);
@@ -129,5 +135,5 @@ export function GuestFight(props: { joined: Joined; onLeave: () => void }) {
   if (sawHost && !link.hostHere()) return <Notice line="The host left the room." onLeave={leave} button="Back to the start" />;
   if (link.stopped()) return <Notice line="The host ended the fight. Stay here for the next one, or leave." onLeave={leave} button="Leave the room" />;
   if (!fight) return <Notice line={sawHost ? "You are in. Waiting for the host to start." : "Joining..."} onLeave={leave} button="Leave the room" />;
-  return <Fighting key={fight.seed} link={link} fight={fight} mode={mode} tracker={tracker} onLeave={leave} />;
+  return <Fighting key={fight.seed} link={link} fight={fight} mode={mode} tracker={tracker} onOver={props.onOver} onLeave={leave} />;
 }

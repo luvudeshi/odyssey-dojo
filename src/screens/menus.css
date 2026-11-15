@@ -76,6 +76,3 @@
 .menu .menu-card--primary { border-color: var(--pb-ochre); border-width: 3px; }
 .menu-card__icon { display: block; width: 76px; height: 76px; margin: 0 auto 10px; fill: none; stroke: var(--pb-ochre-light); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .menu .menu-card .style-card__name { font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; }
-.menu .menu-link { margin: 0.5rem 0 0; padding: 6px 10px; min-width: 0; border: 0; background: none; box-shadow: none; color: var(--pb-text); font: 600 18px var(--pb-font-body); letter-spacing: 0; text-transform: none; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
-.menu .menu-link:hover, .menu .menu-link:focus-visible { color: var(--pb-ochre-light); background: none; }
-.menu .menu-link:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }

@@ -1,9 +1,11 @@
 // Runs one fight: reads input every frame, steps the combat engine, and hands the state to the scene and HUD.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { newTally, tallyFrame } from "../account/tally";
+import type { FightTally } from "../account/tally";
 import { playEvent } from "../audio/sfx";
 import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
-import { speakMonsterTaunt, stopStory } from "../audio/storyVoice";
+import { speakMonsterTaunt } from "../audio/storyVoice";
 import { useStopAudio } from "../audio/useStopAudio";
 import { playVoice, speakLine } from "../audio/voice";
 import { PowerReady } from "../ai/power/PowerReady";
@@ -51,7 +53,7 @@ export function FightScreen(props: {
   onQuit?: () => void;
   /** Online room: the guest's strikes join the fight and the state goes back to them. Left out in single play. */
   link?: HostLink | null;
-  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>) => ReactNode;
+  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>) => ReactNode;
 }) {
   const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
@@ -59,6 +61,8 @@ export function FightScreen(props: {
   const pausedRef = useRef(false);
   const patronRef = useRef<GodId>(god ?? "athena");
   const overRef = useRef(false);
+  // What this fight adds to the profile's counters; handed to the result panel with the score.
+  const tally = useRef<FightTally>(newTally());
   const [lost, setLost] = useState(false);
   const [lostWhy, setLostWhy] = useState("");
   const [state, setState] = useState(() => startFight(enemy, seed));
@@ -75,6 +79,7 @@ export function FightScreen(props: {
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
+    tally.current = newTally();
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
@@ -115,6 +120,7 @@ export function FightScreen(props: {
       last = now;
       current = result.state;
       link?.publish(current, result.events, now);
+      tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       result.events.forEach((event) => {
         playEvent(event); noteHit(event); notePhase(event);
         if (event.type === "won") startMusic("win");
@@ -133,7 +139,7 @@ export function FightScreen(props: {
     return () => {
       cancelAnimationFrame(handle);
       keyboard.dispose();
-      stopStory();
+      // Homer's opening line is left to run to its end: leaving the fight (App's onQuit) and the result panel stop him.
     };
   }, [enemy, style, tracker, seed, baseline, link]);
 
@@ -186,7 +192,7 @@ export function FightScreen(props: {
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
-          {renderEnd(state.phase.kind === "won", state.score, state.mastery)}
+          {renderEnd(state.phase.kind === "won", state.score, state.mastery, tally.current)}
         </div>
       )}
     </div>
