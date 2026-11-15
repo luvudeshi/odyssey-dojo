@@ -6,12 +6,18 @@ import { ATHENA_LINES, clipUrl } from "../src/audio/athenaLines";
 const CALLS = [
   "block", "duck", "dodge_left", "dodge_right", "jump", "jab", "cross", "hook", "overhead_strike", "spear_thrust",
   "uppercut", "reverse_punch", "knife_hand", "hammer_fist", "double_palm", "chain_punch", "rising_palm",
+  "front_kick", "knee",
   "thunderbolt", "trident_sweep", "aegis_push", "swift_dash", "moon_arrow", "sun_burst",
   "any_defend", "any_strike", "stake_thrust",
 ];
 const SHORT = ["praise_1", "praise_2", "praise_3", "warn_1", "warn_2", "warn_3"];
-const MOMENTS = ["phase_1", "phase_2", "fight_start", "win", "loss"];
-const POLYPHEMUS_ONLY = ["call_stake_thrust", "phase_1", "phase_2"];
+/** Each belongs to one phase of one enemy, so it may name or point at that enemy. */
+const ENEMY_PHASES = [
+  "phase_1", "phase_2", "phase_the_wand", "phase_unmasked", "phase_the_song", "phase_the_meadow_of_bones",
+  "phase_six_heads", "phase_the_toll", "phase_the_spew", "phase_the_fig_tree", "phase_eurymachus", "phase_the_volley",
+];
+const MOMENTS = [...ENEMY_PHASES, "phase_any", "fight_start", "win", "loss"];
+const ONE_ENEMY_ONLY = ["call_stake_thrust", ...ENEMY_PHASES];
 
 function words(text: string): number {
   return text.split(/\s+/).filter(Boolean).length;
@@ -44,10 +50,10 @@ test("lines fit the gaps between beats: calls 2 to 4 words, praise and warnings 
   }
 });
 
-test("only the Polyphemus-only lines name or point at an enemy; the rest play in every fight", () => {
-  for (const line of ATHENA_LINES.filter((each) => !POLYPHEMUS_ONLY.includes(each.id))) {
-    expect(`${line.when} ${line.text}`, line.id).not.toMatch(/cyclops|polyphemus|scylla/i);
-    expect(line.text, line.id).not.toMatch(/\b(he|him|his|she|her)\b/i);
+test("only the finishing call and each enemy's own phase lines name or point at an enemy; the rest play in every fight", () => {
+  for (const line of ATHENA_LINES.filter((each) => !ONE_ENEMY_ONLY.includes(each.id))) {
+    expect(`${line.when} ${line.text}`, line.id).not.toMatch(/cyclops|polyphemus|circe|siren|scylla|charybdis|suitor/i);
+    expect(line.text, line.id).not.toMatch(/\b(he|him|his|she|her|they|them)\b/i);
   }
 });
 
