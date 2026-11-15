@@ -8,7 +8,7 @@ Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-dojo/issues). 
 
 A full-body 3D fight training game. Your webcam tracks your body. You follow Odysseus's route home, fight the monsters he met in the order he met them, and learn real fighting moves as you go.
 
-1. **Meet your god.** The camera looks at you and names the Olympian you take after. That god grants you one power.
+1. **Pick your hero.** Odysseus, Zeus, Poseidon, Athena or Achilles. Each hero brings one power. (A webcam god scan that named your Olympian was built and taken out, PR #392.)
 2. **Pick a fighting style.** Boxer (jab, cross, hook), Jiu-jitsu (double palm, rising palm, knife hand), Karate, Kung Fu or Taekwondo (kicks and knees).
 3. **Follow the quest map.** Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca. Every stop is open from the start.
 4. **Fight.** Every exchange has two beats:
@@ -24,6 +24,8 @@ Every move also has a key, so the game runs with no camera and no network. That 
 
 ## Status: where we are (updated Sunday 3:30 AM, checked against `main` at PR #341)
 
+A few lines below were brought up to date on 15 November (Multiplayer, accounts, the god scan pick, waist-up). [FEATURES.md](FEATURES.md) is the current list.
+
 The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. Every PR number below is merged.
 
 ### Done, on `main`
@@ -33,17 +35,17 @@ The lead's agent keeps this section true after every batch of merges. The [board
 - **Fight:** phases, a finishing move that cannot be lost, strike quality scaling damage, divine power with a 3D effect and a sound for each god (PR #280, #289), the guard shield as Athena's aegis (PR #285, #294), a real dodge (PR #305), a leap to the weak spot (PR #279), the boulder throw (PR #270). Jab, cross and hook read on either hand (PR #272). The hero strikes a pose for each god power (PR #330).
 - **Fight HUD in the Obsidian Rift look:** lava health bars, glass power disc, action cards, score (PR #323). The prompt card has a 3D mannequin that acts out the move (PR #275).
 - **Training Dojo** as an obsidian forge hall: an outline of each move, a grade and points for every try, what to work on at the end (PR #273, #325). The end screen says what the session changed in the fights (PR #292).
-- **Multiplayer** is one screen with Host, Join and a FaceTime card (PR #296, #326, #327). A guest who reloads gets the same room and seat back (PR #331). The FaceTime call, in `src/facetime/`, puts a friend's iPhone into the fight; it is drawn only when the server has it set up, and hang-up closes the room (PR #319, #321, #336). It has not been on a real call (`docs/facetime.md`).
+- **Multiplayer** is one screen with four cards: host a room, join a room, two players on one camera, and a FaceTime call (PR #296, #326, #327, #436). A guest who reloads gets the same room and seat back (PR #331). The FaceTime call, in `src/facetime/`, puts a friend's iPhone into the fight; its card always shows, its Call button works only when the server has its phone settings, and hang-up closes the room (PR #319, #321, #336). The game answered one real call on 15 November (`docs/facetime.md`, "Run so far").
 - **Account** is the hall of the hero: name, achievement badges with progress, an unlock notice after a fight, twelve more achievements (PR #290, #304, #317, #324).
 - **Sound:** menu, fight and last-stop music by Shane Ivers (PR #301, #333); an unlock chime and a sound for each kind of defend (PR #299); a war horn on a phase change (PR #315); Homer's lines run to their end as a fight starts and before a stop (PR #306, #316); Homer's closing line for the homecoming (PR #291); Scylla's taunt for each phase (PR #282).
 - **Hosting:** a kit to run the game on Vultr over https, in `deploy/vultr/` (PR #332, `docs/deploy-vultr.md`). Not run on a real instance.
-- **Accounts and the Hall of heroes on Tiger Data** (PR #322): the server routes, the database code and the tests. Off unless `DATABASE_URL` is set (`docs/accounts.md`). The sign-in dialog and the hall board are built and are not on a screen yet.
-- **Built, not on a screen:** the god scan character pick, which gives each god one of the five characters (PR #340), and a defense-first progress panel with its saved history (PR #341). Both are modules with tests.
+- **Accounts and the Hall of heroes on Tiger Data** (PR #322): the server routes, the database code and the tests. Off unless `DATABASE_URL` is set (`docs/accounts.md`). The sign-in and the hall board are on the Account screen.
+- **Built, not on a screen:** a defense-first progress panel with its saved history (PR #341), a module with tests. The god scan's character pick (PR #340) went out with the scan (PR #392); players pick a hero themselves.
 - Earlier, still true: calibration with a keyboard escape, the live camera panel, balance and adaptive difficulty, detectors that hold for any body size and a 30 degree turn, five styles (Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo), 26 moves each with a line on what it is for, the AI server (god scan, rooms relay, replay sharing), the Muse's "How do you fight?" screen, reached only at `?ai=1` (PR #307), the demo runbook (PR #286) and credits for every shipped asset (PR #283).
 
 ### Still open
 - **Must:** one full webcam fight on a real body on the demo laptop, and detector tuning from real traces (#7, #17). The Devpost page, the demo video and the backup recording (#21, #130).
-- **Not finished:** waist-up play that never asks for a move the camera cannot see (the rules are in `src/moves/waistUp.ts` and are not connected to the fight, #239) and a smoke run on Windows (#193).
+- **Not finished:** waist-up play is wired into the fight (`src/moves/waistUp.ts`, PR #419) but not tried on a real webcam, and a smoke run on Windows (#193).
 - **Not tried on real hardware:** a FaceTime call, the Vultr host, a database on the demo laptop.
 
 ### Not on `main`

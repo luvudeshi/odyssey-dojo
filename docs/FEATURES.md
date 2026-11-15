@@ -31,7 +31,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **open PR** Ghost check: copying the ghost exactly would count for only 9 of 26 moves today (PR #227, tests and a doc).
 - **open PR** Move guide: an animated figure of the move on the prompt card with a live checklist of what the detector sees (PR #246).
 - **built, not mounted** The figure from myth for each style (`src/styles/heroes.ts`, PR #77). The style menu does not show it.
-- **built, not mounted** Five characters to choose from: Odysseus, Poseidon, Zeus, Athena, Achilles (`src/characters/`, PR #241). Seen only on a demo page (`tools/characters/`); no screen offers the picker and the fight always shows the spartan.
+- **in the game** Five characters to choose from: Odysseus, Poseidon, Zeus, Athena, Achilles (`src/characters/`, PR #241). The picker comes before the style choice (`src/App.tsx` mounts `CharacterPicker`), and the hero picked sets the divine power.
 - **dropped** Player figure dressed for the chosen style (#18, closed): the player picks one of five heroes, each drawn with its own gear, and the styles carry no figure.
 
 ## Tracking and camera
@@ -83,8 +83,8 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **in the game** Online rooms: host a fight, a friend joins by code or QR code and plays with a camera, keys or touch buttons on a phone. Strikes thrown together do double damage. Needs our server running as the relay.
 - **dev tool** Rooms over the internet: an https tunnel (`make tunnel`), relay limits, and polling when the stream does not get through (PR #199, #201, #209).
 - **planned** Rooms fixes still open: a guest who drops and rejoins mid-fight (#222, the network half is merged in PR #233) and time limits on every room request (#226, part merged in PR #244).
-- **built, not mounted** Replay recorder and god card image (`src/replay/`, PR #62), with the upload, phone page and QR code on the server (PR #65). No screen records or shows them.
-- **open PR** God card and share panel for the result screen (PR #109, draft).
+- **in the game** Hero card and share panel on the result screen (`src/replay/ui/SharePanel.tsx`, PR #109): Save works with no server, Share sends the card by QR code.
+- **built, not mounted** Replay recorder (`src/replay/`, PR #62), with the upload, phone page and QR code on the server (PR #65). Nothing records a fight, so Share sends no video.
 
 ## Look and interface
 
@@ -105,14 +105,14 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **dev tool** Key scan of the built game, demo preflight (`npm run preflight`) and a failure drill for the AI server.
 - **dev tool** Voice clip checks: loudness of every clip, and speech to text on what each clip says.
 - **planned** Smoke run for all five styles in Chrome and Edge on Windows (#193); licence check of the assets added tonight (#195).
-- **planned** Devpost page, demo video and backup recording (#130, #21, on hold by the lead).
+- **planned** Devpost page, demo video and backup recording (#130, #21). The Devpost draft is in `docs/devpost/`; the demo video's intro is being built in `demoVideo/`.
 
 ## Not done
 
 - No full webcam fight on a real body on the demo laptop yet (#7). Tracking and the body-following hero have only run on made-up frames and a fake camera in our tests.
 - Detectors are not tuned on the three of us (#17). The numbers are first guesses backed by tests.
 - Waist-up swapping is wired (PR #419) but untested on a real webcam, and in a room a waist-up guest can still be asked for a kick.
-- Listed here earlier as merged but unreachable, and not rechecked on 15 November: adaptive difficulty, the style figures, the fuller lesson list and the replay. The character picker, waist-up swapping, two players on one camera, the Training Dojo and the hero card are in the game now. The god scan was taken out on purpose (PR #392).
+- Listed here earlier as merged but unreachable, and not rechecked on 15 November: adaptive difficulty, the style figures, the fuller lesson list and the replay recorder. The character picker, waist-up swapping, two players on one camera, the Training Dojo and the hero card are in the game now. The god scan was taken out on purpose (PR #392).
 - Frame rate is measured headless only, not on the demo laptop.
 - Rooms have not been shown to work between two real machines over the internet in anything this doc could check.
-- No Devpost page, demo video or backup recording yet.
+- The Devpost text is a draft (`docs/devpost/`). No demo video URL or backup recording is in the repo.
