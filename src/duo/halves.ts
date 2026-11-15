@@ -144,3 +144,16 @@ export function createPairFinder(): PairFinder {
     },
   };
 }
+
+/**
+ * Three models on one GPU can be too much for a slow laptop. True once the frames read with the halves have taken over
+ * `limitMs` each for `forMs` in a row: the tracker then gives the halves up and reads the whole picture as before.
+ */
+export function createSlowWatch(limitMs = 40, forMs = 3000): (tookMs: number, now: number) => boolean {
+  let since: number | null = null;
+  return (tookMs, now) => {
+    if (tookMs <= limitMs) { since = null; return false; }
+    since ??= now;
+    return now - since > forMs;
+  };
+}
