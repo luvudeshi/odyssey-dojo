@@ -19,6 +19,8 @@ npx tsx --env-file=<path to .env> server/tools/hearClips.ts --check    # the sam
 | After `call_knee` was made again | 80 | 0 | 2 | not read |
 | Now: all 82 sent again, with sound tagging on and the word probabilities read | 51 | 0 | 2 | 29 |
 
+**Added after that run:** `narration/homer_homecoming.mp3`, Homer's closing line, made and levelled on the evening of 14 November 2026 and sent once: every word came back as written, with "last" at 0.89, so it reads "unsure?" like the 29 below. It is not in the counts or the tables of this page, which are the 82 clips of the run above. Nobody has listened to it either.
+
 No clip has a word that speech to text heard differently from its line. **One clip is not confirmed all the same: `athena/call_knee.mp3`.** ElevenLabs hears "Knee"; a second engine hears "Me" more often than "Knee". A person has to listen to it.
 
 "unsure" is new in the last row: the words came back right, but speech to text gave one of them a probability under 0.95. It is a weak signal (see "The 29 unsure clips"), and it is the only signal that pointed at `call_knee`.
