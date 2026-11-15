@@ -12,7 +12,7 @@ import { noteMiss } from "../hud/MissFlash";
 import { noteHit } from "../hud/RatingFlash";
 import { TouchPad } from "../hud/TouchPad";
 import { createKeyboard } from "../input/keyboard";
-import { createMissWatch, watchPhase } from "../input/missWatch";
+import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
 import type { GuestLink } from "../net/guest";
@@ -60,7 +60,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
         history = pushFrame(history, frame);
       }
       const phase = link.view()?.state.phase;
-      const asked = phase?.kind === "strike" ? phase.move : null;
+      const asked = askedMove(phase);
       const taps = touched.current.map((move) => ({ move, quality: 0.7, player: 1 as const }));
       touched.current = [];
       const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history, asked) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
