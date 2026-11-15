@@ -47,3 +47,12 @@ The script lives in `src/audio/athenaLines.ts`. This table must match it exactly
 | `fight_start` | The fight begins | I am with you, Odysseus! |
 | `win` | You win the fight | The monster falls! Onward, Odysseus! |
 | `loss` | You lose the fight | Rise, Odysseus. Ithaca still waits for you. |
+
+## Who is heard
+
+Athena speaks one line at a time. `src/audio/voice.ts` ranks the lines, most urgent first: the result (`win`, `loss`), a phase line, a call, `fight_start`, then praise and warnings.
+
+- A phase line takes the voice, even from a call, and holds it to its end (1.7 to 2.4 seconds). Calls, warnings and praise that arrive while it plays are dropped, not queued. The prompt card shows the move anyway.
+- A newer call replaces an older call. The result replaces everything.
+- Praise is almost never heard, and we left it that way. It starts only when the voice is free, and the call for a strike is usually still playing when the strike lands. When praise does start, the next call comes 0.7 seconds after the hit and cuts it, and the praise clips take 1.0 to 1.2 seconds to say.
+- A monster's taunt is not on Athena's voice. It has a channel of its own and plays under her calls: see `docs/narration-lines.md`.
