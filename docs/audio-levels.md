@@ -11,7 +11,7 @@ npx tsx server/tools/levelClips.ts --write    # re-encodes the voice clips that 
 npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and changes no clip
 ```
 
-**After you add or replace a clip, run it with `--write`.** It is safe to run again at any time. A clip within tolerance is left byte for byte as it is. Only clips in `athena`, `narration` and `taunts` are ever rewritten. It reads the folders, not the `index.json` files, and never edits them. `tests/audioLevels.test.ts` fails when a clip has no row in the tables below. With no ffmpeg, add the row by hand under "Measured now": the path in backticks and a dash in each other cell.
+**After you add or replace a clip, run it with `--write`.** It is safe to run again at any time. A clip within tolerance is left byte for byte as it is. Only clips in `athena`, `narration` and `taunts` are ever rewritten. It reads the folders, not the `index.json` files, and never edits them. `tests/audioLevels.test.ts` fails when a clip has no row in the tables below, and when a voice clip's row gives a length its file no longer has (the take was replaced). With no ffmpeg, add the row by hand between the `levels:start` and `levels:end` markers, in the table for its folder: the path in backticks and a dash in each other cell. For a replaced clip, change the cells of its row to dashes.
 
 ## What the columns mean
 
@@ -34,6 +34,8 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | Music under a spoken line | The two loops drop by half (`DUCK` 0.5). The stings do not. | fight -40.0, menu -42.5 LUFS |
 | Ambience | Each clip is brought to RMS 0.08, then times `AMBIENCE_GAIN` 0.16, times the music volume (`stopAudio.ts`). | -38.2 LUFS (-39.1 to -37.6) |
 
+Athena's range leaves out `athena/fight_start.mp3`, which is at -17.2 LUFS and is not levelled here (see "What was changed").
+
 ## Reading the mix
 
 What was wanted: Athena's calls clearly on top, Homer and the monsters near her, effects under the voice, music and ambience well under.
@@ -55,11 +57,11 @@ These are effects, stop sounds and music. This change does not touch those files
 5. **Lines made at run time are not levelled.** `narration.ts` plays what `/api/speech` returns at its own level. Recorded Homer lines came out near -22.3 LUFS before this change, so a line made at run time will likely be about 3 LU under the recorded ones.
 6. **Calls have up to 301 ms of silence after them.** Not trimmed here.
 
-At commit 9578330 no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
+At commit 7557bdf no screen calls `startStopAmbience` or `playStopEvent`, so the stop ambience and the stop events are not heard in the game yet. Their numbers are what they will reach once a screen plays them.
 
 ## What was changed
 
-Voice clips only: `athena`, `narration`, `taunts`. 66 of the 82 were re-encoded. 16 were within tolerance and are untouched. That was two runs of the tool: 54 of the 69 clips that existed first, then 12 of the 13 clips PR #167 added.
+Voice clips only: `athena`, `narration`, `taunts`. 65 of the 82 were re-encoded. 16 were within tolerance and are untouched. One, `athena/fight_start.mp3`, is out of tolerance and was left alone on purpose (see below). That was two runs of the tool: 53 of the 69 clips that existed first, then 12 of the 13 clips PR #167 added.
 
 **Targets.** The clips came in two groups about 7 LU apart, so one target would have meant changing every clip by 3 dB or more. Athena's own lines also had peaks near -0.9 dBTP, and Homer's had peaks 19 dB above their loudness, so neither group could simply be moved to the other. There are two targets:
 
@@ -70,11 +72,13 @@ Voice clips only: `athena`, `narration`, `taunts`. 66 of the 82 were re-encoded.
 
 **How a clip is fixed.** One gain puts it on target. If that gain would lift the peak past -1.5 dBTP, the gain stops there when that lands within 1 LU of the target. Only otherwise is ffmpeg's lookahead limiter (`alimiter`) used, and never for more than 3 dB. 26 clips went through the limiter. The clip is re-encoded with libmp3lame at the rate, channels and bitrate it had (all 82 are 44.1 kHz mono at 128 kbps, before and after). The encoder itself takes about 0.5 dB off at this bitrate, so the tool measures what it made and tries again until it lands.
 
-**What this leaves.** 12 untouched clips peak between -1.4 and -1.0 dBTP: within tolerance, so not rewritten. No move call had more than 48 ms of lead, so none was trimmed. Clip lengths did not change.
+**What this leaves.** 12 untouched clips peak between -1.4 and -1.0 dBTP: within tolerance, so not rewritten. That is a choice. None of them clips, and a rewrite would cost each about 0.5 to 1 dB and a second MP3 encoding. To hold every clip to -1.5 dBTP, set `PEAK_TOLERANCE_DBTP` to -1.5 in `levelRules.ts` and run `--write`. No move call had more than 48 ms of lead, so none was trimmed. Clip lengths did not change.
+
+**`athena/fight_start.mp3` is not levelled here.** PR #188 replaces it with a shorter take, and two PRs that both rewrite one MP3 cannot both merge. So this change leaves the file as it is on `main`, and its row under "Measured now" was put in by hand with dashes. The take on `main` measures -17.2 LUFS with a peak of -2.7 dBTP: 1.7 LU under the target. The take in #188 measures -17.6 LUFS and -1.7 dBTP: 2.1 LU under. Until it is levelled, `--check` exits 1 and names this one clip. **Once #188 is merged, run `--write` once.** On a copy of the folder with #188's take, that brought it to -15.6 LUFS and -1.5 dBTP through the limiter, kept its 1.25 s, and filled in its row. The tables and counts in this section leave the clip out.
 
 | group | clips | before: quietest to loudest (median) | spread | after: quietest to loudest (median) | spread |
 |---|---|---|---|---|---|
-| athena (Athena's own lines) | 50 | -19.4 to -12.6 (-15.3) | 6.8 LU | -16.8 to -14.0 (-15.6) | 2.8 LU |
+| athena (Athena's own lines, without `fight_start`) | 49 | -19.4 to -12.6 (-15.3) | 6.8 LU | -16.8 to -14.0 (-15.6) | 2.8 LU |
 | athena (Homer) | 4 | -22.4 to -21.4 (-21.9) | 1.0 LU | -19.0 to -19.0 (-19.0) | 0.0 LU |
 | athena (Polyphemus) | 4 | -23.0 to -20.4 (-22.2) | 2.6 LU | -20.4 to -19.0 (-19.0) | 1.4 LU |
 | narration | 11 | -23.7 to -21.5 (-22.6) | 2.2 LU | -20.1 to -19.0 (-19.0) | 1.1 LU |
@@ -104,7 +108,6 @@ The clips that were rewritten. "limiter" marks the ones that went through it.
 | `athena/call_swift_dash.mp3` | -17.1 | -16.0 | +1.1 | -0.4 | -1.6 | yes |
 | `athena/call_thunderbolt.mp3` | -14.0 | -15.5 | -1.5 | -0.8 | -2.2 |  |
 | `athena/call_trident_sweep.mp3` | -15.3 | -16.0 | -0.7 | -0.8 | -1.6 |  |
-| `athena/fight_start.mp3` | -17.2 | -16.0 | +1.2 | -2.7 | -1.5 |  |
 | `athena/homer_intro_polyphemus.mp3` | -22.2 | -19.0 | +3.2 | -3.4 | -1.5 | yes |
 | `athena/homer_loss.mp3` | -21.4 | -19.0 | +2.4 | -2.4 | -1.6 | yes |
 | `athena/homer_title.mp3` | -21.6 | -19.0 | +2.6 | -2.5 | -1.5 | yes |
@@ -156,18 +159,19 @@ The clips that were rewritten. "limiter" marks the ones that went through it.
 ## Not tested
 
 - Nobody has listened to any clip, before or after. The limiter was checked by numbers only: on four of the clips it works hardest on, at about the settings used, it turned down 2 to 11 percent of the samples and left the rest as plain gain, and the clip kept its length.
+- **The first clips to listen to** are the five move calls that went through the limiter: `call_any_defend`, `call_duck`, `call_spear_thrust`, `call_stake_thrust` and `call_swift_dash`. A player hears these in every fight. Four of them were within 1.5 LU of the target already and were rewritten only because their peak was 0.1 to 0.6 dB over the tolerance.
 - The levels were not measured in a browser. "At the listener" is the file's loudness plus the gains read from the code.
 - LUFS on a clip of one or two seconds is rough. Two calls 1 LU apart may not sound different.
 
 ## Measured now
 
-Everything from here to the end marker is written by the tool. Do not edit it by hand, except to add a row for a new clip when you have no ffmpeg.
+Everything from here to the end marker is written by the tool. Do not edit it by hand, except to add a row for a new clip when you have no ffmpeg. One row was added by hand: `athena/fight_start.mp3`, with dashes (see "What was changed"). The group table above it counts 49 of Athena's lines for that reason.
 
 <!-- levels:start (written by server/tools/levelClips.ts) -->
 
 | group | clips | quietest | median | loudest | spread LU | at the listener, median (range) |
 |---|---|---|---|---|---|---|
-| athena | 50 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
+| athena | 49 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
 | athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
 | music | 4 | -37.7 | -12.9 | -9.8 | 27.9 | -33.1 (-36.5 to -28.6) |
@@ -234,7 +238,7 @@ None.
 | `athena/call_thunderbolt.mp3` | 2.08 | -15.5 | -2.2 | 1 | 0 | 0.0 | -15.5 |
 | `athena/call_trident_sweep.mp3` | 2.08 | -16.0 | -1.6 | 23 | 131 | 0.0 | -16.0 |
 | `athena/call_uppercut.mp3` | 2.16 | -16.4 | -1.1 | 36 | 279 | 0.0 | -16.4 |
-| `athena/fight_start.mp3` | 2.32 | -16.0 | -1.5 | 20 | 246 | 0.0 | -16.0 |
+| `athena/fight_start.mp3` | - | - | - | - | - | - | - |
 | `athena/loss.mp3` | 3.76 | -15.6 | -1.6 | 34 | 125 | 0.0 | -15.6 |
 | `athena/phase_1.mp3` | 1.68 | -15.6 | -1.5 | 22 | 261 | 0.0 | -15.6 |
 | `athena/phase_2.mp3` | 2.40 | -15.5 | -1.6 | 23 | 0 | 0.0 | -15.5 |
