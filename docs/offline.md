@@ -2,7 +2,7 @@
 
 Issue #156. The judging room's Wi-Fi may fail, so the judged path must need nothing from the internet.
 
-`scripts/offline-check.mjs` builds the game, serves `dist` with `vite preview`, and opens it in headless Chrome. Every request that is not to `localhost` or `127.0.0.1` is aborted and listed. No AI server is started. The script then plays a keyboard fight against Polyphemus by reading the prompt card, and walks the webcam button with Chrome's fake camera.
+`scripts/offline-check.mjs` builds the game, serves `dist` with `vite preview`, and opens it in headless Chrome. Every request that is not to `localhost` or `127.0.0.1` is aborted and listed. No AI server is started. The script then plays a keyboard fight against Polyphemus by reading the prompt card, and walks the Story mode card (the webcam path) with Chrome's fake camera.
 
 ## Result
 
@@ -10,14 +10,16 @@ Run on 14 November 2026 on `main` at `7557bdf`. Apple M4, macOS 15.6, Chrome 157
 
 | Path | Result |
 | --- | --- |
-| Keyboard fight (title, Keyboard only, Boxer, map, Polyphemus, fight, end screen, map) | Nothing left localhost. The page did not throw. Exit 0 with `--no-camera`. |
-| Webcam button with a fake camera (pose tracker, god scan, style, map, intro, calibration) | **One request tried to leave localhost.** The page did not throw. Exit 1. |
+| Keyboard fight (main menu, "Play on the keyboard instead", Boxer, map, Polyphemus, fight, end screen, map) | Nothing left localhost. The page did not throw. Exit 0 with `--no-camera`. |
+| Story mode card with a fake camera (pose tracker, god scan, style, map, calibration) | **One request tried to leave localhost.** The page did not throw. Exit 1. |
 
 The one request is `POST https://odml.pa.googleapis.com/v1/log`. It is a usage log sent by `@mediapipe/tasks-vision` 1.2.3, 60 seconds after the pose tracker starts. See "The pose library's log" below.
 
 `main` moved while this was written. The full check was run at `532abb2` (before the god scan and the music were wired in), `130acfc`, `2cd0666`, `7557bdf` and `c34a1af`, seven times in all, and the keyboard-only check four more times. The result was the same each time. The numbers below are from the two runs at `7557bdf`; the run at `c34a1af` gave the same ones.
 
 **Run again on 14 November 2026 at `28d9c39`, with the pebble interface on every screen** (Windows 11, Chrome 157.0.8103.52 headless on the GPU, ANGLE d3d11), after the script's selectors were moved to the new markup. Same result: nothing left localhost on the keyboard path, the page did not throw, and the one request that tried to leave was the pose library's log. The keyboard fight was won in 32.6 seconds with 9 defends, 9 strikes and the finisher, score 2190. 115 requests on the keyboard path, all answered 2xx. Two things differ from the text below. Headings and buttons were drawn with Trebuchet MS, the installed font on that laptop. In the camera pass the god scan chose a god after the 502 and calibration started, but 75 seconds after the tracker started calibration was still on screen ("Step back: I need to see your head and shoulders") instead of the fight: nobody is in the test pattern. The keyboard-only check was run once more at `34c7571`, after the star-chart fight HUD replaced the pebble one: exit 0, the same 9 defends, 9 strikes, finisher and score 2190, 115 requests.
+
+**Run again late on 14 November 2026 at `5f81bdb`, after the main menu replaced the title screen (PR 281)** (Windows 11, Chrome 157.0.8103.52 headless on the GPU, ANGLE d3d11). The script now presses "Play on the keyboard instead" on the main menu, and the click on Polyphemus on the map starts the fight: the intro screen and its "Face Polyphemus" button are gone. The camera pass presses the Story mode card. Same result: with `--no-camera` exit 0, nothing left localhost, the page did not throw, the fight was won in 33.1 seconds with 9 defends, 9 strikes and the finisher, score 2190, 113 requests. The full check was run once: exit 1, and the one request that tried to leave was the pose library's log. The `--no-camera` check gave the same numbers again at `c865fa8`. One thing changed in how the script counts: the HUD now shows a strike's score only when the hero's blow lands on screen, so a strike counts as accepted when the monster's bar gets shorter, and the score is no longer read for it. Where the text below says "title", read "main menu"; where it says "Face Polyphemus is pressed", read "Polyphemus is clicked on the map"; "Fight together" is now "Host a room" and "Join a room" on the Account screen.
 
 ## The keyboard fight
 
@@ -39,6 +41,8 @@ About 118 requests for 90 different files, all from localhost, all answered 200 
 | Pictures | title | `/ui/palmette.svg`, `/ui/ship.svg` |
 | Sky | when the fight screen opens | `/hdri/qwantani_dusk_2_puresky_1k.hdr` |
 | Picture | end screen | `/ui/laurel.svg` |
+
+Added after that run, and not in its totals: when the fight screen opens the game now also asks for `/audio/power/index.json` and one clip from `/audio/power/`, the sound of the power of the god in the fight (`athena.mp3` on the keyboard path). Both are files served with the game. Seen in a keyboard fight on the dev server on 14 November 2026, both answered 200 before the first prompt card.
 
 - **Fonts:** none are downloaded. The page declares no web font (`document.fonts` is empty). Chrome reports the headings and buttons drawn with Optima, a font installed on this Mac. The stack in `src/theme.css` is `Optima, "Gill Sans", "Trebuchet MS", sans-serif`, so a laptop without Optima shows a different installed font, not a missing one.
 - **Fetched late:** two files are first asked for after "Face Polyphemus" is pressed: `/hdri/qwantani_dusk_2_puresky_1k.hdr` as the fight screen opens, about 1.5 seconds before the first prompt card, and `/ui/laurel.svg` on the win screen. The script prints this list. About 25 more requests in the fight ask again for a voice, sound or music clip that was already fetched on the title screen (206). The check turns the browser cache off, so a normal browser may not ask again.

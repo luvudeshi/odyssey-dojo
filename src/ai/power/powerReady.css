@@ -12,10 +12,6 @@
   color: var(--white, #f2e4c8); transition: opacity 0.15s ease-out;
 }
 .power-ready.power-ready--live * { box-sizing: border-box; pointer-events: none; }
-/* The HUD's defend word (DODGED!, src/hud/DefendFlash.tsx) pops up on this same strip for a second, and a defend is
-   what fills the meter: the banner steps aside while the word is up, then shows. The one rule here that reads a class
-   from outside the banner. */
-.fight:has(.hb-defend__word) .power-ready.power-ready--live { opacity: 0; }
 
 /* The glow is one fixed shadow; the pulse scales the whole plate a little. */
 .power-ready .power-ready__frame {
@@ -55,16 +51,60 @@
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
   font: inherit; font-weight: 700; line-height: 1.1; text-align: center; color: var(--power-ready-accent, #ffd9a0);
 }
+/* Between cards (--waiting) the engine drops a power move, so the plate stops asking: it dims, the pulse holds still,
+   and "On the next card" stands where the key or the gesture was. The dim and the words come 0.8 s late, so the short
+   beat after each strike (0.7 s) changes nothing and only the long one after a phase change does; they leave at once.
+   A press kept for the next card (--queued) brings them at once, so the press is seen to be taken: no transition, as a
+   shorter delay would not move one that is already counting down. */
+.power-ready .power-ready__edge { transition: opacity 0.12s ease-out; }
+.power-ready .power-ready__wait {
+  grid-area: how; visibility: hidden; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
+  font-size: clamp(18px, 1.72vw, 27px); font-weight: 700; line-height: 1.2; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  color: var(--white, #f2e4c8);
+}
+.power-ready.power-ready--waiting .power-ready__frame { animation-play-state: running, paused; }
+.power-ready.power-ready--waiting .power-ready__edge { opacity: 0.55; transition: opacity 0.25s ease-out 0.8s; }
+.power-ready.power-ready--waiting .power-ready__how { visibility: hidden; transition: visibility 0s linear 0.8s; }
+.power-ready.power-ready--waiting .power-ready__wait { visibility: visible; transition: visibility 0s linear 0.8s; }
+.power-ready.power-ready--queued .power-ready__edge { transition: none; }
+.power-ready.power-ready--queued .power-ready__how { transition: none; }
+.power-ready.power-ready--queued .power-ready__wait { transition: none; }
 /* Keyboard play: the key is the instruction, so it is nearly as large as the move's name. */
 .power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2.6vw, 40px); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+
+/* The champion plate, while the meter is filling: two short lines just right of the power ring (src/hud/powerCircle.css:
+   centred, clamp(76px, 6.6vw, 108px) wide, on the same bottom offset), as tall as the ring so it sits level with it.
+   Still: no animation. It stops well short of the prompt card on the right edge. */
+.power-ready.power-ready--champion {
+  position: absolute; left: calc(50% + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px)); bottom: clamp(10px, 1.6vh, 18px); z-index: 6;
+  display: flex; align-items: center; height: clamp(76px, 6.6vw, 108px); margin: 0; padding: 0; pointer-events: none;
+  font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: left; line-height: 1;
+  color: var(--white, #f2e4c8);
+}
+.power-ready.power-ready--champion * { box-sizing: border-box; pointer-events: none; }
+.power-ready .power-ready__patron {
+  padding: 6px 14px 7px 11px; background: var(--ink, #17110d); border: 1px solid var(--power-ready-accent, #ffd9a0); border-left-width: 4px;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
+}
+.power-ready .power-ready__of {
+  font-size: clamp(10px, 0.86vw, 13px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  color: var(--white, #f2e4c8);
+}
+.power-ready .power-ready__god {
+  margin-top: 4px; font-size: clamp(17px, 1.6vw, 25px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  color: var(--power-ready-accent, #ffd9a0);
+}
 
 @keyframes power-ready-in { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
 @keyframes power-ready-pulse { 50% { transform: scale(1.03); } }
 @media (prefers-reduced-motion: reduce) {
   .power-ready .power-ready__frame { animation: none; }
 }
-/* Narrow screens (a phone held upright): the three lines stack, as there is no room for two columns. */
+/* Narrow screens (a phone held upright): the three lines stack, as there is no room for two columns, and there is no
+   room beside the ring for the champion plate. */
 @media (max-width: 760px) {
+  .power-ready.power-ready--champion { display: none; }
   .power-ready .power-ready__plate { grid-template-columns: auto; grid-template-areas: "title" "move" "how"; padding: 7px 30px 8px; }
   .power-ready .power-ready__how { max-width: none; margin-top: 4px; padding-left: 0; border-left: 0; }
+  .power-ready .power-ready__wait { margin-top: 4px; padding-left: 0; border-left: 0; }
 }

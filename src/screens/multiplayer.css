@@ -1,0 +1,14 @@
+/* The Multiplayer screen (Multiplayer.tsx): a host card and a join card side by side. The cards reuse .acc-card. */
+.rooms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: min(64rem, 100%); margin: 0.6rem 0 0.8rem; text-align: left; align-items: stretch; }
+.rooms__card { display: flex; flex-direction: column; padding: 14px 18px 16px; }
+.menu .rooms__card p { font-size: 18px; }
+.rooms__card .room { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; text-align: center; }
+.rooms__card .pb-btn { min-width: 12rem; font-size: 19px; padding: 10px 18px; }
+.rooms__card > .pb-btn { align-self: center; margin-top: auto; }
+.rooms__card .room-invite { display: flex; align-items: center; justify-content: center; gap: 18px; width: 100%; }
+.rooms__card .room .room-code { font-size: 3.6rem; line-height: 1.1; }
+.rooms__card .room .room-url { max-width: 16rem; margin: 0.2rem auto 0; font-size: 14px; }
+.rooms__card .room .room-input { font-size: 2.6rem; width: 6.4em; }
+.rooms__card .room .mode-note { max-width: none; font-size: 16px; }
+.rooms__card .room .notice:empty { display: none; }
+@media (max-width: 760px) { .rooms { grid-template-columns: minmax(0, 1fr); } .rooms__card .room-invite { flex-direction: column; } }

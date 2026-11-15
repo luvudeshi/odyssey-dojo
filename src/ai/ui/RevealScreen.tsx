@@ -11,6 +11,7 @@ import { renderPortrait } from "../gods/portrait";
 import { clothingTint } from "../gods/tint";
 import { revealGod } from "../revealGod";
 import type { GodReveal } from "../revealGod";
+import { revealSound } from "./revealSound";
 import { Button, Panel, PebbleHeading, installGround } from "../../ui/pebble";
 import "./reveal.css";
 
@@ -77,10 +78,16 @@ export function RevealScreen(props: {
   const frame = useRef<PoseFrame | null>(null);
   const preview = useRef<HTMLDivElement>(null);
   const alive = useRef(true);
+  /** Calls off the reveal's sound that has not played yet. */
+  const quiet = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     alive.current = true;
-    return () => { alive.current = false; };
+    return () => {
+      alive.current = false;
+      quiet.current?.();
+      quiet.current = null;
+    };
   }, []);
 
   // Show the player to themselves while they pose, and keep their latest pose for the scan.
@@ -114,6 +121,9 @@ export function RevealScreen(props: {
       if (!alive.current) return;
       setStep({ kind: "revealed", reveal, portrait: firstPortrait(reveal.god, shot !== null) });
       onRevealed?.();
+      // The reveal is the peak before the fight and was silent: the power sting now, Athena's call as the power line fades in.
+      quiet.current?.();
+      quiet.current = revealSound(reveal.god);
       void reveal.portrait.then((portrait) => {
         const picture = portrait ?? emblemPortrait(reveal.god);
         if (alive.current) setStep((now) => (now.kind === "revealed" && now.reveal === reveal ? { ...now, portrait: picture } : now));

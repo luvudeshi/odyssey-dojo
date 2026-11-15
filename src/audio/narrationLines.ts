@@ -1,4 +1,4 @@
-// Homer's line before and after every stop of the quest, and each monster's spoken taunts.
+// Homer's line before and after every stop of the quest, his closing line for the homecoming, and each monster's spoken taunts.
 // docs/narration-lines.md mirrors this script and a test keeps the two equal. Clips are named after the line id, so ids must never change.
 // Polyphemus's opening line and his taunts were recorded first: they stay in storyLines.ts and public/audio/athena/.
 // This file adds the rest and looks across both. It is plain data, so the clip tool in server/tools can read it too.
@@ -95,7 +95,17 @@ export const NARRATION_LINES: readonly QuestLine[] = [
     when: "After the fight with the suitors is won",
     text: "So the hall fell silent. Odysseus, sacker of cities, was home, and Penelope knew him by the secret of their bed.",
   },
+  {
+    id: "homer_homecoming",
+    enemyId: "suitors",
+    speaker: "homer",
+    when: "The quest is won: the last stop's result screen",
+    text: "The great bow sang, and the suitors fell. After twenty years Odysseus was home in Ithaca, with Penelope beside him at last.",
+  },
 ];
+
+/** Homer's closing line, spoken at the end of the quest, once the last stop is won. It belongs to no stop's before or after. */
+export const HOMECOMING_ID = "homer_homecoming";
 
 /** Each text is copied word for word from that enemy's `taunts` in src/enemies/defs. A test fails if one is not there. */
 export const TAUNT_LINES: readonly QuestLine[] = [
@@ -123,8 +133,15 @@ export const TAUNT_LINES: readonly QuestLine[] = [
     when: "The Sirens taunt the player",
     text: "We know all that was suffered at Troy. We know everything that happens on the earth.",
   },
-  // Scylla's file has one taunt, so she has one clip. Add taunts there first, then lines here.
   { id: "taunt_scylla_1", enemyId: "scylla", speaker: "monster", when: "Scylla taunts the player", text: "Six of your crew. That is the toll." },
+  { id: "taunt_scylla_2", enemyId: "scylla", speaker: "monster", when: "Scylla taunts the player", text: "Six mouths, and every one is hungry." },
+  {
+    id: "taunt_scylla_3",
+    enemyId: "scylla",
+    speaker: "monster",
+    when: "Scylla taunts the player",
+    text: "Row, little king. No oar outruns my necks.",
+  },
   {
     id: "taunt_charybdis_1",
     enemyId: "charybdis",

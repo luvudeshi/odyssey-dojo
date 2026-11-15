@@ -28,6 +28,7 @@ export const GLYPH: Record<string, Stroke[]> = {
   G: [[...arc(2, 3, 2, 3, -40, -360, 30), [4, 3], [2.3, 3]]],
   H: [[[0, 0], [0, 6]], [[4, 0], [4, 6]], [[0, 3], [4, 3]]],
   T: [[[0, 0], [4, 0]], [[2, 0], [2, 6]]],
+  J: [[[3.6, 0], [3.6, 4], ...arc(1.8, 4, 1.8, 2, 0, 180, 14)]],
   R: [[[0, 6], [0, 0], [1.7, 0], ...arc(1.7, 1.5, 2.1, 1.5, -90, 90, 14), [0, 3]], [[1.8, 3], [3.8, 6]]],
 };
 const GW: Record<string, number> = { O: 4, D: 4, Y: 4, S: 4, E: 3.6, F: 3.6, I: 2, G: 4, H: 4, T: 4, R: 3.9 };
@@ -77,12 +78,12 @@ export function emblem(l: Layout, r: Rng, cx: number, cy: number, rad: number, p
   }
 }
 
-/** ODYSSEY over FIGHTER over a wave band. Returns the width. */
+/** ODYSSEY over DOJO (centred) over a wave band. Returns the width. */
 export function wordmark(l: Layout, r: Rng, x: number, y: number, scale = 1): number {
   const u = 16.5 * scale, w = wordWidth("ODYSSEY", u, 1.3 * u);
   strokeWord(l, r, "ODYSSEY", x, y, u, { size: 5.4 * scale, rows: 3, col: (_i, row, rg) => (row === 1 ? pick(PAL.cream, rg) : pick(PAL.ochre, rg)) });
-  const u2 = 10 * scale, tr = (w - wordWidth("FIGHTER", u2, 0)) / 6, y2 = y + 136 * scale;
-  strokeWord(l, r, "FIGHTER", x, y2, u2, { size: 4.2 * scale, rows: 2, track: tr, col: (_i, _row, rg) => (rg() < 0.2 ? pick(PAL.cream, rg) : pick(PAL.terra, rg)) });
+  const u2 = 12 * scale, tr = 3.4 * u2, y2 = y + 132 * scale;
+  strokeWord(l, r, "DOJO", x + (w - wordWidth("DOJO", u2, tr)) / 2, y2, u2, { size: 4.2 * scale, rows: 2, track: tr, col: (_i, _row, rg) => (rg() < 0.2 ? pick(PAL.cream, rg) : pick(PAL.terra, rg)) });
   waveBand(l, r, straightBase(x, y2 + 100 * scale), w, { size: 4.6 * scale });
   return w;
 }
