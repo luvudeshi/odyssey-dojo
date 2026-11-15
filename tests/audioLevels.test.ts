@@ -1,14 +1,14 @@
 // Guards docs/audio-levels.md and the rules the clip levelling tool works by. Needs no ffmpeg: the tool itself is not run here.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { expect, test } from "vitest";
 import type { Measure } from "../server/tools/levelRules";
 import {
-  ATHENA_TARGET_LUFS, CALL_LEAD_MS, DOC_END, DOC_START, faults, formatTables, groupOf, isMoveCall, listedClips,
+  ATHENA_TARGET_LUFS, CALL_LEAD_MS, DOC_END, DOC_START, faults, formatTables, groupOf, isMoveCall, isStale, listedClips,
   MAX_LIMIT_DB, median, outOfLine, PEAK_CEILING_DBTP, planFix, playbackDb, refine, STORY_TARGET_LUFS, targetFor, withTables,
 } from "../server/tools/levelRules";
 
 const DOC = "docs/audio-levels.md";
-const RERUN = "run `npx tsx server/tools/levelClips.ts --write` (needs ffmpeg), or add its row by hand as docs/audio-levels.md says";
+const RERUN = "run `npx tsx server/tools/levelClips.ts --write` (needs ffmpeg), or write its row by hand as docs/audio-levels.md says";
 
 /** A clip that is within tolerance unless a test says otherwise. */
 function clip(path: string, changes: Partial<Measure> = {}): Measure {
@@ -21,6 +21,24 @@ test("every clip under public/audio has a row in the doc", () => {
   const listed = new Set(listedClips(readFileSync(DOC, "utf8")).map((row) => row.path));
   expect(clips.length).toBeGreaterThan(100);
   expect(clips.filter((path) => !listed.has(path)), `clips with no row in ${DOC}: ${RERUN}`).toEqual([]);
+});
+
+test("a voice clip's row gives the length of the file that is there now", () => {
+  // A take replaced after the doc was written has a row that looks fine. Its length gives it away, with no ffmpeg.
+  const rows = listedClips(readFileSync(DOC, "utf8"));
+  const stale = rows.filter((row) => !existsSync(`public/audio/${row.path}`) || isStale(row, statSync(`public/audio/${row.path}`).size));
+  expect(stale.map((row) => row.path), `clips removed or replaced since the doc was written: ${RERUN}`).toEqual([]);
+});
+
+test("a row is stale when its length is not the length of the file, and only for a voice clip with numbers", () => {
+  // The opening line as it was (2.32 s, 38,077 bytes) and the shorter take that replaces it (20,941 bytes).
+  const row = clip("athena/fight_start.mp3", { seconds: 2.32 });
+  expect(isStale(row, 38_077)).toBe(false);
+  expect(isStale(row, 20_941)).toBe(true);
+  expect(isStale(clip("athena/fight_start.mp3", { seconds: 1.25 }), 20_941)).toBe(false);
+  // A row added by hand has no length to compare, and effects and music are not all at one bitrate.
+  expect(isStale(clip("athena/fight_start.mp3", { seconds: Number.NaN }), 20_941)).toBe(false);
+  expect(isStale(clip("music/menu.mp3", { seconds: 60 }), 20_941)).toBe(false);
 });
 
 test("every voice clip the doc lists is within tolerance", () => {
