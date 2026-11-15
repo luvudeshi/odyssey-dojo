@@ -8,6 +8,7 @@ export const MAX_ROOMS = 50;
  * An open stream alone does not keep a room alive, and neither does the server's heartbeat on it: a tab left open
  * overnight holds a stream, and a heartbeat is the server talking, not a player. Two connected players between
  * fights send nothing, so IDLE_MS is how long that pause may last; the next fight's first message starts it again.
+ * A client that wants a quiet room kept longer sends any small message now and then: every send that gets through counts.
  */
 export const IDLE_MS = 30 * 60_000;
 export const MAX_MESSAGE_BYTES = 16 * 1024;
@@ -84,6 +85,19 @@ export function createRoomStore(now: () => number = Date.now) {
     heldBy: (owner: string): number => {
       sweep();
       return [...rooms.values()].filter((room) => room.owner === owner).length;
+    },
+    /**
+     * For an owner at its cap. Removes the one of its rooms that has no stream open and was used longest ago (a host
+     * who pressed Back leaves one behind) and returns 0. When somebody is connected to every one, nothing is removed
+     * and the answer is the seconds until the first of them would expire.
+     */
+    freeOne: (owner: string): number => {
+      sweep();
+      const held = [...rooms].filter(([, room]) => room.owner === owner).sort(([, a], [, b]) => a.activeMs - b.activeMs);
+      const empty = held.find(([, room]) => room.host.listener === null && (room.guest?.listener ?? null) === null);
+      if (empty !== undefined) rooms.delete(empty[0]);
+      const oldest = held[0];
+      return empty !== undefined || oldest === undefined ? 0 : Math.max(1, Math.ceil((oldest[1].activeMs + IDLE_MS - now()) / 1000));
     },
     /** A new room and its host token, or null when the server already holds MAX_ROOMS. `owner` is who it counts against. */
     create: (owner = ""): { code: string; token: string } | null => {

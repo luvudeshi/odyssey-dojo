@@ -1,6 +1,6 @@
 // Limits for the room relay, for when a tunnel lets the whole internet reach it (issue #155).
 // All of it is in memory and runs on a clock the tests move. The send limit is per member and lives in ./rooms.
-import type { IncomingHttpHeaders } from "node:http";
+import type { IncomingHttpHeaders, Server } from "node:http";
 import { isLoopback } from "./localOnly";
 
 export const MINUTE_MS = 60_000;
@@ -9,26 +9,51 @@ export const SMALL_BODY_BYTES = 1024;
 export const SEND_ENVELOPE_BYTES = 512;
 export const CREATES_PER_MINUTE = 6;
 export const MAX_ROOMS_PER_CLIENT = 3;
-/** How long a client holding MAX_ROOMS_PER_CLIENT rooms is told to wait. A room it leaves alone is gone after IDLE_MS. */
-export const ROOMS_HELD_RETRY_S = 60;
+/** Rooms no other caller can take, so the laptop that runs the server can always open one of its own. */
+export const ROOMS_KEPT_FOR_THIS_MACHINE = 10;
 /**
  * Guessing odds. A code is four of 23 letters: 23^4 = 279,841 codes, drawn with crypto.randomInt.
  * One address gets WRONG_CODES_PER_MINUTE wrong joins a minute, and as many wrong sends and streams, so 40 guesses a minute.
  * Against one open room that is a 1 in 7,000 chance a minute, about 58 hours on average to find it.
  * Against a full server of 50 rooms it is about 140 minutes to find any one of them.
  * A found code only lets a stranger take an empty guest seat: a room with two members gives nothing without a token (144 random bits).
- * The count is per address, so somebody with many addresses guesses that many times faster.
+ * The count is per IPv4 address or IPv6 /64, so somebody with many of those guesses that many times faster.
  */
 export const WRONG_CODES_PER_MINUTE = 20;
 export const MAX_STREAMS_PER_CLIENT = 8;
 export const STREAMS_RETRY_S = 5;
+/** A reader that lets this much pile up unread has stopped reading, and is cut off (routes/rooms.ts). */
+export const MAX_STREAM_BACKLOG_BYTES = 1024 * 1024;
+/** A request must arrive whole within this, headers within the shorter one, or Node closes it. An event stream is an answer, so it is not cut. */
+export const REQUEST_TIMEOUT_MS = 30_000;
+export const HEADERS_TIMEOUT_MS = 10_000;
 /** Past this many counted clients the expired ones are dropped, and past ten times this everything is forgotten: memory stays bounded. */
 const PRUNE_AT = 1_000;
 
-/** The laptop's own browser, or anything else on it that sends no tunnel header. */
+/** The laptop's own browser, or anything else on it that sends no proxy header. */
 export const THIS_MACHINE = "local";
-/** Set by the tunnel's far end, in the order they are believed. Cloudflare overwrites the first, so a caller cannot choose it. */
-const TUNNEL_HEADERS = ["cf-connecting-ip", "x-real-ip", "x-forwarded-for"] as const;
+/** Every caller that reaches this machine through a proxy other than Cloudflare's: they share one budget. */
+export const RELAYED = "relayed";
+/** The tunnel's far end writes this one itself, so a caller cannot choose it. */
+const TUNNEL_HEADER = "cf-connecting-ip";
+/** Headers other proxies add. The caller can write these too, so their value is never read. */
+const PROXY_HEADERS = ["x-real-ip", "x-forwarded-for", "forwarded", "true-client-ip", "via"] as const;
+
+/**
+ * The network an address counts as. One home or phone is given a whole IPv6 /64 and can use any address in it,
+ * so an IPv6 address is cut to its first four groups. An IPv4 address is kept whole.
+ */
+export function network(address: string): string {
+  const plain = (address.split("%")[0] ?? "").toLowerCase();
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(plain);
+  if (mapped !== null) return mapped[1] ?? plain;
+  if (!plain.includes(":")) return plain;
+  const [head = "", tail] = plain.split("::");
+  const groups = head === "" ? [] : head.split(":");
+  const end = tail === undefined || tail === "" ? [] : tail.split(":");
+  if (tail !== undefined) while (groups.length + end.length < 8) groups.push("0");
+  return `${[...groups, ...end].slice(0, 4).map((group) => group.replace(/^0+(?=.)/, "")).join(":")}::/64`;
+}
 
 /**
  * Who a request is counted against. A tunnel runs on this machine, so its requests arrive from loopback with the real
@@ -36,14 +61,18 @@ const TUNNEL_HEADERS = ["cf-connecting-ip", "x-real-ip", "x-forwarded-for"] as c
  * is ignored on a request from another device, which could put anything there to get a fresh budget.
  */
 export function clientKey(socketAddress: string | undefined, headers: IncomingHttpHeaders): string {
-  if (!isLoopback(socketAddress)) return socketAddress ?? "unknown";
-  for (const name of TUNNEL_HEADERS) {
-    const value = headers[name];
-    // In a list, the last entry is the one the nearest proxy wrote; the caller can make up the earlier ones.
-    const last = (typeof value === "string" ? value : "").split(",").at(-1)?.trim() ?? "";
-    if (last !== "") return `via ${last.slice(0, 64)}`;
-  }
-  return THIS_MACHINE;
+  if (!isLoopback(socketAddress)) return socketAddress === undefined ? "unknown" : network(socketAddress);
+  const value = headers[TUNNEL_HEADER];
+  const caller = (typeof value === "string" ? value : "").trim().slice(0, 64);
+  if (caller !== "") return `via ${network(caller)}`;
+  return PROXY_HEADERS.some((name) => headers[name] !== undefined) ? RELAYED : THIS_MACHINE;
+}
+
+/** Shortens how long a request may take to arrive. The server's own check runs every 30 s, so a stalled one is closed within a minute. */
+export function limitSlowRequests(server: Server): Server {
+  server.requestTimeout = REQUEST_TIMEOUT_MS;
+  server.headersTimeout = HEADERS_TIMEOUT_MS;
+  return server;
 }
 
 export interface Budget {
@@ -82,16 +111,15 @@ export type RoomLimits = ReturnType<typeof createRoomLimits>;
 export function createRoomLimits(now: () => number = Date.now) {
   const creates = createBudget(CREATES_PER_MINUTE, MINUTE_MS, now);
   const wrong = createBudget(WRONG_CODES_PER_MINUTE, MINUTE_MS, now);
-  const streams = new Map<string, number>();
+  const streams = new Map<string, Map<string, number>>();
+  let opened = 0;
   return {
     /**
-     * Seconds `client`, which holds `held` live rooms, must wait before it creates another; 0 lets it and counts it.
-     * This machine is never refused: the laptop running the demo must not be locked out of its own relay, and
-     * MAX_ROOMS still bounds it.
+     * Seconds `client` must wait before it creates another room; 0 lets it and counts it. This machine is never
+     * refused: the laptop running the demo must not be locked out of its own relay, and MAX_ROOMS still bounds it.
      */
-    create: (client: string, held: number): number => {
+    create: (client: string): number => {
       if (client === THIS_MACHINE) return 0;
-      if (held >= MAX_ROOMS_PER_CLIENT) return ROOMS_HELD_RETRY_S;
       const wait = creates.wait(client);
       if (wait === 0) creates.count(client);
       return wait;
@@ -102,18 +130,22 @@ export function createRoomLimits(now: () => number = Date.now) {
      */
     wrongWait: (client: string, call: "join" | "member"): number => wrong.wait(`${call} ${client}`),
     wrongCount: (client: string, call: "join" | "member"): void => { wrong.count(`${call} ${client}`); },
-    /** Takes one of the client's stream places and returns how to give it back, or null when it has none left. */
-    openStream: (client: string): (() => void) | null => {
-      const held = streams.get(client) ?? 0;
-      if (held >= MAX_STREAMS_PER_CLIENT) return null;
-      streams.set(client, held + 1);
-      let given = false;
+    /**
+     * Takes one of the client's stream places for `seat` (a room's code and a member's token) and returns how to give
+     * it back, or null when the client has none left. A seat's newer stream replaces its older one, so it uses the
+     * same place, and the place is given back when the newest stream closes.
+     */
+    openStream: (client: string, seat: string): (() => void) | null => {
+      const held = streams.get(client) ?? new Map<string, number>();
+      if (!held.has(seat) && held.size >= MAX_STREAMS_PER_CLIENT) return null;
+      opened += 1;
+      const mine = opened;
+      held.set(seat, mine);
+      streams.set(client, held);
       return () => {
-        if (given) return;
-        given = true;
-        const left = (streams.get(client) ?? 1) - 1;
-        if (left > 0) streams.set(client, left);
-        else streams.delete(client);
+        if (held.get(seat) !== mine) return;
+        held.delete(seat);
+        if (held.size === 0 && streams.get(client) === held) streams.delete(client);
       };
     },
   };

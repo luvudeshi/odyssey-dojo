@@ -66,17 +66,18 @@ Two laptops can share a fight through the server. It only passes JSON messages b
 | `GET /api/rooms/:code/events?token=` | An event stream (Server-Sent Events). It opens with `{ type: "peer", joined }`, sends that again whenever the other member's stream opens or closes, and otherwise carries each message the other member sent. |
 | `POST /api/rooms/:code/send` | Body `{ token, message }`. The message, a JSON object of at most 16 KB, goes to the other member as it is. Answers `{ delivered }`: a message sent while the other member has no stream open is dropped. 401 wrong token, 404 unknown room, 413 too big. |
 
-Codes are matched without regard to case. These routes answer any device on your network, like the replay pages. To play, the host runs `npm start` and the guest opens `http://<host laptop address>:8787`. The game screens that use the relay are not built yet (issue #29).
+Codes are matched without regard to case. These routes answer any device on your network, like the replay pages. To play, the host runs `npm start` and the guest opens `http://<host laptop address>:8787`. [docs/rooms.md](docs/rooms.md) has the screens.
 
 Limits, for when a tunnel puts the relay on the internet. Past any of the counted ones the answer is 429 `too_many_requests` with a `Retry-After` header in seconds.
 
-- **Body size.** 1 KB for create and join; for send, the 16 KB message plus 512 bytes for the token. A larger body gets 413 and is never held in memory.
-- **Creating rooms.** 6 a minute for each caller, and 3 live rooms at once. The laptop that runs the server is not limited, only bounded by the 50.
+- **Body size.** 1 KB for create and join; for send, the 16 KB message plus 512 bytes for the token. A larger body gets 413 and is never held in memory. The server's 6 MB JSON parser only runs for the routes that this laptop alone may call.
+- **Creating rooms.** 6 a minute for each caller, and 3 live rooms at once. A fourth takes the place of the caller's room that nobody is connected to and was used longest ago; if somebody is connected to all three, the answer is 429 until one expires. Callers other than this laptop stop at 40 rooms (503), so the laptop that runs the server always has 10 for itself. The laptop is not limited, only bounded by the 50.
 - **Wrong codes and tokens.** 20 a minute for each caller on join, and 20 more on send and the event stream together. After that every such call gets 429, right code or wrong. There are 23^4 = 279,841 codes, so one caller needs about 58 hours on average to find one open room.
 - **Sends.** 120 a second for each member. The host sends about 15 a second.
-- **Streams.** One for each member: a newer one closes the older. 8 for each caller.
-- **Who a caller is.** The address of the connection. A tunnel runs on this laptop, so for a connection from this laptop the caller is the address in `Cf-Connecting-Ip`, `X-Real-Ip` or the last entry of `X-Forwarded-For`. The header is only used for counting.
-- **Idle rooms.** A room is removed, and its streams closed, 30 minutes after its last create, join, stream opening or send. An open stream alone does not keep it: a tab left open would hold a room for ever. Two players between fights have those 30 minutes.
+- **Streams.** One for each member: a newer one closes the older and uses the same place. 8 for each caller. A stream whose reader has stopped reading is closed once 1 MB is waiting for it.
+- **Who a caller is.** The address of the connection: an IPv4 address, or the /64 of an IPv6 one. A tunnel runs on this laptop, so for a connection from this laptop the caller is the address in `Cf-Connecting-Ip`, which Cloudflare writes itself. Other proxy headers (`X-Forwarded-For`, `X-Real-Ip`, `Forwarded`, `True-Client-Ip`, `Via`) are not believed: every request from this laptop that carries one and no `Cf-Connecting-Ip` shares one budget. The header is only used for counting.
+- **Idle rooms.** A room is removed, and its streams closed, 30 minutes after its last create, join, stream opening or send. An open stream alone does not keep it: a tab left open would hold a room for ever. So two connected players who send nothing have 30 minutes, and so has a host screen showing its code. To keep a quiet room longer the client has to send something now and then; it does not yet (issue #29).
+- **Stalled requests.** A request has 30 seconds to arrive, its headers 10. Node checks every 30 seconds, so a request that stops half way is closed within a minute.
 
 ## Before you open a PR
 
