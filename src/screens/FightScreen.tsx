@@ -143,7 +143,9 @@ export function FightScreen(props: {
       // and no guest is in the fight (a move may be theirs).
       const body = tracker && !keyboardMode && !link?.guestHere() ? history : null;
       const feedback = watchFeedback(from.phase, current.phase, keys, result.events, body, now, missed);
-      if (feedback) noteFeedback(feedback);
+      // A host on the camera with a guest in the fight has no body to read and no keys in play: the plain MISS, not a key tip.
+      const shown = tracker && !keyboardMode && link?.guestHere() ? null : feedback;
+      if (shown) noteFeedback(shown);
       else if (missed) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
