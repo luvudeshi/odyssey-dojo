@@ -6,7 +6,9 @@
 //   node scripts/offline-check.mjs [--no-build] [--no-camera] [--camera-seconds=75] [--max-seconds=240] [--json=<file>]
 //
 // Exit codes: 0 pass. 1 a request tried to leave localhost, or the page threw. 2 the check could not do its
-// job (no accepted defend or strike, the pose tracker did not start, a screen was missing). 3 Playwright not found.
+// job (no accepted defend or strike, the fight did not end, the pose tracker did not start, a screen was missing).
+// 3 Playwright not found. A run that stops part way still prints what it recorded, and exits 1 when that
+// holds a request that tried to leave localhost or a page error, else 2.
 //
 // Playwright is found the way scripts/fps.mjs finds it, with the same environment:
 //   FPS_PLAYWRIGHT  folder of a playwright or playwright-core install, used when the repo has neither
@@ -89,7 +91,7 @@ async function guard(context, log, pass) {
     if (!/^(https?|wss?):$/.test(url.protocol)) return;
     const entry = {
       pass, url: request.url(), path: url.pathname, method: request.method(), type: request.resourceType(),
-      ms: Date.now() - log.t0, stage: log.stage, afterFirstPrompt: log.firstPromptAt !== null, external: !LOCAL.has(url.hostname), result: "no answer",
+      ms: Date.now() - log.t0, stage: log.stage, external: !LOCAL.has(url.hostname), result: "no answer",
     };
     entries.set(request, entry);
     log.requests.push(entry);
@@ -115,7 +117,7 @@ function listen(page, log, pass) {
   });
   page.on("websocket", (socket) => {
     const url = new URL(socket.url());
-    log.requests.push({ pass, url: socket.url(), path: url.pathname, method: "GET", type: "websocket", ms: Date.now() - log.t0, stage: log.stage, afterFirstPrompt: log.firstPromptAt !== null, external: !LOCAL.has(url.hostname), result: "opened" });
+    log.requests.push({ pass, url: socket.url(), path: url.pathname, method: "GET", type: "websocket", ms: Date.now() - log.t0, stage: log.stage, external: !LOCAL.has(url.hostname), result: "opened" });
   });
 }
 
@@ -167,7 +169,6 @@ async function playFight(page, log, maxMs) {
   let card = null;
   let held = null;
   for (;;) {
-    if (Date.now() - started > maxMs) throw new CheckError(`the fight did not end in ${String(maxMs / 1000)} s`);
     const hud = await page.evaluate(readHud);
     const id = hud.kind ? `${hud.kind}|${String(hud.key)}|${hud.word}|${hud.target}` : null;
     if (card && id !== card.id) {
@@ -185,7 +186,11 @@ async function playFight(page, log, maxMs) {
       else tally.strikesMissed += 1;
       card = null;
     }
-    if (hud.ended) return { ...tally, keys: [...tally.keys], won: hud.heading.endsWith("falls"), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
+    // A fight that runs out of time is handed back as it stands, so the tally and the requests still get printed.
+    if (hud.ended || Date.now() - started > maxMs) {
+      if (held !== null) await page.keyboard.up(held);
+      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: hud.heading.endsWith("falls"), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
+    }
     if (!card && id) {
       if (hud.key === null) throw new CheckError("the prompt card shows no key: key hints are off in the saved settings");
       log.firstPromptAt ??= Date.now() - log.t0;
@@ -232,16 +237,19 @@ async function keyboardPass(browser, base, log, maxMs) {
   log.stage = "intro";
   await page.getByRole("button", { name: `Face ${STOP}` }).waitFor();
   await page.waitForTimeout(1000);
-  await page.getByRole("button", { name: `Face ${STOP}` }).click();
+  // The fight begins with this click. The mark is set first, so nothing the click starts is timed before it.
   log.stage = "fight";
   log.fightAt = Date.now() - log.t0;
+  await page.getByRole("button", { name: `Face ${STOP}` }).click();
   await page.locator(".fight canvas").waitFor();
   const fight = await playFight(page, log, maxMs);
-  log.stage = "result";
-  await page.waitForTimeout(3000);
-  await page.getByRole("button", { name: fight.won ? "Back to the map" : "Map", exact: true }).click();
-  await page.getByRole("heading", { name: "The Road Home" }).waitFor();
-  await page.waitForTimeout(1500);
+  if (fight.ended) {
+    log.stage = "result";
+    await page.waitForTimeout(3000);
+    await page.getByRole("button", { name: fight.won ? "Back to the map" : "Map", exact: true }).click();
+    await page.getByRole("heading", { name: "The Road Home" }).waitFor();
+    await page.waitForTimeout(1500);
+  }
   await context.close();
   return { ...fight, style, fonts };
 }
@@ -299,48 +307,62 @@ const folderOf = (entry) => entry.path.split("/")[1] || "/";
 const line = (entry) => `    ${(entry.ms / 1000).toFixed(1).padStart(6)} s  ${entry.stage.padEnd(7)} ${entry.type.padEnd(10)} ${entry.result.padEnd(4)} ${entry.method} ${entry.external ? entry.url : entry.path}`;
 const isApi = (entry) => entry.path.startsWith("/api/") || entry.path.startsWith("/replays");
 
-function report(log, fight, camera) {
+/** Prints what was recorded. `fight` and `camera` are null when their pass did not finish. */
+function report(log, fight, camera, crash) {
   const external = log.requests.filter((entry) => entry.external);
   const local = log.requests.filter((entry) => !entry.external);
   const keyboard = local.filter((entry) => entry.pass === "keyboard");
   const failed = local.filter((entry) => !/^[23]\d\d$/.test(entry.result) && !isApi(entry));
-  const late = keyboard.filter((entry) => entry.afterFirstPrompt);
   const list = (title, entries) => { say(`  ${title}: ${String(entries.length)}`); entries.forEach((entry) => { say(line(entry)); }); };
 
-  say(`\nKeyboard fight against ${STOP} (style ${fight.style}): ${fight.won ? "won" : "lost"} in ${fight.seconds.toFixed(1)} s, "${fight.heading}", score ${String(fight.score)}`);
-  say(`  defends accepted ${String(fight.defends)}, strikes accepted ${String(fight.strikes)}, finisher ${fight.finisher ? "landed" : "not landed"}, hits taken ${String(fight.hitsTaken)}, strikes missed ${String(fight.strikesMissed)}, unclear ${String(fight.unclear)}`);
-  say(`  keys used: ${fight.keys.join(" ")}`);
-  say(`  end screen, moves learned: ${fight.learned.join(", ") || "none"}`);
+  if (fight) {
+    say(`\nKeyboard fight against ${STOP} (style ${fight.style}): ${fight.ended ? (fight.won ? "won" : "lost") : "not over"} after ${fight.seconds.toFixed(1)} s, "${fight.heading}", score ${String(fight.score)}`);
+    say(`  defends accepted ${String(fight.defends)}, strikes accepted ${String(fight.strikes)}, finisher ${fight.finisher ? "landed" : "not landed"}, hits taken ${String(fight.hitsTaken)}, strikes missed ${String(fight.strikesMissed)}, unclear ${String(fight.unclear)}`);
+    say(`  keys used: ${fight.keys.join(" ")}`);
+    if (fight.ended) say(`  end screen, moves learned: ${fight.learned.join(", ") || "none"}`);
+  }
   say(`\nRequests: ${String(log.requests.length)} in all, ${String(external.length)} tried to leave localhost`);
   external.forEach((entry) => { say(line(entry)); });
   say(`  keyboard pass by folder: ${countBy(keyboard, folderOf)}`);
   say(`  keyboard pass by screen: ${countBy(keyboard, (entry) => entry.stage)}`);
   list("calls to the AI server in the keyboard pass (none is running)", keyboard.filter(isApi));
   list("other local requests that did not get a 2xx or 3xx", failed);
-  list(`asked for after the first prompt card (${((log.firstPromptAt ?? 0) / 1000).toFixed(1)} s)`, late);
-  say(`\nFonts: heading drawn with ${fight.fonts.heading.join(", ")}; buttons with ${fight.fonts.button.join(", ")}; web fonts declared by the page: ${String(fight.fonts.webFontsDeclared)}`);
+  if (log.fightAt !== null) {
+    // Late fetches: the first ask for a file once the fight has begun. Asking again for a file is only counted.
+    const seen = new Set(keyboard.filter((entry) => entry.ms < log.fightAt).map((entry) => entry.path));
+    const late = keyboard.filter((entry) => entry.ms >= log.fightAt);
+    const first = late.filter((entry) => !seen.has(entry.path) && seen.add(entry.path));
+    list(`first asked for after the fight began (${(log.fightAt / 1000).toFixed(1)} s; first prompt card ${log.firstPromptAt === null ? "never" : `${(log.firstPromptAt / 1000).toFixed(1)} s`})`, first);
+    say(`  asked for again after the fight began (files already fetched once): ${String(late.length - first.length)}`);
+  }
+  if (fight) say(`\nFonts: heading drawn with ${fight.fonts.heading.join(", ")}; buttons with ${fight.fonts.button.join(", ")}; web fonts declared by the page: ${String(fight.fonts.webFontsDeclared)}`);
   say(`Console errors and warnings: ${String(log.console.length)}`);
   new Set(log.console.map((entry) => `[${entry.pass} ${entry.type}] ${entry.text.slice(0, 200)}`)).forEach((text) => { say(`    ${text}`); });
   say(`Page errors: ${String(log.pageErrors.length)}`);
   log.pageErrors.forEach((entry) => { say(`    [${entry.pass} ${entry.stage}] ${entry.text}`); });
-  if (camera) {
-    const pose = local.filter((entry) => entry.pass === "camera" && entry.path.startsWith("/mediapipe/"));
+  if (flag("no-camera")) say("\nCamera pass: skipped (--no-camera)");
+  else if (camera) {
     say(`\nCamera pass (Chrome's fake camera): pose tracker ${camera.started ? "started" : `did NOT start ("${camera.notice}")`}${camera.calibration ? `, god scan chose "${camera.god}", then "${camera.calibration}"; watched for ${camera.seconds.toFixed(0)} s, on screen at the end: ${camera.ending}` : ""}`);
-    list("pose files asked for, all from localhost", pose);
+    list("pose files asked for, all from localhost", local.filter((entry) => entry.pass === "camera" && entry.path.startsWith("/mediapipe/")));
     list("calls to the AI server in the camera pass (none is running)", local.filter((entry) => entry.pass === "camera" && isApi(entry)));
-  } else say("\nCamera pass: skipped (--no-camera)");
+  } else say("\nCamera pass: not finished");
+  if (crash) say(`\nStopped on the ${crash.stage} screen: ${crash.text}`);
 }
 
 /** Why the run fails, most serious first; empty when it passes. */
-function verdict(log, fight, camera) {
+function verdict(log, fight, camera, crash) {
   const reasons = [];
   const external = log.requests.filter((entry) => entry.external);
   if (external.length > 0) reasons.push({ code: 1, text: `${String(external.length)} request(s) tried to leave localhost` });
   if (log.pageErrors.length > 0) reasons.push({ code: 1, text: `the page threw ${String(log.pageErrors.length)} error(s)` });
-  if (fight.defends < 1 || fight.strikes < 1) reasons.push({ code: 2, text: `the game accepted ${String(fight.defends)} defend(s) and ${String(fight.strikes)} strike(s); at least one of each is needed` });
-  const learned = fight.learned.reduce((sum, item) => sum + Number(/x(\d+)$/.exec(item)?.[1] ?? 0), 0);
-  const counted = fight.defends + fight.strikes + (fight.finisher ? 1 : 0);
-  if (learned !== counted) reasons.push({ code: 2, text: `the end screen lists ${String(learned)} moves done right, the script counted ${String(counted)}` });
+  if (crash) reasons.push({ code: 2, text: `the check stopped on the ${crash.stage} screen (${crash.text.split("\n")[0]})` });
+  if (fight && !fight.ended) reasons.push({ code: 2, text: `the fight was not over after ${fight.seconds.toFixed(0)} s` });
+  if (fight && (fight.defends < 1 || fight.strikes < 1)) reasons.push({ code: 2, text: `the game accepted ${String(fight.defends)} defend(s) and ${String(fight.strikes)} strike(s); at least one of each is needed` });
+  if (fight?.ended) {
+    const learned = fight.learned.reduce((sum, item) => sum + Number(/x(\d+)$/.exec(item)?.[1] ?? 0), 0);
+    const counted = fight.defends + fight.strikes + (fight.finisher ? 1 : 0);
+    if (learned !== counted) reasons.push({ code: 2, text: `the end screen lists ${String(learned)} moves done right, the script counted ${String(counted)}` });
+  }
   if (camera && !camera.started) reasons.push({ code: 2, text: `the pose tracker did not start with the fake camera: "${camera.notice}"` });
   return reasons;
 }
@@ -367,12 +389,20 @@ async function main() {
     browser = await chromium.launch({ headless: true, args: browserArgs(), ...(channel ? { channel } : {}) });
     say(`Serving dist at ${base} with no AI server. Browser: ${channel || "chromium"} ${browser.version()}, headless.`);
     say("Every request that is not localhost or 127.0.0.1 is aborted and listed.");
-    const fight = await keyboardPass(browser, base, log, maxMs);
-    const camera = flag("no-camera") ? null : await cameraPass(browser, base, log, Number(option("camera-seconds", "75")) * 1000);
-    report(log, fight, camera);
-    const reasons = verdict(log, fight, camera);
+    let fight = null;
+    let camera = null;
+    let crash = null;
+    try {
+      fight = await keyboardPass(browser, base, log, maxMs);
+      if (!flag("no-camera")) camera = await cameraPass(browser, base, log, Number(option("camera-seconds", "75")) * 1000);
+    } catch (error) {
+      // A game that cannot start with the network blocked ends up here. What was recorded is still printed.
+      crash = { stage: log.stage, text: error instanceof Error ? error.message : String(error) };
+    }
+    report(log, fight, camera, crash);
+    const reasons = verdict(log, fight, camera, crash);
     const file = option("json", "");
-    if (file) writeFileSync(resolve(file), JSON.stringify({ base, browser: browser.version(), fight, camera, reasons, ...log }, null, 2));
+    if (file) writeFileSync(resolve(file), JSON.stringify({ base, browser: browser.version(), fight, camera, crash, reasons, ...log }, null, 2));
     say(reasons.length === 0 ? "\nPASS: nothing left localhost, the page did not throw, and the fight was played." : `\nFAIL: ${reasons.map((reason) => reason.text).join("; ")}.`);
     process.exitCode = reasons.length === 0 ? 0 : Math.min(...reasons.map((reason) => reason.code));
   } finally {
