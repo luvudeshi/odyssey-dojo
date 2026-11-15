@@ -1,0 +1,37 @@
+/* The power ring (PowerCircle.tsx): bottom centre of the fight, right of the hero's feet (he stands at about 40 to 45%
+   of the width) and clear of the camera panel (bottom left) and the prompt card (right edge). */
+.power-circle {
+  --pc-size: clamp(76px, 6.6vw, 108px);
+  --pc-accent: #ffd9a0;
+  position: absolute; left: 50%; bottom: clamp(10px, 1.6vh, 18px); z-index: 6;
+  width: var(--pc-size); height: var(--pc-size); transform: translateX(-50%);
+  pointer-events: none; transition: bottom 0.25s ease-out;
+  font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; color: #f2e4c8;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
+}
+/* The power-ready banner (src/ai/power/powerReady.css) takes the bottom strip while the meter is full: the ring sits
+   on top of it. The sum is that banner's bottom offset plus its two text lines and padding, with room for a third line. */
+.power-circle.is-lifted { bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 52px); }
+.power-circle svg { display: block; width: 100%; height: 100%; }
+.power-circle__ground { fill: rgba(23, 17, 13, 0.9); stroke: var(--pc-accent); stroke-width: 1.5; }
+.power-circle__track { fill: none; stroke: rgba(242, 228, 200, 0.2); stroke-width: 10; }
+.power-circle__fill { fill: none; stroke: var(--pc-accent); stroke-width: 10; transition: stroke-dashoffset 0.35s ease-out; }
+.power-circle__tick { stroke: #17110d; stroke-width: 2.5; }
+.power-circle__text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
+.power-circle__text strong { font-size: calc(var(--pc-size) * 0.29); font-weight: 700; letter-spacing: 0.02em; }
+.power-circle__text span { margin-top: 0.3em; font-size: calc(var(--pc-size) * 0.13); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; }
+
+/* Full: the disc turns to the accent colour, glows, beats, and throws a ring outward once a second. */
+.power-circle.is-full { filter: drop-shadow(0 0 16px var(--pc-accent)) drop-shadow(0 0 5px #fff); animation: power-circle-pulse 1s ease-in-out infinite; }
+.power-circle.is-full .power-circle__ground { fill: var(--pc-accent); stroke: #fff; stroke-width: 3; }
+.power-circle.is-full .power-circle__fill { stroke: #fff; }
+.power-circle.is-full .power-circle__text { color: #17110d; }
+.power-circle.is-full::after {
+  content: ""; position: absolute; inset: 0; border: 3px solid var(--pc-accent); border-radius: 50%;
+  animation: power-circle-ring 1s ease-out infinite;
+}
+@keyframes power-circle-pulse { 50% { transform: translateX(-50%) scale(1.12); } }
+@keyframes power-circle-ring { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .power-circle.is-full, .power-circle.is-full::after { animation: none; }
+}

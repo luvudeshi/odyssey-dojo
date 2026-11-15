@@ -21,12 +21,14 @@ test("a short push that stops with the elbow still bent at 120 degrees is not a 
   expect(thrown(short, "cross")).toBe(0);
 });
 
-test("a jab is not a cross", () => {
+// Jab and cross read on either hand (the owner's ruling): a left-hand punch counts as a cross too, once.
+test("a left-hand punch is a cross as well as a jab", () => {
   const left = pose(LEFT_OUT, READY);
   const jab = play(recording([[READY, 300], [READY, 200], [left, 132], [left, 66], [READY, 200], [READY, 600]]));
-  expect(thrown(jab, "cross")).toBe(0);
+  expect(thrown(jab, "cross")).toBe(1);
+  expect(thrown(jab, "jab")).toBe(1);
 });
 
-test("no other base move fires during a cross", () => {
-  expect(others(cross, "cross")).toEqual([]);
+test("no other base move fires during a cross, apart from the jab", () => {
+  expect(others(cross, "cross")).toEqual(["jab"]);
 });
