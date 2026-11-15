@@ -1,17 +1,53 @@
 # Call a friend on FaceTime
 
-A third way to play together. The host types a friend's phone number. The friend's iPhone rings with a FaceTime call. No app. The friend sees the fight on the phone and strikes with their own body in front of the phone's camera.
+A third way to play together. A friend's iPhone and the game are joined by a FaceTime call. No app. The friend sees the fight on the phone and strikes with their own body in front of the phone's camera.
 
-**Read this first: none of this has been on a real call.** No phone has rung. A teammate ran the stand-in path against a real LiveKit room; the fixes that came out of that run (hang up closing the room, the wider margins, the plate's last line) were written with no keys and have not been back on a real room. What was run is listed under Tested. What was only written from Chert's setup page or LiveKit's docs is listed under Not tested.
+There are two ways to start the call. On a trial line the one that works is **inbound**: the friend FaceTimes the line's number and the game answers. The other is **outbound**: the host types the friend's number and the game rings the phone. Most of this page was written for the outbound way, before anyone had a Chert line. **The outbound way is untested on a trial line.**
 
-## How it works
+**Read this first: the game itself has not been on a real call.** One real FaceTime call has been made, to a probe page that sends the same tracks the game sends (see the next section). The game's own answer path is being built on the branch `2-facetime-answer` and is not merged. A teammate ran the stand-in path against a real LiveKit room; the fixes that came out of that run (hang up closing the room, the wider margins, the plate's last line) were written with no keys and have not been back on a real room. What was run is listed under Tested. What was only written from Chert's setup page or LiveKit's docs is listed under Not tested.
 
-Chert bridges each FaceTime call into a LiveKit room. The game's browser tab joins that room as the agent.
+## How a call really reaches the game (trial line)
+
+This is from a teammate's notes on the team's noticeboard, after Chert was set up on one Mac and one real call was made. The demo script is in [facetime-demo.md](facetime-demo.md).
+
+**The line is only ours while an agent is connected.** Two things must stay running on the Mac that holds the line:
+
+- `chert dev --agent odyssey-dojo`. It holds the line.
+- A small silent LiveKit agent named `odyssey-dojo`, made from Chert's starter. It lives in a folder outside this repo. It publishes nothing. It writes the waiting room's name to a local file.
+
+If no agent is connected, a trial line goes back to the pool (after 15 minutes when lines are busy). Getting one back can take hours when the lines are full. `chert doctor` checks the line, the LiveKit keys and that the agent joins.
+
+**How a call comes in:**
+
+1. `chert dev` keeps a room ready before any call, in our LiveKit project. Its name is `chert-warm-<id>`. The named agent is already in it. Each call gets a new room.
+2. With no call, the waiting room is replaced about every 5 minutes. A tab that joined early gets `ROOM_DELETED` and must join the new one.
+3. The friend FaceTimes the line's number. Chert answers (in 0.1 s on the real call) and the caller joins the waiting room as `chert-bridge-<call id>`. Not `facetime-bridge`.
+4. When FaceTime is up, the room's metadata becomes `{"chert_call":"<id>","chert_bridge_ready":true,"at":"..."}`. On the real call this ready sign came 7.6 s after the caller joined.
+5. **Something must be heard within 10 seconds of the ready sign, or Chert ends the call** (`remote_audio_timeout`). A greeting when the caller joins is too early to count. A sound stream with nothing playing sends no sound packets, so silence does not count either.
+6. **Exactly one participant may publish audio. A second one ends the call.** Video is taken only from that same participant. It does not have to be the agent: the game's browser tab can be a third participant that publishes both, while the agent stays silent. On the real call `chert dev` said the video and audio were coming from the browser page.
+7. The caller's tracks are `facetime-remote-video` (1280 by 720, so wide and not tall, VP8, about 15 frames a second, first frame 6 s after joining) and `facetime-remote-audio` (Opus).
+
+**Trial limits:** 50 FaceTime minutes, 5 minutes a call, and the trial lasts 24 hours. A phone other than the one that signed up must text a join code to the line's number once before it can call.
+
+**What the game needs for this, and where it stands:**
+
+- A server route, `GET /api/facetime/waiting` (this machine only): the waiting room's name and a token for the game's seat in it. The agent's file can be wrong for minutes after a room is replaced, so the server should fall back to LiveKit's room list: the newest `chert-warm-*` room with an agent in it.
+- The session treats a participant whose identity starts with `chert-bridge-` as the friend, joins the room the server names, and joins the next waiting room when a call ends or the room is replaced.
+- The card gets a "Wait for a FaceTime call" state that shows the line's number.
+- All three are on the branch `2-facetime-answer`, not on `main`. The names here are from the plan and may differ in the merged code.
+
+**Seen on the real call:** the answer, the caller's identity, the ready sign and its timing, the caller's tracks, one sound publisher for the whole call, and the picture and sound of a browser page on the phone. That page was a probe, not the game. It published what the game publishes: `odyssey-dojo-fight` (720 by 1280, VP8, no simulcast) and `odyssey-dojo-sound`.
+
+**Not seen yet:** the game answering a call, Athena's greeting on a phone, a fight on a phone, a punch read from a phone's picture, a second phone using the join code.
+
+## How it works (the outbound call, untested on a trial line)
+
+Chert bridges each FaceTime call into a LiveKit room. The game's browser tab joins that room. For an inbound call the room is Chert's waiting room and steps 1 and 3 do not happen; see the section above.
 
 1. The host presses Call on the card. The game server makes a room name and signs two LiveKit tokens: one for the game tab, one for Chert's bridge.
 2. The tab joins the room and publishes two tracks before the phone rings: a camera track (the picture for the phone) and a microphone track (the game's sound). Chert sends video only when the speaking participant has a camera track.
-3. The server asks Chert to place the call (`POST /api/v1/calls`, `customer_managed`, audio and video on).
-4. When the room's metadata says `chert_bridge_ready`, the tab plays a chime at once and Athena's greeting. Chert wants a greeting within 10 seconds of that moment, not of joining. If the friend's video arrives and no such metadata is seen for 3 seconds, the tab greets anyway.
+3. The server asks Chert to place the call (`POST /api/v1/calls`, `customer_managed`, audio and video on). On a trial line this needs the line's routing changed in Chert's console and a project key. Nobody has tried it.
+4. When the room's metadata says `chert_bridge_ready`, the tab plays a chime at once and Athena's greeting. Chert wants something heard within 10 seconds of that moment, not of joining (on the real call the sign came 7.6 s after the caller joined). If the friend's video arrives and no such metadata is seen for 3 seconds, the tab greets anyway.
 5. The friend's camera track is read by the same pose model the webcam uses. Their strikes go into the fight as the second fighter. Only the host defends, as in a room.
 6. At 4:45 Athena says goodbye. At 5:00 the call is ended. The trial limit is 5 minutes a call.
 7. Ending a call, by anyone and for any reason, does two things: the tab leaves the room, and the server deletes the room at LiveKit (see Hang up). The second drops Chert's bridge, which leaving alone does not.
@@ -53,7 +89,7 @@ You need a Chert account with a line, the LiveKit project Chert's setup gives yo
 
    `LIVEKIT_URL` is the `wss://` address. `CHERT_LINE_ID` is the id of the line to call from; `GET https://app.trychert.com/api/v1/lines` with your key lists them.
 
-2. On a trial line, the friend must text the line's number once from the iPhone. Chert only calls verified phones.
+2. On a trial line, the friend must text a join code to the line's number once from the iPhone. The phone that signed up for the trial is already verified.
 
 3. Install and run:
 
@@ -156,13 +192,15 @@ What this does NOT prove:
 
 - **Chert's request.** `POST /api/v1/calls` is never sent. Its body, its headers, its error words, its call states and the meaning of `remote_participant_identity` stay unchecked.
 - **Ringing.** No phone rings, nothing is answered or declined, and nobody is asked how the call is doing.
-- **The bridge's ready sign.** A participant's token cannot write the room's metadata, so `chert_bridge_ready` is never sent. The game takes its 3 second fallback every time here. What the real metadata looks like, and whether `bridgeReady()` reads it, is still unknown.
-- **The bridge's identity and track names.** The stand-in joins as `facetime-bridge` and publishes a browser's camera and microphone tracks. What Chert's bridge calls itself and its tracks was never seen. Whether Chert sends the phone the game's picture (it wants a camera track from the speaking participant) is not shown either.
-- **A phone's picture.** The stand-in sends a wide, clean webcam picture from a Mac. A phone sends a tall, compressed one, with a person further away. Pose reading on that is still untested.
+- **The bridge's ready sign.** A participant's token cannot write the room's metadata, so `chert_bridge_ready` is never sent. The game takes its 3 second fallback every time here. The real metadata has since been seen on a call (a JSON flag `chert_bridge_ready: true`); whether `bridgeReady()` reads it in the game is still unchecked.
+- **The bridge's identity and track names.** The stand-in joins as `facetime-bridge` and publishes a browser's camera and microphone tracks. The real bridge joins as `chert-bridge-<call id>` and publishes `facetime-remote-video` and `facetime-remote-audio`. This path does not show that the game handles those names, or that Chert sends the phone the game's picture.
+- **A phone's picture.** The stand-in sends a wide, clean webcam picture from a Mac. On the one real call the phone's picture came in wide too (1280 by 720), but compressed, at about 15 frames a second, with a person further away. Pose reading on that is still untested.
 - **The 10 second greeting rule and the 5 minute limit** as Chert enforces them. The game's own clocks run; nobody on the other side cuts the call.
 - **Echo on a real call**, and Safari and Firefox.
 
-## Place the first call
+## Place the first call (outbound, untested on a trial line)
+
+Nobody has placed a call this way. For the way that has worked, the friend calls the line's number; see "How a call really reaches the game" above and [facetime-demo.md](facetime-demo.md).
 
 1. Open the game in Chrome on the computer. Go to Multiplayer.
 2. In "Call a friend on FaceTime", type the number with its country code, for example `+1 555 555 0100`. Press Call. Allow the microphone if asked.
@@ -233,8 +271,8 @@ The host's microphone is sent to the phone only. The friend's voice plays on the
 
 ## Limits
 
-- One call at a time. A trial call is 5 minutes; the trial has 50 minutes in all.
-- Outbound only. For a friend to call the game, Chert dispatches a named LiveKit agent worker through `chert dev`. A browser tab cannot be that worker. It would need a small Node worker that tells the game server the room name, and then the tab joins with a token from `/api/facetime/seat`. Not built.
+- One call at a time. A trial call is 5 minutes; the trial has 50 minutes in all and lasts 24 hours.
+- On `main` the game can only place a call (outbound), and that is untested on a trial line. For a friend to call the game, Chert dispatches a named LiveKit agent worker through `chert dev`. A browser tab cannot be that worker, but it can sit in the same room as a third participant. A small silent worker runs on the Mac that holds the line and writes the waiting room's name to a file; the game's side of it is on the branch `2-facetime-answer`. See "How a call really reaches the game".
 - The friend only strikes. Blocks and dodges stay with the host, as in a room.
 - The keys stay on the server. The page gets only a short-lived token for its own seat in one room.
 
@@ -252,13 +290,13 @@ The host's microphone is sent to the phone only. The friend's voice plays on the
 
 ## Not tested
 
-- **No real FaceTime call.** Nothing has rung a phone.
+- **The game on a real FaceTime call.** One real call was made, inbound, to a probe page. The game itself has not answered a call. The outbound route has never rung a phone.
 - **Hang up against a real room.** The route was written from LiveKit's docs and a teammate's one manual DeleteRoom (200, and the participant was dropped 128 ms later). The route itself, its retry, and the `keepalive` request on a closing page have only met a fake fetch.
 - **Whether Chert ends the FaceTime call when its bridge is dropped from the room.**
 - **The game's sound through `gameSoundStream()` on a call.** The switch type-checks. It was not heard on a real room or in the loopback page, which uses the older way.
 - **How FaceTime shows the picture.** The 72 px margins answer a simulation of a filled screen, not a phone. If the picture arrives small inside a wide one, use `?ftframe=landscape`.
-- **No Chert account.** The request body, the error words, the call status words and the meaning of `remote_participant_identity` are from the setup page, not from a reply.
-- **The bridge-ready signal** and the bridge's track names were never observed.
-- Pose reading on a real phone picture (portrait, compressed, a person far away). The loopback's friend is a drawing with a stand-in detector.
+- **The outbound request.** The request body, the error words, the call status words and the meaning of `remote_participant_identity` are from the setup page, not from a reply. There is a Chert account and a trial line now, but this request was never sent.
+- **The bridge-ready signal** and the bridge's track names were observed on the real call by the probe page, not by the game's own code.
+- Pose reading on a real phone picture (compressed, about 15 frames a second, a person far away; it came in wide on the one real call). The loopback's friend is a drawing with a stand-in detector.
 - Echo on a real call (the game's sound coming back through the phone's microphone).
 - Safari and Firefox. Only Chrome was run.

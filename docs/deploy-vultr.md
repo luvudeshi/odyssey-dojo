@@ -6,7 +6,10 @@ camera over https.
 
 `odysseydojo.us` is the worked example in this page. Replace it everywhere with the domain that was registered.
 
-**Not run yet.** Nobody has built the image or started it on a real instance. See "What was checked" at the end.
+**Run for real once.** The kit was run on a 1 vCPU / 2 GB instance in Dallas on Ubuntu 24.04. The first build took
+about ten minutes. It serves `https://odysseydojo.club` with a certificate Caddy got by itself. `www.` is not served.
+The code was copied to the instance, not cloned (see "If you copy the code up instead of cloning" in step 4). See
+"What was checked" at the end for what is still untried.
 
 ## What works when hosted, and what does not
 
@@ -109,11 +112,40 @@ The script stops and tells you what to do at most three times. Do what it says, 
    DOMAIN=odysseydojo.us
    ```
 
-3. Then it builds and starts. The first build takes a few minutes.
+3. Then it builds and starts. The first build took about ten minutes on the 1 vCPU / 2 GB plan.
 
 What the script does: installs Docker from Docker's own apt repository, adds 2 GB of swap on a small instance, puts
 the code in `/opt/odyssey-dojo`, opens ports 80 and 443 in `ufw`, and runs `docker compose up -d --build` in
 `deploy/vultr/`. It asks for no key and no password.
+
+### If you copy the code up instead of cloning
+
+Use this when the repo is private and has no deploy key. It is how the real run was done, from a Windows laptop.
+
+**The copy must have Unix line endings.** A Windows checkout can have Windows line endings, and then `setup.sh` fails
+at once with `set: Illegal option`. So do not `scp` the working folder. Send the files straight from git, from the
+repo on the laptop (Git Bash):
+
+```
+git fetch origin
+git -c core.autocrlf=false archive --format=tar.gz origin/main | ssh root@<instance> 'mkdir -p /opt/odyssey-dojo && tar -xzf - -C /opt/odyssey-dojo'
+```
+
+Then on the instance:
+
+1. Run `sh /opt/odyssey-dojo/deploy/vultr/setup.sh` once. It installs Docker and adds the swap, then stops at the
+   clone step, because `/opt/odyssey-dojo` is not a git clone. That is fine. Leave it there.
+2. Write the settings file `/opt/odyssey-dojo/deploy/vultr/.env` with the one line `DOMAIN=<your domain>`
+   (`.env.example` beside it has the names).
+3. Build and start:
+
+   ```
+   cd /opt/odyssey-dojo/deploy/vultr
+   docker compose up -d --build
+   ```
+
+To update a copied instance, send the archive again and run `docker compose up -d --build` again. Section 6 is for a
+cloned instance.
 
 ## 5. Check it
 
@@ -196,10 +228,17 @@ Checked on a laptop, without Docker:
 - The Dockerfile was read against `package.json`: `npm ci` runs the postinstall that fetches the pose model,
   `npm run build` makes `dist`, and `server/main.ts` serves it on port 8787.
 
+Run for real, once, on a Vultr instance (1 vCPU, 2 GB, Dallas, Ubuntu 24.04):
+
+- `setup.sh` as far as Docker and the swap. It then stopped at the clone step, because the code was copied up from a
+  Windows laptop and not cloned.
+- `docker compose up -d --build` in `deploy/vultr/`. The first build took about ten minutes.
+- Caddy got its certificate by itself, and `https://odysseydojo.club` serves the game. `www.` is not served.
+
 Not checked:
 
-- `docker build`, `docker compose up`, Caddy and its certificate. Docker was not installed where this was written.
-- `setup.sh` on a real Ubuntu 24.04 instance, the deploy key step included.
-- A browser on the real domain: the camera prompt, a fight, a room joined through Caddy.
+- `setup.sh` from start to end on an instance: the clone, the deploy key step, and the update in section 6.
+- A browser on the real domain, step by step as in section 5: the camera prompt, a fight, `/api/level` answering
+  `local_only`, a room joined through Caddy. Do these before you rely on it.
 - The SSH tunnel for hosting a room.
 - That the build fits in memory on the 1 GB plan.
