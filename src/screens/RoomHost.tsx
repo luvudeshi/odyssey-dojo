@@ -10,7 +10,7 @@ import { Button } from "../ui/pebble";
 import { SetTitle } from "../ui/set/Set";
 import { RoomTags } from "./RoomTags";
 import { browserDeps, fetchLanBase, LAN_BASE_TIMEOUT_MS } from "./roomNet";
-import { ROOM_MESSAGES, joinUrl, reachableBase, roomMessage } from "./roomUrl";
+import { joinUrl, reachableBase, roomMessage } from "./roomUrl";
 
 type Phase =
   | { readonly kind: "making" }
@@ -32,7 +32,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
       const room = await createRoom(browserDeps);
       if (left.current) return;
       if (typeof room === "string") {
-        setPhase({ kind: "failed", why: roomMessage(room, window.location.hostname) });
+        setPhase({ kind: "failed", why: roomMessage(room) });
         return;
       }
       link.current = createHostLink(openRoom(browserDeps, room));
@@ -52,6 +52,13 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
     link.current?.close();
     props.onBack();
   };
+  const leaveRef = useRef(leave);
+  leaveRef.current = leave;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => { if (e.key === "Escape") leaveRef.current(); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
+  }, []);
   // Fighting alone from an open room: close the room first, so no friend can walk into it afterwards.
   const solo = (): void => {
     left.current = true;
@@ -59,7 +66,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
     props.onSolo();
   };
 
-  const back = <button type="button" className="set-back mp-back" onClick={leave}>Close the room</button>;
+  const back = <button type="button" className="set-back mp-back" onClick={leave}>{phase.kind === "open" ? "Close the room" : "Back"}</button>;
 
   if (phase.kind !== "open") {
     return (
@@ -71,7 +78,6 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
           {phase.kind === "failed" && (
             <>
               <p className="notice" role="alert">{phase.why}</p>
-              {phase.why === ROOM_MESSAGES.unreachable && <p>Start the game server (npm run server) to host a room, or play alone.</p>}
               <Button onClick={props.onSolo}>Play alone</Button>
             </>
           )}
@@ -90,7 +96,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
         </div>
         <div className="mp-lobby__row">
           <section className="set-panel mp-code">
-            <p className="mp-code__kicker">Friend, the code is</p>
+            <p className="mp-code__kicker">The code is</p>
             <div className="room-code" aria-label={`Room code ${phase.code.split("").join(" ")}`}>{phase.code}</div>
             <p className="mp-code__note">Type it on another computer</p>
           </section>
