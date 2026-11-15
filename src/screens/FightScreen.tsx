@@ -6,12 +6,15 @@ import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
 import { speakMonsterTaunt, stopStory } from "../audio/storyVoice";
 import { useStopAudio } from "../audio/useStopAudio";
 import { playVoice, speakLine } from "../audio/voice";
+import { PowerReady } from "../ai/power/PowerReady";
+import { powerUsable } from "../ai/power/powerPrompt";
 import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { CameraView } from "../hud/CameraView";
+import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
@@ -130,6 +133,8 @@ export function FightScreen(props: {
   useEffect(() => { link?.start(enemy.id, style.id, seed); }, [link, enemy, style, seed]);
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
+  // With no god (keyboard play or a skipped scan) Athena lends her aegis, as the power-ready banner says.
+  const patron: GodId = god ?? "athena";
   const running = view === "off";
   useStopAudio(enemy.id, !running || over);
   useEffect(() => { overRef.current = over; pausedRef.current = !running; }, [over, running]);
@@ -154,7 +159,9 @@ export function FightScreen(props: {
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <SkyHud enemy={enemy} state={state} history={readHistory} />
-      {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
+      <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} />
+      {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
+      <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
       <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
