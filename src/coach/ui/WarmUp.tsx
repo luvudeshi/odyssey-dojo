@@ -125,7 +125,7 @@ export function WarmUp(props: {
       {outcome?.kind === "unseen" && (
         <>
           <h1 className="warmup-say">I can't see you</h1>
-          <p className="warmup-line">Step back until your head and hips are in the picture, then try again.</p>
+          <p className="warmup-line">Step back until your head and shoulders are in the picture, then try again.</p>
           <Button primary autoFocus onClick={again}>Try again</Button>
           <Button onClick={onSkip}>Skip</Button>
         </>

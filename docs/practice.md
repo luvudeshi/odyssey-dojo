@@ -32,7 +32,7 @@ Before any of that, when the move did not count, these are said instead of blami
 
 | When | Part | Tip |
 | --- | --- | --- |
-| No frames, or the shoulders are unseen in half of them | camera | I cannot see you. Stand where your head, shoulders and hips are in the picture. |
+| No frames, or the shoulders are unseen in half of them | camera | I cannot see you. Stand where your head and shoulders are in the picture. |
 | Duck, dodge, jump or swift dash with no standing start to measure from | standing start | Stand still facing the camera for a second first, so I can measure the move. |
 | Front kick or knee with the knees and ankles out of the picture for the last second | feet in view | I cannot see your feet. Step back until your whole body is in the picture. |
 | No joint moved a quarter of a shoulder width from where it started | no move seen | I did not see a move. Take your time, then do it once, clearly. |
@@ -63,7 +63,7 @@ Shape parts are plain; parts in *italics* are how the player got there.
 | | height | wrist within 0.7 widths of the shoulder line | Keep the sweep level with your shoulders, at neck height. |
 | | arm | elbow over 125 degrees | Open your arm out nearly straight as the sweep finishes. |
 | block | guard | both wrists near the nose (the detector's own reading) | Bring both fists right up to your cheeks. Hands at your chest leave your head open. |
-| | *hold* | the guard stayed up for the detector's 200 ms | Keep your hands up for a moment longer. Lower them only when it is safe. |
+| | *hold* | the guard stayed up for the detector's 200 ms | Keep your fists up for a beat so the guard reads clearly. Once is enough. |
 | duck | depth | shoulders 0.6 widths under where they stood | Drop lower: bend your knees until your head is under where it was. |
 | | knees | hips dropped at least half as far as the shoulders (not in the detector) | Bend your knees, not your waist, and keep your eyes up on what is coming. |
 | dodge left, dodge right | distance | shoulders 0.6 widths to the side (the detector's own reading) | Step further: move your whole body off the line, not only your head. |
@@ -80,7 +80,7 @@ Seven moves have no table of their own: stake thrust, aegis push, trident sweep,
 burst and jump. They are judged by how sure the detector got and get the one tip for their kind:
 
 - a strike: "Do it as one sharp move from your guard, then come straight back to guard."
-- a defense: "Make the move bigger and hold it for a moment, eyes on what is coming."
+- a defense: "Make the move bigger and do it once, clearly, while the attack is coming."
 
 The same two lines are used for a tabled move that did not count although every measured part was strong (the
 detector refused it for something that is not measured, such as the other arm being out too).
