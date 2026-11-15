@@ -117,10 +117,11 @@ function Page() {
   const made = useMemo(() => {
     const room = createFakeRoom();
     const api: FaceTimeApi = {
-      status: () => Promise.resolve({ ready: true, missing: [] }),
+      status: () => Promise.resolve({ ready: true, missing: [], standIn: false }),
       seat: () => Promise.resolve({ ok: true, value: { url: "wss://loopback.invalid", token: "loopback", room: "odyssey-dojo-000000000000", identity: "odyssey-dojo" } }),
       call: () => Promise.resolve({ ok: true, value: { callId: "loopback-call" } }),
       callState: () => Promise.resolve("active"),
+      standIn: () => Promise.resolve({ ok: false, why: "not_set_up", message: "The loopback page has no real room." }),
     };
     let asked: string | null = null;
     const friend = madeUpFriend(() => ({ move: asked }));

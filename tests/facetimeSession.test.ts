@@ -23,6 +23,7 @@ const style = STYLES[0];
 if (!enemy || !style) throw new Error("nothing to fight with");
 const track = (name: string): MediaStreamTrack => ({ id: name }) as unknown as MediaStreamTrack;
 const seat: RoomSeat = { url: "wss://rooms.example.test", token: "seat-token", room: "odyssey-dojo-0123456789ab", identity: "odyssey-dojo" };
+const friendSeat: RoomSeat = { url: seat.url, token: "friend-token", room: seat.room, identity: "facetime-bridge" };
 const NUMBER = "+1 555 555 0100";
 const settle = async (): Promise<void> => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
 
@@ -38,7 +39,7 @@ interface Rig {
   callsPlaced: { to: string; room: string }[];
 }
 
-function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string }>; failConnect?: boolean; greetFails?: boolean } = {}): Rig {
+function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string }>; standIn?: Answer<RoomSeat>; failConnect?: boolean; greetFails?: boolean } = {}): Rig {
   const room = createFakeRoom(options.failConnect === true ? { failConnect: true } : {});
   const log: string[] = [];
   const drawn: FrameHud[] = [];
@@ -46,7 +47,7 @@ function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string 
     room, log, drawn, friendInput: null, remote: "ringing", callsPlaced: [],
     deps: {
       api: {
-        status: () => Promise.resolve({ ready: true, missing: [] }),
+        status: () => Promise.resolve({ ready: true, missing: [], standIn: true }),
         seat: () => { log.push("seat"); return Promise.resolve(options.seat ?? { ok: true, value: seat }); },
         call: (to, inRoom) => {
           log.push("call");
@@ -54,6 +55,7 @@ function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string 
           return Promise.resolve(options.call ?? { ok: true, value: { callId: "call-1" } });
         },
         callState: () => { log.push("poll"); return Promise.resolve(self.remote); },
+        standIn: (inRoom) => { log.push(`standin ${inRoom}`); return Promise.resolve(options.standIn ?? { ok: true, value: friendSeat }); },
       } satisfies FaceTimeApi,
       openRoom: () => Promise.resolve({
         ...room,
@@ -356,6 +358,101 @@ describe("the end of a call", () => {
   });
 });
 
+describe("a stand-in friend (no phone, no call service)", () => {
+  test("the room is opened the same way, the bridge's seat is asked for, and no call is placed", async () => {
+    const made = rig();
+    const session = createFaceTimeSession(made.deps);
+    expect(session.standInSeat()).toBeNull();
+    await session.standIn(1000);
+    expect(made.log).toEqual(["seat", "connect", "publish", `standin ${seat.room}`]);
+    expect(made.callsPlaced).toEqual([]);
+    expect(made.room.joined).toEqual({ url: seat.url, token: seat.token });
+    expect(session.state().phase).toBe("ringing");
+    expect(session.standInSeat()).toEqual(friendSeat);
+    expect(session.link()).not.toBeNull();
+  });
+
+  test("once the stand-in's camera is in the room the call goes on as a real one: greeting after the wait, then the fight", async () => {
+    const made = rig();
+    const session = createFaceTimeSession(made.deps);
+    await session.standIn(1000);
+    made.room.emit({ type: "video", track: track("friend-camera"), identity: "facetime-bridge" });
+    made.room.emit({ type: "audio", track: track("friend-voice"), identity: "facetime-bridge" });
+    await settle();
+    session.tick(1000 + BRIDGE_FALLBACK_MS - 1);
+    expect(made.log).not.toContain("greet");
+    session.tick(1000 + BRIDGE_FALLBACK_MS);
+    await settle();
+    expect(made.log).toEqual(expect.arrayContaining(["watch", "hear", "greet"]));
+    expect(session.state().phase).toBe("greeted");
+    expect(session.friendSeen()).toBe(true);
+    // There is no call service to ask about the call, however long it runs.
+    for (let now = 5000; now < 5000 + POLL_EVERY_MS * 4; now += 500) { session.tick(now); await settle(); }
+    expect(made.log).not.toContain("poll");
+    expect(made.log).not.toContain("call");
+  });
+
+  test("the stand-in leaving ends the call as a friend hanging up, and the seat is forgotten", async () => {
+    const made = rig();
+    const session = createFaceTimeSession(made.deps);
+    await session.standIn(0);
+    made.room.emit({ type: "video", track: track("friend-camera"), identity: "facetime-bridge" });
+    session.tick(BRIDGE_FALLBACK_MS);
+    await settle();
+    made.room.emit({ type: "left", identity: "facetime-bridge" });
+    expect(session.state()).toMatchObject({ phase: "ended", ending: "friend" });
+    expect(session.standInSeat()).toBeNull();
+    expect(made.log.slice(-3)).toEqual(["picture.stop", "sound.stop", "disconnect"]);
+  });
+
+  test("a server that cannot give the stand-in a seat fails the call and closes the room", async () => {
+    const made = rig({ standIn: { ok: false, why: "not_set_up", message: "FaceTime is not set up on this server." } });
+    const session = createFaceTimeSession(made.deps);
+    await session.standIn(0);
+    expect(session.state()).toMatchObject({ phase: "failed", failure: "not_set_up" });
+    expect(session.detail()).toBe("FaceTime is not set up on this server.");
+    expect(session.standInSeat()).toBeNull();
+    expect(made.log).toContain("disconnect");
+  });
+
+  test("a room that cannot be joined says what to check, also when the room reports closing first", async () => {
+    const made = rig();
+    const closing = { ...made.deps, openRoom: () => Promise.resolve({
+      ...made.room,
+      connect: () => { made.room.emit({ type: "disconnected", reason: "no signal" }); return Promise.reject(new Error("could not reach the room")); },
+    }) };
+    const session = createFaceTimeSession(closing);
+    let told = 0;
+    session.subscribe(() => { told += 1; });
+    await session.standIn(0);
+    expect(session.state()).toMatchObject({ phase: "failed", failure: "room_lost" });
+    expect(session.detail()).toMatch(/could not join the call's room\. Check LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET/);
+    expect(told).toBeGreaterThanOrEqual(3);
+    expect(made.log.filter((each) => each.startsWith("standin"))).toEqual([]);
+
+    const refused = rig({ failConnect: true });
+    const plain = createFaceTimeSession(refused.deps);
+    await plain.standIn(0);
+    expect(plain.state()).toMatchObject({ phase: "failed", failure: "room_lost" });
+    expect(plain.detail()).toMatch(/could not join the call's room/);
+  });
+
+  test("it does nothing during a call, and a stand-in nobody opens is given up on like an unanswered phone", async () => {
+    const { session, made } = await answeredCall();
+    await session.standIn(5000);
+    expect(made.log.filter((each) => each.startsWith("standin"))).toEqual([]);
+    expect(session.standInSeat()).toBeNull();
+
+    const alone = rig();
+    const waiting = createFaceTimeSession(alone.deps);
+    await waiting.standIn(0);
+    waiting.tick(59_999);
+    expect(waiting.state().phase).toBe("ringing");
+    waiting.tick(60_000);
+    expect(waiting.state()).toMatchObject({ phase: "failed", failure: "no_answer" });
+  });
+});
+
 describe("the friend's link on its own", () => {
   test("it carries the fight to the phone's side and forgets it when the host leaves", () => {
     const { host, friend } = createFriendLink();
@@ -386,12 +483,13 @@ describe("the page's side of the server routes", () => {
     const api = createFaceTimeApi((url, init) => {
       const path = String(url);
       asked.push({ url: path, method: init?.method ?? "GET", body: typeof init?.body === "string" ? JSON.parse(init.body) as unknown : undefined });
-      if (path === "/api/facetime/status") return Promise.resolve(answer(200, { ready: false, missing: ["CHERT_API_KEY"] }));
+      if (path === "/api/facetime/status") return Promise.resolve(answer(200, { ready: false, missing: ["CHERT_API_KEY"], standIn: true }));
+      if (path === "/api/facetime/standin") return Promise.resolve(answer(200, friendSeat));
       if (path === "/api/facetime/seat") return Promise.resolve(answer(200, seat));
       if (path === "/api/facetime/call") return Promise.resolve(answer(200, { callId: "call-9" }));
       return Promise.resolve(answer(200, { state: "active", raw: "connected" }));
     });
-    expect(await api.status()).toEqual({ ready: false, missing: ["CHERT_API_KEY"] });
+    expect(await api.status()).toEqual({ ready: false, missing: ["CHERT_API_KEY"], standIn: true });
     expect(await api.seat()).toEqual({ ok: true, value: seat });
     expect(await api.call("+15555550100", seat.room)).toEqual({ ok: true, value: { callId: "call-9" } });
     expect(await api.callState("call 9/x")).toBe("active");
@@ -401,6 +499,8 @@ describe("the page's side of the server routes", () => {
       { url: "/api/facetime/call", method: "POST", body: { to: "+15555550100", room: seat.room } },
       { url: "/api/facetime/call/call%209%2Fx", method: "GET", body: undefined },
     ]);
+    expect(await api.standIn(seat.room)).toEqual({ ok: true, value: friendSeat });
+    expect(asked.at(-1)).toEqual({ url: "/api/facetime/standin", method: "POST", body: { room: seat.room } });
   });
 
   test("refusals keep the server's reason and its words; no server at all is plain too", async () => {
@@ -413,9 +513,13 @@ describe("the page's side of the server routes", () => {
     expect(await odd.call("+15555550100", "r")).toEqual({ ok: false, why: "service", message: "" });
     expect(await odd.callState("c")).toBe("unknown");
     const down = createFaceTimeApi(() => Promise.reject(new TypeError("fetch failed")));
-    expect(await down.status()).toEqual({ ready: false, missing: [] });
+    expect(await down.status()).toEqual({ ready: false, missing: [], standIn: false });
     expect(await down.seat()).toMatchObject({ ok: false, why: "not_set_up" });
     expect(await down.call("+15555550100", "r")).toMatchObject({ ok: false, why: "network" });
     expect(await down.callState("c")).toBe("unknown");
+    expect(await down.standIn("r")).toMatchObject({ ok: false, why: "network" });
+    expect(await refusing.standIn("r")).toEqual({ ok: false, why: "line_busy", message: "busy" });
+    const empty = createFaceTimeApi(() => Promise.resolve(answer(200, { url: "wss://rooms.example.test", room: "r" })));
+    expect(await empty.standIn("r")).toEqual({ ok: false, why: "service", message: "" });
   });
 });

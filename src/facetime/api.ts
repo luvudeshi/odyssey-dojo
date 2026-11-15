@@ -14,14 +14,23 @@ export type RemoteCall = "ringing" | "active" | "over" | "unknown";
 
 export type Answer<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly why: CallFailure; readonly message: string };
 
+export interface FaceTimeStatus {
+  readonly ready: boolean;
+  readonly missing: readonly string[];
+  /** True when the room can be joined, so a browser can stand in for the friend's phone. */
+  readonly standIn: boolean;
+}
+
 export interface FaceTimeApi {
   /** Whether the server has what it needs. `missing` lists the names of the settings that are not there. */
-  status(): Promise<{ readonly ready: boolean; readonly missing: readonly string[] }>;
+  status(): Promise<FaceTimeStatus>;
   /** A new room and this page's seat in it. */
   seat(): Promise<Answer<RoomSeat>>;
   /** Rings the phone and bridges the call into the room. */
   call(to: string, room: string): Promise<Answer<{ readonly callId: string }>>;
   callState(callId: string): Promise<RemoteCall>;
+  /** No phone: the bridge's seat in the room, for the stand-in page. Nothing is rung. */
+  standIn(room: string): Promise<Answer<RoomSeat>>;
 }
 
 const FAILURES: readonly CallFailure[] = ["not_set_up", "bad_number", "line_busy", "unverified", "unauthorized", "network", "no_answer", "greet_late", "room_lost", "service"];
@@ -29,6 +38,11 @@ const STATES: readonly RemoteCall[] = ["ringing", "active", "over", "unknown"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function seatOf(body: unknown): RoomSeat | null {
+  if (!isRecord(body) || typeof body.url !== "string" || typeof body.token !== "string" || typeof body.room !== "string" || typeof body.identity !== "string") return null;
+  return { url: body.url, token: body.token, room: body.room, identity: body.identity };
 }
 
 function refusal(body: unknown, fallback: CallFailure): { ok: false; why: CallFailure; message: string } {
@@ -51,18 +65,15 @@ export function createFaceTimeApi(fetcher: typeof fetch = (url, init) => fetch(u
   return {
     async status() {
       const answer = await ask("/api/facetime/status");
-      if (!answer?.ok || !isRecord(answer.body)) return { ready: false, missing: [] };
+      if (!answer?.ok || !isRecord(answer.body)) return { ready: false, missing: [], standIn: false };
       const missing = Array.isArray(answer.body.missing) ? answer.body.missing.filter((each): each is string => typeof each === "string") : [];
-      return { ready: answer.body.ready === true, missing };
+      return { ready: answer.body.ready === true, missing, standIn: answer.body.standIn === true };
     },
     async seat() {
       const answer = await ask("/api/facetime/seat", {});
       if (!answer) return { ok: false, why: "not_set_up", message: "" };
-      const body = answer.body;
-      if (answer.ok && isRecord(body) && typeof body.url === "string" && typeof body.token === "string" && typeof body.room === "string" && typeof body.identity === "string") {
-        return { ok: true, value: { url: body.url, token: body.token, room: body.room, identity: body.identity } };
-      }
-      return refusal(body, "not_set_up");
+      const seat = answer.ok ? seatOf(answer.body) : null;
+      return seat ? { ok: true, value: seat } : refusal(answer.body, "not_set_up");
     },
     async call(to, room) {
       const answer = await ask("/api/facetime/call", { to, room });
@@ -74,6 +85,12 @@ export function createFaceTimeApi(fetcher: typeof fetch = (url, init) => fetch(u
       const answer = await ask(`/api/facetime/call/${encodeURIComponent(callId)}`);
       if (!answer?.ok || !isRecord(answer.body)) return "unknown";
       return STATES.find((each) => isRecord(answer.body) && each === answer.body.state) ?? "unknown";
+    },
+    async standIn(room) {
+      const answer = await ask("/api/facetime/standin", { room });
+      if (!answer) return { ok: false, why: "network", message: "" };
+      const seat = answer.ok ? seatOf(answer.body) : null;
+      return seat ? { ok: true, value: seat } : refusal(answer.body, "service");
     },
   };
 }
