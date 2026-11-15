@@ -201,7 +201,7 @@ describe("the routes", () => {
   test("with no settings every route refuses in plain words, names what is missing, and calls nobody", async () => {
     const { ask, sent } = await serve({ LIVEKIT_URL: ENV.LIVEKIT_URL });
     const missing = FACETIME_ENV.filter((name) => name !== "LIVEKIT_URL");
-    expect(await ask("/api/facetime/status")).toMatchObject({ status: 200, body: { ready: false, missing } });
+    expect(await ask("/api/facetime/status")).toMatchObject({ status: 200, body: { ready: false, missing, standIn: false } });
     for (const refused of [await ask("/api/facetime/seat", {}), await ask("/api/facetime/call", { to: PHONE, room: "odyssey-dojo-0123456789ab" }), await ask("/api/facetime/call/call-1")]) {
       expect(refused.status).toBe(503);
       expect(refused.body).toEqual({ error: "not_set_up", message: "FaceTime is not set up on this server.", missing });
@@ -211,7 +211,7 @@ describe("the routes", () => {
 
   test("a seat is a new room and a token for the game's own identity in it; no secret reaches the page", async () => {
     const { ask } = await serve(ENV);
-    expect((await ask("/api/facetime/status")).body).toEqual({ ready: true, missing: [] });
+    expect((await ask("/api/facetime/status")).body).toEqual({ ready: true, missing: [], standIn: true });
     const one = await ask("/api/facetime/seat", {});
     const two = await ask("/api/facetime/seat", {});
     expect(one.status).toBe(200);

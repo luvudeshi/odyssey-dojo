@@ -1,8 +1,11 @@
 // The FaceTime call's server side. Only this machine may call these (they are not open paths in lib/localOnly),
 // because they spend the call service's minutes.
-//   GET  /api/facetime/status     is FaceTime set up, and which settings are missing (names only)
+//   GET  /api/facetime/status     is FaceTime set up, which settings are missing (names only), and whether a
+//                                 stand-in friend is possible (the room's three settings are there)
 //   POST /api/facetime/seat       a new room, and a token for the game's own seat in it
 //   POST /api/facetime/call       { to, room }: rings the phone and bridges the call into that room
+//   POST /api/facetime/standin    { room }: no phone and no call service; a token for the bridge's seat in that
+//                                 room, for the stand-in page (tools/facetime/standin.html) on this machine
 //   GET  /api/facetime/call/:id   how the call is doing
 // The keys are read from the environment on every request, so adding them to .env.local needs only a restart, and
 // they go nowhere but into a signed token (the LiveKit secret) and to the call service (its own key).
@@ -14,7 +17,7 @@ import { normalizePhone } from "../../src/facetime/phone";
 import type { Register } from "../app";
 import { loadEnvFile } from "../lib/envFile";
 import { CHERT_MESSAGES, callState, placeCall } from "../lib/facetimeChert";
-import { NOT_SET_UP, readFaceTimeEnv } from "../lib/facetimeEnv";
+import { NOT_SET_UP, readFaceTimeEnv, readLivekitEnv } from "../lib/facetimeEnv";
 import { mintToken } from "../lib/facetimeToken";
 
 /** The game's identity in every call room, and the bridge's. */
@@ -33,19 +36,21 @@ export interface FaceTimeRouteDeps {
 }
 
 export function registerFaceTime(router: Router, deps: FaceTimeRouteDeps): void {
-  /** Rooms this server made, and when: a call is only placed into one of them, once. */
+  /** Rooms this server made, and when: a call or a stand-in friend is only let into one of them, once. */
   const seats = new Map<string, number>();
   const setup = (): ReturnType<typeof readFaceTimeEnv> => readFaceTimeEnv(deps.env());
+  const missing = (): readonly string[] => { const found = setup(); return found.ready ? [] : found.missing; };
 
   router.get("/api/facetime/status", (_request, response) => {
-    const found = setup();
-    response.json(found.ready ? { ready: true, missing: [] } : { ready: false, missing: found.missing });
+    // standIn: the room can be joined, so a browser can play the friend. True with or without the call service.
+    response.json({ ready: setup().ready, missing: missing(), standIn: readLivekitEnv(deps.env()).ready });
   });
 
   router.post("/api/facetime/seat", (_request, response) => {
-    const found = setup();
+    // A seat needs the room's settings only, so a stand-in call can open one. Ringing a phone still needs all six.
+    const found = readLivekitEnv(deps.env());
     if (!found.ready) {
-      response.status(503).json({ error: "not_set_up", message: NOT_SET_UP, missing: found.missing });
+      response.status(503).json({ error: "not_set_up", message: NOT_SET_UP, missing: missing() });
       return;
     }
     const now = deps.now();
@@ -98,6 +103,31 @@ export function registerFaceTime(router: Router, deps: FaceTimeRouteDeps): void 
     }
     log("info", "facetime_call_placed", { queued: placed.queued });
     response.status(placed.queued ? 202 : 200).json({ callId: placed.callId, queued: placed.queued });
+  });
+
+  router.post("/api/facetime/standin", (request, response) => {
+    const found = readLivekitEnv(deps.env());
+    if (!found.ready) {
+      response.status(503).json({ error: "not_set_up", message: NOT_SET_UP, missing: found.missing });
+      return;
+    }
+    const body: unknown = request.body;
+    const fields = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+    const room = typeof fields.room === "string" ? fields.room : "";
+    if (!ROOM.test(room) || !seats.has(room)) {
+      response.status(400).json({ error: "service", message: "That call room is not known. Start the test again." });
+      return;
+    }
+    // The same rule as a call: one friend per room, phone or stand-in, and never both.
+    seats.delete(room);
+    const { config } = found;
+    const token = mintToken({
+      apiKey: config.livekitKey, apiSecret: config.livekitSecret, identity: BRIDGE_IDENTITY, name: "Stand-in friend",
+      room, ttlSeconds: TOKEN_TTL_S, nowSeconds: Math.floor(deps.now() / 1000),
+    });
+    // Nothing is sent to the call service: deps.fetch is not touched here.
+    log("info", "facetime_standin_opened", {});
+    response.json({ url: config.livekitUrl, token, room, identity: BRIDGE_IDENTITY });
   });
 
   router.get("/api/facetime/call/:id", async (request, response) => {

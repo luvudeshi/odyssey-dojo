@@ -8,11 +8,25 @@ import { createFaceTimeApi } from "../api";
 import { describe, isLive, isOpen } from "../callMachine";
 import { normalizePhone } from "../phone";
 import type { FaceTimeSession } from "../session";
+import { standInLink } from "../standIn";
 import "../../screens/account.css";
 import "../../screens/multiplayer.css";
 import "./faceTimeCard.css";
 
 export const NOT_SET_UP = "FaceTime is not set up on this server.";
+
+/**
+ * "Test without a phone": a browser page on this machine joins the room where the FaceTime bridge would. Shown when
+ * the server can open a room but cannot ring a phone, or always with ?ftstandin=1 in the game's address.
+ */
+function StandInStart(props: { disabled: boolean; onStart: () => void }) {
+  return (
+    <div className="ft-standin">
+      <small>The room is set up, so the call can be tried with a browser window as the friend. No phone rings.</small>
+      <Button disabled={props.disabled} onClick={props.onStart}>Test without a phone</Button>
+    </div>
+  );
+}
 
 type Setup = { readonly kind: "asking" } | { readonly kind: "ready" } | { readonly kind: "missing"; readonly names: readonly string[] };
 
@@ -22,10 +36,11 @@ export function FaceTimeCard(props: {
   /** The page's session by default (browserSession.ts); the demo page and tests pass their own. */
   session?: FaceTimeSession;
   /** Asks the server whether FaceTime is set up. */
-  status?: () => Promise<{ readonly ready: boolean; readonly missing: readonly string[] }>;
+  status?: () => Promise<{ readonly ready: boolean; readonly missing: readonly string[]; readonly standIn?: boolean }>;
 }) {
   const [session, setSession] = useState<FaceTimeSession | null>(props.session ?? null);
   const [setup, setSetup] = useState<Setup>({ kind: "asking" });
+  const [canStandIn, setCanStandIn] = useState(false);
   const [number, setNumber] = useState("");
   const [, setBeat] = useState(0);
   const askStatus = props.status;
@@ -41,7 +56,9 @@ export function FaceTimeCard(props: {
   useEffect(() => {
     let gone = false;
     void (askStatus ?? createFaceTimeApi().status)().then((answer) => {
-      if (!gone) setSetup(answer.ready ? { kind: "ready" } : { kind: "missing", names: answer.missing });
+      if (gone) return;
+      setSetup(answer.ready ? { kind: "ready" } : { kind: "missing", names: answer.missing });
+      setCanStandIn(answer.standIn === true);
     });
     return () => { gone = true; };
   }, [askStatus]);
@@ -61,6 +78,13 @@ export function FaceTimeCard(props: {
   const typed = normalizePhone(number);
   const now = performance.now();
   const over = state !== null && (state.phase === "ended" || state.phase === "failed");
+  const idle = !state || state.phase === "idle";
+  // The stand-in is offered when a phone cannot be rung. With a phone line set up it stays out of the way unless asked for.
+  const offerStandIn = canStandIn && (setup.kind === "missing" || new URLSearchParams(window.location.search).has("ftstandin"));
+  const startStandIn = (): void => { if (session) void session.standIn(performance.now()); };
+  const friendSeat = session?.standInSeat() ?? null;
+  const friendLink = friendSeat ? standInLink(window.location.origin, friendSeat) : null;
+  const waiting = state !== null && (state.phase === "dialing" || state.phase === "ringing");
 
   return (
     <section className="acc-card rooms__card ft-card">
@@ -70,12 +94,13 @@ export function FaceTimeCard(props: {
         </svg>
         Call a friend on FaceTime
       </h2>
-      {setup.kind === "missing" ? (
+      {setup.kind === "missing" && idle ? (
         <>
           <p className="notice" role="alert">{NOT_SET_UP}</p>
           {setup.names.length > 0 && <small>Missing on the server: {setup.names.join(", ")}. See docs/facetime.md.</small>}
+          {offerStandIn && <StandInStart disabled={!session} onStart={startStandIn} />}
         </>
-      ) : !state || state.phase === "idle" ? (
+      ) : idle ? (
         <>
           <p>Your friend answers a FaceTime call on an iPhone. No app. They see the fight and strike with their own body.</p>
           <form
@@ -94,10 +119,27 @@ export function FaceTimeCard(props: {
             <small id="ft-help">{number !== "" && !typed.ok ? typed.why : "They must have texted the game's number once. A call lasts 5 minutes."}</small>
             <Button primary type="submit" disabled={!session || !typed.ok || setup.kind !== "ready"}>Call</Button>
           </form>
+          {offerStandIn && <StandInStart disabled={!session} onStart={startStandIn} />}
         </>
       ) : (
         <div className="room">
-          <p className="notice" role={state.phase === "failed" ? "alert" : "status"}>{describe(state, now)}</p>
+          <p className="notice" role={state.phase === "failed" ? "alert" : "status"}>
+            {friendLink && waiting ? "Waiting for the stand-in friend. Open the link, allow the camera and press Answer." : describe(state, now)}
+          </p>
+          {friendLink && open && (
+            <small className="ft-standin__link">
+              <a
+                href={friendLink} target="_blank" rel="noopener noreferrer"
+                onClick={(event) => {
+                  // Its own window, beside the game: the game stops drawing the phone's picture when its tab is hidden.
+                  if (window.open(friendLink, "ft-standin", "popup,width=440,height=900")) event.preventDefault();
+                }}
+              >
+                Open the stand-in phone
+              </a>
+              {" "}in a window beside this one, on this computer. No phone rings. The game waits one minute.
+            </small>
+          )}
           {state.phase === "failed" && session?.detail() ? <small>{session.detail()}</small> : null}
           {isLive(state) && <small>{session?.friendSeen() ? "The game can see your friend." : "Waiting for your friend's camera..."}</small>}
           {open && (

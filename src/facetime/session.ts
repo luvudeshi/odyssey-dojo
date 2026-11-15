@@ -4,7 +4,7 @@
 // browserSession.ts gives it the real ones and the timers.
 import type { CombatInput, EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import type { HostLink } from "../net/host";
-import type { FaceTimeApi } from "./api";
+import type { Answer, FaceTimeApi, RoomSeat } from "./api";
 import { bridgeReady } from "./bridge";
 import { IDLE, callMsLeft, callStep, clock, isOpen } from "./callMachine";
 import type { CallEffect, CallEvent, CallFailure, CallState } from "./callMachine";
@@ -23,6 +23,8 @@ import type { FaceTimeRoom, RoomEvent } from "./room";
 export const BRIDGE_FALLBACK_MS = 3000;
 /** How often the call service is asked whether the call is still on. */
 export const POLL_EVERY_MS = 2000;
+
+const NOT_JOINED = "The game could not join the call's room. Check LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET on the server.";
 
 export interface Watcher {
   read(): PoseFrame | null;
@@ -53,6 +55,13 @@ export interface FaceTimeSession {
   subscribe(listener: () => void): () => void;
   /** Rings `raw` (any way of writing a phone number). Resolves once the phone is ringing, or the call has failed. */
   dial(raw: string, now: number): Promise<void>;
+  /**
+   * The same call with no phone: nothing is rung. The server gives the bridge's seat in the room, and the stand-in
+   * page (tools/facetime/standin.html) joins with it. From the moment it joins, the call runs as a real one does.
+   */
+  standIn(now: number): Promise<void>;
+  /** The bridge's seat for the stand-in page while such a call is open, else null. */
+  standInSeat(): RoomSeat | null;
   hangUp(now: number): void;
   /** Back to idle after a call ended or failed. */
   reset(): void;
@@ -78,6 +87,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
   let readPose: ((history: PoseHistory) => CombatInput) | null = null;
   let history: PoseHistory = { frames: [], baseline: null };
   let callId: string | null = null;
+  let friendSeat: RoomSeat | null = null;
   let polledAt = -Infinity;
   let polling = false;
   let fallbackAt: number | null = null;
@@ -97,6 +107,7 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     void leaving?.disconnect().catch(() => undefined);
     friendLink?.friend.setHere(false);
     callId = null;
+    friendSeat = null;
     fallbackAt = null;
     grade = null;
   };
@@ -173,6 +184,52 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     }
   };
 
+  /**
+   * Opens the room as the game, sends the picture and the sound, then asks for the far end with `place`: the call
+   * service for a phone, or a seat for the stand-in page.
+   */
+  const open = async (now: number, place: (inRoom: string) => Promise<Answer<{ readonly callId: string | null; readonly friend?: RoomSeat }>>): Promise<void> => {
+    generation += 1;
+    const mine = generation;
+    const live = (): boolean => mine === generation && isOpen(state);
+    friendLink = createFriendLink();
+    dispatch({ type: "dial", now });
+
+    const seat = await deps.api.seat();
+    if (!live()) return;
+    if (!seat.ok) { fail(seat.why, seat.message); return; }
+    try {
+      const joined = await deps.openRoom();
+      if (!live()) return;
+      room = joined;
+      joined.on(onRoom(mine));
+      await joined.connect(seat.value.url, seat.value.token);
+      if (!live()) return;
+      // The picture and the sound are in the room before the phone rings, so the friend never sees an empty call.
+      picture = deps.startPicture();
+      sound = deps.startSound();
+      await joined.publish(picture.track, sound.track);
+    } catch {
+      if (live()) fail("room_lost", NOT_JOINED);
+      else if (mine === generation && state.phase === "failed" && state.failure === "room_lost" && detail === "") {
+        // The room can say it is closed just before the join gives up: the same failure, so the same line.
+        detail = NOT_JOINED;
+        // A new object, so a card that compares states shows the line.
+        state = { ...state };
+        listeners.forEach((listener) => { listener(); });
+      }
+      return;
+    }
+    if (!live()) return;
+    const placed = await place(seat.value.room);
+    if (!live()) return;
+    if (!placed.ok) { fail(placed.why, placed.message); return; }
+    callId = placed.value.callId;
+    friendSeat = placed.value.friend ?? null;
+    polledAt = lastNow;
+    dispatch({ type: "placed", now: lastNow });
+  };
+
   return {
     state: () => state,
     detail: () => detail,
@@ -186,38 +243,19 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
       detail = "";
       const phone = normalizePhone(raw);
       if (!phone.ok) { fail("bad_number", phone.why); return; }
-      generation += 1;
-      const mine = generation;
-      const live = (): boolean => mine === generation && isOpen(state);
-      friendLink = createFriendLink();
-      dispatch({ type: "dial", now });
-
-      const seat = await deps.api.seat();
-      if (!live()) return;
-      if (!seat.ok) { fail(seat.why, seat.message); return; }
-      try {
-        const joined = await deps.openRoom();
-        if (!live()) return;
-        room = joined;
-        joined.on(onRoom(mine));
-        await joined.connect(seat.value.url, seat.value.token);
-        if (!live()) return;
-        // The picture and the sound are in the room before the phone rings, so the friend never sees an empty call.
-        picture = deps.startPicture();
-        sound = deps.startSound();
-        await joined.publish(picture.track, sound.track);
-      } catch {
-        if (live()) fail("room_lost", "The game could not join the call's room.");
-        return;
-      }
-      if (!live()) return;
-      const placed = await deps.api.call(phone.e164, seat.value.room);
-      if (!live()) return;
-      if (!placed.ok) { fail(placed.why, placed.message); return; }
-      callId = placed.value.callId;
-      polledAt = lastNow;
-      dispatch({ type: "placed", now: lastNow });
+      await open(now, (inRoom) => deps.api.call(phone.e164, inRoom));
     },
+    async standIn(now) {
+      if (isOpen(state)) return;
+      lastNow = now;
+      detail = "";
+      await open(now, async (inRoom) => {
+        const answer = await deps.api.standIn(inRoom);
+        // No call id: there is no call service to ask how the call is doing.
+        return answer.ok ? { ok: true, value: { callId: null, friend: answer.value } } : answer;
+      });
+    },
+    standInSeat: () => friendSeat,
     hangUp(now) { dispatch({ type: "hang_up", now }); },
     reset() {
       if (isOpen(state)) return;

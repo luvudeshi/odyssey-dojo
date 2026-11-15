@@ -31,6 +31,7 @@ Where the code is:
 | The card | `src/facetime/ui/FaceTimeCard.tsx` |
 | Server: tokens, Chert, routes | `server/lib/facetimeToken.ts`, `facetimeChert.ts`, `facetimeEnv.ts`, `server/routes/facetime.ts` |
 | Loopback page (no account needed) | `tools/facetime/index.html` |
+| Stand-in friend (LiveKit only): the link, the friend's page, the card on its own page | `src/facetime/standIn.ts`, `tools/facetime/standin.html`, `tools/facetime/real.html` |
 
 ## Set up (Mac or Windows)
 
@@ -70,6 +71,83 @@ You need a Chert account with a line, the LiveKit project Chert's setup gives yo
 
 5. Mount the card (see Mount below) if it is not on the Multiplayer screen yet.
 
+## Test with LiveKit only (no Chert line)
+
+For when there is a LiveKit project and no Chert line yet. A browser window plays the friend's phone. It joins the call's real room in the seat the FaceTime bridge would take, so everything on the game's side runs against a real room: the token, the join, the published picture and sound, the friend's camera read into strikes, the clocks, both ways of hanging up.
+
+**This has not been run against a real room either.** It was built with no LiveKit keys. See Tested and Not tested.
+
+Steps on a Mac, in Terminal, from the repo's top folder:
+
+1. Get the branch and install:
+
+   ```
+   git fetch origin
+   git checkout facetime-call
+   git pull
+   npm install
+   ```
+
+2. Put the three LiveKit names in `.env.local` (or `.env`) in the top folder. Leave the three `CHERT_` names out. Never commit this file and never paste a value anywhere.
+
+   ```
+   LIVEKIT_URL=
+   LIVEKIT_API_KEY=
+   LIVEKIT_API_SECRET=
+   ```
+
+3. Start the page and the game server:
+
+   ```
+   npm run dev:all
+   ```
+
+4. In a second Terminal window, check the setup:
+
+   ```
+   curl http://localhost:8787/api/facetime/status
+   ```
+
+   You want `"standIn":true`. With no Chert names it reads `{"ready":false,"missing":["CHERT_API_KEY","CHERT_PROJECT_ID","CHERT_LINE_ID"],"standIn":true}`. If `standIn` is false, `missing` names a LiveKit setting that was not found. Restart `npm run dev:all` after changing the file.
+
+5. Open Chrome at `http://localhost:5173/tools/facetime/real.html`. This is the real card on a page of its own, with the real server, room, picture, sound and pose model behind it. (Once the card is mounted on the Multiplayer screen, the same works there.) The host has no camera on this page and defends with the keyboard.
+
+6. The card says FaceTime is not set up and shows **Test without a phone**. Press it. Allow the microphone if asked. The card changes to "Waiting for the stand-in friend" and shows a link.
+
+7. Press **Open the stand-in phone**. A second window opens. Put it beside the game's window. Do not cover the game or switch its tab away: a hidden tab stops drawing the picture.
+
+8. In the new window press **Answer**. Allow the camera and the microphone. Wear headphones or press Mute, or the game's sound loops through the microphone. You have one minute from step 6; after that the game gives up as it does on an unanswered phone.
+
+What to look for, in order:
+
+- The stand-in window shows the game's picture in the phone frame, with "GET READY". The list beside it reads: Game in the room `odyssey-dojo`; Game's picture "yes, named odyssey-dojo-fight, 720 x 1280"; Game's sound "yes, named odyssey-dojo-sound"; My camera sent "yes".
+- About 3 seconds after the camera is sent, the stand-in window plays three rising notes and then Athena. The game's card says the friend is on the call and shows the time left.
+- The card says "The game can see your friend." That is the pose model reading the stand-in's camera out of the room.
+- Press "Start the fight" on the card. The phone frame shows the fight, the health bars and the move cards.
+- On a strike card, step back from the Mac's camera until your upper body is in the small picture and punch. The game shows "YOU + FRIEND" and the monster takes the hit.
+- Press Hang up in the stand-in window. The card says "Your friend hung up."
+- Do it again and press Hang up on the game's side (the card, or the plate at the top left during a fight). The stand-in window says the game left and the call is over.
+- In the LiveKit dashboard, the room `odyssey-dojo-` plus 12 letters and digits has two participants, `odyssey-dojo` and `facetime-bridge`, and closes when both have left.
+
+If it fails:
+
+- The card says "The game could not join the call's room": the game's own join failed. The URL must be the `wss://` address, and the key and secret must be from the same LiveKit project.
+- The stand-in window says "The room could not be joined": the same check. Its token is signed by the same server with the same secret.
+- The stand-in window says the link is too old: a token lasts 10 minutes. Press Test without a phone again.
+- "Nobody picked up" on the card: the minute ran out, or the stand-in's camera was not allowed. The game counts the call as answered only when it sees the friend's camera.
+
+With all six names set, the card shows only the real Call form. Add `?ftstandin=1` to the address to get the stand-in button back.
+
+What this does NOT prove:
+
+- **Chert's request.** `POST /api/v1/calls` is never sent. Its body, its headers, its error words, its call states and the meaning of `remote_participant_identity` stay unchecked.
+- **Ringing.** No phone rings, nothing is answered or declined, and nobody is asked how the call is doing.
+- **The bridge's ready sign.** A participant's token cannot write the room's metadata, so `chert_bridge_ready` is never sent. The game takes its 3 second fallback every time here. What the real metadata looks like, and whether `bridgeReady()` reads it, is still unknown.
+- **The bridge's identity and track names.** The stand-in joins as `facetime-bridge` and publishes a browser's camera and microphone tracks. What Chert's bridge calls itself and its tracks was never seen. Whether Chert sends the phone the game's picture (it wants a camera track from the speaking participant) is not shown either.
+- **A phone's picture.** The stand-in sends a wide, clean webcam picture from a Mac. A phone sends a tall, compressed one, with a person further away. Pose reading on that is still untested.
+- **The 10 second greeting rule and the 5 minute limit** as Chert enforces them. The game's own clocks run; nobody on the other side cuts the call.
+- **Echo on a real call**, and Safari and Firefox.
+
 ## Place the first call
 
 1. Open the game in Chrome on the computer. Go to Multiplayer.
@@ -102,7 +180,9 @@ These are the places that were guessed. Each is one small change.
 
 ## Mount
 
-The card is self-contained. It shows a title ("Call a friend on FaceTime"), one line of text, a phone number box and one button (Call). During a call the same card shows the status, "Start the fight" and "Hang up". If the server has no keys it shows one line: "FaceTime is not set up on this server."
+To try the card before it is mounted, open `/tools/facetime/real.html` on the dev server: the same card with the real session, on a page of its own.
+
+The card is self-contained. It shows a title ("Call a friend on FaceTime"), one line of text, a phone number box and one button (Call). During a call the same card shows the status, "Start the fight" and "Hang up". If the server has no keys it shows one line: "FaceTime is not set up on this server." If only the three LiveKit names are set, it adds a "Test without a phone" button under that line (see Test with LiveKit only).
 
 It takes one prop: `onStart`, the same function the Host card's "Start" uses. Tested locally on the two-card screen, not committed:
 
@@ -136,14 +216,15 @@ The host's microphone is sent to the phone only. The friend's voice plays on the
 
 ## Tested
 
-- Unit tests: `npx vitest run tests/facetimeCall.test.ts tests/facetimeFrame.test.ts tests/facetimeSession.test.ts server/tests/facetimeServer.test.ts`. They cover the call steps and timers, the phone number check, the bridge-ready parser, the picture layout and HUD words, the session with a fake room, token signing, the Chert request shape (against a fake fetch), and the routes over real HTTP on this machine.
+- Unit tests: `npx vitest run tests/facetimeCall.test.ts tests/facetimeFrame.test.ts tests/facetimeSession.test.ts tests/facetimeStandIn.test.ts server/tests/facetimeServer.test.ts server/tests/facetimeStandIn.test.ts`. They cover the call steps and timers, the phone number check, the bridge-ready parser, the picture layout and HUD words, the session with a fake room, token signing, the Chert request shape (against a fake fetch), and the routes over real HTTP on this machine.
 - The loopback page in headless Chrome: the call reaches "playing", the published track is 720 by 1280 and readable, sound goes out, and the made-up friend's strikes land in the real fight.
 - The card on the Multiplayer screen, with and without setup.
+- The stand-in path, with made-up LiveKit settings and no real room. Unit tests: the stand-in route gives a token for `facetime-bridge` in the seat's room, good for 10 minutes, uses the room up, sends nothing to Chert and is not an open path; the session opens the room, asks for the stand-in's seat, places no call and never polls; the link carries the seat after the `#` and reads it back. In headless Chrome: the stand-in page with no link, with a good link, with an old link, and with a room address that does not exist (it says the room could not be joined and what to check; the token is not shown); the card on `real.html` with only the LiveKit names set shows the button, and a room that cannot be joined fails the call with a plain line.
 
 ## Not tested
 
 - **No real FaceTime call.** Nothing has rung a phone.
-- **No real LiveKit room.** `livekitRoom.ts` type-checks against `livekit-client` 2.24.1 and has never connected.
+- **No real LiveKit room.** `livekitRoom.ts` type-checks against `livekit-client` 2.24.1 and has never connected. The stand-in page (`tools/facetime/standin.tsx`) uses the same package and has never connected either. The steps under Test with LiveKit only are how to do it.
 - **No Chert account.** The request body, the error words, the call status words and the meaning of `remote_participant_identity` are from the setup page, not from a reply.
 - **The bridge-ready signal** and the bridge's track names were never observed.
 - Pose reading on a real phone picture (portrait, compressed, a person far away). The loopback's friend is a drawing with a stand-in detector.
