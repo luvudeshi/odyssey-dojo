@@ -9,7 +9,10 @@ import { STYLES } from "../../src/styles/registry";
 import {
   DEFENDS, GOD_GESTURES, ORDER, PERFORMANCES, SIZES, crossFire, firedIn, inScope, markdown, pairsOf,
 } from "../helpers/crossFire";
-import { READY, pose, recording } from "../poseFixture";
+import type { Build } from "../helpers/anyBody";
+import { FIXTURE_BUILD, builtRecording } from "../helpers/anyBody";
+import type { Step } from "../poseFixture";
+import { READY, pose } from "../poseFixture";
 
 const TABLE = crossFire();
 const PAIRS = pairsOf(TABLE);
@@ -50,7 +53,7 @@ test("the table is 26 by 26: every move in the registry, once, with a performanc
 
 test("prints the table, and docs/cross-fire.md holds the same one", () => {
   const drawn = markdown(TABLE);
-  console.log(`\n${drawn}\n`);
+  process.stdout.write(`\n${drawn}\n\n`);
   expect(readFileSync("docs/cross-fire.md", "utf8").replace(/\r\n/g, "\n")).toContain(drawn);
 });
 
@@ -86,16 +89,27 @@ test("outside that, the pairs that fire are the ones listed, at all three sizes"
   }
 });
 
-// Found in #178: with the hands only just raised, a punch aimed upward passed the chin with the elbow still
-// bent and also read as the rising strike of the same hand. The arm bones here are aimed, as in poseFixture.ts.
-describe.each([20, 30, 40])("a punch aimed %i degrees above level, 300 ms after the hands come up", (degrees) => {
-  const up = -Math.tan((degrees * Math.PI) / 180);
-  test("a cross is a cross and not an uppercut", () => {
-    const cross = pose({ rightUpper: [-0.1, up, -1], rightFore: [-0.1, up, -1] }, READY);
-    expect(firedIn(recording([[READY, 300], [cross, 130], [cross, 200]]))).toEqual(["cross"]);
-  });
-  test("a jab is a jab and not a rising palm", () => {
-    const jab = pose({ leftUpper: [0.1, up, -1], leftFore: [0.1, up, -1] }, READY);
-    expect(firedIn(recording([[READY, 300], [jab, 130], [jab, 200]]))).toEqual(["jab"]);
+// Found in #178: on narrow shoulders with long arms, a punch aimed 20 degrees or more above level soon after the
+// hands come up passed the chin with the elbow still bent, and also read as the rising strike of the same hand.
+// Without the wait it did so on the fixture's own build too.
+const BUILDS: readonly (readonly [string, Build])[] = [
+  ["0.40 m shoulders, 0.55 m arms (the fixture)", FIXTURE_BUILD],
+  ["0.30 m shoulders, 0.60 m arms", { shoulders: 0.3, arm: 0.6, torso: 0.5 }],
+  ["0.28 m shoulders, 0.55 m arms", { shoulders: 0.28, arm: 0.55, torso: 0.5 }],
+];
+describe.each(BUILDS)("a punch aimed upward soon after the hands come up, on %s", (_name, build) => {
+  const punched = (side: "left" | "right", degrees: number, wait: number): string[] => {
+    const up = -Math.tan((degrees * Math.PI) / 180);
+    const aim = [side === "left" ? 0.1 : -0.1, up, -1] as const;
+    const out = pose(side === "left" ? { leftUpper: aim, leftFore: aim } : { rightUpper: aim, rightFore: aim }, READY);
+    // Hands up in 300 ms, held for `wait`, then the punch in 130 ms and held.
+    const steps: Step[] = [[READY, 300], [READY, wait], [out, 130], [out, 200]];
+    return firedIn(builtRecording(build, steps.filter(([, ms]) => ms > 0)));
+  };
+  test.each([20, 30, 40])("at %i degrees a cross is a cross and not an uppercut, a jab a jab and not a rising palm", (degrees) => {
+    for (const wait of [0, 300]) {
+      expect(punched("right", degrees, wait), `cross, ${String(wait)} ms wait`).toEqual(["cross"]);
+      expect(punched("left", degrees, wait), `jab, ${String(wait)} ms wait`).toEqual(["jab"]);
+    }
   });
 });
