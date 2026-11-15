@@ -1,5 +1,6 @@
 import type { MoveDef } from "../../core/types";
 import { JOINT, clamp01, joint, latest, shoulderCenter } from "../../pose/signals";
+import { bodyWent } from "../looseSignals";
 
 export const move: MoveDef = {
   id: "jump",
@@ -38,5 +39,8 @@ export const move: MoveDef = {
     // Held (0.5) from about 0.18 shoulder widths, so the hop still counts just after landing. Not lower: raising
     // both fists into a guard lifts a seated player's shoulders 0.15 widths.
     return clamp01(Math.min(rise, headRise) / standing.shoulderWidth / 0.35);
+  },
+  detectAsked(history) {
+    return Math.max(move.detect(history), bodyWent(history, "up"));
   },
 };

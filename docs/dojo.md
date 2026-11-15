@@ -98,7 +98,7 @@ change. The points follow the grade and nothing else.
 
 ## What the coach says
 
-Every move the dojo can train (26: every style's strikes, the kicks, the defends and the dojo's own eight) has its
+Every move the dojo can train (24: every style's strikes, the kicks, the defends and the dojo's own eight) has its
 words written by hand. `tests/dojoCoaching.test.ts` walks the real list and fails when a move lacks any of them, or
 when a line has detector wording in it ("on this frame", "Not:", a unit, a number, an id) or is too long for the
 screen (28 characters for a checklist row, 90 for a tip, 60 for praise).

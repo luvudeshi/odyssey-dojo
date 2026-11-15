@@ -2,6 +2,7 @@ import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { JOINT, joint, latest } from "../../pose/signals";
 import { handWasOverhead } from "../handSignals";
+import { armWent } from "../looseSignals";
 
 const CHOP_MS = 300;
 
@@ -21,6 +22,10 @@ export const move: MoveDef = {
     // A chop is fast: the hand gets from over the head to under the shoulder inside CHOP_MS. A hand lowered
     // gently takes longer.
     return below && handWasOverhead(history, "right", CHOP_MS) ? 1 : 0;
+  },
+  /** Asked for: the right wrist coming down. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), armWent(history, "right", "down"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["right"], rise: -0.6, tolerance: 1 });

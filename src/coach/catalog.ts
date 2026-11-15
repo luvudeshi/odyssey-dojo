@@ -13,6 +13,7 @@ import { COACHING, faultOf, praiseFor } from "./coaching";
 import { EXTRA_MEASURES, EXTRA_MOVES, EXTRA_NEEDS_LEGS, EXTRA_STYLES, EXTRA_TIPS, extraGuideFor, judgeExtraRep } from "./extra";
 import type { DojoStyleDef } from "./extra";
 import { guideFor } from "./guide";
+import { currentStyleId } from "../styles/oldIds";
 import type { Guide } from "./guide";
 import { PRACTICE_TIPS, judgeRep } from "./practice";
 import type { RepResult } from "./practice";
@@ -182,14 +183,14 @@ function browserStorage(): ChoiceStorage | null {
   }
 }
 
-/** The stored choice. No storage, a private window that throws, or anything that is not a choice: null. */
+/** The stored choice, its style id as today's (a saved Hoplite or Pankration is read as Jiu-jitsu or Taekwondo). No storage, a private window that throws, or anything that is not a choice: null. */
 export function loadChoice(storage: ChoiceStorage | null = browserStorage()): DojoChoice | null {
   try {
     const data: unknown = JSON.parse(storage?.getItem(DOJO_CHOICE_KEY) ?? "null");
     if (typeof data !== "object" || data === null) return null;
     const { style, moves, reps } = data as Record<string, unknown>;
     if (typeof style !== "string" || !Array.isArray(moves) || typeof reps !== "number" || !Number.isFinite(reps)) return null;
-    return { style, moves: moves.filter((id): id is string => typeof id === "string"), reps };
+    return { style: currentStyleId(style), moves: moves.filter((id): id is string => typeof id === "string"), reps };
   } catch {
     return null;
   }

@@ -3,8 +3,16 @@ import type { ReactNode } from "react";
 import { DEVICES } from "../../screens/menuShields";
 
 export const STYLE_DEVICES: Readonly<Record<string, ReactNode>> = {
-  hoplite: DEVICES.shield,
-  pankration: DEVICES.pair,
+  taekwondo: DEVICES.pair,
+  jiu_jitsu: (
+    <>
+      <path className="f" d="M40 46 L26 86 L38 80 L44 90 L50 48 Z" />
+      <path className="f" d="M56 46 L70 86 L58 80 L52 90 L46 48 Z" />
+      <rect className="f" x="26" y="30" width="44" height="22" rx="6" />
+      <path className="s" d="M26 41 H70" />
+      <rect className="e" x="40" y="26" width="16" height="30" rx="5" />
+    </>
+  ),
   boxer: (
     <>
       <rect className="f" x="22" y="12" width="52" height="46" rx="22" />
