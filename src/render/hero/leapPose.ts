@@ -9,6 +9,8 @@ import type { Leap } from "../strikeReach";
 import { buildBoneRig } from "./track/boneMap";
 import type { BoneRig } from "./track/boneMap";
 import { bendJoint } from "./track/math";
+import type { LimbKey } from "./track/boneMap";
+import type { PowerPose } from "./powerPose";
 
 /** Metres the hips sink in a full crouch, and radians the chest pitches in a full lean. */
 const DROP = 0.26;
@@ -54,7 +56,7 @@ export interface LeapPose {
   /** Metres a held jump lifts the whole hero; his group adds it. */
   readonly lift: number;
   /** Folds the held defends into the strike's leap, eased by `dt`, then poses the bones. */
-  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number, dodgeCrouch?: number): void;
+  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number, dodgeCrouch?: number, power?: PowerPose | null): void;
 }
 
 /** The exaggerated defends, eased so a press snaps in and a release snaps out without a pop. */
@@ -149,21 +151,24 @@ class Poser implements LeapPose {
   private readonly turn = new Quaternion();
   private readonly scale = new Vector3();
 
-  constructor(private readonly root: Object3D, private readonly rig: BoneRig, private readonly children: Readonly<Record<LegKey, Object3D>>) {}
+  constructor(private readonly root: Object3D, private readonly rig: BoneRig, private readonly children: Readonly<Record<LimbKey, Object3D>>) {}
 
   get lift(): number {
     return this.stance.lift;
   }
 
-  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number, dodgeCrouch = 0): void {
+  update(leap: Leap, held: ReadonlySet<string>, kick: Act["kick"], target: Vector3 | null, dt: number, dodgeCrouch = 0, power: PowerPose | null = null): void {
     this.stance.ease(held, dt);
     const act = this.stance.act(leap, this.act);
-    act.crouch = Math.max(act.crouch, dodgeCrouch);
+    act.crouch = Math.max(act.crouch, dodgeCrouch, power?.crouch ?? 0);
+    if (power) { act.lean = Math.max(act.lean, power.lean); act.roll += power.roll; }
     act.kick = kick;
     act.target = target;
     this.undo.restore();
-    if (act.crouch < 1e-3 && act.air < 1e-3 && act.lean < 1e-3 && Math.abs(act.roll) < 1e-3) return;
+    const arms = power !== null && (power.wR > 1e-3 || power.wL > 1e-3);
+    if (act.crouch < 1e-3 && act.air < 1e-3 && act.lean < 1e-3 && Math.abs(act.roll) < 1e-3 && !arms) return;
     this.pose(act);
+    if (power && (power.wR > 1e-3 || power.wL > 1e-3)) this.armsToward(power);
     this.undo.commit();
   }
 
@@ -214,6 +219,16 @@ class Poser implements LeapPose {
     }
   }
 
+  /** A god's power: aims each arm along the pose's directions, upper arm first so the forearm follows it. */
+  private armsToward(p: PowerPose): void {
+    const keys = ["upperarmR", "lowerarmR", "upperarmL", "lowerarmL"] as const;
+    for (let i = 0; i < 4; i++) {
+      const w = i < 2 ? p.wR : p.wL;
+      if (w <= 1e-3) continue;
+      this.aim(keys[i] as LimbKey, this.a.set(p.dirs[i * 3] ?? 0, p.dirs[i * 3 + 1] ?? 0, p.dirs[i * 3 + 2] ?? 0).normalize(), w);
+    }
+  }
+
   /** The thigh and shin directions in the air: the tuck, or for the right leg the kick. */
   private legTarget(side: "L" | "R", act: Act): [Vector3, Vector3] {
     if (side === "R" && act.kick === "knee") return [KNEE_THIGH, KNEE_CALF];
@@ -229,7 +244,7 @@ class Poser implements LeapPose {
   }
 
   /** Turns `key`'s bone so it points along world `to`, keeping the clip's twist, blended in by `w`. */
-  private aim(key: LegKey, to: Vector3, w: number): void {
+  private aim(key: LimbKey, to: Vector3, w: number): void {
     const bone = this.rig.limbs[key].bone;
     bone.getWorldPosition(this.v);
     const from = this.children[key].getWorldPosition(this.from).sub(this.v);
@@ -259,5 +274,10 @@ export function createLeapPose(root: Object3D): LeapPose | null {
   const calfR = child("calf_r");
   if (!calfL || !calfR) return null;
   const [footL, footR] = rig.footBones;
-  return new Poser(root, rig, { thighL: calfL, calfL: footL, thighR: calfR, calfR: footR });
+  const [upperL, lowerL, upperR, lowerR, handL, handR] = ["upperarm_l", "lowerarm_l", "upperarm_r", "lowerarm_r", "hand_l", "hand_r"].map(child);
+  if (!upperL || !lowerL || !upperR || !lowerR || !handL || !handR) return null;
+  return new Poser(root, rig, {
+    thighL: calfL, calfL: footL, thighR: calfR, calfR: footR,
+    upperarmL: lowerL, lowerarmL: handL, upperarmR: lowerR, lowerarmR: handR,
+  });
 }
