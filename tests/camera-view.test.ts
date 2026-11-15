@@ -46,14 +46,15 @@ test("legs under 0.5 visibility draw no line at all; faint arms still do", () =>
   expect(legs.lines.some((l) => l.faint)).toBe(false);
 });
 
-test("the caption uses the fight's own presence check, wrists and all", () => {
+test("the caption uses the fight's own presence check: shoulders needed, a hidden wrist is fine", () => {
   const ok = frameAt(1000);
   expect(presenceOf(ok, 1100)).toEqual({ ok: true });
   expect(presenceOf(null, 1100)).toEqual({ ok: false, reason: "I can't see you" });
   expect(presenceOf(ok, 1400).ok).toBe(false); // older than the fight's 300 ms limit
-  const wristHidden = { ...ok, image: ok.image.map((p, i) => (i === JOINT.leftWrist ? { ...p, visibility: 0.1 } : p)) };
-  expect(presenceOf(wristHidden, 1100)).toEqual({ ok: false, reason: "I can't see you" });
-  const close = frameAt(1000, { [JOINT.leftShoulder]: [0.2, 0.35], [JOINT.rightShoulder]: [0.8, 0.35] });
+  const hide = (joint: number) => ({ ...ok, image: ok.image.map((p, i) => (i === joint ? { ...p, visibility: 0.1 } : p)) });
+  expect(presenceOf(hide(JOINT.leftWrist), 1100)).toEqual({ ok: true });
+  expect(presenceOf(hide(JOINT.leftShoulder), 1100)).toEqual({ ok: false, reason: "I can't see you" });
+  const close = frameAt(1000, { [JOINT.leftShoulder]: [0.1, 0.35], [JOINT.rightShoulder]: [0.9, 0.35] });
   expect(presenceOf(close, 1100)).toEqual({ ok: false, reason: "step back" });
 });
 
