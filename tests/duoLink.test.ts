@@ -5,7 +5,7 @@ import { startFight, step } from "../src/combat/engine";
 import type { CombatEvent, CombatInput, CombatState, PoseFrame, Strike } from "../src/core/types";
 import { createDuoLink } from "../src/duo/duoLink";
 import type { DuoOptions } from "../src/duo/duoLink";
-import { createBodyReader } from "../src/duo/split";
+import { STANCE_FRAMES, createBodyReader } from "../src/duo/split";
 import { ENEMIES } from "../src/enemies/registry";
 import { MOVES } from "../src/moves/registry";
 import { TOGETHER_MS, forTwo } from "../src/net/host";
@@ -13,7 +13,7 @@ import type { HostLink } from "../src/net/host";
 import { STYLES } from "../src/styles/registry";
 import { GOOD } from "./helpers/ghostCopy";
 import { need } from "./helpers/need";
-import { NEUTRAL, frameOf, sequence } from "./helpers/poses";
+import { DOWN, NEUTRAL, frameOf, pose, sequence } from "./helpers/poses";
 
 const FRAME_MS = 33;
 const enemy = need(ENEMIES.find((e) => e.id === "polyphemus"));
@@ -241,4 +241,53 @@ test("a body that has not joined yet cannot strike", () => {
     struck.push(...link.takeInput({ held: new Set(), struck: [] }, now).struck);
   }
   expect(struck).toEqual([]);
+});
+
+/** What a reader says a body holds on each frame of standing, dodging to its left, and standing again, at `fps`. */
+function dodgeAt(fps: number, standMs: number, reader = createBodyReader(MOVES), from = 0): { during: boolean[]; after: boolean[]; t: number } {
+  const step = 1000 / fps;
+  let t = from;
+  const feed = (ms: number, dx: number): boolean[] => {
+    const out: boolean[] = [];
+    for (const end = t + ms; t < end; t += step) out.push(reader.read(shifted(frameOf(t, pose(DOWN, DOWN, dx, 0)), 0.2)).held.has("dodge_left"));
+    return out;
+  };
+  feed(standMs, 0);
+  const during = feed(600, -0.12);
+  const after = feed(1200, 0).slice(Math.ceil(fps / 2));
+  return { during, after, t };
+}
+
+test("player two's stance is taken from their first frames, also on a camera slower than 20 pictures a second", () => {
+  // 15 a second never puts 20 frames inside one second, which is what the shared history waits for.
+  for (const fps of [30, 15, 10]) {
+    const { during, after } = dodgeAt(fps, 1000);
+    expect(during.at(-1), `${String(fps)} fps: the dodge is read`).toBe(true);
+    expect(after.some(Boolean), `${String(fps)} fps: standing again is not a dodge`).toBe(false);
+  }
+});
+
+test("player two's stance is not taken in the middle of a move", () => {
+  // The pictures come slowly while the player stands and dodges, then fast: the moment the shared history would
+  // have taken the stance (20 frames inside a second) falls inside a later dodge. Seen in the smoke run: standing
+  // still then read as the opposite dodge, and a defend made by player one alone counted for both.
+  const reader = createBodyReader(MOVES);
+  const slow = dodgeAt(15, 1000, reader);
+  expect(reader.history().baseline?.centerX).toBeCloseTo(0.7, 3);
+  const fast = dodgeAt(30, 100, reader, slow.t);
+  expect(fast.during.at(-1)).toBe(true);
+  expect(fast.after.some(Boolean)).toBe(false);
+  expect(reader.history().baseline?.centerX).toBeCloseTo(0.7, 3);
+  // Standing, they hold no dodge either way.
+  const still = reader.read(shifted(frameOf(fast.t + 33, NEUTRAL), 0.2));
+  expect([...still.held]).toEqual([]);
+});
+
+test("a stance asked for before the reader has frames is taken from the next ones", () => {
+  const reader = createBodyReader(MOVES);
+  reader.settle();
+  for (let i = 0; i < STANCE_FRAMES - 1; i++) reader.read(shifted(frameOf(i * 66, NEUTRAL), 0.2));
+  expect(reader.history().baseline).toBeNull();
+  reader.read(shifted(frameOf(STANCE_FRAMES * 66, NEUTRAL), 0.2));
+  expect(reader.history().baseline?.centerX).toBeCloseTo(0.7, 3);
 });

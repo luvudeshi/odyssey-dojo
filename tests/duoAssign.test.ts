@@ -2,7 +2,7 @@
 // All frames are made up: no camera.
 import { expect, test } from "vitest";
 import type { Landmark } from "../src/core/types";
-import { JOIN_MS, LEAVE_MS, MIN_SHOULDERS, PROMOTE_MS, createSeating } from "../src/duo/assign";
+import { JOIN_MS, LEAVE_MS, MIN_SHOULDERS, PROMOTE_MS, STOPPED_MS, createSeating } from "../src/duo/assign";
 import type { Seats } from "../src/duo/assign";
 import { createDuoCamera } from "../src/duo/duoCamera";
 import { homeOf } from "../src/duo/split";
@@ -149,7 +149,23 @@ test("when frames stop coming the count falls back to one player by the clock", 
   const seating = createSeating();
   const { t } = run(seating, times(JOINED, () => [body(0.3), body(0.7)]));
   expect(seating.players(t)).toBe(2);
-  expect(seating.players(t + LEAVE_MS + 1)).toBe(1);
+  expect(seating.players(t + STOPPED_MS + 1)).toBe(1);
+});
+
+test("a hitch in the pictures is not player two leaving: the count stays at two through it and after it", () => {
+  const seating = createSeating();
+  const pair = (): Body[] => [body(0.3), body(0.7)];
+  const { t } = run(seating, times(JOINED, pair));
+  // No picture for longer than it takes a player to count as gone (seen in the smoke run on a busy laptop: 683 ms).
+  const hitch = LEAVE_MS + 150;
+  for (let ms = 0; ms <= hitch; ms += 50) expect(seating.players(t + ms), `${String(ms)} ms in`).toBe(2);
+  const after = run(seating, times(10, pair), t + hitch);
+  expect(after.out.every((seats) => seats.players === 2)).toBe(true);
+  expect(seating.players(after.t)).toBe(2);
+  // Pictures that keep coming without player two still count them out after LEAVE_MS.
+  const alone = run(seating, times(Math.ceil(LEAVE_MS / FRAME_MS) + 2, () => [body(0.3)]), after.t);
+  expect(alone.out.at(-1)?.players).toBe(1);
+  expect(seating.players(alone.t)).toBe(1);
 });
 
 test("the camera store: off looks for one body, on looks for two and keeps player two's frame", () => {
