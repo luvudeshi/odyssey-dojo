@@ -6,18 +6,18 @@ import type { Side } from "../handSignals";
 import { SIDES, kneeAngle, kneeLift, legsVisible } from "../legSignals";
 
 /** How long ago the foot may have been on the floor, in milliseconds. */
-const RISE_MS = 700;
+export const RISE_MS = 700;
 /** How long the knee must stay up and folded, in milliseconds. A front kick's chamber is shorter than this. */
 export const HOLD_MS = 120;
 export const KNEE_LIFT = 0.6;
 export const KNEE_BEND = 115;
 const GROUNDED_LIFT = 0.2;
 
-function raised(frame: PoseFrame, side: Side): boolean {
+export function raised(frame: PoseFrame, side: Side): boolean {
   return legsVisible(frame) && kneeLift(frame, side) >= KNEE_LIFT && kneeAngle(frame, side) < KNEE_BEND;
 }
 
-function grounded(frame: PoseFrame, side: Side): boolean {
+export function grounded(frame: PoseFrame, side: Side): boolean {
   return legsVisible(frame) && Math.abs(kneeLift(frame, side)) < GROUNDED_LIFT;
 }
 

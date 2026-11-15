@@ -1,7 +1,7 @@
 import { speakLine } from "../audio/voice";
 import { Button, Logo, Panel } from "../ui/pebble";
 
-export function TitleScreen(props: { notice: string; onCamera: () => void; onKeyboard: () => void; onSettings: () => void; onTogether?: () => void }) {
+export function TitleScreen(props: { notice: string; problem: string; onCamera: () => void; onKeyboard: () => void; onSettings: () => void; onTogether?: () => void }) {
   return (
     <Panel as="main" ornament className="menu menu--title">
       <h1 className="sr-only">Odyssey Fighter</h1>
@@ -17,6 +17,14 @@ export function TitleScreen(props: { notice: string; onCamera: () => void; onKey
         <Button onClick={props.onSettings}>Settings</Button>
       </div>
       <p className="notice">{props.notice}</p>
+      {props.problem && (
+        <div className="overlay">
+          <h1>The camera did not start</h1>
+          <p>{props.problem}</p>
+          <Button primary onClick={props.onCamera}>Try the camera again</Button>
+          <Button onClick={props.onKeyboard}>Play on the keyboard</Button>
+        </div>
+      )}
     </Panel>
   );
 }

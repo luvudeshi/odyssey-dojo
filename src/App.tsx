@@ -6,6 +6,7 @@ import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
 import type { GodReveal } from "./ai/revealGod";
 import { log } from "./core/log";
 import { ENEMIES } from "./enemies/registry";
+import { cameraErrorMessage } from "./pose/cameraError";
 import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
@@ -33,6 +34,7 @@ const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
 export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
   const [notice, setNotice] = useState("");
+  const [cameraProblem, setCameraProblem] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search)));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
@@ -58,7 +60,8 @@ export function App() {
   const startCamera = (): void => {
     if (starting.current) return;
     starting.current = true;
-    setNotice("Starting the camera...");
+    setCameraProblem("");
+    setNotice("Starting the camera... If the browser asks for the camera at the top of this window, choose Allow.");
     startTracker().then(
       (started) => {
         if (keyboardOnly.current) {
@@ -72,8 +75,10 @@ export function App() {
       (error: unknown) => {
         starting.current = false;
         log("warn", "tracker_failed", error);
-        setNotice("No camera available, so you're on keyboard controls.");
-        dispatch({ type: "ready" });
+        setNotice("");
+        // Stay put: the player chooses the keyboard, never the failure.
+        setCameraProblem(cameraErrorMessage(error));
+        dispatch({ type: "toTitle" });
       },
     );
   };
@@ -81,7 +86,7 @@ export function App() {
   if (flow.screen === "title") {
     return (
       <>
-        <TitleScreen notice={notice} onCamera={startCamera} onKeyboard={() => { keyboardOnly.current = true; dispatch({ type: "ready" }); }} onSettings={() => { setSettingsOpen(true); }} onTogether={() => { dispatch({ type: "together" }); }} />
+        <TitleScreen notice={notice} problem={cameraProblem} onCamera={startCamera} onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); dispatch({ type: "ready" }); }} onSettings={() => { setSettingsOpen(true); }} onTogether={() => { dispatch({ type: "together" }); }} />
         {settingsOpen && <SettingsPanel onClose={() => { setSettingsOpen(false); }} />}
       </>
     );
