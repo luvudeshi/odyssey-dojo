@@ -4,13 +4,14 @@ import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { GOD_IDS, RevealRequestSchema, RevealSchema } from "../../src/ai/contracts";
 import type { GodId, RevealResponse, RevealWire } from "../../src/ai/contracts";
-import { RIVALS } from "../../src/ai/rivals";
+import { asSentence, REASON_MAX } from "../../src/ai/revealText";
+import { rivalFor } from "../../src/ai/rivals";
 import { log } from "../../src/core/log";
 import type { InlineImage } from "../ai/types";
 import type { Register } from "../app";
 import { createPortraitStore } from "../lib/portraits";
 import { withTimeout } from "../lib/timeout";
-import { SAFE_LINES, speaksOfThePlayer } from "../revealGuard";
+import { asEpithet, SAFE_LINES, unfit } from "../revealGuard";
 import { portraitPrompt, REVEAL_PROMPT } from "../revealPrompts";
 import { wireSchema } from "../schema";
 
@@ -18,7 +19,6 @@ const SCHEMA = wireSchema(RevealSchema);
 const PREFIX = "data:image/jpeg;base64,";
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 const EPITHET_MAX = RevealSchema.shape.epithet.maxLength ?? 80;
-const REASON_MAX = RevealSchema.shape.reason.maxLength ?? 240;
 
 const God = z.preprocess((value) => (typeof value === "string" ? value.trim().toLowerCase() : value), z.enum(GOD_IDS));
 /** The model's answer before repair: the god must be one of ours, the rest is tidied. */
@@ -29,16 +29,14 @@ const LooseSchema = z.object({
   rival_god: God.optional().catch(undefined),
 });
 
-const tidy = (text: string, max: number): string => text.replace(/\s+/g, " ").trim().slice(0, max).trim();
-
 // Any long run of base64 is cut out before logging, so an error that echoes the request cannot put a snapshot in the log.
 const BASE64_RUN = /[A-Za-z0-9+/=]{40,}/g;
 const why = (error: unknown): string =>
   error instanceof Error ? error.message.replace(BASE64_RUN, "[data]").slice(0, 300) : "unknown error";
 
-/** The model's line, or the god's fixed line when the model spoke of the player's body, age, looks or gender. */
+/** The model's line once tidied, or the god's fixed line when the guard says it cannot be shown. */
 function safe(god: GodId, field: "epithet" | "reason", text: string): string {
-  if (!speaksOfThePlayer(text)) return text;
+  if (!unfit(god, field, text)) return text;
   log("warn", "reveal_reworded", field);
   return SAFE_LINES[god][field];
 }
@@ -49,9 +47,10 @@ function repairReveal(raw: unknown): RevealWire | null {
   const { god, rival_god: rival } = loose.data;
   const reveal = RevealSchema.safeParse({
     god,
-    epithet: safe(god, "epithet", tidy(loose.data.epithet, EPITHET_MAX)),
-    reason: safe(god, "reason", tidy(loose.data.reason, REASON_MAX)),
-    rival_god: rival === undefined || rival === god ? RIVALS[god] : rival,
+    epithet: safe(god, "epithet", asEpithet(loose.data.epithet, EPITHET_MAX)),
+    reason: safe(god, "reason", asSentence(loose.data.reason, REASON_MAX)),
+    // Never Athena, who coaches the player, and never the god itself.
+    rival_god: rivalFor(god, rival),
   });
   return reveal.success ? reveal.data : null;
 }

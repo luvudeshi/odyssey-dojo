@@ -8,9 +8,9 @@ import { SIDES, kneeAngle, kneeLift, legsVisible } from "../legSignals";
 /** How long ago the foot may have been on the floor, in milliseconds. */
 const RISE_MS = 700;
 /** How long the knee must stay up and folded, in milliseconds. A front kick's chamber is shorter than this. */
-const HOLD_MS = 120;
-const KNEE_LIFT = 0.6;
-const KNEE_BEND = 115;
+export const HOLD_MS = 120;
+export const KNEE_LIFT = 0.6;
+export const KNEE_BEND = 115;
 const GROUNDED_LIFT = 0.2;
 
 function raised(frame: PoseFrame, side: Side): boolean {
