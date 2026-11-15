@@ -11,7 +11,7 @@ export function IntroScreen(props: { enemy: EnemySpec; onBegin: () => void; onBa
       <h1>{enemy.name}</h1>
       <p className="verse">{enemy.title}. Hold fast, son of Laertes: the way home runs through him.</p>
       <button autoFocus onClick={onBegin}>Face {enemy.name}</button>
-      <button onClick={onBack}>Back to the map</button>
+      <button className="quiet" onClick={onBack}>Back to the map</button>
     </main>
   );
 }
