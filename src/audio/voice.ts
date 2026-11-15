@@ -5,6 +5,7 @@ import { getSettings } from "../settings/store";
 import { clipUrl, isPhaseLine, phaseLineId } from "./athenaLines";
 import { isBeforeLine, pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 import { releaseAudio } from "./release";
+import { tapVoice } from "./soundTap";
 import { tabHidden, watchTab } from "./tab";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
@@ -320,13 +321,13 @@ export function browserDeps(storyIndexes: readonly string[] = []): VoiceDeps {
   };
   load(INDEX_URL, true);
   for (const url of storyIndexes) load(url, false);
-  return { available: (id) => clips.has(id), play: whileSeen(audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume }))), random: Math.random };
+  return { available: (id) => clips.has(id), play: whileSeen(audioPlayer((url) => tapVoice(Object.assign(new Audio(url), { volume: getSettings().voiceVolume })))), random: Math.random };
 }
 
 /** The same clips at `gain` times the volume, through audio elements that no other voice's line stops. */
 function quieter(deps: VoiceDeps, gain: number): VoiceDeps {
   if (typeof Audio === "undefined") return deps;
-  return { ...deps, play: whileSeen(audioPlayer((url) => Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain }))) };
+  return { ...deps, play: whileSeen(audioPlayer((url) => tapVoice(Object.assign(new Audio(url), { volume: getSettings().voiceVolume * gain })))) };
 }
 
 // Created with the module so the clip indexes are loaded before the first fight starts.
