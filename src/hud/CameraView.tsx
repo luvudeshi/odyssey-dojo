@@ -13,6 +13,7 @@ import { NO_FLASH, flashText, nextFlash, presenceOf } from "./cameraCaption";
 import type { Flash } from "./cameraCaption";
 import { CameraPanelContext, offersCamera, panelNote, panelState } from "./cameraPanel";
 import "./cameraView.css";
+import { FINE_INK, drawFine } from "./fineSkeleton";
 import { headStones, skeletonLines, stonesAlong } from "./skeletonLines";
 
 const nameOf = (id: string): string => MOVES.get(id)?.name ?? id;
@@ -69,7 +70,12 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       const frame = poseRef.current;
       const presence = presenceOf(frame, performance.now());
       const tracking = presence.ok;
-      if (frame && tracking && !pausedRef.current) draw(context, duoCamera.seen(frame), mirrorRef.current, width, height, ratio);
+      if (frame && tracking && !pausedRef.current) {
+        const seen = duoCamera.seen(frame);
+        // Two players: fine lines in player one's gold (player two's are drawn in blue by src/duo/ui/duoOverlay.ts).
+        if (duoCamera.on()) drawFine(context, seen.image, mirrorRef.current, width, height, ratio, FINE_INK[0]);
+        else draw(context, seen, mirrorRef.current, width, height, ratio);
+      }
       const now = performance.now() / 1000;
       flash = nextFlash(flash, battle, now, nameOf);
       const text = presence.ok ? "Tracking your body" : presence.reason;
