@@ -96,7 +96,7 @@ The tool writes both `index.json` files. It does not touch the lines recorded fi
 
 - `speakNarration(enemyId, "before" | "after")`: Homer's line for that stop. If another story line is playing it is cut off first. Then it waits up to 6 seconds for Athena to finish.
 - `speakResult(enemyId, won)`: on a win, the stop's "after" line (or `homer_win` for a fight with none). On a loss, `homer_loss`. It waits for Athena's own result line to end.
-- `speakHomecoming()`: Homer's closing line, `homer_homecoming`. The result screen of the last stop asks for it on a win in place of `speakResult`, so the quest ends on it and not on the suitors' "after" line (`homer_after_suitors` is still a clip, and `speakNarration("suitors", "after")` still speaks it). It waits for Athena's result line in the same way. The win sting plays first and the menu loop comes in under him, as on every result screen.
+- `speakHomecoming()`: Homer's closing line, `homer_homecoming`. The result screen of the last stop asks for it once the stop is won, so the quest ends on it. Asked for after `speakResult` it takes that line's place, whether the line is waiting or playing (`homer_after_suitors` is still the stop's own "after" line). It waits for Athena's result line in the same way. The win sting plays first and the menu loop comes in under him, as on every result screen.
 - `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random but never the one it said last. It waits for Athena's phase line first, so the two are not heard together: it looks at the voice one tick after it is asked for, then every 0.1 seconds, and starts when no phase line is playing. If a phase line still holds the voice after 4 seconds (`TAUNT_WAIT_MS`) the taunt is dropped. A phase change with no phase line gets its taunt in the same frame. The taunt plays at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt at a time: a second one asked for while the first waits or plays is not played. It resolves `false`, or joins the first and resolves `true` when the dice pick that same taunt. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean, and a taunt still waiting then never starts: the monsters' channel refuses every taunt from that frame until the next fight's `fight_start` or first event.
 - `stopStory()`: drops a line that is still waiting and cuts off a story line or a taunt that is playing. A dropped line's timer is cleared at once. Athena's lines are left alone.
 
@@ -118,7 +118,7 @@ if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(ene
 // and stopStory() in that effect's cleanup, so a taunt does not play on into the next screen
 ```
 
-`speakHomecoming` has no caller on `main` yet: the last stop's result screen is `src/screens/EndScreen.tsx`, the lead's file, and the change is offered to him as a patch, not pushed. Until it is in, the last win speaks `homer_after_suitors` like any other stop.
+`speakHomecoming` has no caller on `main` yet: the last stop's result screen is `src/screens/EndScreen.tsx`, the lead's file, and the call is offered to him as a patch on issue #179 (the "Home in Ithaca" panel asks for it), not pushed. Until it is in, the last win speaks only `homer_after_suitors`, like any other stop.
 
 `return stopStory` is required, not optional. Homer's new lines are 6 to 9 seconds long and wait up to 6 seconds for Athena. Without the cleanup:
 
