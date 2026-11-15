@@ -1,0 +1,120 @@
+// "Call a friend on FaceTime", a third card for the Multiplayer screen, beside Host a room and Join a room.
+// The host types the friend's number; the friend answers an ordinary FaceTime call on an iPhone, with no app,
+// and becomes the second fighter: the game reads their body from the call's video and sends the fight back.
+import { useEffect, useState, useSyncExternalStore } from "react";
+import type { HostLink } from "../../net/host";
+import { Button } from "../../ui/pebble";
+import { createFaceTimeApi } from "../api";
+import { describe, isLive, isOpen } from "../callMachine";
+import { normalizePhone } from "../phone";
+import type { FaceTimeSession } from "../session";
+import "../../screens/account.css";
+import "../../screens/multiplayer.css";
+import "./faceTimeCard.css";
+
+export const NOT_SET_UP = "FaceTime is not set up on this server.";
+
+type Setup = { readonly kind: "asking" } | { readonly kind: "ready" } | { readonly kind: "missing"; readonly names: readonly string[] };
+
+export function FaceTimeCard(props: {
+  /** The same as the host card's: the friend is the second player of the fight that starts. */
+  onStart: (link: HostLink) => void;
+  /** The page's session by default (browserSession.ts); the demo page and tests pass their own. */
+  session?: FaceTimeSession;
+  /** Asks the server whether FaceTime is set up. */
+  status?: () => Promise<{ readonly ready: boolean; readonly missing: readonly string[] }>;
+}) {
+  const [session, setSession] = useState<FaceTimeSession | null>(props.session ?? null);
+  const [setup, setSetup] = useState<Setup>({ kind: "asking" });
+  const [number, setNumber] = useState("");
+  const [, setBeat] = useState(0);
+  const askStatus = props.status;
+
+  useEffect(() => {
+    if (session) return;
+    let gone = false;
+    // Loaded here and not at the top: the session brings the pose model's code, which a menu does not need.
+    void import("../browserSession").then((module) => { if (!gone) setSession(module.faceTimeSession()); });
+    return () => { gone = true; };
+  }, [session]);
+
+  useEffect(() => {
+    let gone = false;
+    void (askStatus ?? createFaceTimeApi().status)().then((answer) => {
+      if (!gone) setSetup(answer.ready ? { kind: "ready" } : { kind: "missing", names: answer.missing });
+    });
+    return () => { gone = true; };
+  }, [askStatus]);
+
+  const state = useSyncExternalStore(
+    (listener) => session?.subscribe(listener) ?? (() => undefined),
+    () => session?.state() ?? null,
+  );
+  const open = state !== null && isOpen(state);
+  // The clock in the status line moves without the state changing.
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setInterval(() => { setBeat((n) => n + 1); }, 500);
+    return () => { window.clearInterval(timer); };
+  }, [open]);
+
+  const typed = normalizePhone(number);
+  const now = performance.now();
+  const over = state !== null && (state.phase === "ended" || state.phase === "failed");
+
+  return (
+    <section className="acc-card rooms__card ft-card">
+      <h2>
+        <svg className="acc-icon acc-card__icon" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+          <path d="M8 20 H38 V44 H8 Z M38 28 L56 18 V46 L38 36" />
+        </svg>
+        Call a friend on FaceTime
+      </h2>
+      {setup.kind === "missing" ? (
+        <>
+          <p className="notice" role="alert">{NOT_SET_UP}</p>
+          {setup.names.length > 0 && <small>Missing on the server: {setup.names.join(", ")}. See docs/facetime.md.</small>}
+        </>
+      ) : !state || state.phase === "idle" ? (
+        <>
+          <p>Your friend answers a FaceTime call on an iPhone. No app. They see the fight and strike with their own body.</p>
+          <form
+            className="ft-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (session && typed.ok) void session.dial(number, performance.now());
+            }}
+          >
+            <label className="ft-label" htmlFor="ft-number">Your friend&apos;s phone number</label>
+            <input
+              id="ft-number" className="ft-input" type="tel" inputMode="tel" autoComplete="off" placeholder="+1 555 555 0100"
+              value={number} onChange={(event) => { setNumber(event.target.value); }}
+              aria-describedby="ft-help" aria-invalid={number !== "" && !typed.ok}
+            />
+            <small id="ft-help">{number !== "" && !typed.ok ? typed.why : "They must have texted the game's number once. A call lasts 5 minutes."}</small>
+            <Button primary type="submit" disabled={!session || !typed.ok || setup.kind !== "ready"}>Call</Button>
+          </form>
+        </>
+      ) : (
+        <div className="room">
+          <p className="notice" role={state.phase === "failed" ? "alert" : "status"}>{describe(state, now)}</p>
+          {state.phase === "failed" && session?.detail() ? <small>{session.detail()}</small> : null}
+          {isLive(state) && <small>{session?.friendSeen() ? "The game can see your friend." : "Waiting for your friend's camera..."}</small>}
+          {open && (
+            <>
+              <Button
+                primary
+                disabled={!isLive(state) || state.phase === "bridge_ready"}
+                onClick={() => { const link = session?.link(); if (link) props.onStart(link); }}
+              >
+                Start the fight
+              </Button>
+              <Button onClick={() => { session?.hangUp(performance.now()); }}>Hang up</Button>
+            </>
+          )}
+          {over && <Button primary onClick={() => { session?.reset(); }}>Call again</Button>}
+        </div>
+      )}
+    </section>
+  );
+}
