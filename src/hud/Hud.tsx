@@ -6,6 +6,7 @@ import { situationFor } from "../enemies/situations";
 import { PowerBar } from "./PowerBar";
 import { PhaseBanner } from "./PhaseBanner";
 import { RatingFlash } from "./RatingFlash";
+import { MissFlash } from "./MissFlash";
 import { TogetherFlash } from "./TogetherFlash";
 import { HpBar, ScorePlate } from "./HudBars";
 import { MOVES } from "../moves/registry";
@@ -75,6 +76,7 @@ export function Hud({ enemy, state }: { enemy: EnemySpec; state: CombatState }) 
       <ScorePlate score={state.score} combo={state.combo} />
       <PowerBar power={state.power} />
       <RatingFlash />
+      <MissFlash />
       <TogetherFlash two={state.players === 2} />
       <PhaseBanner />
       {phase.kind === "intro" && (

@@ -19,30 +19,36 @@ const PAIRS = pairsOf(TABLE);
 const EVERY_SIZE = SIZES.map((_, index) => index);
 
 /** In-scope pairs that still fire, each with why it is left. The reasons are spelled out in docs/cross-fire.md. */
+const GOD = "a god gesture is done on purpose with the power full; the extra read counts only if it is also the prompted strike";
 const LEFT: Record<string, string> = {
-  "jab>cross": "by the owner's ruling: jab and cross read on either hand, and the fight counts only the one it asked for",
-  "cross>jab": "the same ruling",
   "double_palm>aegis_push": "the same motion by design: both palms pushed out from the chest",
   "hammer_fist>thunderbolt": "the same motion by design: the left-hand thunderbolt is the hammer fist",
+  "thunderbolt>uppercut": GOD,
+  "trident_sweep>hook": GOD,
+  "trident_sweep>double_palm": GOD,
+  "trident_sweep>knife_hand": GOD,
+  "trident_sweep>chain_punch": GOD,
   "aegis_push>double_palm": "the same motion by design",
   "swift_dash>dodge_right": "a dash is a fast side step, and a side step is a dodge, by design",
+  "sun_burst>knife_hand": GOD,
 };
 
 /**
  * Pairs that fire but can never be asked of one player in one fight: two styles' strikes, or the finisher.
- * The three with the overhead strike or the spear thrust were in LEFT while Hoplite was a style; no style has
- * those two strikes now, so a fight asks for them only as the finisher of Circe and of the suitors.
+ * The four that pair a god gesture with the overhead strike or the spear thrust were in LEFT while Hoplite was a
+ * style; no style has those two strikes now, so a fight asks for them only as the finisher of Circe and of the suitors.
  */
 const OUTSIDE: readonly string[] = [
-  "double_palm>spear_thrust", "knife_hand>jab", "knife_hand>cross", "reverse_punch>jab", "reverse_punch>cross",
-  "chain_punch>jab", "chain_punch>cross", "thunderbolt>overhead_strike", "aegis_push>spear_thrust",
-  "overhead_strike>thunderbolt", "stake_thrust>aegis_push",
+  "double_palm>spear_thrust", "knife_hand>cross", "knife_hand>uppercut", "reverse_punch>cross", "hammer_fist>rising_palm",
+  "chain_punch>jab", "chain_punch>cross", "thunderbolt>overhead_strike", "trident_sweep>spear_thrust",
+  "aegis_push>spear_thrust", "overhead_strike>uppercut", "overhead_strike>thunderbolt", "stake_thrust>double_palm",
+  "stake_thrust>reverse_punch", "stake_thrust>aegis_push", "stake_thrust>spear_thrust",
 ];
 
 /** In-scope pairs that fired before #191 (or, for thunderbolt>uppercut, before the lenient-strikes PR) and were separated. */
 const FIXED: readonly string[] = [
   "cross>uppercut", "double_palm>rising_palm", "chain_punch>rising_palm", "block>uppercut", "block>rising_palm",
-  "moon_arrow>uppercut", "thunderbolt>uppercut",
+  "moon_arrow>uppercut", "moon_arrow>cross", "moon_arrow>chain_punch",
 ];
 
 /** Separated in #191 while the spear thrust was a style's strike. It is a finisher only now, and must stay quiet. */
@@ -117,11 +123,11 @@ describe.each(BUILDS)("a punch aimed upward soon after the hands come up, on %s"
     const steps: Step[] = [[READY, 300], [READY, wait], [out, 130], [out, 200]];
     return firedIn(builtRecording(build, steps.filter(([, ms]) => ms > 0)));
   };
-  // Jab and cross read on either hand, so each punch reads as both, and as neither rising strike.
+  // The left hand is the jab and the right the cross, and neither reads as a rising strike.
   test.each([20, 30, 40])("at %i degrees a cross is a cross and not an uppercut, a jab a jab and not a rising palm", (degrees) => {
     for (const wait of [0, 300]) {
-      expect(punched("right", degrees, wait), `cross, ${String(wait)} ms wait`).toEqual(["cross", "jab"]);
-      expect(punched("left", degrees, wait), `jab, ${String(wait)} ms wait`).toEqual(["cross", "jab"]);
+      expect(punched("right", degrees, wait), `cross, ${String(wait)} ms wait`).toEqual(["cross"]);
+      expect(punched("left", degrees, wait), `jab, ${String(wait)} ms wait`).toEqual(["jab"]);
     }
   });
 });
