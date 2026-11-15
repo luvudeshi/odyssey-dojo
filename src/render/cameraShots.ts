@@ -43,6 +43,11 @@ export function cameraShot(out: Shot, b: Battle, now: number, calm: boolean): Sh
   // Follow the hero a little as it steps about.
   out.px += b.heroX * 0.6; out.lx += b.heroX * 0.4;
   out.pz += b.heroZ * 0.5; out.lz += b.heroZ * 0.3;
+  // A strike's leap: look up and along with him, and drift after him a little, so he stays in frame and the camera
+  // never ends up near the monster.
+  out.px += b.reachX * 0.4; out.lx += b.reachX * 0.5;
+  out.py += b.reachY * 0.35; out.ly += b.reachY * 0.6;
+  out.pz += b.reachZ * 0.3; out.lz += b.reachZ * 0.5;
 
   const phase = b.state?.phase;
   if (phase?.kind === "defend") {
