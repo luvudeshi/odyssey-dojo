@@ -59,12 +59,12 @@ function words(node: unknown): string {
   return isValidElement<Record<string, unknown>>(node) ? words(node.props.children) : "";
 }
 
-function mount(god: Parameters<typeof MuseFight>[0]["god"] = null) {
+function mount(god: Parameters<typeof MuseFight>[0]["god"] = null, standalone = false) {
   const onLeave = vi.fn<() => void>();
   fakes.reset();
   const show = (): El => {
     fakes.rewind();
-    return MuseFight({ style: STYLE, tracker: null, god, onLeave }) as El;
+    return MuseFight({ style: STYLE, tracker: null, god, onLeave, ...(standalone ? { standalone } : {}) }) as El;
   };
   /** The ending the fight screen is handed, with its buttons by label. */
   const ending = (won: boolean) => {
@@ -95,6 +95,7 @@ test("it opens on the phrase screen, asking as the scanned god, or as Athena aga
   expect(none.props.god).toBe("athena");
   expect(none.props.rivalGod).toBe("poseidon");
   expect(none.props).not.toHaveProperty("epithet");
+  expect(none.props).not.toHaveProperty("backLabel");
 
   const scanned = mount({ god: "hermes", rivalGod: "apollo", epithet: "quick of foot" }).show();
   expect(scanned.props.god).toBe("hermes");
@@ -171,4 +172,30 @@ test("winning, losing and quitting all leave the same way: onLeave with nothing 
   const muse = mount();
   (muse.show().props.onDone as (fight: typeof FIGHT) => void)(FIGHT);
   expect(Object.keys(muse.show().props).sort()).toEqual(["enemy", "god", "onQuit", "onRestart", "renderEnd", "seed", "style", "tracker"]);
+});
+
+test("on a page of her own (?ai=1) the way out is named for the main menu, and quitting a fight goes back to the question", () => {
+  const muse = mount(null, true);
+  expect(muse.show().props.backLabel).toBe("Main menu");
+  (muse.show().props.onBack as () => void)();
+  expect(muse.onLeave).toHaveBeenCalledExactlyOnceWith();
+  muse.onLeave.mockClear();
+
+  (muse.show().props.onDone as (fight: typeof FIGHT) => void)(FIGHT);
+  expect(muse.ending(true).labels).toEqual(["Fight again", "Ask the Muse again", "Main menu"]);
+  // The fight screen is still given nothing that could report a result.
+  expect(Object.keys(muse.show().props).sort()).toEqual(["enemy", "god", "onQuit", "onRestart", "renderEnd", "seed", "style", "tracker"]);
+
+  // The pause menu's quit: the question again, with the menu music back, and the page is not left.
+  (muse.show().props.onQuit as () => void)();
+  expect(muse.show().type).toBe(fakes.StyleScreen);
+  expect(fakes.startMusic).toHaveBeenCalledExactlyOnceWith("menu");
+  expect(muse.onLeave).not.toHaveBeenCalled();
+  fakes.startMusic.mockReset();
+
+  // The ending's last button is the one way to the main menu from a fight.
+  (muse.show().props.onDone as (fight: typeof FIGHT) => void)(FIGHT);
+  muse.ending(true).press("Main menu");
+  expect(muse.onLeave).toHaveBeenCalledExactlyOnceWith();
+  expect(fakes.startMusic).toHaveBeenCalledExactlyOnceWith("menu");
 });

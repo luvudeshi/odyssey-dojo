@@ -25,7 +25,7 @@ import { enemyFor, flowReducer, openAt, playable } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
 import { narrateIntro } from "./screens/hookups";
-import { MainMenu } from "./screens/MainMenu";
+import { MenuOrMuse as MainMenu } from "./ai/ui/museDoor"; // The main menu (screens/MainMenu), or the Muse's fight in its place when the address has ?ai=1.
 import { QuestMap } from "./screens/QuestMap";
 import { Multiplayer } from "./screens/Multiplayer";
 import type { Joined } from "./screens/RoomJoin";
