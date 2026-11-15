@@ -11,8 +11,15 @@ import {
 import { MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
 import type { Refusal, RelayMessage } from "../lib/rooms";
 
-/** A comment line this often keeps proxies and browsers from closing a quiet stream. */
-export const HEARTBEAT_MS = 15_000;
+/**
+ * A "beat" this often keeps proxies and browsers from closing a quiet stream, and tells the page its stream is alive:
+ * a page that stops getting beats knows the stream died without a word and polls instead (STREAM_QUIET_MS in
+ * src/net/transport.ts, which must stay well above this). It is a comment line for readers that only want the
+ * stream kept open, and a data line with no number for the page. It is the server talking, not a player, so it
+ * does not count as use of the room.
+ */
+export const HEARTBEAT_MS = 5_000;
+const BEAT = `: keep\ndata: ${JSON.stringify({ type: "beat" })}\n\n`;
 const STREAM_HEADERS = { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" };
 
 function refuse(response: Response, refusal: Refusal): void {
@@ -141,7 +148,7 @@ export const register: Register = (router) => {
     push(peerEvent(attached.peerJoined));
     const heartbeat = setInterval(() => {
       rooms.sweep();
-      write(": keep\n\n");
+      write(BEAT);
     }, HEARTBEAT_MS);
     response.on("close", () => {
       clearInterval(heartbeat);

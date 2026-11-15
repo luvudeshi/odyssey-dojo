@@ -15,7 +15,7 @@ export function WebcamGate(props: ComponentProps<typeof FightScreen>) {
   // "Use camera" on the panel of a skipped fight goes back through calibration with the running camera.
   const toCamera = useCallback(() => { setSkipped(false); outer?.(); }, [outer]);
   const body = skipped ? <FightScreen {...props} tracker={null} baseline={null} />
-    : props.tracker && !baseline ? <Calibration tracker={props.tracker} onDone={setBaseline} onSkip={skip} />
+    : props.tracker && !baseline ? <Calibration tracker={props.tracker} onDone={setBaseline} onSkip={skip} {...(props.onQuit ? { onBack: props.onQuit } : {})} />
     : <FightScreen {...props} baseline={baseline} />;
   return <CameraPanelContext value={{ status: panel.status, onCamera: outer ? toCamera : null }}>{body}</CameraPanelContext>;
 }
