@@ -1,4 +1,4 @@
-// What the screens ask the audio and the god scan to do, as plain functions so a test can pass recording stand-ins.
+// What the screens ask the audio to do, as plain functions so a test can pass recording stand-ins.
 import { speakHomecoming, speakNarration, speakResult, stopStory } from "../audio/storyVoice";
 import type { NarrationMoment } from "../audio/narrationLines";
 
@@ -27,12 +27,4 @@ export function narrateResult(enemyId: string, won: boolean, deps: StoryDeps = R
 export function narrateHomecoming(deps: StoryDeps = REAL): () => void {
   void deps.homecoming();
   return deps.stop;
-}
-
-/** The god scan may never hold a player for longer than this: a judge plays about three minutes. */
-export const GOD_SCAN_LIMIT_MS = 30000;
-
-/** Keys that skip the god scan. */
-export function skipsScan(key: string): boolean {
-  return key === "Escape" || key === "s" || key === "S";
 }

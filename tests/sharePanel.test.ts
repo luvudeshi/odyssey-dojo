@@ -51,6 +51,11 @@ test("the card carries the god from the scan, the fight and the style", () => {
   expect(cardFileName(words.godName)).toBe("odyssey-dojo-athena.png");
 });
 
+test("with no god but a hero the card is of that hero", () => {
+  expect(cardWords({ ...fight, god: null, hero: "Zeus" })).toMatchObject({ godName: "Zeus", epithet: "hero of the Odyssey", domain: "Fighter at the dojo" });
+  expect(cardWords({ ...fight, god: null, hero: "Odysseus" })).toMatchObject({ godName: "Odysseus", epithet: "sacker of cities" });
+});
+
 test("with no god the card is of Odysseus, and a broken score or name still makes a card the server accepts", () => {
   const words = cardWords({ ...fight, god: null, won: false, score: Number.NaN, style: " ", enemyName: "x".repeat(200) });
   expect(words).toMatchObject({ godName: "Odysseus", epithet: "sacker of cities", domain: "King of Ithaca", score: 0, won: false });
