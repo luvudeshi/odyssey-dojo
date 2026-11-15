@@ -11,3 +11,6 @@ export const LOOK_ROUTE: Record<Look, { troy: Point; slots: readonly Point[]; ha
   // The hero's chart: pins on chart.jpg inside its meander border.
   c: { troy: [190, 300], slots: [[272, 450], [560, 640], [800, 470], [925, 225], [1085, 665], [1260, 665]], harbour: [1420, 610] },
 };
+
+// Look D: the joined strip (voyage.jpg). Sizes and centres are in strip pixels; y is the line the markers sit on.
+export const STRIP = { w: 5824, h: 864, y: 470, troy: 512, centres: [1312, 2112, 2912, 3712, 4512, 5312] as readonly number[] };
