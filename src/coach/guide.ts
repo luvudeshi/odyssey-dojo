@@ -429,7 +429,7 @@ const sideKick = (side: Side): Written[] => [
 ];
 const lowKick = (side: Side): Written[] => [
   min("legs in view", "Whole body in view", 3),
-  min(`${side} foot off the floor`, `Lift ${side} foot off the floor`, 0),
+  min(`${side} foot off the floor`, `Lift ${side} foot off floor`, 0),
   max(`${side} foot kept low`, "Keep it at shin height", 2),
   min(`${side} leg kept straight`, `Keep ${side} leg straight`),
   min(`${side} foot out in front`, `Flick ${side} foot forward`),

@@ -6,7 +6,7 @@
 import type { EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
 import { ASK_GRACE_MS } from "../input/poseInput";
-import { DOJO_DEFENDS, dojoJudgeRep, dojoMoveOf, dojoPraiseFor, dojoTipFor, usualMoves } from "./catalog";
+import { DOJO_DEFENDS, dojoJudgeRep, dojoMoveOf, dojoTipFor, usualMoves } from "./catalog";
 import type { Assessment, Focus, SkillLevel, StepResult } from "./contract";
 import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
 import type { Grade, GradeTier } from "./grade";
@@ -18,14 +18,12 @@ import { AVERAGE_BELOW, BEGINNER_BELOW, STRONG_FROM, tuneFor } from "./warmup";
 export const DOJO_REPS = 3;
 /** The four defends every style trains after its strikes. The list is kept with the rest of what the dojo can train. */
 export { DOJO_DEFENDS };
-/** The fight counts a move at 0.7. Training counts a near miss too: it is graded Great, never Excellent. */
+/** The fight counts a move at 0.7. Training counts a near miss too: it is graded Good, never Excellent. */
 export const COUNT_FROM = 0.6;
 /** The most frames kept for one repetition (the second before it and the attempt). */
 const MAX_FRAMES = 400;
 /** The frames from before "go" that are judged with the attempt: the player standing, as long as the history is. */
 const LEAD_MS = 1000;
-/** How much longer a grade stays up when it comes with something to work on: time to read the line. Space or Enter still leaves it early. */
-export const READ_TIP_MS = 1500;
 /** Said when a keyboard player lets the time run out. */
 export const KEY_TIP = "Press the key shown for the move while the bar is running.";
 
@@ -40,7 +38,7 @@ export interface DojoConfig {
   readonly goMs: number;
   /** How long after the move is counted the frames keep coming, so the finish and the hold can be judged. */
   readonly settleMs: number;
-  /** How long the grade is shown. One with something to work on stays READ_TIP_MS longer. */
+  /** How long the grade is shown. */
   readonly resultMs: number;
   /** The detector confidence from which a repetition counts. */
   readonly countFrom: number;
@@ -74,10 +72,7 @@ export interface DojoRep {
   readonly grade: Grade;
   /** The quality the grade was given for, 0 to 1 (see `gradedQuality`). 0 when it did not count. */
   readonly quality: number;
-  /**
-   * The line shown with the grade. Under "Needs improvement" always one: what to work on. Under "Great" the weakest
-   * part, when there is one. Under "Excellent" what was done well, when the camera saw it (a key press has none).
-   */
+  /** The line shown with the grade: always one under "Needs improvement", the weakest part under "Good" when there is one, null otherwise. */
   readonly tip: string | null;
   /** Milliseconds from "go" to the move being counted; null when it was not. */
   readonly reactMs: number | null;
@@ -168,18 +163,16 @@ export function gradedQuality(move: Pick<MoveDef, "quality">, result: RepResult)
 
 /** One repetition from its judged result: the grade, the points and the line to show. */
 export function gradeRep(move: MoveDef, result: RepResult, reactMs: number | null = null, nearMiss = false): DojoRep {
-  // A near miss counts, but is never better than Great.
+  // A near miss counts, but is never better than Good.
   const quality = nearMiss && result.counted ? Math.min(finite(result.quality), NEAR_MISS_QUALITY) : gradedQuality(move, result);
   const grade = gradeFor(result.counted, quality);
-  const tip = grade.tier === "needs_work" ? (result.tip ?? dojoTipFor(move))
-    : grade.tier === "good" ? result.tip
-      : result === KEYBOARD_REP ? null : dojoPraiseFor(move);
+  const tip = grade.tier === "needs_work" ? (result.tip ?? dojoTipFor(move)) : grade.tier === "good" ? result.tip : null;
   return { moveId: move.id, result, grade, quality, tip, reactMs: result.counted ? reactMs : null };
 }
 
 /**
  * Judges the frames of one attempt (`judgeRep`, or `judgeExtraRep` for a move only the dojo knows), leniently: a near miss (the detector reached `countFrom` but not the
- * fight's 0.7) counts, at the quality of how sure the detector got, so it is Great and never Excellent. `hit` is what
+ * fight's 0.7) counts, at the quality of how sure the detector got, so it is Good and never Excellent. `hit` is what
  * the screen saw while the player moved; what was counted then stays counted, whatever the second look says.
  */
 export function gradeAttempt(
@@ -194,9 +187,7 @@ export function gradeAttempt(
 }
 
 function shown(state: DojoState, rep: DojoRep, nowMs: number): DojoState {
-  // Something to work on is a sentence to read: it stays up longer than a grade alone, or one with a word of praise.
-  const readMs = rep.tip !== null && rep.grade.tier !== "excellent" ? READ_TIP_MS : 0;
-  return { ...enter(state, "result", nowMs, state.config.resultMs + readMs), reps: [...state.reps, rep], points: state.points + rep.grade.points, last: rep, hit: null };
+  return { ...enter(state, "result", nowMs, state.config.resultMs), reps: [...state.reps, rep], points: state.points + rep.grade.points, last: rep, hit: null };
 }
 
 function judged(state: DojoState, move: MoveDef, nowMs: number): DojoState {
@@ -330,7 +321,7 @@ export interface WorkOn {
   readonly name: string;
   /** One line on how to make it better. */
   readonly line: string;
-  /** True when every repetition of the session was Great or better: this is the move to sharpen, not one that failed. */
+  /** True when every repetition of the session was Good or better: this is the move to sharpen, not one that failed. */
   readonly sharpen: boolean;
 }
 
