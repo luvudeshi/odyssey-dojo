@@ -5,31 +5,53 @@ import { PLAYER_HP, startFight } from "../src/combat/engine";
 import type { CombatState, EnemySpec } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import { PhaseLine, SkyPhase, phaseShown, roman } from "../src/hud/sky/SkyBanners";
-import { litStar } from "../src/hud/sky/SkyBars";
+import { crescentPoint, phaseMarks } from "../src/hud/sky/ForgeBars";
 import { SkyTop } from "../src/hud/sky/SkyTop";
 
 const enemy: EnemySpec = ENEMIES[0] ?? (() => { throw new Error("no enemies"); })();
 const render = (state: CombatState, e: EnemySpec = enemy): string => renderToStaticMarkup(createElement(SkyTop, { enemy: e, state }));
 const base = startFight(enemy, 1);
 
+const polyphemus: EnemySpec = ENEMIES.find((e) => e.id === "polyphemus") ?? enemy;
+const kept = (html: string): string[] => [...html.matchAll(/--kept:([0-9.]+)/g)].map((m) => m[1] ?? "");
+
 describe("SkyTop", () => {
   it("shows both health meters, the player's number and the score", () => {
     const html = render({ ...base, playerHp: 72, enemyHp: enemy.hp / 2, score: 420 });
-    expect(html).toContain("72/" + String(PLAYER_HP));
+    expect(html).toContain("72<small>/" + String(PLAYER_HP) + "</small>");
     expect(html).toContain("You health");
     expect(html).toContain(`${enemy.name} health`);
     expect(html).toContain('aria-valuenow="50"');
+    expect(html).toContain(">50%<");
     expect(html).toContain(">420<");
   });
 
-  it("darkens the lost stars", () => {
-    const html = render({ ...base, playerHp: PLAYER_HP / 2 });
-    expect(html.match(/sk-node--off/g)?.length).toBe(6);
+  it("fills each molten channel to its health share: the boss first, then the player", () => {
+    expect(kept(render({ ...base, playerHp: PLAYER_HP * 0.72, enemyHp: enemy.hp * 0.45 }))).toEqual(["0.45", "0.72"]);
+    expect(kept(render({ ...base, playerHp: -5, enemyHp: enemy.hp * 2 }))).toEqual(["1", "0"]);
   });
 
-  it("shows the combo only above one", () => {
-    expect(render({ ...base, combo: 1 })).not.toContain("combo");
-    expect(render({ ...base, combo: 3 })).toContain("x3 combo");
+  it("puts the boss alone at the top and the player's bar on the floor as a crescent", () => {
+    const html = render(base);
+    expect(html.match(/class="fg-boss"/g)?.length).toBe(1);
+    expect(html.match(/class="fg-crescent"/g)?.length).toBe(1);
+    expect(html).not.toContain("sk-bar");
+  });
+
+  it("puts the crescent's sparks at the front of the kept metal, measured along the curve", () => {
+    const at = (share: number): number[] => crescentPoint(share).map((n) => Math.round(n));
+    expect(at(0)).toEqual([20, 20]);
+    expect(at(0.5)).toEqual([120, 46]);
+    expect(at(1)).toEqual([220, 20]);
+    expect(at(-1)).toEqual([20, 20]);
+    expect(at(2)).toEqual([220, 20]);
+    const [x, y] = crescentPoint(0.72);
+    expect(render({ ...base, playerHp: PLAYER_HP * 0.72 })).toContain(`translate(${String(x)}px, ${String(y)}px)`);
+  });
+
+  it("shows the combo coin only above one", () => {
+    expect(render({ ...base, combo: 1 })).not.toContain("fg-coin");
+    expect(render({ ...base, combo: 3 })).toContain("<b>x3</b><small>combo</small>");
   });
 
   it("draws no power meter: the ring at the bottom centre is the only one", () => {
@@ -48,17 +70,18 @@ describe("SkyTop", () => {
     expect(render({ ...base, phase: { kind: "recover", msLeft: 1000 } })).not.toContain("sk-intro");
   });
 
-  it("lights no star at zero health, every star at full", () => {
-    expect(render({ ...base, playerHp: 0, enemyHp: 0 }).match(/sk-node--off/g)?.length).toBe(24);
-    expect(render(base)).not.toContain("sk-node--off");
-    expect([0, 11].map((i) => litStar(i, 0, true))).toEqual([false, false]);
-    expect([0, 11].map((i) => litStar(i, 0, false))).toEqual([false, false]);
-    // A sliver of health keeps the one star at the outer end: the player's first, the monster's last.
-    expect([litStar(0, 0.01, true), litStar(11, 0.01, false), litStar(1, 0.01, true)]).toEqual([true, true, false]);
+  it("marks each later phase's start with a wedge, cold once it has begun, and names the phase", () => {
+    expect(phaseMarks(polyphemus, 1).map((m) => m.passed)).toEqual([true, false]);
+    expect(phaseMarks(polyphemus, 0).every((m) => !m.passed)).toBe(true);
+    expect(phaseMarks({ ...polyphemus, phases: undefined }, 0)).toEqual([]);
+    const html = render({ ...startFight(polyphemus, 1), phaseIndex: 1 }, polyphemus);
+    expect(html.match(/fg-wedge--passed/g)?.length).toBe(1);
+    expect(html.match(/class="fg-wedge"/g)?.length).toBe(1);
+    expect(html).toContain("Phase II");
   });
 
-  it("writes every enemy's name as plain text in the bar, cut with an ellipsis by CSS when it is too long", () => {
-    for (const e of ENEMIES) expect(render(startFight(e, 2), e)).toContain(`<span class="sk-bar__name">${e.name}</span>`);
+  it("writes every enemy's name as plain text in the boss bar", () => {
+    for (const e of ENEMIES) expect(render(startFight(e, 2), e)).toContain(`<span class="fg-boss__name">${e.name}</span>`);
   });
 });
 
