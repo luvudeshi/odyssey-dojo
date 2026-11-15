@@ -47,7 +47,7 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 - A visitor to the hosted copy can join a room but cannot make one. The owner can make one through an SSH tunnel, and [deploy-vultr.md](deploy-vultr.md) says that was not tried.
 - The god scan, speech made on demand, replays and FaceTime answer 403 on the hosted copy. It is the offline game plus joining rooms.
 - Not checked on the real domain, by that doc: the camera prompt, a full fight, and a room joined through Caddy. To confirm before you say "online rooms run on Vultr" as a thing a judge can try.
-- "The page on Vercel, the room server on `api.`" is not on `main`. It is open PR #351 (`docs/deploy-vercel.md` and `vercel.json` are only on that branch), and its guide says "Nothing was deployed." To confirm whether it has been deployed since.
+- The page is on Vercel and the room server answers on `api.`: this went live on Sunday 15 November (the page 200, the pose model 200, `/api` reaching the room server were checked). The config is in PR #351 (`vercel.json`, `docs/deploy-vercel.md`), which is not merged into `main` yet; the live page is deployed from that branch on top of `main`. Not yet run: a two-device room fight through the public site.
 
 ## 3. GoDaddy Registry (MLH): the domain
 
