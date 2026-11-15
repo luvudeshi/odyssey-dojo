@@ -31,7 +31,7 @@ const tip = (part: string, line: string): PracticeTip => ({ part, tip: line });
 /** Every tip practice can give. The part names are plain words: the summary says "Work on <part>: <tip>". */
 export const PRACTICE_TIPS = {
   // Not the player's doing: said instead of a tip about the move.
-  camera: tip("camera", "I cannot see you. Stand where your head, shoulders and hips are in the picture."),
+  camera: tip("camera", "I cannot see you. Stand where your head and shoulders are in the picture."),
   stance: tip("standing start", "Stand still facing the camera for a second first, so I can measure the move."),
   feet: tip("feet in view", "I cannot see your feet. Step back until your whole body is in the picture."),
   still: tip("no move seen", "I did not see a move. Take your time, then do it once, clearly."),
