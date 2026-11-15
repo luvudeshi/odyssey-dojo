@@ -1,14 +1,14 @@
-/* The hall of heroes. It stands on its own: a card that fills the space it is given and scrolls its list when that is short. All text here is 18 px or more. */
-.hall { container-type: inline-size; display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 0; box-sizing: border-box; padding: 8px 14px 10px; border: 2px solid var(--pb-ochre); border-radius: var(--pb-radius-panel); background: var(--pb-plaque-2); color: var(--pb-text); font-family: var(--pb-font-body); text-align: left; }
-/* On the Account screen it is the third column, beside the hero and the achievements. */
-.account:has(> .hall) { grid-template-columns: minmax(0, 19rem) minmax(0, 1fr) minmax(0, 24rem); }
-@media (max-width: 760px) { .account:has(> .hall) { grid-template-columns: minmax(0, 1fr); } }
+/* The hall of heroes: the button on the Account screen, and the board it opens in a dialog. All text here is 18 px or more. */
+/* The button. On the Account screen it stands on the floor under the right wall, beside the count of trophies. */
+.hall-door .pb-btn { min-width: 0; min-height: 48px; margin: 0; padding: 8px 18px; font-size: 18px; white-space: nowrap; }
+.hall-door__icon { display: inline-block; flex: none; width: 24px; height: 24px; margin-right: 8px; vertical-align: -6px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.acc-hall__core > .hall-door { left: 976px; top: calc(100% - var(--floor) + 18px); }
 
-.hall__head { display: flex; align-items: center; gap: 8px; flex: none; }
-.hall__head h2 { display: flex; align-items: center; gap: 8px; margin: 0 auto 0 0; font: 700 22px var(--pb-font-body); color: var(--pb-ochre-light); white-space: nowrap; }
-.hall__icon { display: inline-block; flex: none; width: 30px; height: 30px; fill: none; stroke: var(--pb-ochre-light); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
-.hall__switch { display: flex; gap: 4px; flex: none; }
-.hall .hall__switch .pb-btn { min-width: 0; min-height: 36px; margin: 0; padding: 4px 10px; font-size: 18px; white-space: nowrap; }
+/* The board. It fills the width it is given and scrolls its list when the dialog is short. */
+.hall { container-type: inline-size; display: flex; flex-direction: column; gap: 8px; width: min(84vw, 40rem); min-width: 0; min-height: 0; box-sizing: border-box; margin: 0 auto 14px; padding: 10px 16px 12px; border: 2px solid var(--pb-ochre); border-radius: var(--pb-radius-panel); background: var(--pb-plaque-2); color: var(--pb-text); font-family: var(--pb-font-body); text-align: left; }
+.hall__switch { display: flex; justify-content: center; gap: 8px; flex: none; }
+.hall .hall__switch .pb-btn { min-width: 7rem; min-height: 40px; margin: 0; padding: 4px 14px; font-size: 18px; white-space: nowrap; }
+.ui-panel:has(.hall) > .pb-btn { font-size: 20px; }
 
 .hall__none { flex: 1 1 auto; display: grid; place-items: center; min-height: 6rem; margin: 0; padding: 0 8px; font: 600 22px/1.3 var(--pb-font-body); color: var(--pb-text-dim); text-align: center; }
 

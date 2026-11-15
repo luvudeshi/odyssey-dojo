@@ -1,8 +1,11 @@
-/* The account lines in the Hero card, and the sign-in dialog. All text here is 20 px or more. */
-.menu .acc-card .acc-signin p { margin: 0 0 2px; font: 500 20px/1.25 var(--pb-font-body); color: var(--pb-text); overflow-wrap: anywhere; }
-.menu .acc-card .acc-signin.is-quiet p { color: var(--pb-text-dim); }
-.menu .acc-card .acc-signin p b { color: var(--pb-ochre-light); }
-.acc-card .acc-signin .pb-btn { margin-top: 6px; font-size: 20px; }
+/* The account line and button on the Account screen, and the sign-in dialog. All text here is 18 px or more.
+   The button is one more in the row it is put in (.acc-actions on the Account screen); the words sit above that row,
+   against its right end. Outside such a row the two simply follow each other. */
+.acc-signin { display: contents; }
+.acc-signin__where { margin: 0; font: 600 18px/1.2 var(--pb-font-body); color: #f1e6cf; text-shadow: 0 1px 2px #000000aa; overflow-wrap: anywhere; }
+.acc-signin.is-quiet .acc-signin__where { color: #d9c9ad; }
+.acc-signin__where b { color: #ffd27a; }
+.acc-actions > .acc-signin > .acc-signin__where { position: absolute; right: 0; bottom: calc(100% + 8px); width: max-content; max-width: 600px; text-align: right; }
 
 .acc-signin__form { display: flex; flex-direction: column; gap: 12px; width: min(84vw, 26rem); margin: 0 auto 14px; text-align: left; font: 600 20px/1.25 var(--pb-font-body); color: var(--pb-text); }
 .acc-signin__form label { display: flex; flex-direction: column; gap: 4px; }

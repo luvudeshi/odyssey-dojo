@@ -1,5 +1,6 @@
-// The account part of the Account screen's Hero card: where the progress is kept, and the way to sign in or out.
-// Signed out it is one line and one button; the name and password are asked in a dialog, like the settings.
+// The account part of the Account screen: where the progress is kept, and the way to sign in or out.
+// It sits in the row of buttons on the hall's floor: one line of words above the row, and one button in it.
+// Signed out that is "Sign in"; the name and password are asked in a dialog, like the settings.
 // With no account server the line says so and the page is otherwise as it was.
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -66,19 +67,18 @@ export function AccountSignIn() {
   if (account.status === "signedIn") {
     return (
       <div className="acc-signin">
-        <p>Signed in as <b>{account.name}</b>.</p>
-        <p role="status" aria-live="polite">{SAVE_TEXT[account.save]}</p>
+        <p className="acc-signin__where">Signed in as <b>{account.name}</b>. <span role="status" aria-live="polite">{SAVE_TEXT[account.save]}</span></p>
         <Button onClick={() => { void signOut(); }}>Sign out</Button>
       </div>
     );
   }
   if (account.status === "off") {
-    return <div className="acc-signin is-quiet"><p>Saved in this browser only. Accounts are not available here.</p></div>;
+    return <div className="acc-signin is-quiet"><p className="acc-signin__where">Saved in this browser only. Accounts are not available here.</p></div>;
   }
   return (
     <div className="acc-signin">
-      <p>Saved in this browser only.</p>
-      {account.status !== "unknown" && <Button onClick={() => { setOpen(true); }}>Sign in or create account</Button>}
+      <p className="acc-signin__where">Saved in this browser only.</p>
+      {account.status !== "unknown" && <Button onClick={() => { setOpen(true); }}>Sign in</Button>}
       {open && <SignInDialog firstName={accountName(profile.name)} onClose={() => { setOpen(false); }} />}
     </div>
   );
