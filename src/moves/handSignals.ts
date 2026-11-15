@@ -144,3 +144,135 @@ export function punch(history: PoseHistory, side: Side): number {
   if (handWasOverhead(history, side, 500)) return 0;
   return bend > STRAIGHT ? 1 : 0.5;
 }
+
+// Lenient reading for the strikes (wave 18). The owner plays seated at a desk, seen from the waist up, on the lite
+// model: arm joints come in at visibility 0.3 to 0.5, the hips are guesses, and a fist thrown at the camera reads
+// 20 to 30 degrees short of straight in 3D. A rough attempt from a real body counts; what keeps two strikes of one
+// style apart is one feature each (which hand, which way the fist travels, how high the elbow is), not tight gates.
+
+/** From this visibility a joint counts as seen. */
+export const SEEN = 0.3;
+
+function seen(frame: PoseFrame, index: number): boolean {
+  return joint(frame.image, index).visibility >= SEEN;
+}
+
+function armJoints(side: Side): { shoulder: number; elbow: number; wrist: number } {
+  return side === "left"
+    ? { shoulder: JOINT.leftShoulder, elbow: JOINT.leftElbow, wrist: JOINT.leftWrist }
+    : { shoulder: JOINT.rightShoulder, elbow: JOINT.rightElbow, wrist: JOINT.rightWrist };
+}
+
+/** The ruler for 3D heights: the torso when both hips are seen, otherwise 1.25 shoulder widths (a waist-up player). */
+export function heightRuler(frame: PoseFrame, baseline: Baseline | null): number {
+  return seen(frame, JOINT.leftHip) && seen(frame, JOINT.rightHip)
+    ? torsoLength(frame, baseline)
+    : 1.25 * bodyWidth(frame, baseline);
+}
+
+/** The upper arm's angle from hanging straight down, in 3D degrees: 0 hanging, 90 level, 180 straight up. */
+export function upperArmLift(frame: PoseFrame, side: Side): number {
+  const ids = armJoints(side);
+  const shoulder = joint(frame.world, ids.shoulder);
+  const elbow = joint(frame.world, ids.elbow);
+  const length = Math.hypot(elbow.x - shoulder.x, elbow.y - shoulder.y, elbow.z - shoulder.z);
+  if (length === 0) return 0;
+  // World y grows downward, so a hanging arm has the elbow below the shoulder.
+  return (Math.acos(Math.min(1, Math.max(-1, (elbow.y - shoulder.y) / length))) * 180) / Math.PI;
+}
+
+/** How much of the upper arm points out to its own side, in 3D: 1 straight out sideways, 0 forward or down. */
+function upperArmSideways(frame: PoseFrame, side: Side): number {
+  const ids = armJoints(side);
+  const shoulder = joint(frame.world, ids.shoulder);
+  const elbow = joint(frame.world, ids.elbow);
+  const length = Math.hypot(elbow.x - shoulder.x, elbow.y - shoulder.y, elbow.z - shoulder.z);
+  // The player's left is at -x.
+  return length === 0 ? 0 : ((side === "left" ? -1 : 1) * (elbow.x - shoulder.x)) / length;
+}
+
+/** A fist may sit this many height rulers above or below its shoulder and still be punching (0.375 m on 0.5 m). */
+const PUNCH_HEIGHT = 0.75;
+/** Further out to its own side than this, in shoulder widths, a fist was flung sideways, not punched forward. */
+export const PUNCH_WIDE = 1.6;
+/** The elbow reads as open from OPEN_FROM degrees and fully open at OPEN_TO. A fist at the camera reads short. */
+const OPEN_FROM = 105;
+const OPEN_TO = 120;
+/** With the wrist lost, an upper arm lifted forward from LIFT_FROM degrees to LIFT_TO reads as a punch. */
+const LIFT_FROM = 50;
+const LIFT_TO = 70;
+
+/**
+ * How far out this arm is punched, 0 to 1, on one frame. With the wrist seen: the elbow opened at about shoulder
+ * height, and the fist in front of the body rather than flung out to its side. With only the elbow seen (a fist
+ * at the camera hides its own wrist): the upper arm lifted forward toward level. Never for a hand over the head.
+ */
+export function armReach(frame: PoseFrame, side: Side, baseline: Baseline | null): number {
+  const ids = armJoints(side);
+  if (!seen(frame, ids.shoulder)) return 0;
+  const lift = upperArmLift(frame, side);
+  if (lift > 140) return 0;
+  if (seen(frame, ids.wrist)) {
+    const shoulder = joint(frame.world, ids.shoulder);
+    const fist = joint(frame.world, ids.wrist);
+    if (Math.abs(fist.y - shoulder.y) > PUNCH_HEIGHT * heightRuler(frame, baseline)) return 0;
+    if (wristOut(frame, side) > PUNCH_WIDE) return 0;
+    return clamp01((elbowAngle(frame, side) - OPEN_FROM) / (OPEN_TO - OPEN_FROM));
+  }
+  if (!seen(frame, ids.elbow) || upperArmSideways(frame, side) > 0.75) return 0;
+  return clamp01((lift - LIFT_FROM) / (LIFT_TO - LIFT_FROM));
+}
+
+/** A throw gets out fast: in this many milliseconds the elbow opens, or the upper arm rises, by THROW_DEGREES. */
+export const THROW_MS = 250;
+const THROW_DEGREES = 35;
+/** How far above the nose, in shoulder widths, a hand must have been for the move to be a chop and not a punch. */
+const OVER_HEAD = 0.8;
+
+/** True when the arm opened or rose by THROW_DEGREES inside THROW_MS: anything thrown in up to about 0.7 s. A 1 s reach is not. */
+function thrown(history: PoseHistory, side: Side): boolean {
+  const frame = latest(history);
+  if (!frame) return false;
+  const bend = elbowAngle(frame, side);
+  const lift = upperArmLift(frame, side);
+  return recent(history, THROW_MS).some(
+    (old) => bend - elbowAngle(old, side) >= THROW_DEGREES || lift - upperArmLift(old, side) >= THROW_DEGREES,
+  );
+}
+
+/** True when the hand was well over the head in the last 500 ms: the start of a chop, not of a punch. */
+function cameFromOverhead(history: PoseHistory, side: Side): boolean {
+  return recent(history, 500).some(
+    (old) =>
+      joint(old.image, JOINT.nose).y - wrist(old, side).y > OVER_HEAD * shoulderWidth(old) || upperArmLift(old, side) > 150,
+  );
+}
+
+/**
+ * How sure we are that this fist has just been punched, 0 to 1: the arm is out on this frame and the one before
+ * (so one wild frame cannot throw a punch), it got out fast, and it did not come down from over the head.
+ * Any start counts: a guard, the hands down, or the forearms on a desk.
+ */
+export function strike(history: PoseHistory, side: Side): number {
+  const frame = latest(history);
+  if (!frame) return 0;
+  const before = history.frames.at(-2);
+  const now = armReach(frame, side, history.baseline);
+  const reach = before && frame.t - before.t <= 150 ? Math.min(now, armReach(before, side, history.baseline)) : now;
+  if (reach === 0 || !thrown(history, side) || cameFromOverhead(history, side)) return 0;
+  return reach;
+}
+
+/** How far the fist travelled over the last `ms`: `across` toward the body's centre line and `up`, in shoulder widths. */
+export function travel(history: PoseHistory, side: Side, ms: number): { across: number; up: number } {
+  const frame = latest(history);
+  const first = recent(history, ms)[0];
+  if (!frame || !first) return { across: 0, up: 0 };
+  return { across: wristOut(first, side) - wristOut(frame, side), up: wristRise(frame, side) - wristRise(first, side) };
+}
+
+/** True when the fist swept across toward the centre line more than it rose: the path of a hook, not a punch. */
+export function sweptAcross(history: PoseHistory, side: Side): boolean {
+  const { across, up } = travel(history, side, THROW_MS);
+  return across >= 0.35 && across >= up;
+}
