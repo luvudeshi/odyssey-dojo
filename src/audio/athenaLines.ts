@@ -3,6 +3,7 @@
 // Lines are short so they fit between beats, and only call_stake_thrust and the phase lines may name an enemy:
 // every other line plays in every fight. A phase line belongs to one enemy's phase and is picked by that phase's name
 // (phaseLineId below). phase_any is for a phase with no line of its own, so it names no one.
+// fight_start must be over before the first call, 1.5 s into every fight: its clip is 1.28 s and a test keeps it under 1.3.
 
 export interface VoiceLine {
   readonly id: string;
@@ -59,7 +60,7 @@ export const ATHENA_LINES: readonly VoiceLine[] = [
   { id: "phase_eurymachus", when: "The Suitors' second phase, Eurymachus: he draws his sword and rushes you", text: "His sword is out! Guard!" },
   { id: "phase_the_volley", when: "The Suitors' third phase, The Volley: spears thrown from both sides", text: "A volley of spears! Dodge!" },
   { id: "phase_any", when: "The fight enters a later phase that has no line of its own", text: "It changes! Watch the wind-up." },
-  { id: "fight_start", when: "The fight begins", text: "I am with you, Odysseus!" },
+  { id: "fight_start", when: "The fight begins", text: "I am with you!" },
   { id: "win", when: "You win the fight", text: "The monster falls! Onward, Odysseus!" },
   { id: "loss", when: "You lose the fight", text: "Rise, Odysseus. Ithaca still waits for you." },
 ];
@@ -88,6 +89,11 @@ export function phaseLineId(name: unknown): string {
   const slug = phaseSlug(name);
   const id = NUMBERED_PHASES.get(slug) ?? `phase_${slug}`;
   return LINE_IDS.has(id) && !/^\d+$/.test(slug) ? id : ANY_PHASE;
+}
+
+/** Whether this line, or whatever else the voice says it is speaking, is one of the phase lines. */
+export function isPhaseLine(id: string | null): boolean {
+  return id?.startsWith("phase_") ?? false;
 }
 
 export function clipUrl(id: string): string {

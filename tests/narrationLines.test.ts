@@ -17,7 +17,7 @@ import {
   tauntIds,
 } from "../src/audio/narrationLines";
 import { STORY_LINES } from "../src/audio/storyLines";
-import { createStoryVoice, NARRATION_WAIT_MS, speakMonsterTaunt, speakNarration, speakResult, stopStory } from "../src/audio/storyVoice";
+import { createStoryVoice, NARRATION_WAIT_MS, speakMonsterTaunt, speakNarration, speakResult, stopStory, TAUNT_WAIT_MS } from "../src/audio/storyVoice";
 import type { StoryVoiceDeps } from "../src/audio/storyVoice";
 import { audioPlayer, browserDeps, createVoice, speakTaunt, stopLine, voicePlaying } from "../src/audio/voice";
 import type { ClipAudio } from "../src/audio/voice";
@@ -502,15 +502,21 @@ test("every monster can taunt, and the dice pick which taunt", async () => {
   }
 });
 
-test("a taunt starts in the frame it is asked for, over Athena's phase line, and her next call does not cut it", async () => {
+test("a taunt waits for Athena's phase line to end, and then her next call does not cut it", async () => {
   const { voice, taunts, story, started, stopped, end } = fakeStory();
-  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
+  // As the fight screen does it: the taunt is asked for first, and the phase line starts later in the same frame.
   const taunt = watch(story.speakMonsterTaunt("sirens"));
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(started).toEqual(["phase_1"]);
+  expect(taunt.settled).toBe("pending");
+  // The phase line ends, and the taunt starts at its next look.
+  end();
+  await vi.advanceTimersByTimeAsync(100);
   expect(started).toEqual(["phase_1", "taunt_sirens_1"]);
-  voice.stop("phase_1");
   expect(voice.speak("call_duck")).toBe(true);
   await vi.advanceTimersByTimeAsync(1000);
-  expect(stopped).toEqual(["phase_1"]);
+  expect(stopped).toEqual([]);
   expect(taunts.playing()).toBe("taunt_sirens_1");
   expect(taunt.settled).toBe("pending");
   // The newest clip is Athena's call. The taunt's own end is what settles its promise.
@@ -520,6 +526,37 @@ test("a taunt starts in the frame it is asked for, over Athena's phase line, and
   taunts.stop("taunt_sirens_1");
   await vi.advanceTimersByTimeAsync(100);
   expect(taunt.settled).toBe(true);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("a taunt is dropped when the phase line still holds the voice after TAUNT_WAIT_MS", async () => {
+  const { voice, story, started } = fakeStory();
+  const taunt = watch(story.speakMonsterTaunt("sirens"));
+  // This stand-in clip never ends by itself.
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
+  await vi.advanceTimersByTimeAsync(TAUNT_WAIT_MS - 100);
+  expect(taunt.settled).toBe("pending");
+  await vi.advanceTimersByTimeAsync(100);
+  expect(taunt.settled).toBe(false);
+  expect(started).toEqual(["phase_1"]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("a second taunt asked for while the first waits for the phase line joins it or is dropped, and the first still plays", async () => {
+  const { voice, story, started, end } = fakeStory();
+  const first = watch(story.speakMonsterTaunt("sirens"));
+  voice.handle([{ type: "phaseChanged", index: 1, name: "The Club" }]);
+  await vi.advanceTimersByTimeAsync(300);
+  const same = watch(story.speakMonsterTaunt("sirens"));
+  const other = watch(story.speakMonsterTaunt("circe"));
+  await vi.advanceTimersByTimeAsync(0);
+  expect([first.settled, same.settled, other.settled]).toEqual(["pending", "pending", false]);
+  end();
+  await vi.advanceTimersByTimeAsync(100);
+  expect(started).toEqual(["phase_1", "taunt_sirens_1"]);
+  end();
+  await vi.advanceTimersByTimeAsync(100);
+  expect([first.settled, same.settled]).toEqual([true, true]);
   expect(vi.getTimerCount()).toBe(0);
 });
 
@@ -542,12 +579,29 @@ test("stopStory silences a taunt that is playing and leaves Athena's line alone"
   const { voice, taunts, story, stopped } = fakeStory();
   voice.speak("call_duck");
   const taunt = watch(story.speakMonsterTaunt("circe"));
+  // The taunt looks at the voice one tick after it is asked for, and a call does not hold it back.
+  await vi.advanceTimersByTimeAsync(0);
   story.stopStory();
   expect(stopped).toEqual(["taunt_circe_1"]);
   expect([voice.playing(), taunts.playing()]).toEqual(["call_duck", null]);
   await vi.advanceTimersByTimeAsync(100);
   expect(taunt.settled).toBe(true);
   expect(vi.getTimerCount()).toBe(0);
+});
+
+test("stopStory leaves no timer running: not the newest line's, and not that of a line it took the place of", async () => {
+  vi.resetModules();
+  // There is no Audio here, so the shared voice has no clips and every line waits for one until it gives up.
+  const story = await import("../src/audio/storyVoice");
+  const first = watch(story.speakNarration("circe", "before"));
+  const second = watch(story.speakNarration("sirens", "before"));
+  const taunt = watch(story.speakMonsterTaunt("circe", 5000));
+  await vi.advanceTimersByTimeAsync(50);
+  expect(vi.getTimerCount()).toBeGreaterThan(0);
+  story.stopStory();
+  expect(vi.getTimerCount()).toBe(0);
+  await vi.advanceTimersByTimeAsync(0);
+  expect([first.settled, second.settled, taunt.settled]).toEqual([false, false, false]);
 });
 
 test("nothing a broken voice does can make a story function reject or throw", async () => {
