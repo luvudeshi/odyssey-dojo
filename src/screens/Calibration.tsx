@@ -7,11 +7,13 @@ import { sentence } from "../pose/cameraError";
 import { COUNTDOWN_MS, countdownStep, presenceAt } from "../pose/presence";
 import { EMPTY_HISTORY, baselineOf, pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
-import { Button, Panel } from "../ui/pebble";
+import { Button } from "../ui/pebble";
+import { Backdrop, SetTitle } from "../ui/set/Set";
+import "../ui/set/screens-flow.css";
 import "./calibration.css";
 
-export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Baseline) => void; onSkip: () => void }) {
-  const { tracker, onDone, onSkip } = props;
+export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Baseline) => void; onSkip: () => void; onBack?: () => void }) {
+  const { tracker, onDone, onSkip, onBack } = props;
   const [elapsed, setElapsed] = useState(0);
   const [hint, setHint] = useState("");
   const [stuck, setStuck] = useState(false);
@@ -48,15 +50,21 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
   }, [tracker, onDone]);
 
   return (
-    <Panel as="div" ornament className="menu menu--small calibration">
-      <h1>{stuck ? "Step back: I need to see your head and shoulders" : "Stand still, arms down"}</h1>
-      <div className="calibration-cam">
-        <CameraView tracker={tracker} poseRef={poseRef} paused={false} />
-        <div className="calibration-guide" data-ok={seen} aria-hidden="true"><span>Head and shoulders inside the frame</span></div>
+    <main className="menu flow calibration">
+      <Backdrop src="/textures/set/storm/camp.jpg" />
+      {onBack && <button type="button" className="set-back" onClick={onBack}>Back</button>}
+      <SetTitle>{stuck ? "Step back: I need to see your head and shoulders" : "Stand still, arms down"}</SetTitle>
+      <div className="set-panel calibration-panel">
+        <div className="calibration-cam">
+          <CameraView tracker={tracker} poseRef={poseRef} paused={false} />
+          <div className="calibration-guide" data-ok={seen} aria-hidden="true"><span>Head and shoulders inside the frame</span></div>
+        </div>
+        <div className="calibration-side">
+          <p className="countdown">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
+          <p className="notice">{hint || "Hold it..."}</p>
+          <Button primary={stuck} onClick={onSkip}>Use keyboard instead</Button>
+        </div>
       </div>
-      <p className="countdown">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
-      <p className="notice">{hint || "Hold it..."}</p>
-      <Button primary={stuck} onClick={onSkip}>Use keyboard instead</Button>
-    </Panel>
+    </main>
   );
 }

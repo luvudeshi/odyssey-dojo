@@ -187,12 +187,12 @@ export function App() {
   }
 
   if (flow.screen === "style" && tracker && !scanned) {
-    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setScanned(true); }} />;
+    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setScanned(true); }} onBack={() => { dispatch({ type: "toTitle" }); }} />;
   }
 
   if (flow.screen === "style") {
     return (
-      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} />
+      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onBack={() => { dispatch({ type: "toTitle" }); }} />
     );
   }
 

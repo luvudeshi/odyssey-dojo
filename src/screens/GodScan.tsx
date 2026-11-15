@@ -8,7 +8,7 @@ import { Button } from "../ui/pebble";
 import "./godScan.css";
 
 /** `onDone` gets the god, or null when the player skipped or the time ran out. It is called once. */
-export function GodScan(props: { tracker: PoseTracker; onDone: (god: GodReveal | null) => void }) {
+export function GodScan(props: { tracker: PoseTracker; onDone: (god: GodReveal | null) => void; onBack?: () => void }) {
   const done = useRef(props.onDone);
   const finished = useRef(false);
   useEffect(() => { done.current = props.onDone; });
@@ -34,7 +34,7 @@ export function GodScan(props: { tracker: PoseTracker; onDone: (god: GodReveal |
 
   return (
     <>
-      <RevealScreen tracker={props.tracker} onDone={(god) => { finish.current(god); }} onRevealed={() => { setRevealed(true); }} />
+      <RevealScreen tracker={props.tracker} {...(props.onBack ? { onBack: props.onBack } : {})} onDone={(god) => { finish.current(god); }} onRevealed={() => { setRevealed(true); }} />
       {!revealed && <Button className="scan-skip" onClick={() => { finish.current(null); }}>Skip (Esc)</Button>}
     </>
   );

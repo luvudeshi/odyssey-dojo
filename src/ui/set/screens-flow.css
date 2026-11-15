@@ -1,0 +1,61 @@
+/* Storm and bronze on the screens between the menu and a fight: style select, calibration, the god scan and reveal, the Muse's
+   "How do you fight?" screen and the settings dialog. The kit (set.css) draws the title, panels, buttons and Back; this file only
+   lays them out. A screen is a ".menu.flow": the painting full bleed, Back at the top left, then the title and what the screen shows.
+   Nothing here is under 18 px. */
+:root:root {
+  .flow.menu {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    box-sizing: border-box; width: 100%; height: 100%; margin: 0; padding: 96px 32px 32px; gap: 14px; overflow: hidden;
+    border: 0; border-radius: 0; box-shadow: none; background: var(--st-abyss); color: var(--st-ink); font-family: var(--st-body);
+  }
+  .flow.menu::before, .reveal-panel::before { display: none; }
+  .flow.menu > * { position: relative; z-index: 1; }
+  .flow.menu > .set-backdrop { position: absolute; z-index: 0; }
+  .flow.menu > .set-back, .ui-panel > .set-back { position: absolute; z-index: 3; top: 24px; left: 26px; margin: 0; }
+  .flow.menu > .set-title { max-width: min(62rem, 100%); text-wrap: balance; }
+  .flow .set-title, .ui-panel .set-title { word-spacing: 0.22em; }
+  .flow.menu p:not(.set-title) { margin: 0; font: 500 20px/1.35 var(--st-body); }
+  .flow.menu p:is(.set-sub, .notice) { min-height: 0; font: 600 24px/1.2 var(--st-body); letter-spacing: 0.04em; color: var(--st-dim); }
+  .flow.menu p.notice:empty { display: none; }
+  .flow .set-panel { text-align: center; }
+
+  /* ---------- style select: five bronze shields on the armoury floor, the same as the Training Dojo's ---------- */
+  .flow-styles { --shield: clamp(112px, 10.6vw, 176px); display: flex; flex-wrap: nowrap; justify-content: center; gap: clamp(8px, 1.6vw, 28px); width: 100%; max-width: none; margin: 0.6rem 0 0; padding: 0; }
+  .flow-style.menu-shield {
+    display: flex; flex-direction: column; align-items: center; flex: 0 1 calc(var(--shield) + 76px); width: auto; min-width: 0; min-height: 0; gap: 0; padding: 6px 4px 8px;
+    border: 0; border-radius: 50% 50% 18px 18px / 40% 40% 18px 18px; background: none; box-shadow: none; color: var(--st-ink); perspective: 700px; text-align: center;
+  }
+  .flow-style.menu-shield::before, .flow-style.menu-shield::after { display: none; }
+  .flow-style.menu-shield:hover { transform: none; }
+  .flow-style.menu-shield:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 6px; }
+  .flow-style .menu-shield__line { margin-top: 8px; padding: 2px 8px; max-width: 14rem; font-size: 18px; text-shadow: 0 0 3px #000, 0 1px 4px #000, 0 0 12px #000; background: radial-gradient(closest-side, rgba(3, 7, 9, 0.7), transparent); }
+
+  /* ---------- calibration: the camera is the main thing, in a panel with the count beside it ---------- */
+  .calibration-panel { display: grid; grid-template-columns: auto minmax(14rem, 18rem); align-items: center; gap: 28px; padding: 22px 30px; max-width: 100%; }
+  .calibration-side { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .calibration-side p.countdown { font: 400 clamp(84px, 14vh, 128px)/1 var(--st-display); color: var(--st-gold); text-shadow: 0 3px 0 #1a0d06, 0 0 22px rgba(255, 170, 70, 0.4); }
+  .calibration-side p.notice { letter-spacing: 0; min-height: 2.7em; font: 600 20px/1.35 var(--st-body); color: var(--st-ink); }
+
+  /* ---------- the settings dialog (also the pause menu and the sign-in): a bronze panel; with a scene it is a whole screen ---------- */
+  .ui-backdrop { background: rgba(2, 12, 14, 0.78); font-family: var(--st-body); color: var(--st-ink); }
+  .ui-backdrop--scene { background: var(--st-abyss); }
+  .ui-backdrop > .set-backdrop { z-index: 0; }
+  .ui-panel.set-panel { z-index: 1; min-width: min(92vw, 32rem); padding: 1.4rem 2.2rem 1.8rem; font-family: var(--st-body); }
+  .ui-panel.set-panel::before { display: none; }
+  .ui-panel .set-title { font-size: clamp(34px, 3vw, 46px); margin-bottom: 14px; }
+  .ui-panel .pb-field { font: 600 20px/1.2 var(--st-body); color: var(--st-ink); }
+  .ui-panel .pb-field__value { font: 700 20px var(--st-body); color: var(--st-gold); }
+  .ui-panel .pb-select { font: 700 20px var(--st-body); color: var(--st-ink); background: #04100f; border: 2px solid var(--st-bronze-mid); border-radius: 8px; }
+  .ui-panel .pb-select:focus-visible, .ui-panel .pb-slider:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; }
+  .ui-panel .pb-select option { background: #04100f; color: var(--st-ink); }
+  .ui-backdrop--scene .ui-panel > .set-back { position: fixed; }
+  /* The controls, cast in bronze: a bar that fills with gold, a bronze coin for a thumb, a dark switch that lights teal. */
+  .ui-panel .pb-slider::-webkit-slider-runnable-track { height: 10px; border: 1px solid var(--st-bronze-dark); border-radius: 6px; -webkit-mask: none; mask: none; background: linear-gradient(90deg, var(--st-gold) var(--v, 0%), var(--st-abyss) var(--v, 0%)); }
+  .ui-panel .pb-slider::-webkit-slider-thumb { width: 24px; height: 24px; margin-top: -8px; border: 2px solid var(--st-bronze-dark); background: radial-gradient(circle at 35% 30%, var(--st-bronze-hi), var(--st-bronze) 45%, var(--st-bronze-mid)); }
+  .ui-panel .pb-slider::-moz-range-track { height: 10px; -webkit-mask: none; mask: none; background: var(--st-abyss); }
+  .ui-panel .pb-slider::-moz-range-progress { height: 10px; -webkit-mask: none; mask: none; background: var(--st-gold); }
+  .ui-panel .pb-switch__track { border-color: var(--st-bronze-mid); background: var(--st-abyss); }
+  .ui-panel .pb-switch input:checked + .pb-switch__track { background: var(--st-teal); }
+  .ui-panel .pb-switch__thumb { background: radial-gradient(circle at 35% 30%, var(--st-bronze-hi), var(--st-bronze) 45%, var(--st-bronze-mid)); }
+  .ui-menu .pb-btn { min-width: 15rem; }
+}

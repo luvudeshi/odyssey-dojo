@@ -1,51 +1,50 @@
-/* The "How do you fight?" screen in the pebble-mosaic look. The panel, the stone heading and the buttons are the kit's (src/ui/pebble);
-   this sheet lays out what is the screen's own, with the kit's tokens only (--pb-* in src/theme.css): light type on the dark plaque.
-   Every rule sits under .style-screen with two classes, so nothing here touches the rest of the game and each one outranks the menu's ".menu p".
-   Sizes are for reading from two metres: nothing a player must read is under 20 px, and nothing readable is faded. */
-main.style-screen { height: auto; min-height: calc(100% - 28px); justify-content: safe center; }
-.style-screen .style-lede { margin: 0 0 1.4rem; font-size: 24px; }
-.style-screen .style-form { width: min(48rem, 100%); display: flex; flex-direction: column; align-items: center; }
-.style-screen .style-input { width: 100%; font: 600 30px/1.2 var(--pb-font-body); text-align: center; color: var(--pb-text); caret-color: var(--pb-ochre); background: var(--pb-ground-deep); border: 2px solid var(--pb-lead); border-radius: var(--pb-radius); padding: 16px 12px; outline: none; }
-.style-screen .style-input::placeholder { color: var(--pb-text-dim); font-style: italic; }
-.style-screen .style-input:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; border-color: var(--pb-ochre); }
+/* The Muse's "How do you fight?" screen in the storm kit: the page frame is .menu.flow and the panel is .set-panel (src/ui/set).
+   This sheet lays out what is the screen's own, with the kit's tokens only (--st-*). Nothing a player must read is under 18 px.
+   Every rule sits under .style-screen with two classes, so nothing here touches the rest of the game. */
+main.style-screen { height: 100%; justify-content: safe center; }
+.style-screen .style-panel { display: flex; flex-direction: column; align-items: center; width: min(50rem, 100%); max-height: 100%; overflow: auto; padding: 22px 34px 26px; }
+.style-screen .style-lede { font-size: 24px; }
+.style-screen .style-form { box-sizing: border-box; }
+.style-screen .style-input { width: 100%; box-sizing: border-box; font: 600 30px/1.2 var(--st-body); text-align: center; color: var(--st-ink); caret-color: var(--st-gold); background: var(--st-abyss); border: 2px solid var(--st-bronze-mid); border-radius: 8px; padding: 16px 12px; outline: none; }
+.style-screen .style-input::placeholder { color: var(--st-dim); font-style: italic; }
+.style-screen .style-input:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; border-color: var(--st-bronze); }
 .style-screen .style-chips { display: flex; flex-wrap: wrap; justify-content: center; margin: 1rem 0 0.9rem; }
-/* A chip is a short quote in the player's own words, so it is not a kit button: no width floor, no capitals, no spacing. */
-.style-screen .style-chip { min-width: 0; text-transform: none; letter-spacing: normal; font: 600 20px/1.2 var(--pb-font-body); color: var(--pb-text); background: var(--pb-plaque-2); border: 2px solid var(--pb-lead); border-radius: 999px; padding: 8px 18px; margin: 5px; cursor: pointer; }
-.style-screen .style-chip:hover { background: var(--pb-plaque-hover); border-color: var(--pb-ochre); }
-.style-screen .style-chip:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
-.style-screen .style-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
-/* The kit dims a disabled button until its dark label cannot be read on the dark plaque. This one is the screen's main button, so it stays readable while it waits for a phrase. */
-.style-screen .style-build:disabled { opacity: 1; color: var(--pb-text-dim); }
-.style-screen .style-listening { background: var(--pb-terra-dark); border-color: var(--pb-ochre); animation: style-pulse 1.2s ease-in-out infinite; }
+/* A chip is a short quote in the player's own words, so it is not a kit button: no capitals, no spacing. */
+.style-screen .style-chip { min-width: 0; text-transform: none; letter-spacing: normal; font: 600 20px/1.2 var(--st-body); color: var(--st-ink); background: var(--st-abyss); border: 2px solid var(--st-bronze-mid); border-radius: 999px; padding: 8px 18px; margin: 5px; cursor: pointer; }
+.style-screen .style-chip:hover { background: var(--st-sea); border-color: var(--st-bronze); }
+.style-screen .style-chip:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; }
+.style-screen .style-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; }
+/* The kit dims a disabled button; this is the screen's main button, so it stays readable while it waits for a phrase. */
+.style-screen .style-build:disabled { opacity: 1; filter: none; color: var(--st-dim); }
+.style-screen .style-listening { background: var(--st-sea); border-color: var(--st-gold); animation: style-pulse 1.2s ease-in-out infinite; }
 
 /* Waiting for the fight: the stones light up left to right over the longest wait, and a line comes in every few seconds. */
-.style-screen .style-working { margin: 0 0 0.8rem; font-size: clamp(2rem, 4vw, 2.75rem); font-weight: 700; color: var(--pb-ochre-light); }
-.style-screen .style-said { max-width: 44rem; margin: 0 0 1.6rem; font-size: 26px; font-style: italic; overflow-wrap: anywhere; }
-.style-screen .style-stones { display: flex; justify-content: center; gap: 12px; margin: 0 0 1.6rem; }
-.style-screen .style-stone { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--pb-lead); background: var(--pb-ochre); animation: style-light 0.5s ease-out both; animation-delay: calc(var(--i) * 0.75s); }
+.style-screen .style-working { margin: 0; font-size: var(--st-title); }
+.style-screen .style-said { max-width: 44rem; margin: 0 0 1.4rem; font-size: 26px; font-style: italic; color: var(--st-gold); overflow-wrap: anywhere; }
+.style-screen .style-stones { display: flex; justify-content: center; gap: 12px; margin: 0 0 1.4rem; }
+.style-screen .style-stone { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--st-bronze-dark); background: var(--st-gold); animation: style-light 0.5s ease-out both; animation-delay: calc(var(--i) * 0.75s); }
 .style-screen .style-making { list-style: none; margin: 0; padding: 0; min-height: 6.6rem; }
-.style-screen .style-step { font: 500 22px/1.5 var(--pb-font-body); color: var(--pb-text); animation: style-rise 0.6s ease-out both; animation-delay: calc(0.8s + var(--i) * 2.2s); }
+.style-screen .style-step { font: 500 22px/1.5 var(--st-body); color: var(--st-ink); animation: style-rise 0.6s ease-out both; animation-delay: calc(0.8s + var(--i) * 2.2s); }
 
 /* The title card. */
 .style-screen.style-card > * { animation: style-rise 0.8s ease-out both; }
-.style-screen .style-kicker { margin: 0 0 0.5rem; font-size: 20px; font-weight: 700; letter-spacing: 0.08em; color: var(--pb-text-dim); }
-.style-screen .style-title { max-width: 22em; text-wrap: balance; overflow-wrap: anywhere; }
-.style-screen .style-heard { margin: 0 0 1.1rem; max-width: 46rem; font-size: 20px; font-style: italic; color: var(--pb-text-dim); overflow-wrap: anywhere; }
-.style-screen .style-foe { box-sizing: border-box; width: min(46rem, 100%); padding: 16px 24px 18px; border: 2px solid var(--pb-lead); border-radius: var(--pb-radius-panel); background: var(--pb-plaque-2); }
-.style-screen .style-monster { margin: 0; font-size: 34px; font-weight: 700; line-height: 1.15; color: var(--pb-foam); overflow-wrap: anywhere; }
-.style-screen .style-taunt { margin: 0.5rem 0 0; font-size: 24px; font-style: italic; color: var(--pb-ochre-light); overflow-wrap: anywhere; }
+.style-screen .set-title { max-width: 22em; overflow-wrap: anywhere; }
+.style-screen .style-heard { margin: 0 0 1rem; max-width: 46rem; font-size: 20px; font-style: italic; color: var(--st-dim); overflow-wrap: anywhere; }
+.style-screen .style-foe { box-sizing: border-box; width: min(44rem, 100%); padding: 14px 24px 16px; border: 2px solid var(--st-bronze-mid); border-radius: 10px; background: var(--st-glass); }
+.style-screen .style-monster { margin: 0; font-family: var(--st-display); font-size: 34px; font-weight: 400; line-height: 1.15; color: var(--st-gold); overflow-wrap: anywhere; }
+.style-screen .style-taunt { margin: 0.5rem 0 0; font-size: 24px; font-style: italic; overflow-wrap: anywhere; }
 .style-screen .style-taunt::before { content: open-quote; }
 .style-screen .style-taunt::after { content: close-quote; }
 .style-screen .style-setting { margin: 0.6rem 0 0; font-size: 20px; overflow-wrap: anywhere; }
-.style-screen .style-phases { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; list-style: none; margin: 1.1rem 0 0; padding: 0; }
-.style-screen .style-phase { font: 700 20px/1.2 var(--pb-font-body); color: var(--pb-text); background: var(--pb-dusk); border: 2px solid var(--pb-lead); border-radius: var(--pb-radius); padding: 6px 14px; }
+.style-screen .style-phases { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; list-style: none; margin: 1rem 0 0; padding: 0; }
+.style-screen .style-phase { font: 700 20px/1.2 var(--st-body); color: var(--st-ink); background: var(--st-sea); border: 2px solid var(--st-bronze-mid); border-radius: 8px; padding: 6px 14px; }
 /* The arena's colours, as a row of stones. */
-.style-screen .style-palette { display: flex; justify-content: center; gap: 10px; margin: 1.1rem 0 1rem; }
-.style-screen .style-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--pb-lead); }
-.style-screen .style-note { margin: 0 0 0.7rem; font-size: 20px; font-style: italic; color: var(--pb-text-dim); }
+.style-screen .style-palette { display: flex; justify-content: center; gap: 10px; margin: 1rem 0; }
+.style-screen .style-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--st-bronze-dark); }
+.style-screen .style-note { margin: 0 0 0.7rem; font-size: 20px; font-style: italic; color: var(--st-dim); }
 @keyframes style-pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
 @keyframes style-rise { from { opacity: 0; transform: translateY(0.6rem); } }
-@keyframes style-light { from { background-color: var(--pb-dim); transform: scale(0.7); } }
+@keyframes style-light { from { background-color: var(--st-bronze-lo); transform: scale(0.7); } }
 @media (prefers-reduced-motion: reduce) {
   .style-screen .style-listening, .style-screen .style-stone, .style-screen .style-step, .style-screen.style-card > * { animation: none; }
 }
