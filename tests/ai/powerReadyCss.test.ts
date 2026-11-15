@@ -109,6 +109,34 @@ test("colours are the god's accent or a theme variable, each with a fallback for
   for (const use of SHEET.match(/var\([^()]*(?:\([^()]*\)[^()]*)*\)/g) ?? []) expect(use).toMatch(/^var\(--[\w-]+,\s*\S/);
 });
 
+test("between cards the plate dims, holds still and says to wait, 0.8 s late so the beat after a strike changes nothing; a kept press shows at once", () => {
+  const rule = (selector: string): ReadonlyMap<string, string> | undefined => RULES.find((each) => each.selector === selector)?.declarations;
+  const waiting = ".power-ready.power-ready--waiting";
+  const queued = ".power-ready.power-ready--queued";
+  // Hidden until the banner waits; then it stands where the key or the gesture was.
+  expect(rule(".power-ready .power-ready__wait")?.get("visibility")).toBe("hidden");
+  expect(rule(".power-ready .power-ready__wait")?.get("grid-area")).toBe("how");
+  expect(rule(`${waiting} .power-ready__wait`)?.get("visibility")).toBe("visible");
+  expect(rule(`${waiting} .power-ready__how`)?.get("visibility")).toBe("hidden");
+  expect(rule(`${waiting} .power-ready__edge`)?.get("opacity")).toBe("0.55");
+  // The entrance runs on; only the pulse (the second animation of the frame) holds.
+  expect(rule(".power-ready .power-ready__frame")?.get("animation")).toMatch(/^power-ready-in [^,]+, power-ready-pulse /);
+  expect(rule(`${waiting} .power-ready__frame`)?.get("animation-play-state")).toBe("running, paused");
+  // Longer than the engine's beat after a strike, far shorter than the one after a phase change.
+  const [, recover = "?", phaseRecover = "?"] = /const RECOVER_MS = (\d+);[\s\S]*const PHASE_RECOVER_MS = (\d+);/.exec(readFileSync("src/combat/engine.ts", "utf8")) ?? [];
+  for (const part of ["edge", "how", "wait"]) {
+    const delay = /(\d+(?:\.\d+)?)s$/.exec(rule(`${waiting} .power-ready__${part}`)?.get("transition") ?? "")?.[1];
+    expect(Number(delay) * 1000, part).toBeGreaterThan(Number(recover));
+    expect(Number(delay) * 1000, part).toBeLessThan(Number(phaseRecover) / 2);
+    // Not a shorter delay: that would not move a transition that is already counting down.
+    expect(rule(`${queued} .power-ready__${part}`)?.get("transition"), part).toBe("none");
+    // Leaving the wait has no delay: the rule without --waiting carries none.
+    expect(rule(`.power-ready .power-ready__${part}`)?.get("transition") ?? "", part).not.toMatch(/s \d/);
+  }
+  // The --queued rules come after the --waiting ones, so at equal weight they win.
+  expect(SHEET.indexOf(`${queued} .power-ready__edge`)).toBeGreaterThan(SHEET.indexOf(`${waiting} .power-ready__edge`));
+});
+
 test("the god's accent reaches the sheet as --power-ready-accent, set by the banner itself", () => {
   expect(BANNER).toContain('"--power-ready-accent": prompt.accent');
   expect(SHEET).toContain("var(--power-ready-accent,");
@@ -126,9 +154,9 @@ test("every class the banner uses has a rule, and every rule is for a class the 
   const styled = new Set(RULES.flatMap((rule) => rule.selector.match(/power-ready(?:__|--)[a-z]+/g) ?? []));
   // The per-god class (power-ready--zeus) is a hook for later; it is built from the god's id and has no rule yet.
   expect([...used].sort()).toEqual([
-    "power-ready--champion", "power-ready--keys", "power-ready--live", "power-ready__edge", "power-ready__frame", "power-ready__god",
-    "power-ready__how", "power-ready__key", "power-ready__move", "power-ready__of", "power-ready__patron", "power-ready__plate",
-    "power-ready__or", "power-ready__title",
+    "power-ready--champion", "power-ready--keys", "power-ready--live", "power-ready--queued", "power-ready--waiting", "power-ready__edge",
+    "power-ready__frame", "power-ready__god", "power-ready__how", "power-ready__key", "power-ready__move", "power-ready__of",
+    "power-ready__patron", "power-ready__plate", "power-ready__or", "power-ready__title", "power-ready__wait",
   ].sort());
   expect([...styled].sort()).toEqual([...used].sort());
 });
