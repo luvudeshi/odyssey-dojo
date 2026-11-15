@@ -43,38 +43,38 @@ Shape parts are plain; parts in *italics* are how the player got there.
 
 | Moves | Part | What is measured | Tip |
 | --- | --- | --- | --- |
-| jab, cross, reverse punch, spear thrust, double palm, chain punch | reach | elbow angle: 145 degrees is straight | Reach all the way out, then bring the hand straight back to your face. |
-| | height | fist against its shoulder in 3D: within 0.6 torso lengths | Finish with your fist level with your shoulder, not above or below it. |
-| jab, cross | aim | wrist no more than 1.2 shoulder widths out to its side | Send it straight ahead, not out to the side: straight gets there first. |
-| the six above | *speed* | elbow bent under 115 degrees no more than 200 ms earlier | Snap it out fast from a bent arm, then straight back. A slow reach is easy to read. |
-| double palm | hands together | wrists under 0.8 shoulder widths apart | Keep both palms side by side, so the push lands as one. |
-| reverse punch | pulling hand | left wrist 0.9 widths under the shoulder line, elbow under 130 degrees | Pull your left fist back to your hip as the right goes out, and stay balanced. |
-| chain punch | *second punch* | the other arm was out within 700 ms and has come back | Send the second fist right behind the first, and bring the first one back. |
-| hook | elbow bend | 60 to 130 degrees | Keep your elbow bent like a hook the whole way; do not let the arm straighten. |
-| | height | wrist within 0.6 widths of shoulder height | Swing at shoulder height, with your fist level with your elbow. |
-| | *swing* | how far the fist crossed the picture in 150 ms | Swing it across in one quick move, then bring the hand back to your face. |
-| uppercut, rising palm | *drive* | the hand was a shoulder width under the shoulder line within 400 ms | Start with the hand at your waist and drive it up in one quick move. |
-| | finish | wrist between the shoulders and the top of the head, in front | Finish with your hand at chin height, close in front of you. |
-| | elbow bend | under 135 degrees (uppercut) or 150 (rising palm) | Keep your elbow bent and close to you: the hand goes up, not out. |
-| hammer fist, overhead strike, thunderbolt | *raise* | the hand was over the head within 500 ms (200 for the overhead strike) | Lift your hand right over your head, then bring it down in one quick move. |
-| | finish | the hand is under the shoulder | Follow it all the way down, below your shoulder. Let your weight do the work. |
-| knife hand | *start* | the hand was across the body within 550 ms | Start with your hand across at the other shoulder, then sweep it out fast. |
-| | sweep | wrist more than 1.2 widths out to its side | Sweep further out, past your own side, to knock a reaching arm away. |
-| | height | wrist within 0.7 widths of the shoulder line | Keep the sweep level with your shoulders, at neck height. |
-| | arm | elbow over 125 degrees | Open your arm out nearly straight as the sweep finishes. |
-| block | guard | both wrists near the nose (the detector's own reading) | Bring both fists right up to your cheeks. Hands at your chest leave your head open. |
-| | *hold* | the guard stayed up for the detector's 200 ms | Keep your fists up for a beat so the guard reads clearly. Once is enough. |
-| duck | depth | shoulders 0.6 widths under where they stood | Drop lower: bend your knees until your head would clear a swing. |
-| | knees | hips dropped at least half as far as the shoulders (not in the detector) | Bend your knees, not your waist, and keep your eyes up on what is coming. |
-| dodge left, dodge right | distance | shoulders 0.6 widths to the side (the detector's own reading) | Step further: move your whole body off the line, not only your head. |
-| | *staying off* | stayed there for the detector's 200 ms | Stay off the line for a moment. Do not sway straight back into it. |
-| | direction | the other dodge fired | Other way: step to your left, off the line of the rush. (or: to your right, out of the attack's path.) |
-| front kick | *knee lift* | knee up 0.4 widths and folded under 110 degrees within 500 ms | Lift your knee first, then snap your foot straight out in one quick move. |
-| | height | foot 0.8 widths over the other foot | Kick higher: get your foot up to hip height to keep them at leg length. |
-| | leg | knee over 140 degrees | Push your foot all the way out until your leg is straight, then pull it back. |
-| knee | height | knee 0.6 widths over the other knee | Drive your knee higher, up toward your hands. |
-| | tuck | knee under 115 degrees | Keep your foot tucked under your knee. Do not let it swing out. |
-| | *hold* | stayed up for 120 ms | Hold your knee up for a beat before you set your foot down. |
+| jab, cross, reverse punch, spear thrust, double palm, chain punch | reach | elbow angle: 145 degrees is straight | Arm not straight. Punch all the way out, then pull your hand back to your chin. |
+| | height | fist against its shoulder in 3D: within 0.6 torso lengths | Fist off target. Finish with it level with your shoulder, not above or below. |
+| jab, cross | aim | wrist no more than 1.2 shoulder widths out to its side | Punch went wide. Send it straight ahead from your chin, not out to the side. |
+| the six above | *speed* | elbow bent under 115 degrees no more than 200 ms earlier | Too slow. Snap it out fast from a bent arm, then straight back to your guard. |
+| double palm | hands together | wrists under 0.8 shoulder widths apart | Hands too far apart. Keep both palms side by side so the push lands as one. |
+| reverse punch | pulling hand | left wrist 0.9 widths under the shoulder line, elbow under 130 degrees | Left hand stayed up. Pull your left fist back to your hip as the right goes out. |
+| chain punch | *second punch* | the other arm was out within 700 ms and has come back | Second punch missing. Send the other fist right behind the first, first one back. |
+| hook | elbow bend | 60 to 130 degrees | Arm too straight or too tight. Keep your elbow bent like a hook the whole way. |
+| | height | wrist within 0.6 widths of shoulder height | Hook too high or too low. Swing at shoulder height, fist level with your elbow. |
+| | *swing* | how far the fist crossed the picture in 150 ms | Swing too short. Turn your hips and shoulders and whip the fist across fast. |
+| uppercut, rising palm | *drive* | the hand was a shoulder width under the shoulder line within 400 ms | Started too high. Drop your hand to your waist first, then drive it up fast. |
+| | finish | wrist between the shoulders and the top of the head, in front | Wrong finish. End with your hand at chin height, close in front of you. |
+| | elbow bend | under 135 degrees (uppercut) or 150 (rising palm) | Arm straightened. Keep your elbow bent and close: the hand goes up, not out. |
+| hammer fist, overhead strike, thunderbolt | *raise* | the hand was over the head within 500 ms (200 for the overhead strike) | Not raised enough. Lift your hand right over your head, then strike down fast. |
+| | finish | the hand is under the shoulder | Stopped short. Follow it all the way down, below your shoulder. |
+| knife hand | *start* | the hand was across the body within 550 ms | No wind-up. Start with your hand across at the other shoulder, then sweep it out. |
+| | sweep | wrist more than 1.2 widths out to its side | Sweep too short. Carry it out past your own side to knock a reaching arm away. |
+| | height | wrist within 0.7 widths of the shoulder line | Sweep off height. Keep it level with your shoulders, at neck height. |
+| | arm | elbow over 125 degrees | Arm still bent. Open it out nearly straight as the sweep finishes. |
+| block | guard | both wrists near the nose (the detector's own reading) | Hands too low. Bring both fists right up to your cheeks to cover your head. |
+| | *hold* | the guard stayed up for the detector's 200 ms | Guard dropped too soon. Keep your fists up by your face for a beat. |
+| duck | depth | shoulders 0.6 widths under where they stood | Not low enough. Bend your knees until your head would clear a swing. |
+| | knees | hips dropped at least half as far as the shoulders (not in the detector) | You bent at the waist. Bend your knees instead, and keep your eyes up. |
+| dodge left, dodge right | distance | shoulders 0.6 widths to the side (the detector's own reading) | Step too small. Move your whole body off the line, not only your head. |
+| | *staying off* | stayed there for the detector's 200 ms | Back too soon. Stay off the line for a moment before you come back. |
+| | direction | the other dodge fired | Wrong way. Step to your left, off the line of the rush. (or: Step to your right, out of the attack's path.) |
+| front kick | *knee lift* | knee up 0.4 widths and folded under 110 degrees within 500 ms | No knee lift. Bring your knee up first, then snap your foot straight out. |
+| | height | foot 0.8 widths over the other foot | Kick too low. Lift your knee to hip height and send your foot out from there. |
+| | leg | knee over 140 degrees | Leg still bent. Push your foot out until the leg is straight, then pull it back. |
+| knee | height | knee 0.6 widths over the other knee | Knee too low. Drive it up to hip height, toward your hands. |
+| | tuck | knee under 115 degrees | Foot swung out. Keep it tucked under your knee as the knee comes up. |
+| | *hold* | stayed up for 120 ms | Down too fast. Hold your knee up for a beat before you set your foot down. |
 
 Seven moves have no table of their own: stake thrust, aegis push, trident sweep, swift dash, moon arrow, sun
 burst and jump. They are judged by how sure the detector got and get the one tip for their kind:
@@ -83,7 +83,7 @@ burst and jump. They are judged by how sure the detector got and get the one tip
 - a defense: "Make the move bigger and do it once, clearly, while the attack is coming."
 
 The same two lines are used for a tabled move that did not count although every measured part was strong (the
-detector refused it for something that is not measured, such as the other arm being out too).
+detector refused it for something that is not measured, such as the other arm being out too). In the Training Dojo the move's own line takes their place: how to make that move, or for the dojo's own eight moves the tip for the condition that failed (`src/coach/coaching.ts`, `docs/dojo.md`, "What the coach says").
 
 The tips agree with the sourced `teaches` lines in `docs/moves.md`: hand back to the face after a punch, straight
 is quicker than a swing, knees and not waist, the whole body off the line, hands high to cover the head.
