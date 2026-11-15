@@ -137,7 +137,8 @@ describe("one repetition", () => {
   });
 
   test("a sloppy one still counts: Good, 100 points; a missed one needs improvement, 25 points, with one tip", () => {
-    const end = play({ moves: ["jab"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
+    // The cross, not the jab: a jab is asked for loosely, so even the made-up player's small left-arm movement counts as one.
+    const end = play({ moves: ["cross"], reps: 3 }, (index) => (["good", "sloppy", "miss"] as const)[index] ?? "good");
     expect(end.reps.map((each) => each.grade.label)).toEqual(["Excellent!", "Good", "Needs improvement"]);
     expect(end.reps.map((each) => each.grade.points)).toEqual([150, 100, 25]);
     expect(end.points).toBe(275);
@@ -152,9 +153,10 @@ describe("one repetition", () => {
     expect(end.reps.length).toBe(15);
     for (const id of quickMoves(boxer)) {
       const tiers = end.reps.filter((each) => each.moveId === id).map((each) => each.grade.tier);
-      expect(tiers, id).toEqual(["excellent", "good", "needs_work"]);
+      // The jab is asked for loosely: the made-up player's small left-arm movement counts, as a Good one.
+      expect(tiers, id).toEqual(["excellent", "good", id === "jab" ? "good" : "needs_work"]);
     }
-    expect(end.points).toBe(5 * 275);
+    expect(end.points).toBe(5 * 275 + 75);
   });
 
   test("the order is every repetition of a move, then the next move; later repetitions show the outline for less time", () => {
