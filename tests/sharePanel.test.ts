@@ -48,7 +48,7 @@ test("the card carries the god from the scan, the fight and the style", () => {
   expect(words).toMatchObject({ enemyName: "Polyphemus", fightTitle: "The Cyclops of the Cave", score: 1234, won: true });
   expect(words.footer).toBe("Fighting style: Boxer · Odyssey Dojo, HackUTA 2026");
   expect(cardWords(fight, true).footer).toBe("Fighting style: Boxer · Scan to watch the fight");
-  expect(cardFileName(words.godName)).toBe("odyssey-fighter-athena.png");
+  expect(cardFileName(words.godName)).toBe("odyssey-dojo-athena.png");
 });
 
 test("with no god the card is of Odysseus, and a broken score or name still makes a card the server accepts", () => {
@@ -58,7 +58,7 @@ test("with no god the card is of Odysseus, and a broken score or name still make
   const meta = replayMeta({ ...words, score: 5e12 });
   expect(ReplayMetaSchema.safeParse(meta).success).toBe(true);
   expect(meta).toMatchObject({ enemyName: "x".repeat(60), score: 1e9 });
-  expect(cardFileName("  ")).toBe("odyssey-fighter-card.png");
+  expect(cardFileName("  ")).toBe("odyssey-dojo-card.png");
 });
 
 test("before the press the line says what will be uploaded, and afterwards how it went", () => {
