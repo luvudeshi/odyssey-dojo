@@ -17,6 +17,7 @@ import { MonsterRig } from "./MonsterRig";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { Hero } from "./hero/Hero";
 import { GhostFigure } from "./GhostFigure";
+import { MOVE_GHOST_ON } from "./ghost/ghostSwitch";
 import { QualityContext, useQualityToggle } from "./quality";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
@@ -99,7 +100,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           </MonsterRig>
           <CameraRig />
           <Hero poseRef={poseRef} />
-          <GhostFigure poseRef={poseRef} />
+          {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
           <Effects />
         </QualityContext.Provider>
       </Canvas>

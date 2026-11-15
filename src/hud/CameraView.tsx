@@ -8,18 +8,20 @@ import { MOVES } from "../moves/registry";
 import type { PoseTracker } from "../pose/tracker";
 import { battle } from "../render/battle";
 import { useSettings } from "../settings/store";
-import { NO_FLASH, flashText, isTracking, nextFlash } from "./cameraCaption";
+import { NO_FLASH, flashText, nextFlash, presenceOf } from "./cameraCaption";
 import type { Flash } from "./cameraCaption";
 import "./cameraView.css";
 import { skeletonLines } from "./skeletonLines";
 
 const nameOf = (id: string): string => MOVES.get(id)?.name ?? id;
 
-export const CameraView = memo(function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObject<PoseFrame | null> }) {
-  const { tracker, poseRef } = props;
+export const CameraView = memo(function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObject<PoseFrame | null>; paused: boolean }) {
+  const { tracker, poseRef, paused } = props;
   const { mirror } = useSettings();
   const mirrorRef = useRef(mirror);
   useEffect(() => { mirrorRef.current = mirror; }, [mirror]);
+  const pausedRef = useRef(paused);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
   const holder = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef<HTMLSpanElement>(null);
@@ -31,6 +33,14 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
     const context = surface?.getContext("2d");
     if (!tracker || !box || !surface || !context) return;
     box.append(tracker.video);
+    // The size changes rarely, so it is read when the box resizes and not every frame.
+    let cssWidth = box.clientWidth;
+    let cssHeight = box.clientHeight;
+    const watcher = new ResizeObserver((entries) => {
+      const size = entries[0]?.contentRect;
+      if (size) { cssWidth = size.width; cssHeight = size.height; }
+    });
+    watcher.observe(box);
     let flash: Flash = NO_FLASH;
     let handle = 0;
     let shownState = "";
@@ -40,25 +50,25 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       const { videoWidth, videoHeight } = tracker.video;
       const shape = videoWidth > 0 && videoHeight > 0 ? `${String(videoWidth)} / ${String(videoHeight)}` : "";
       if (box.style.aspectRatio !== shape) box.style.aspectRatio = shape;
-      const rect = box.getBoundingClientRect();
       const ratio = window.devicePixelRatio || 1;
-      const width = Math.round(rect.width * ratio);
-      const height = Math.round(rect.height * ratio);
+      const width = Math.round(cssWidth * ratio);
+      const height = Math.round(cssHeight * ratio);
       if (surface.width !== width || surface.height !== height) { surface.width = width; surface.height = height; }
       context.clearRect(0, 0, width, height);
       const frame = poseRef.current;
-      const tracking = isTracking(frame, performance.now());
-      if (frame && tracking) draw(context, frame, mirrorRef.current, width, height, ratio);
+      const presence = presenceOf(frame, performance.now());
+      const tracking = presence.ok;
+      if (frame && tracking && !pausedRef.current) draw(context, frame, mirrorRef.current, width, height, ratio);
       const now = performance.now() / 1000;
       flash = nextFlash(flash, battle, now, nameOf);
-      const text = tracking ? "Tracking your body" : "No body in view";
+      const text = presence.ok ? "Tracking your body" : presence.reason;
       const recognised = flashText(flash, now);
       if (state.current && text !== shownState) { shownState = text; state.current.textContent = text; state.current.dataset.on = String(tracking); }
       if (move.current && recognised !== shownMove) { shownMove = recognised; move.current.textContent = recognised; }
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(handle); tracker.video.remove(); };
+    return () => { cancelAnimationFrame(handle); watcher.disconnect(); tracker.video.remove(); };
   }, [tracker, poseRef]);
 
   if (!tracker) return null;
@@ -68,7 +78,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
         <canvas ref={canvas} />
       </div>
       <figcaption>
-        <span ref={state} className="camera-state" data-on="false">No body in view</span>
+        <span ref={state} className="camera-state" data-on="false">I can't see you</span>
         <span ref={move} className="camera-move" aria-live="polite" />
       </figcaption>
     </figure>
