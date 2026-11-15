@@ -247,10 +247,10 @@ Two routes (`server/routes/heroes.ts`):
 | Write a fight as another player | The account comes from the session and nowhere else. A body cannot name one. |
 | Show another hero's name | They can: the hero name is what the player calls the hero, cleaned like an account name (3 to 20 characters, nothing unseen). Two rows may show the same name. |
 | Fill the table with fights | 4 a minute and 90 an hour an account, whoever sends them. 120 a minute for all strangers together, counting only fights that were written: 172,800 rows a day at the very most. A body is 1 KB at most and is not read before the session is known. |
-| Use up everybody's fights for the minute | The 120 are two counts. An account's first fight of its minute has 90 places, and an account takes one of them a minute and no more. Its second to fourth fights share 30. Thirty accounts sending four a minute used to take all 120; now they take 30 of the first count and all of the second, and 60 players still record the fight they just finished. Taking the first count takes ninety accounts, and accounts are capped. |
-| Keep the database busy by reading the hall | The hall is answered from memory. The database is asked once in 5 seconds, by one statement, which takes one of the two places strangers have. A reading that failed is remembered for those 5 seconds too. 1,200 reads a minute an address (200 open boards behind one address). |
+| Use up everybody's fights for the minute | Only with `PUBLIC_ACCOUNTS=1`; without it the 120 are one count, as they always were. With it the 120 are two counts. An account's first fight of its minute has 90 places, and an account takes one of them a minute and no more. Its second to fourth fights share 30. Thirty accounts sending four a minute take all of one count of 120; with two counts they take 30 of the first count and all of the second, and 60 players still record the fight they just finished. Taking the first count takes ninety accounts, and accounts are capped. |
+| Keep the database busy by reading the hall | The hall is answered from memory. The database is asked once in 5 seconds, by one statement, which takes one of the two places strangers have. A reading that failed is remembered for those 5 seconds too. 300 reads a minute an address (1,200 with `PUBLIC_ACCOUNTS=1`: 200 open boards behind one address). |
 | Turn sign-in off by reading a hall that fails | They cannot. A statement of the hall that fails is not one of the "three in a row" that turn accounts off: sign-in, saves and fights go on, and only the hall answers 503. |
-| Keep it busy with made-up sessions | 120 unknown sessions a minute an address are looked up, counted together with the account routes (one count, not one each); past that the hall is given without a mark and a fight is refused. |
+| Keep it busy with made-up sessions | 30 unknown sessions a minute an address (120 with `PUBLIC_ACCOUNTS=1`) are looked up, counted together with the account routes (one count, not one each); past that the hall is given without a mark and a fight is refused. |
 | Learn who is who | Hero names and scores only. No id, no time of a single fight, no account name beside the hero name. |
 
 **Taking a row off the hall.** The name on a row is the hero name the browser sent with the fight. It need not be the name of any account, and two accounts can show the same one. So `delete from accounts where name_key = lower('The Name On The Row')` can delete nothing, or the wrong account. Find the account through the fights table, then delete it by its id:
@@ -296,7 +296,7 @@ Not checked for the hall:
 | Route | Answers |
 | --- | --- |
 | `GET /api/account/status` | 200 `{ available }`. Never fails, and answers within 4 seconds. |
-| `POST /api/account/signup` `{ name, password }` | 201 `{ token, name }`, 400 `{ error: "invalid", field }`, 409 `name_taken`, 429 `slow_down`, 429 or 503 `{ error: "signups_closed", message }`, 503 `unavailable` |
+| `POST /api/account/signup` `{ name, password }` | 201 `{ token, name }`, 400 `{ error: "invalid", field }`, 409 `name_taken`, 429 `slow_down`, 503 `unavailable`; with `PUBLIC_ACCOUNTS=1` also 429 or 503 `{ error: "signups_closed", message }` |
 | `POST /api/account/signin` `{ name, password }` | 200 `{ token, name }`, 401 `wrong_name_or_password`, 429, 503 |
 | `POST /api/account/signout` (Bearer) | 204, also for a token nobody has and for no token. 429 or 503 when the session could not be ended. |
 | `GET /api/account/save` (Bearer) | 200 `{ save, updatedAt }` (both null before the first save), 401 `signed_out`, 429, 503 |
@@ -313,49 +313,37 @@ Details that are easy to miss:
 
 ## What a stranger can do, and what bounds it
 
-The public tunnel reaches `/api`. `server/lib/localOnly.ts` opens exactly these five paths to it, the two of the hall (`POST /api/account/fights`, `GET /api/heroes`), and nothing else under `/api/account/`. **Another device on the Wi-Fi is refused (403)**: the server speaks plain HTTP there, and a password must not cross the venue's network in the clear. Through the tunnel it travels inside HTTPS. A public server's visitors reach the same paths with `PUBLIC_ACCOUNTS=1` ("On a public server"). The numbers are in `server/lib/accountLimits.ts`, `server/lib/heroLimits.ts` and `server/lib/accounts.ts`, and they are the same for the tunnel and for a public server.
+The public tunnel reaches `/api`. `server/lib/localOnly.ts` opens exactly these five paths to it, the two of the hall (`POST /api/account/fights`, `GET /api/heroes`), and nothing else under `/api/account/`. **Another device on the Wi-Fi is refused (403)**: the server speaks plain HTTP there, and a password must not cross the venue's network in the clear. Through the tunnel it travels inside HTTPS. The numbers are in `server/lib/accountLimits.ts` and `server/lib/accounts.ts`.
 
-Three rules keep one stranger from locking the others out:
+**This section is the server without `PUBLIC_ACCOUNTS=1`: the laptop and its tunnel.** Every number, window and answer in it is what it was before that setting existed, and the tests that hold them are the files `main` has, unchanged. With the setting on other numbers apply: "With the setting on: what a stranger can do" under "On a public server".
 
-- **A budget is only spent by a request that costs something.** An empty or malformed request is refused on a cheap count of its own (240 sign-up requests a minute an address, and 240 sign-in requests, counted apart). A typo, a taken name or a request with no token uses up nobody's budget.
-- **Nothing is shared by all strangers except the count of accounts really made** and of fights really written. What many addresses can do at once is held by two gates, not by a count: one password hash at a time, and two strangers' database calls at a time.
-- **A count never forgets what it counted often to make room for what it counted once.** Each count holds 10,000 keys. One more drops the keys counted least, the oldest first. Before, a full count forgot everything, so made-up names could wipe the wrong passwords held against a real one.
+Two rules keep one stranger from locking the others out:
+
+- **A budget is only spent by a request that costs something.** An empty or malformed request is refused on a cheap count of its own (60 sign-up and sign-in requests a minute an address). A typo, a taken name or a request with no token uses up nobody's budget.
+- **Nothing is shared by all strangers except the count of accounts really made.** What many addresses can do at once is held by two gates, not by a count: one password hash at a time, and two strangers' database calls at a time.
 
 | A stranger tries to | Bound |
 | --- | --- |
-| Find out which names exist | Sign-in never says. Sign-up does say when a name is taken (it has to), but not while sign-up is closed: then a taken name and a new one get the same answer. A name is a hero name, not a person. |
-| Guess a password | 60 sign-ins a minute an address. On one name: 5 wrong passwords a minute from one address, 20 from all addresses together (28,800 a day at most, 7,200 from one address). A right password is not counted. |
-| Lock a player out of their name | Five wrong tries hold only the address they came from, and for a minute at most: the hold ends a minute after its first wrong try, whatever is sent meanwhile. Holding a name for everybody takes 20 wrong tries every minute from four addresses or more, and ends the same way. Whoever wants to keep an owner out has to keep sending. A browser that is already signed in is never touched: its session does not pass through sign-in. The laptop is never held. On a public server "an address" can be everybody: see there. |
+| Find out which names exist | Sign-in never says. Sign-up does say when a name is taken (it has to). A name is a hero name, not a person. |
+| Guess a password | 30 sign-ins a minute an address. On one name: 10 wrong passwords in 10 minutes from one address, 100 from all addresses together (14,400 a day at most). A right password is not counted. |
+| Lock a player out of their name | Ten wrong tries hold only the address they came from. Holding a name for everybody takes 100 wrong tries every 10 minutes from ten addresses or more. The laptop is never held. |
 | Burn the CPU with password hashes | One hash at a time, at most 8 waiting, the rest get 429. So one core at most. A hash is about 0.2 s and needs 128 MB while it runs. |
-| Hold the database with slow sign-ins | A sign-up or a sign-in takes one of the strangers' two places for each statement and gives it back while its password is hashed. Before, the hash ran inside the place, so two sign-ins waiting for their hash held both. |
-| Fill the database with accounts | Only an account that was made is counted. One address: 60 in 10 minutes. All strangers together: 120 in 10 minutes, 200 in an hour, 600 in a day, 1,900 in all. The last 100 places are kept for the laptop. The hour, the day and the total are asked of the database before each sign-up, so a restart, or a second server on the same database, does not start them again. Past the ten minutes, the hour or the day sign-up answers 429 `signups_closed`; with the database full, 503 `signups_closed`. Sign-in goes on. |
-| Fill it with saves | One save per account, 32 KB at most as sent, so 64 MB at the very most, and under 20 MB for the accounts of one day. |
+| Fill the database with accounts | Only an account that was made is counted: 40 in 10 minutes an address, 120 for all strangers, 1,900 at most. The last 100 places are kept for the laptop. Past that sign-up answers 503. |
+| Fill it with saves | One save per account, 32 KB at most as sent, so 64 MB at the very most. |
 | Fill it with sessions | 5 per account. Sessions that ran out are removed at the next sign-in. |
-| Keep the database busy | Strangers' database calls run two at a time, 16 may wait, the rest get 429. A token is counted before the database is asked: 120 unknown tokens a minute an address, the hall's two routes included. A known token is remembered for 5 minutes and counted for its account: 120 requests and 60 writes a minute. Status asks the database at most once in 5 seconds. |
+| Keep the database busy | Strangers' database calls run two at a time, 16 may wait, the rest get 429. A token is counted before the database is asked: 30 unknown tokens a minute an address, the hall's two routes included. A known token is remembered for 5 minutes and counted for its account: 120 requests and 60 writes a minute. Status asks the database at most once in 5 seconds. |
 | Turn accounts off for everybody | One failed or slow query does not. Three in a row with none working between them do, for 5 seconds. A statement of the hall, which anybody may cause, is never one of the three. The pool has 4 connections and strangers use 2, so the laptop always finds one free. A statement cannot run longer than 2 s: the database stops it. |
 | Send a huge body | Sign-up and sign-in read 2 KB, a save 32 KB. A body that says it is longer is refused unread. A save body is not read at all before the token is known. |
 | Use another player's save | No route takes an account id. A request reaches the row of the session it carries and no other. |
 | Run SQL | Every value goes to the database apart from the statement text. |
 | Use a signed-in browser from another site | There is no cookie to ride on. The token is a header that only this game's page sends. |
-| Read a password off the Wi-Fi | The account paths answer the tunnel (HTTPS), a public server's own proxy (HTTPS) and the laptop itself only. |
-
-Why these numbers:
-
-- **200 accounts an hour** is a judge and a full room signing up in the same hour, with room to spare. 120 in ten minutes lets the room do it all at once.
-- **600 a day** means the 1,900 places last more than three days of somebody doing nothing else, and a day of new accounts is under 20 MB of saves. The owner has time to see it and delete them.
-- **60 in ten minutes for one address** lets a room behind one address in, and keeps one address from taking a whole ten minutes for itself.
-- **240 requests, 60 sign-ins, 120 unknown sessions a minute for one address** have room for a hall behind one address. Past each the answer is 429 for a minute at most. None of them protects the database; the gates and the caps for all callers do.
-- **One minute for wrong passwords** in place of ten: the daily number of guesses at one name is 28,800 (it was 14,400), and no hold outlasts the wrong tries by more than a minute (it was ten).
-- **90 and 30 fights a minute**: a player finishes one fight a minute at most, nearly always. 120 together, as before.
-- **1 hash at a time and 8 waiting**: nine hashes are under two seconds on the demo laptop and under five on a slow shared core, inside the 8 seconds the browser waits.
+| Read a password off the Wi-Fi | The account paths answer the tunnel (HTTPS) and the laptop itself only. |
 
 Things to know about these limits:
 
-- **The laptop that runs the server is never counted or refused** (but for the 60 writes a minute to one account), and its own browser is not held by the hour or the day of sign-ups. A request that carries any proxy or tunnel header is never taken for the laptop: a visitor through the laptop's tunnel is counted and held like any other visitor.
+- **The laptop that runs the server is never counted or refused** (but for the 60 writes a minute to one account). A request that carries any proxy or tunnel header is never taken for the laptop.
 - **A venue's Wi-Fi is one address through the tunnel.** Everybody behind it shares the per-address numbers. They are set with a hall in mind.
-- **Somebody can still stop strangers from signing up**, by making 200 real accounts in an hour, or 600 in a day. One address is enough for that. Sign-up is then closed until the hour or the day is over, and sign-in goes on. Nothing without an email or a captcha stops that. The laptop keeps its 100 places, so make the demo accounts there.
-- **The hour and the day count every account in the database**, the laptop's own and another server's too. The count in memory is exact for one server; the count in the database is asked before the hash, so sign-ups that are under way at the same moment can pass it together: nine too many at the very most (the nine that can be at the hash at once), and only when the database holds accounts this server did not count itself (after a restart, or made by another server).
-- **The counts in memory are each server's own.** A laptop and a public server on one database each have their ten minutes, their per-address and their per-name counts. A restart empties them.
+- **Somebody with many addresses can still stop strangers from signing up**, by making 120 real accounts every 10 minutes until the 1,900 are used. Nothing without an email or a captcha stops that. The laptop keeps its 100 places, so make the demo accounts there.
 - **A session that ran out, or was ended to make room for a sixth, can stay good for 5 minutes more** on a token the server has just seen. Signing out ends it at once.
 - **Do not start Vite with `--host` while accounts are on.** In `npm run dev:all` a request through Vite's proxy looks like the laptop's own: it would skip every limit and carry the password over plain HTTP. The tunnel goes straight to the server, so its visitors are counted.
 
@@ -385,11 +373,80 @@ The setting is on only when the value is `1` (spaces around it do not count). Un
 ### What it changes
 
 1. **Who is answered.** The account paths and `/api/heroes` also answer a request that was passed on by a proxy to a socket that is not this machine's. That is the hosted copy with its proxy in a container of its own. Nothing else opens: `/api/level`, `/api/speech`, `/api/reveal`, `/api/portrait/...`, `/api/replays`, FaceTime, `/api/health` and making a room (that one is `PUBLIC_ROOMS`) answer 403 as before, and so does a request with no proxy header from another address (plain HTTP).
-2. **Who is counted.** A caller is the last entry of `X-Forwarded-For`, which the server's own proxy wrote. Entries in front of it and `Cf-Connecting-Ip` are not read: a caller writes those. `PUBLIC_ROOMS=1` alone has the same effect on the account counts, because both settings say the server stands behind its own proxy.
+2. **Who is counted.** A caller is the last entry of `X-Forwarded-For`, which the server's own proxy wrote. Entries in front of it and `Cf-Connecting-Ip` are not read: a caller writes those. `PUBLIC_ROOMS=1` alone does not do this for the account routes and the hall: without `PUBLIC_ACCOUNTS=1` they count a caller as they always have (`publicAccounts.test.ts`, "PUBLIC_ROOMS=1 alone").
 
 The second point matters whichever way the proxy reaches the game. When the proxy shares the game's network (PR 371 does that, and it is live), the game sees it at `127.0.0.1`, as it sees a tunnel on the laptop. The account paths then answer with or without the setting. But without it the server takes the proxy for a tunnel: every visitor is one caller, and a visitor who sends `Cf-Connecting-Ip` is counted as whoever that header says, a new caller with every made-up value. **So set it on the hosted copy in either layout.**
 
-With the setting off nothing about who is answered or how a caller is named changed. The request table under "What was checked" below is the proof.
+With the setting off nothing about who is answered, how a caller is named or what a caller may do changed, whatever `PUBLIC_ROOMS` is. So a hosted copy that runs with `PUBLIC_ROOMS=1` and without this setting keeps what it has today: a visitor's own `Cf-Connecting-Ip` buys a fresh count, and all other visitors are one caller. Setting `PUBLIC_ACCOUNTS=1` is what closes that. The request table under "What was checked" below is the proof.
+
+### With the setting on: what a stranger can do
+
+Everything under this heading holds only with `PUBLIC_ACCOUNTS=1`. Without it the numbers, the windows, what is counted together and the answers are the ones in "What a stranger can do, and what bounds it" above. The numbers here are the `PUBLIC_` ones in `server/lib/accountLimits.ts` and `server/lib/heroLimits.ts`, with the hour and the day of sign-ups (`server/lib/accounts.ts`).
+
+What the setting changes, one line each (without it, with it):
+
+| What | Without | With |
+| --- | --- | --- |
+| Sign-up and sign-in requests from one address, a minute | 60, one count for both | 240 each, counted apart |
+| Sign-ins with a name and a password from one address, a minute | 30 | 60 |
+| Wrong passwords on one name from one address | 10 in ten minutes (1,440 a day) | 5 in one minute (7,200 a day) |
+| Wrong passwords on one name from all addresses | 100 in ten minutes (14,400 a day) | 10 in one minute (14,400 a day) |
+| How long a held name stays held after the wrong passwords stop | ten minutes at most | one minute at most |
+| Accounts made through one address in ten minutes | 40 | 60 |
+| Accounts made by all strangers | 120 in ten minutes, answered 429 `slow_down` | 120 in ten minutes, 200 in an hour, 600 in a day, answered 429 `signups_closed`; the hour and the day are asked of the database |
+| The database is full | 503 `unavailable` | 503 `signups_closed` |
+| Unknown sessions from one address, a minute | 30 | 120 |
+| A sign-up or sign-in and the strangers' two places at the database | holds one for all of its work, the hash too | holds one for each statement, not for the hash |
+| A count that is full of keys | forgets everything at 10,000 | drops the keys counted least, holds 10,000 |
+| Fights written by all strangers, a minute | one count of 120 | 90 for an account's first of its minute, 30 for its further ones |
+| Readings of the hall from one address, a minute | 300 | 1,200 |
+| Who a caller is | the tunnel's `Cf-Connecting-Ip`, else the socket | the last `X-Forwarded-For` entry; `Cf-Connecting-Ip` is not read |
+
+**A locked-out owner** (somebody keeps sending wrong passwords for their name): a browser that is not signed in yet gets 429 `slow_down` with `Retry-After` of 60 at most and reads "Too many tries. Wait a minute, then try again." It ends one minute after the wrong passwords stop. A browser that is already signed in notices nothing.
+
+Three rules keep one stranger from locking the others out:
+
+- **A budget is only spent by a request that costs something.** An empty or malformed request is refused on a cheap count of its own (240 sign-up requests a minute an address, and 240 sign-in requests, counted apart). A typo, a taken name or a request with no token uses up nobody's budget.
+- **Nothing is shared by all strangers except the count of accounts really made** and of fights really written. What many addresses can do at once is held by two gates, not by a count: one password hash at a time, and two strangers' database calls at a time.
+- **A count never forgets what it counted often to make room for what it counted once.** Each count holds 10,000 keys. One more drops the keys counted least, the oldest first. Without the setting a full count forgets everything, as it always did, so made-up names can wipe the wrong passwords held against a real one.
+
+| A stranger tries to | Bound |
+| --- | --- |
+| Find out which names exist | Sign-in never says. Sign-up does say when a name is taken (it has to), but not while sign-up is closed: then a taken name and a new one get the same answer. A name is a hero name, not a person. |
+| Guess a password | 60 sign-ins a minute an address. On one name: 5 wrong passwords a minute from one address, 10 from all addresses together (14,400 a day at most, the same as without the setting and never more; 7,200 of them can come from one address, where without the setting one address has 1,440). A right password is not counted. |
+| Lock a player out of their name | Five wrong tries hold only the address they came from, and for a minute at most: the hold ends a minute after its first wrong try, whatever is sent meanwhile. Holding a name for everybody takes 10 wrong tries every minute from two addresses or more, and ends the same way. Whoever wants to keep an owner out has to keep sending. A browser that is already signed in is never touched: its session does not pass through sign-in. The laptop is never held. On a public server "an address" can be everybody: see there. |
+| Burn the CPU with password hashes | One hash at a time, at most 8 waiting, the rest get 429. So one core at most. A hash is about 0.2 s and needs 128 MB while it runs. |
+| Hold the database with slow sign-ins | A sign-up or a sign-in takes one of the strangers' two places for each statement and gives it back while its password is hashed. Without the setting the hash runs inside the place, as it always did, so two sign-ins waiting for their hash hold both. |
+| Fill the database with accounts | Only an account that was made is counted. One address: 60 in 10 minutes. All strangers together: 120 in 10 minutes, 200 in an hour, 600 in a day, 1,900 in all. The last 100 places are kept for the laptop. The hour, the day and the total are asked of the database before each sign-up, so a restart, or a second server on the same database, does not start them again. Past the ten minutes, the hour or the day sign-up answers 429 `signups_closed`; with the database full, 503 `signups_closed`. Sign-in goes on. |
+| Fill it with saves | One save per account, 32 KB at most as sent, so 64 MB at the very most, and under 20 MB for the accounts of one day. |
+| Fill it with sessions | 5 per account. Sessions that ran out are removed at the next sign-in. |
+| Keep the database busy | Strangers' database calls run two at a time, 16 may wait, the rest get 429. A token is counted before the database is asked: 120 unknown tokens a minute an address, the hall's two routes included. A known token is remembered for 5 minutes and counted for its account: 120 requests and 60 writes a minute. Status asks the database at most once in 5 seconds. |
+| Turn accounts off for everybody | One failed or slow query does not. Three in a row with none working between them do, for 5 seconds. A statement of the hall, which anybody may cause, is never one of the three. The pool has 4 connections and strangers use 2, so the laptop always finds one free. A statement cannot run longer than 2 s: the database stops it. |
+| Send a huge body | Sign-up and sign-in read 2 KB, a save 32 KB. A body that says it is longer is refused unread. A save body is not read at all before the token is known. |
+| Use another player's save | No route takes an account id. A request reaches the row of the session it carries and no other. |
+| Run SQL | Every value goes to the database apart from the statement text. |
+| Use a signed-in browser from another site | There is no cookie to ride on. The token is a header that only this game's page sends. |
+| Read a password off the Wi-Fi | The account paths answer the tunnel (HTTPS), a public server's own proxy (HTTPS) and the laptop itself only. |
+
+Why these numbers:
+
+- **200 accounts an hour** is a judge and a full room signing up in the same hour, with room to spare. 120 in ten minutes lets the room do it all at once.
+- **600 a day** means the 1,900 places last more than three days of somebody doing nothing else, and a day of new accounts is under 20 MB of saves. The owner has time to see it and delete them.
+- **60 in ten minutes for one address** lets a room behind one address in, and keeps one address from taking a whole ten minutes for itself.
+- **240 requests, 60 sign-ins, 120 unknown sessions a minute for one address** have room for a hall behind one address. Past each the answer is 429 for a minute at most. None of them protects the database; the gates and the caps for all callers do.
+- **One minute for wrong passwords** in place of ten, and ten wrong ones in it from all addresses together in place of a hundred in ten minutes: the daily number of guesses at one name stays 14,400, and no hold outlasts the wrong tries by more than a minute (without the setting, ten).
+- **90 and 30 fights a minute** in place of one count of 120: a player finishes one fight a minute at most, nearly always. 120 together, as without the setting. The hall is read 1,200 times a minute an address in place of 300.
+- **1 hash at a time and 8 waiting**: nine hashes are under two seconds on the demo laptop and under five on a slow shared core, inside the 8 seconds the browser waits.
+
+Things to know about these limits:
+
+- **The laptop that runs the server is never counted or refused** (but for the 60 writes a minute to one account), and its own browser is not held by the hour or the day of sign-ups. A request that carries any proxy or tunnel header is never taken for the laptop: a visitor through the laptop's tunnel is counted and held like any other visitor.
+- **A venue's Wi-Fi is one address through the tunnel.** Everybody behind it shares the per-address numbers. They are set with a hall in mind.
+- **Somebody can still stop strangers from signing up**, by making 200 real accounts in an hour, or 600 in a day. One address is enough for that. Sign-up is then closed until the hour or the day is over, and sign-in goes on. Nothing without an email or a captcha stops that. The laptop keeps its 100 places, so make the demo accounts there.
+- **The hour and the day count every account in the database**, the laptop's own and another server's too. The count in memory is exact for one server; the count in the database is asked before the hash, so sign-ups that are under way at the same moment can pass it together: nine too many at the very most (the nine that can be at the hash at once), and only when the database holds accounts this server did not count itself (after a restart, or made by another server).
+- **The counts in memory are each server's own.** A laptop and a public server on one database each have their ten minutes, their per-address and their per-name counts. A restart empties them.
+- **A session that ran out, or was ended to make room for a sixth, can stay good for 5 minutes more** on a token the server has just seen. Signing out ends it at once.
+- **Do not start Vite with `--host` while accounts are on.** In `npm run dev:all` a request through Vite's proxy looks like the laptop's own: it would skip every limit and carry the password over plain HTTP. The tunnel goes straight to the server, so its visitors are counted.
 
 ### Who "one caller" is behind Vercel and Caddy
 
@@ -406,6 +463,8 @@ That is why no per-address number is tight, and why nothing that protects the da
 
 ### The caps, and what a visitor sees
 
+With the setting on. Without it the caps are the ones under "What a stranger can do, and what bounds it".
+
 | Cap | Number | Answer past it | What the visitor sees |
 | --- | --- | --- | --- |
 | Accounts made by all visitors together | 120 in ten minutes, 200 in an hour, 600 in a day | 429 `signups_closed`, `Retry-After` until the ten minutes, the hour or the day is over | "No new accounts can be made right now. If you have one, sign in. Your progress is kept in this browser." Signing in works. |
@@ -413,7 +472,7 @@ That is why no per-address number is tight, and why nothing that protects the da
 | Accounts made through one address | 60 in ten minutes | 429 `slow_down` | "Too many tries. Wait a minute, then try again." |
 | Sign-up requests, and sign-in requests, from one address | 240 a minute each, counted apart | 429 `slow_down` | The same. Sign-ups never use up sign-ins. |
 | Sign-ins with a name and a password from one address | 60 a minute | 429 `slow_down` | The same. |
-| Wrong passwords on one name | 5 a minute from one address, 20 a minute from all | 429 `slow_down`, `Retry-After` 60 at most | The same, also for the right password, until a minute after the first wrong one. A browser that is already signed in notices nothing. |
+| Wrong passwords on one name | 5 a minute from one address, 10 a minute from all (14,400 a day, as without the setting) | 429 `slow_down`, `Retry-After` 60 at most | The same, also for the right password, until a minute after the first wrong one. A browser that is already signed in notices nothing. |
 | Password hashes | one at a time, 8 waiting, for sign-up and sign-in of all callers together | 429 `slow_down`, `Retry-After` 1 | Nothing at first: the page sends it again by itself, twice at most, a second or so apart (`BUSY_RETRIES` in `src/account/client.ts`). Still no place after that: the same words. |
 | Database calls for visitors | two at a time, 16 waiting | 429 `slow_down`, `Retry-After` 1 | Signing in: sent again by itself as above, then the same words. A save: "Not sent yet. Kept in this browser.", and it is sent again later. |
 | Sessions the database does not know, from one address | 120 a minute | 429 `slow_down` | A signed-in browser the server saw in the last five minutes notices nothing. Another one reads "Not sent yet. Kept in this browser." |
@@ -433,7 +492,7 @@ A page built before this change does not know `signups_closed`: it shows "Too ma
 
 - **Visitors of the page share one caller, and one of them can use up what that caller may do.** 240 sign-up requests, 240 sign-in requests, 60 sign-ins or 120 unknown sessions a minute, and everybody else who comes through the page waits for the rest of that minute. Five wrong passwords a minute on one name through the page keep that name from signing in on a new browser for as long as somebody keeps sending them, and for a minute at most after they stop. The fix is not in the server: either the page calls the game server's own name, or Vercel sends a secret header so the server may believe the visitor's address it passes on (both are described in PR 351, `docs/deploy-vercel.md`, "If rooms get busy"). Neither is built.
 - **Sign-up can be closed by anybody** who makes 200 accounts in an hour or 600 in a day; one address can make 200 in about half an hour. No email, no captcha. Sign-in goes on. The laptop's own browser is not held by the hour or the day. Visitors through the laptop's tunnel are, because the count is the database's and the hosted copy shares it. So make demo accounts ahead of time, or on the laptop itself ("Before a demo" below).
-- **A weak password can be guessed**: 28,800 guesses a day at one name at most. There is no reset and no way to change a password.
+- **A weak password can be guessed**: 14,400 guesses a day at one name at most, the same as without the setting. There is no reset and no way to change a password.
 - **One core can be kept busy hashing, and the line for it is one line.** One hash runs at a time, so it is one core at most. On an instance with one core the room relay shares it. Not measured there. Sign-ups and sign-ins of all callers wait in the same line of eight, and on the hosted copy nobody is the laptop, so nobody skips it: a handful of addresses that keep it full make everybody else's sign-in come back with "Too many tries" until they stop. A browser that is signed in already is not in that line.
 - **Hero names are whatever a visitor typed**, shown to everybody in the hall. The page shows them as text (there is no place in `src/` that puts HTML in the page), and two accounts cannot have the same name, but a fight is recorded under the name the browser sends. The session sits in the browser's `localStorage` for 30 days: a script that ever ran on the page could read it.
 - **Saves can be rewritten** 60 times a minute an account, at most two at a time for all visitors. That is churn the database has to clean up, not growth.
@@ -454,6 +513,8 @@ Two reviewers attacked the setting over HTTP before it went out. Their answer to
 
 ### What was checked
 
+**These runs are from before the numbers were split by the setting, and were not made again.** Then the numbers below applied with the setting off too, and the wrong passwords on one name from all callers were 20 a minute; they are 10 now, so "forty sign-ins in one instant" would end differently. `PUBLIC_ROOMS=1` alone then changed who an account caller is; it no longer does. What holds the numbers now is the tests: without the setting `accountLimits.test.ts`, `accountRoute.test.ts`, `accounts.test.ts` and `heroes.test.ts`, which are byte for byte the files `main` has, and with it the four `publicAccounts*.test.ts` files beside `publicAccounts.test.ts`.
+
 On the laptop, against the real server from this branch on port 8801. "Another address" is the laptop's own Wi-Fi address, standing in for a proxy's socket; the proxy chain is stood in for by its headers (`X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host`, `X-Real-Ip`, `X-Vercel-Forwarded-For`, `X-Vercel-Id`).
 
 - **The setting off is the code as it was.** 122 requests (the 32 registered routes and 90 path and method tricks) from 12 kinds of caller, 1,464 answers, compared between the branch this one started from (PR 373, which was itself compared with `main`) and this one: 0 differ with neither setting, and 0 differ with `PUBLIC_ROOMS=1` on both (status, the headers that matter, the body). No database in these runs.
@@ -468,7 +529,7 @@ On the laptop, against the real server from this branch on port 8801. "Another a
 
 - **The two reviewers' own runs**, each with a server of its own and the real database. 152 requests from 12 kinds of caller, 1,824 answers, compared with `main`: 0 differ with the setting off, with and without the database, and with `PUBLIC_ROOMS=1` on both; 152 differ with the setting on, all on the account paths and `/api/heroes`, all from another address with a proxy header. 37 starts with other values of the setting (`0`, `01`, `true`, `yes`, `1;`, a lower-case name and so on): on only for `1`. Eleven ways of breaking the database settings (no CA file, another CA, a dead address, a string that is no URL): every answer was `available:false` or 503, one log line each with a short code, and no part of the string in any log or answer. What they found that is still true is under "What is not protected" and "Before a demo"; what was fixed: the commands of this page no longer print the string when it is no URL, and the page sends a sign-in again by itself when the server had no place for it.
 
-Not run for real: Caddy, Docker and Vercel, so what they put in `X-Forwarded-For` is from their documentation. The caps on accounts made (ten minutes, hour, day, total) were not reached on the real tables: that would take 120 real accounts. They are held by `server/tests/accountLimits.test.ts` and `server/tests/accountRoute.test.ts` on a clock the test moves, and by `server/tests/accountsDb.test.ts` on the real service in tables of its own. A browser on the public site: the sign-in is not on the Account page yet.
+Not run for real: Caddy, Docker and Vercel, so what they put in `X-Forwarded-For` is from their documentation. The caps on accounts made (ten minutes, hour, day, total) were not reached on the real tables: that would take 120 real accounts. They are held by `server/tests/publicAccountsLimits.test.ts` and `server/tests/publicAccountsRoute.test.ts` on a clock the test moves, and by `server/tests/accountsDb.test.ts` on the real service in tables of its own. A browser on the public site: the sign-in is not on the Account page yet.
 
 ## When the database is down
 
@@ -505,13 +566,14 @@ Where each limit of "What a stranger can do" is held:
 
 | Limit | Test |
 | --- | --- |
-| The hash holds no place at the database | `accounts.test.ts` ("a password hash holds no place"), `accountRoute.test.ts` ("sign-ins that wait for their password hash") |
-| A flood of sign-ins or sign-ups: two places, one hash, two short lines, the rest 429 | `accountRoute.test.ts` ("a flood of sign-ins") |
-| A full count drops what it counted least | `accountLimits.test.ts` ("made-up names cannot wipe") |
-| One stranger cannot use up everybody's fights | `heroes.test.ts` ("one stranger with thirty accounts") |
-| Accounts in ten minutes, an hour, a day, in all | `accountLimits.test.ts`, `accountRoute.test.ts` ("when strangers have made their accounts"), `accounts.test.ts` ("the database says how many"), and `accountsDb.test.ts` on a real database |
-| Wrong passwords hold a name for a minute at most | `accountLimits.test.ts` ("five wrong passwords", "twenty wrong passwords"), `publicAccounts.test.ts` ("a caller is the address the proxy took the request from") |
-| Who a caller is behind a proxy | `accountLimits.test.ts` ("who is counted"), `publicAccounts.test.ts` |
+| Without the setting every number, window and answer is as before | `accountLimits.test.ts`, `accountRoute.test.ts`, `accounts.test.ts`, `heroes.test.ts`: the files `main` has, not a byte changed |
+| The hash holds no place at the database | `publicAccountsStore.test.ts` ("a password hash holds no place"), `publicAccountsRoute.test.ts` ("sign-ins that wait for their password hash") |
+| A flood of sign-ins or sign-ups: two places, one hash, two short lines, the rest 429 | `publicAccountsRoute.test.ts` ("a flood of sign-ins") |
+| A full count drops what it counted least | `publicAccountsLimits.test.ts` ("made-up names cannot wipe") |
+| One stranger cannot use up everybody's fights | `publicAccountsHeroes.test.ts` ("one stranger with thirty accounts") |
+| Accounts in ten minutes, an hour, a day, in all | `publicAccountsLimits.test.ts`, `publicAccountsRoute.test.ts` ("when strangers have made their accounts"), `publicAccountsStore.test.ts` ("the database says how many"), and `accountsDb.test.ts` on a real database |
+| Wrong passwords hold a name for a minute at most | `publicAccountsLimits.test.ts` ("five wrong passwords", "ten wrong passwords": 14,400 a day at one name, as without the setting), `publicAccounts.test.ts` ("a caller is the address the proxy took the request from") |
+| Who a caller is behind a proxy | `publicAccountsLimits.test.ts` ("who is counted"), `publicAccounts.test.ts` ("PUBLIC_ROOMS=1 alone", "with the proxy inside the server's own network") |
 
 The hall of heroes has two files of the same kind:
 

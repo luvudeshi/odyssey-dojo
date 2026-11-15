@@ -201,8 +201,6 @@ What it changes:
   the caller wrote it.
 - A request that was passed on and has no address in that header is counted with all the others like it. It is never
   counted as "this machine", which is not limited.
-- The account routes and the hall of heroes count their callers the same way while this flag is on. Who they answer
-  does not change with it: that is `PUBLIC_ACCOUNTS` (`docs/accounts.md`, "On a public server").
 - One caller's caps are larger, and all callers but this machine share two caps. See the table.
 - At a cap, a new room takes the place of a room nobody is connected to, once that room has been left alone for
   20 seconds.

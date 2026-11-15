@@ -7,9 +7,8 @@ import {
   Unavailable, bearerToken,
   createAccounts, hashPassword, makeToken, schemaSql, tables, tokenHash, verifyPassword,
 } from "../lib/accounts";
-import type { Accounts, Reach } from "../lib/accounts";
-import { KNOWN_SESSION_MS, SIGNUPS_PER_DAY, SIGNUPS_PER_HOUR } from "../lib/accountLimits";
-import type { Gate } from "../lib/accountLimits";
+import type { Accounts } from "../lib/accounts";
+import { KNOWN_SESSION_MS } from "../lib/accountLimits";
 import type { Save } from "../lib/accountRules";
 import type { Db } from "../lib/db";
 import { captureLog } from "./support/drill";
@@ -243,12 +242,9 @@ test("a token the database knew is remembered without asking again, until it is 
   expect(accounts.remembered(token)).toBeNull();
 });
 
-/** What the count before a sign-up answers: accounts in all, made in the last hour, made in the last day. */
-const counted = (n: number, hour = 0, day = 0) => (text: string): unknown[] => (text.includes("count(*)") ? [{ n, hour, day }] : []);
-
 test("the last hundred places are kept for this machine: a stranger is told the database is full before any hash is made", async () => {
   captureLog();
-  const stand = scripted(counted(MAX_ACCOUNTS - ACCOUNTS_KEPT_FOR_THIS_MACHINE));
+  const stand = scripted((text) => (text.includes("count(*)") ? [{ n: MAX_ACCOUNTS - ACCOUNTS_KEPT_FOR_THIS_MACHINE }] : []));
   const accounts = createAccounts(() => Promise.resolve(stand.db));
   const started = performance.now();
   expect(accounts.remembered(makeToken())).toBeNull();
@@ -256,99 +252,8 @@ test("the last hundred places are kept for this machine: a stranger is told the 
   expect(performance.now() - started).toBeLessThan(150);
   // This machine goes on to the hash and the insert. This Db gives no row back for it, which reads as a taken name.
   expect(await accounts.signUp("Odysseus", PASSWORD, true)).toBe("name_taken");
-  const brim = scripted(counted(MAX_ACCOUNTS));
+  const brim = scripted((text) => (text.includes("count(*)") ? [{ n: MAX_ACCOUNTS }] : []));
   expect(await createAccounts(() => Promise.resolve(brim.db)).signUp("Odysseus", PASSWORD, true)).toBe("full");
-});
-
-test("the database says how many accounts were made this hour and today: at 200 and at 600 a stranger makes no more, before any hash, and this machine still does", async () => {
-  captureLog();
-  expect([SIGNUPS_PER_HOUR, SIGNUPS_PER_DAY]).toEqual([200, 600]);
-  for (const [hour, day, answer] of [[SIGNUPS_PER_HOUR, SIGNUPS_PER_HOUR, "closed"], [0, SIGNUPS_PER_DAY, "closed"], [SIGNUPS_PER_HOUR - 1, SIGNUPS_PER_DAY - 1, "name_taken"]] as const) {
-    const texts: string[] = [];
-    const stand = scripted((text) => {
-      texts.push(text);
-      return counted(700, hour, day)(text);
-    });
-    const accounts = createAccounts(() => Promise.resolve(stand.db), { now: () => Date.parse("2026-11-15T12:00:00.000Z") });
-    const started = performance.now();
-    // "name_taken" is what this Db's empty answer to the insert reads as: the sign-up went on to the hash and the insert.
-    expect(await accounts.signUp("Odysseus", PASSWORD), `${String(hour)} ${String(day)}`).toBe(answer);
-    if (answer === "closed") {
-      expect(performance.now() - started).toBeLessThan(150);
-      expect(texts.some((text) => text.includes("insert into accounts"))).toBe(false);
-      // This machine is not held by the hour or the day: the demo laptop makes its accounts whatever strangers did.
-      expect(await accounts.signUp("Odysseus", PASSWORD, true)).toBe("name_taken");
-    }
-  }
-  // The hour and the day are counted back from this server's clock, as values and never in the statement text.
-  const asked: { text: string; params: readonly unknown[] }[] = [];
-  const db: Db = {
-    query: (text: string, params: readonly unknown[]): Promise<never[]> => {
-      asked.push({ text, params });
-      return Promise.resolve(counted(0, SIGNUPS_PER_HOUR)(text) as never[]);
-    },
-    close: () => Promise.resolve(),
-  };
-  await createAccounts(() => Promise.resolve(db), { now: () => Date.parse("2026-11-15T12:00:00.000Z") }).signUp("Odysseus", PASSWORD);
-  expect(asked.find((statement) => statement.text.includes("count(*)"))?.params).toEqual(["2026-11-15T11:00:00.000Z", "2026-11-14T12:00:00.000Z"]);
-  // A test may set its own caps, to reach one with a handful of accounts.
-  const few = createAccounts(() => Promise.resolve(scripted(counted(3, 2, 2)).db), { caps: { perHour: 2 } });
-  expect(await few.signUp("Odysseus", PASSWORD)).toBe("closed");
-});
-
-test("a password hash holds no place at the strangers' gate: only the statements before and after it do", async () => {
-  captureLog();
-  const key = await hashPassword(PASSWORD, SALT);
-  const row = { id: "0d15ea5e-0000-4000-8000-000000000000", name: "Odysseus", pass_hash: key.toString("hex"), salt: SALT.toString("hex") };
-  const stand = scripted((text) => {
-    if (text.includes("count(*)")) return [{ n: 0, hour: 0, day: 0 }];
-    if (text.startsWith("select id::text")) return [row];
-    return text.startsWith("with made") ? [{ id: row.id }] : [];
-  });
-  // The strangers' gate as the routes hand it over, and the hash gate, both watched. The hashes wait until the test lets them go.
-  let inside = 0;
-  let places = 0;
-  const reach: Reach = async (work) => {
-    inside += 1;
-    places += 1;
-    try {
-      return await work();
-    } finally {
-      inside -= 1;
-    }
-  };
-  let release: () => void = () => undefined;
-  const hold = new Promise<void>((resolve) => { release = resolve; });
-  let hashing = 0;
-  const insideWhileHashing: number[] = [];
-  const gate: Gate = async (work) => {
-    hashing += 1;
-    insideWhileHashing.push(inside);
-    await hold;
-    insideWhileHashing.push(inside);
-    return work();
-  };
-  const accounts = createAccounts(() => Promise.resolve(stand.db), { gate });
-  expect(await accounts.available()).toBe(true);
-
-  const signIn = accounts.signIn("Odysseus", PASSWORD, false, reach);
-  const wrong = accounts.signIn("Odysseus", "not the password", false, reach);
-  const signUp = accounts.signUp("Penelope", PASSWORD, false, reach);
-  for (let waited = 0; waited < 500 && hashing < 3; waited += 1) await new Promise((resolve) => { setImmediate(resolve); });
-  // All three wait for their hash, and none of them holds a place: other strangers' statements run meanwhile.
-  expect(hashing).toBe(3);
-  expect(inside).toBe(0);
-  expect(places).toBe(3);
-  release();
-  expect(await signIn).toMatchObject({ name: "Odysseus" });
-  expect(await wrong).toBeNull();
-  expect(await signUp).toMatchObject({ name: "Penelope" });
-  expect(insideWhileHashing).toEqual([0, 0, 0, 0, 0, 0]);
-  // A place each for the look-up and the count, then one for the new session and one for the insert. A wrong password takes no second one.
-  expect(places).toBe(5);
-  expect(inside).toBe(0);
-  // Without a gate handed over (this machine, the tests of the database) nothing changes: the statements run as they are.
-  expect(await accounts.signIn("Odysseus", PASSWORD)).toMatchObject({ name: "Odysseus" });
 });
 
 test("Unavailable says nothing about why", () => {
