@@ -9,6 +9,11 @@ import { clampAngle, frameFromXY, frameFromXZ, segmentDir, toScene, UP } from ".
 
 /** Under this a landmark is a guess: its limb eases back to the clip instead. */
 export const MIN_VISIBILITY = 0.5;
+/** Elbows and wrists count from lower down: at a desk they sit at the picture's edge and read 0.3 to 0.5 while still being right. */
+export const ARM_VISIBILITY = 0.3;
+const ARM_JOINTS: ReadonlySet<number> = new Set([13, 14, 15, 16]);
+/** A joint that drops out keeps its last place this long, so one bad frame does not send its limb back to the clip. */
+export const HOLD_MS = 150;
 const USED = [0, 7, 8, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28] as const;
 /** Elbows and knees do not fold further than this (radians between the two bones). */
 const MAX_FOLD = 2.6;
@@ -54,6 +59,7 @@ export class PoseTargets {
 
   private readonly xyz: OneEuro[] = Array.from({ length: 33 * 3 }, () => new OneEuro());
   private readonly seen: boolean[] = new Array<boolean>(33).fill(false);
+  private readonly seenAt: number[] = new Array<number>(33).fill(-Infinity);
   private readonly stepFilter = new OneEuro(1.2, 0.2);
   private readonly dropFilter = new OneEuro(1.2, 0.2);
   private readonly p = Array.from({ length: 33 }, () => new Vector3());
@@ -77,7 +83,7 @@ export class PoseTargets {
   }
 
   private ok(i: number): boolean {
-    return (this.vis[i] ?? 0) >= MIN_VISIBILITY;
+    return (this.vis[i] ?? 0) >= (ARM_JOINTS.has(i) ? ARM_VISIBILITY : MIN_VISIBILITY);
   }
 
   ingest(frame: PoseFrame): void {
@@ -86,8 +92,14 @@ export class PoseTargets {
       const w = frame.world[i];
       const v = w?.visibility ?? 0;
       this.vis[i] = Number.isFinite(v) ? v : 0;
-      if (!w || !Number.isFinite(w.x + w.y + w.z) || !this.ok(i)) { this.seen[i] = false; for (let k = 0; k < 3; k++) this.xyz[i * 3 + k]?.reset(); continue; }
+      if (!w || !Number.isFinite(w.x + w.y + w.z) || !this.ok(i)) {
+        if (this.seen[i] && frame.t - (this.seenAt[i] ?? -Infinity) <= HOLD_MS) continue;
+        this.seen[i] = false;
+        for (let k = 0; k < 3; k++) this.xyz[i * 3 + k]?.reset();
+        continue;
+      }
       this.seen[i] = true;
+      this.seenAt[i] = frame.t;
       const f = (k: number, value: number): number => this.xyz[i * 3 + k]?.filter(value, t) ?? value;
       toScene({ x: f(0, w.x), y: f(1, w.y), z: f(2, w.z) }, this.p[i] ?? this.a);
     }
