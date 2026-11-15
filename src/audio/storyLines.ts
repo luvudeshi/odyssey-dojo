@@ -25,6 +25,26 @@ export const STORY_LINES: readonly StoryLine[] = [
   { id: "taunt_polyphemus_4", speaker: "monster", when: "Polyphemus is blinded", text: "Nobody is killing me! Nobody!" },
 ];
 
+export interface TitleLine {
+  readonly id: string;
+  readonly text: string;
+}
+
+/**
+ * Homer's lines for the main menu's Story button, one picked each click. Kept apart from STORY_LINES on purpose: only
+ * `homer_title` has a clip so far, and the others are spoken once their mp3 is in public/audio/athena/ and listed in its
+ * index.json. Until then the voice skips them and the first one plays.
+ */
+export const TITLE_LINES: readonly TitleLine[] = [
+  { id: "homer_title", text: "Sing, Muse, of the man who fought his way home to Ithaca." },
+  { id: "homer_title_2", text: "Tell me, Muse, of the wanderer, and of the monsters that stood between him and home." },
+  { id: "homer_title_3", text: "Ten years of war lay behind him, and still the sea would not let him rest." },
+  { id: "homer_title_4", text: "Come, stranger. The road to Ithaca is long, and every mile of it must be won." },
+  { id: "homer_title_5", text: "The gods have set a hard road before you. Walk it, and be remembered." },
+  { id: "homer_title_6", text: "Rosy-fingered Dawn has risen, and the wine-dark sea is waiting." },
+  { id: "homer_title_7", text: "Sing in me, Muse, of cunning Odysseus, who would not be kept from his own door." },
+];
+
 /** A taunt for this enemy, or null when it has none recorded. `random` is 0..1. */
 export function tauntFor(enemyId: string, random: () => number): string | null {
   const taunts = STORY_LINES.filter((line) => line.id.startsWith(`taunt_${enemyId}_`));
