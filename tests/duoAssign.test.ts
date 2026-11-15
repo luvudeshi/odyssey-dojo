@@ -2,9 +2,9 @@
 // All frames are made up: no camera.
 import { expect, test } from "vitest";
 import type { Landmark } from "../src/core/types";
-import { BEHIND, JOIN_MS, LEAVE_MS, MIN_SHOULDERS, PROMOTE_MS, STOPPED_MS, createSeating } from "../src/duo/assign";
+import { BEHIND, HOME_MS, JOIN_MS, LEAVE_MS, MIN_SHOULDERS, PROMOTE_MS, STOPPED_MS, createSeating } from "../src/duo/assign";
 import type { Seats } from "../src/duo/assign";
-import { createDuoCamera } from "../src/duo/duoCamera";
+import { DRAWN_MS, createDuoCamera } from "../src/duo/duoCamera";
 import { homeOf } from "../src/duo/split";
 import type { Body } from "../src/duo/split";
 import { JOINT } from "../src/pose/signals";
@@ -127,6 +127,28 @@ test("player one leaving: the player who stayed becomes player one, drawn where 
   expect(back.out[0]?.players).toBe(1);
 });
 
+test("a take-over draws the one who stayed where the hero stood to fight, not where either first came into the picture", () => {
+  const seating = createSeating();
+  const place = (frame: Seats["first"]): number[] => {
+    const home = homeOf(frame?.image ?? []);
+    return [home.x, home.y, home.w].map((n) => Number(n.toFixed(3)));
+  };
+  // The one who pressed the button is at the computer, close and large, then steps back to where they will fight.
+  const atComputer = run(seating, times(20, () => [body(0.5, 0.6, 0.3)]));
+  const stepBack = run(seating, times(10, (i) => [body(0.5 - (i + 1) * 0.02, 0.6 - (i + 1) * 0.01, 0.3 - (i + 1) * 0.018)]), atComputer.t);
+  // The friend walks in from the right edge and stops beside them.
+  const walkIn = run(seating, times(20, (i) => [body(0.3, 0.5, 0.12), body(0.95 - (i + 1) * 0.0125, 0.54, 0.16)]), stepBack.t);
+  const stand = run(seating, times(Math.ceil(HOME_MS / FRAME_MS) + 5, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]), walkIn.t);
+  expect(stand.out.at(-1)?.players).toBe(2);
+  // Player two dodges for half a second, and in the middle of it the hero walks out of the picture.
+  const dodge = run(seating, times(8, (i) => [body(0.3 - i * 0.03, 0.5, 0.12), body(0.78, 0.54, 0.16)]), stand.t);
+  const alone = run(seating, [...times(8, () => [body(0.78, 0.54, 0.16)]), ...times(30, () => [body(0.7, 0.54, 0.16)])], dodge.t);
+  // Standing again, the one who stayed is drawn exactly where the hero stood: their own stance fits the hero's.
+  expect(place(alone.out.at(-1)?.first ?? null)).toEqual([0.3, 0.35, 0.12]);
+  expect(at(alone.out.at(-1)?.firstSeen ?? null)).toBe(0.7);
+  expect(alone.out.at(-1)?.players).toBe(1);
+});
+
 test("after a take-over, once everyone has been gone long enough to be forgotten, the next player is read where they stand", () => {
   const seating = createSeating();
   const start = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]));
@@ -242,6 +264,23 @@ test("the camera store: off looks for one body, on looks for two and keeps playe
   expect(camera.second(t + LEAVE_MS + 1)).toBeNull();
   camera.setOn(false);
   expect([camera.wanted(), camera.players(t), camera.second(t)]).toEqual([1, 1, null]);
+});
+
+test("the camera store: player two's body is given out to draw as soon as it is seen, and not once it is stale", () => {
+  const camera = createDuoCamera();
+  // Off: there is no second body to draw, whatever the tracker hands over.
+  camera.take([body(0.3), body(0.7)], 0);
+  expect(camera.secondSeen(0)).toBeNull();
+  camera.setOn(true);
+  camera.take([body(0.3), body(0.7)], 1000);
+  // Seen in one picture: not a player yet, but already drawn, so the second person can tell the camera has them.
+  expect([camera.players(1000), at(camera.secondSeen(1000))]).toEqual([1, 0.7]);
+  expect(at(camera.secondSeen(1000 + DRAWN_MS))).toBe(0.7);
+  // A body that is gone leaves no skeleton standing, though the fight still waits a moment for it.
+  expect(camera.secondSeen(1000 + DRAWN_MS + 1)).toBeNull();
+  expect(at(camera.second(1000 + DRAWN_MS + 1))).toBe(0.7);
+  camera.setOn(false);
+  expect(camera.secondSeen(1000)).toBeNull();
 });
 
 test("the camera store: after player two takes over, the frame to draw over the picture is where they really stand", () => {
