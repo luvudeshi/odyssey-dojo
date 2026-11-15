@@ -38,7 +38,7 @@
 
 /* The power-ready banner (src/ai/power/powerReady.css) is centred in the strip right of the power disc, so the player's
    crescent, the YOU number and the disc stay in view while it is up. The disc's size is powerCircle.css's --pc-size. */
-.fight { --power-ready-left: calc(50% + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px)); --power-ready-right: 8px; }
+.fight { --power-ready-left: calc(50% + clamp(76px, 6.6vw, 108px) * 0.79 + 6px); --power-ready-right: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   .sky-hud .sk-phase, .sky-hud .hb-rating, .sky-hud .hb-together, .sky-hud .hb-defend__word { animation: none; }
