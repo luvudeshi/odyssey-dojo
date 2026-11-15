@@ -7,7 +7,7 @@ import type { Express, NextFunction, Request, Response, Router } from "express";
 import { log } from "../src/core/log";
 import type { AiClients } from "./ai/types";
 import type { Config } from "./env";
-import { localOnly } from "./lib/localOnly";
+import { isOpenPath, localOnly } from "./lib/localOnly";
 
 export interface Deps {
   readonly config: Config;
@@ -26,8 +26,15 @@ export async function createApp(deps: Deps): Promise<Express> {
   const app = express();
   app.disable("x-powered-by");
   app.use(localOnly);
-  // Webcam snapshots arrive as base64 inside JSON.
-  app.use(express.json({ limit: "6mb" }));
+  // Webcam snapshots arrive as base64 inside JSON, and only the routes this machine alone may call take them.
+  // Every path another device or a tunnel can reach skips this parser, so nobody outside can make the server hold
+  // 6 MB: the room relay reads its own, much smaller bodies (routes/rooms.ts). Express matches paths without regard to case.
+  const json = express.json({ limit: "6mb" });
+  app.use((request, response, next) => {
+    const lower = request.path.toLowerCase();
+    if (!lower.startsWith("/api/") || isOpenPath(lower)) next();
+    else json(request, response, next);
+  });
 
   const router = express.Router();
   const files = readdirSync(ROUTES).filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts")).sort();
