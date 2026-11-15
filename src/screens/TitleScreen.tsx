@@ -1,6 +1,6 @@
 import { speakLine } from "../audio/voice";
 
-export function TitleScreen(props: { notice: string; onCamera: () => void; onKeyboard: () => void; onSettings: () => void; onTogether?: () => void }) {
+export function TitleScreen(props: { notice: string; problem: string; onCamera: () => void; onKeyboard: () => void; onSettings: () => void; onTogether?: () => void }) {
   return (
     <main className="menu">
       <h1>Odyssey Fighter</h1>
@@ -11,6 +11,14 @@ export function TitleScreen(props: { notice: string; onCamera: () => void; onKey
       {props.onTogether && <button className="quiet" onClick={props.onTogether}>Fight together</button>}
       <button className="quiet" onClick={props.onSettings}>Settings</button>
       <p className="notice">{props.notice}</p>
+      {props.problem && (
+        <div className="overlay">
+          <h1>The camera did not start</h1>
+          <p>{props.problem}</p>
+          <button onClick={props.onCamera}>Try the camera again</button>
+          <button className="quiet" onClick={props.onKeyboard}>Play on the keyboard</button>
+        </div>
+      )}
     </main>
   );
 }
