@@ -15,6 +15,9 @@
     box-shadow: 0 0 0 1px #140a04, inset 0 0 0 2px #140a04, inset 0 3px 8px rgba(255, 230, 176, 0.16), inset 0 -10px 18px rgba(0, 0, 0, 0.35), 0 14px 30px rgba(0, 0, 0, 0.55);
   }
   :is(.overlay:has(> .end-title), .overlay.guest-over)::before { display: none; }
+  /* The defence line from the defence panel work, on the result panel. */
+  .overlay > .def-line { font: 700 20px/1.2 var(--st-body); color: var(--st-ink); }
+  .overlay > .def-line b { font: 400 28px var(--st-display); color: var(--st-gold); }
   .end-title .set-title { font-size: clamp(30px, 2.8vw, 42px); padding-inline: 0.4em; }
   .end-title.end-lost .set-title { background-image: linear-gradient(#ffe2d0, #e9a07f 45%, #b85a3a); }
 
