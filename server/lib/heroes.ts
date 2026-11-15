@@ -10,8 +10,10 @@
 // - last(value, time) and last(value, score) pick the newest hero name and the stop of the best fight in one pass.
 //
 // Statements go through the accounts' own door (statementsOf in ./accounts), so the account tables exist first and
-// a database that is down fails here the way it fails there. Every value goes to the database apart from the text.
-// A database without TimescaleDB has no hall: one log line, and every call here throws Unavailable.
+// the hall is off whenever the accounts are. It does not work the other way: a statement of the hall that fails is
+// not counted against the accounts, and a reading that failed is remembered here for HALL_CACHE_MS, so a broken hall
+// asks the database once in that time and sign-in, saves and fights go on. Every value goes to the database apart
+// from the text. A database without TimescaleDB has no hall: one log line, and every call here throws Unavailable.
 import { z } from "zod";
 import { log } from "../../src/core/log";
 import { Unavailable, tables } from "./accounts";
@@ -124,7 +126,7 @@ export interface Hall {
 export interface Heroes {
   /** Writes one finished fight of this account. False when the account is not there (any more). Throws Unavailable. */
   readonly record: (accountId: string, fight: Fight) => Promise<boolean>;
-  /** The hall, read at most `cacheMs` ago. Everybody who asks in that time shares one reading. Throws Unavailable. */
+  /** The hall, read at most `cacheMs` ago. Everybody who asks in that time shares one reading, or one failure. Throws Unavailable. */
   readonly hall: () => Promise<Hall>;
 }
 
@@ -196,6 +198,8 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
   let triedAt = Number.NEGATIVE_INFINITY;
   let preparing: Promise<void> | null = null;
   let cached: { readonly at: number; readonly hall: Hall } | null = null;
+  /** When a reading last failed at the database. Until cacheMs after it nobody is sent there again. */
+  let failedAt = Number.NEGATIVE_INFINITY;
   let reading: Promise<Hall> | null = null;
 
   const iso = (ms: number): string => new Date(ms).toISOString();
@@ -209,7 +213,7 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
     preparing = (async () => {
       const found = await statement("select 1 as n from pg_extension where extname = $1::text", ["timescaledb"]);
       if (found.length === 0) {
-        // A plain Postgres. Trying the statements would only fail, and each failure counts against the accounts.
+        // A plain Postgres. Trying the statements would only fail.
         state = "off";
         log("warn", "heroes_unavailable", { reason: "no_timescaledb" });
         throw new Unavailable();
@@ -238,8 +242,7 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
   const rowsOf = (rows: readonly z.infer<typeof boardRow>[]): HallRow[] =>
     rows.map((row) => ({ accountId: row.account_id, hero: row.hero, score: row.best, stop: row.stop, style: row.style, god: row.god }));
 
-  const read = async (): Promise<Hall> => {
-    await prepare();
+  const ask = async (): Promise<Hall> => {
     const at = now();
     // The buckets end on a whole ten minutes, the one that holds this moment included.
     const until = Math.floor(at / BUCKET_MS) * BUCKET_MS + BUCKET_MS;
@@ -262,6 +265,17 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
     };
   };
 
+  /** The reading itself. The tables keep their own memory of a failure (RETRY_MS, in `prepare`); this keeps the statement's. */
+  const read = async (): Promise<Hall> => {
+    await prepare();
+    try {
+      return await ask();
+    } catch (error) {
+      failedAt = now();
+      throw error;
+    }
+  };
+
   return {
     record: async (accountId, fight) => {
       await prepare();
@@ -279,6 +293,9 @@ export function createHeroes(statement: Statement, options: HeroesOptions = {}):
     hall: () => {
       const age = cached === null ? Number.POSITIVE_INFINITY : now() - cached.at;
       if (cached !== null && age >= 0 && age < cacheMs) return Promise.resolve(cached.hall);
+      // A hall that just failed is not asked again by everybody who looks: one try in cacheMs, like one reading.
+      const since = now() - failedAt;
+      if (since >= 0 && since < cacheMs) return Promise.reject(new Unavailable());
       reading ??= gate(read)
         .then((hall) => {
           cached = { at: now(), hall };
