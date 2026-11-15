@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 #root { display: flow-root; } /* the .menu margin must not collapse through #root and scroll the page */
-body { background: var(--clay-dark); color: var(--ink); font-family: var(--font-display); }
+body { background: var(--pb-ground-deep); color: var(--ink); font-family: var(--font-display); }
 
 /* Buttons: black with clay ink is the main choice, .quiet is an outlined second choice. */
 button { font: inherit; font-size: 1.15rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--clay-light); background: var(--ink); border: var(--bw-line) solid var(--ink); border-radius: 0; padding: 0.75rem 1.6rem; margin: 0.4rem; cursor: pointer; min-width: 16rem; transition: transform 0.08s, background 0.12s, color 0.12s, box-shadow 0.12s; }
@@ -15,22 +15,6 @@ button.quiet:hover:not(:disabled) { background: var(--ink); color: var(--clay-li
 button.quiet:active:not(:disabled) { background: var(--purple); color: var(--white); }
 button:disabled { cursor: not-allowed; }
 
-/* Menu screens: one vase face. Meander bands top and bottom inside a double black frame. */
-.menu { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 14px; height: calc(100% - 28px); padding: 4rem 2rem; color: var(--ink);
-  background:
-    var(--meander) repeat-x 0 14px / auto var(--meander-h),
-    var(--meander) repeat-x 0 calc(100% - 14px) / auto var(--meander-h),
-    repeating-linear-gradient(0deg, #0000 0 5px, #1708080a 5px 6px),
-    radial-gradient(ellipse at 50% 42%, #d56d36 0%, var(--clay) 55%, #a94c1f 100%); }
-.menu::before { content: ""; position: absolute; inset: 0; border: var(--bw-frame) solid var(--ink); box-shadow: 0 0 0 3px var(--clay), 0 0 0 6px var(--ink), inset 0 0 0 3px var(--clay), inset 0 0 0 5px var(--ink); pointer-events: none; }
-.menu h1, .overlay h1 { font-size: clamp(2rem, 5.2vw, 4.2rem); color: var(--ink); margin: 0 0 0.4rem; letter-spacing: var(--track-wide); text-transform: uppercase; font-weight: 700; line-height: 1.1; }
-.menu > button:has(small) { width: min(46rem, 90vw); }
-.menu h1::after { content: ""; display: block; height: 2.2rem; margin: 0.5rem auto 0; background: var(--palmette) center / contain no-repeat; }
-.menu p { margin: 0.35rem 0; font-size: 1.1rem; }
-.notice { min-height: 1.5em; font-style: normal; }
-.verse { max-width: 34rem; font-style: italic; }
-.menu:has(> .verse)::after { content: ""; position: absolute; left: 50%; bottom: 52px; width: min(30rem, 56vw); height: 7rem; transform: translateX(-50%); background: var(--ship) center / contain no-repeat; pointer-events: none; }
-.menu:has(> .verse) { padding-bottom: 9rem; }
 
 .fight { position: relative; height: 100%; }
 .hud { position: absolute; inset: 0; pointer-events: none; }
@@ -101,30 +85,3 @@ kbd { font-family: var(--font-mono); font-weight: 700; color: var(--card-ink, in
 .learned h2 { font-size: 0.95rem; margin: 0; letter-spacing: 0.2em; text-transform: uppercase; }
 .learned ul { list-style: none; padding: 0; margin: 0.3rem 0; }
 
-/* The quest map is a vase frieze: black sea waves between two meander bands, the stops set along the route. */
-.chart { position: relative; width: min(92vw, 1000px, calc(52vh * 1000 / 420)); aspect-ratio: 1000 / 420; margin: 0.5rem 0 1rem; background: var(--clay-light); border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--clay), 0 0 0 5px var(--ink); }
-.chart::before, .chart::after { content: ""; position: absolute; left: 0; right: 0; height: var(--meander-h); background: var(--meander) repeat-x; z-index: 1; }
-.chart::before { top: 0; } .chart::after { bottom: 0; }
-.chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.wave { fill: none; stroke: var(--clay-dark); stroke-width: 2; stroke-linecap: round; opacity: 0.4; }
-.route { fill: none; stroke: var(--ink); stroke-width: 3.5; stroke-dasharray: 2 10; stroke-linecap: round; }
-.harbour { fill: var(--ink); stroke: var(--clay-light); stroke-width: 3; }
-.port { position: absolute; transform: translate(-50%, 1rem); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; z-index: 2; }
-.stop { position: absolute; transform: translate(-50%, -50%); padding: 0; margin: 0; min-width: 0; border: 0; background: none; color: var(--ink); z-index: 2; letter-spacing: normal; text-transform: none; }
-.stop:hover:not(:disabled), .stop:active:not(:disabled) { background: none; box-shadow: none; color: var(--ink); }
-.stop .dot { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; background: var(--ink); color: var(--clay-light); border: 3px solid var(--ink); box-shadow: 0 0 0 2px var(--clay-light); font-size: 1.2rem; font-weight: 700; transition: transform 0.12s; }
-.stop.open .dot { animation: stop-pulse 1.8s ease-in-out infinite; }
-.stop:hover:not(:disabled) .dot { transform: scale(1.18); background: var(--purple); color: var(--white); }
-.stop:active:not(:disabled) .dot { transform: scale(1.05); }
-.stop .lbl { position: absolute; left: 50%; transform: translateX(-50%); width: 8rem; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: var(--clay-light); border: 2px solid var(--ink); padding: 0.2rem 0.3rem; }
-.stop.above .lbl { bottom: 3rem; }
-.stop.below .lbl { top: 3rem; }
-.stop .lbl small { display: block; font-size: 0.75rem; font-weight: 400; }
-.stop.cleared .dot { background: var(--white); color: var(--ink); }
-.stop.locked { cursor: not-allowed; }
-.stop.locked .dot { opacity: 0.75; }
-.stop.locked .dot { background: transparent; color: var(--ink); box-shadow: none; border-style: dashed; }
-.stop:focus-visible { outline: none; box-shadow: none; }
-.stop:focus-visible .dot { outline: 3px solid var(--white); outline-offset: 5px; }
-@keyframes stop-pulse { 0%, 100% { box-shadow: 0 0 0 2px var(--clay-light), 0 0 0 5px #8e243300; } 50% { box-shadow: 0 0 0 2px var(--clay-light), 0 0 0 7px var(--purple); } }
-@media (prefers-reduced-motion: reduce) { .stop.open .dot { animation: none; } }
