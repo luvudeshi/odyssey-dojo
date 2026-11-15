@@ -31,7 +31,7 @@ npx tsx server/tools/levelClips.ts --doc      # refreshes the tables below and c
 | Effects (`sfx`) | The file's own level, times `LEVELS[type]`, times `MASTER_GAIN` 0.5 (`sfx.ts`). Files are not levelled. | -25.8 LUFS (-41.2 to -16.7) |
 | Stop events | Each clip is raised or lowered to RMS 0.12 with its peak held to 0.9, then times `EVENT_GAIN` 0.5 (`stopAudio.ts`). | -22.4 LUFS (-31.4 to -17.0) |
 | A god's power (`power`) | Each clip is raised or lowered to RMS 0.13 with its peak held to 0.9, then times `POWER_GAIN` 0.7 (`powerSound.ts`). The silence a clip starts with is skipped. It plays in place of `sfx/powerUnleashed`. | -18.9 LUFS (-22.0 to -16.7) |
-| Music | Each clip is brought to its scene's RMS (0.1 to 0.16), then times `MUSIC_GAIN` 0.16, times the music volume (`music.ts`). | fight -34.0, menu -36.5, loss -32.3, win -28.6 LUFS |
+| Music | Each clip is brought to its scene's RMS (0.1 to 0.18), then times `MUSIC_GAIN` 0.3, times the music volume (`music.ts`). | fight -27.5, boss -26.7, menu -30.8, loss -26.8, win -23.1 LUFS |
 | Music under a spoken line | The two loops drop by half (`DUCK` 0.5). The stings do not. | fight -40.0, menu -42.5 LUFS |
 | Ambience | Each clip is brought to RMS 0.08, then times `AMBIENCE_GAIN` 0.16, times the music volume (`stopAudio.ts`). | -38.2 LUFS (-39.1 to -37.6) |
 
@@ -45,7 +45,7 @@ What was wanted: Athena's calls clearly on top, Homer and the monsters near her,
 - **Homer is near her now**, 3.4 LU under. Before this change he was 7 LU under (about -22.3 LUFS).
 - **A taunt is 6.5 LU under her.** The clips are 3.4 LU under hers, and `TAUNT_VOLUME` takes 3.1 dB more because a taunt plays at the same time as her calls. Before this change a taunt was 9.6 LU under her (-25.0 LUFS), quieter than most of the effects around it. It is now level with the median stop event (-22.4) and still 2.2 LU under the hit sound (`enemyHit`, -19.9). `TAUNT_VOLUME` was not changed: it is in `voice.ts`, which others are editing, and nobody has heard whether a louder taunt masks her calls.
 - **Most effects are under Athena.** The median effect is 10 LU under her, the median stop event 7 LU under. Some effects are far too quiet and one is as loud as her: see below.
-- **Music and ambience are well under.** The fight music is 18 LU under Athena, and 24 LU under while she speaks. The menu loop is 17.5 LU under Homer, 23.5 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7). The dip is what gets the music past it. So the level `music.ts` picks is sensible against the voice and no constant was changed. In RMS terms the fight music comes out at -31.8 dBFS with the music volume at 1 and -34.9 dBFS at the default 0.7. If the music cannot be heard in a loud room, `MUSIC_GAIN` is the one number to raise: 0.22 is 2.8 dB more.
+- **Music is under the voice, ambience well under.** On 14 November the owner asked for music that can be heard, so `MUSIC_GAIN` went from 0.16 to 0.3 (5.5 dB more) with the three new tracks. The fight music is 8.5 LU under Athena, and 14.5 LU under while she speaks. The menu track is 12 LU under Homer, 18 LU while he speaks. A common yardstick for background sound under speech is 20 dB (WCAG 1.4.7); the music is now short of that even with the dip, by choice. If a line is hard to hear in a loud room, lower `MUSIC_GAIN` or the music volume setting.
 
 ### What the numbers say is wrong, and was not changed
 
@@ -202,7 +202,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | athena | 50 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
 | athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
-| music | 4 | -37.7 | -12.9 | -9.8 | 27.9 | -33.1 (-36.5 to -28.6) |
+| music | 5 | -14.5 | -11.0 | -9.8 | 4.7 | -26.8 (-30.8 to -23.1) |
 | narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
 | power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
@@ -216,8 +216,8 @@ None.
 
 ### Out of line
 
-- `music/menu.mp3`: -3.4 LU from the median of music at the listener
-- `music/win.mp3`: +4.5 LU from the median of music at the listener
+- `music/menu.mp3`: -4.0 LU from the median of music at the listener
+- `music/win.mp3`: +3.7 LU from the median of music at the listener
 - `power/hermes.mp3`: -3.1 LU from the median of power at the listener
 - `sfx/enemyHit.mp3`: +5.9 LU from the median of sfx at the listener
 - `sfx/finished.mp3`: +9.1 LU from the median of sfx at the listener
@@ -313,10 +313,11 @@ None.
 
 | clip | seconds | LUFS | peak dBTP | lead ms | tail ms | play dB | at the listener |
 |---|---|---|---|---|---|---|---|
-| `music/fight.mp3` | 48.07 | -14.8 | -1.2 | 30 | 17 | -19.2 | -34.0 |
-| `music/loss.mp3` | 7.55 | -9.8 | -1.4 | 206 | 1275 | -22.5 | -32.3 |
-| `music/menu.mp3` | 30.00 | -37.7 | -23.9 | 0 | 0 | 1.2 | -36.5 |
-| `music/win.mp3` | 6.03 | -11.0 | -1.0 | 24 | 1757 | -17.6 | -28.6 |
+| `music/boss.mp3` | 139.57 | -12.6 | 1.3 | 15 | 602 | -14.1 | -26.7 |
+| `music/fight.mp3` | 128.05 | -10.2 | 0.9 | 25 | 772 | -17.3 | -27.5 |
+| `music/loss.mp3` | 7.55 | -9.8 | -1.4 | 206 | 1275 | -17.0 | -26.8 |
+| `music/menu.mp3` | 156.06 | -14.5 | -0.1 | 448 | 2367 | -16.3 | -30.8 |
+| `music/win.mp3` | 6.03 | -11.0 | -1.0 | 24 | 1757 | -12.1 | -23.1 |
 
 ### narration
 
