@@ -40,3 +40,29 @@
   color: var(--pb-ochre-light); white-space: nowrap;
 }
 .camera-move:empty { display: none; }
+
+/* In the fight the panel wears the Obsidian Rift's black glass (src/hud/sky/rift.css) instead of pebbles: a slab with
+   chipped corners and a cold violet edge, a picture cut to the same corners, and a thread of melt along its foot. All
+   of it is still. The calibration screen keeps the pebble frame above. */
+.fight .camera-view {
+  --cam-cut: 16px;
+  padding: 6px; border: 0; border-radius: 0; box-shadow: none;
+  background: linear-gradient(160deg, #b8a8e8, #4a4062 40%, #1a1622 70%, #8a7cc0);
+  clip-path: polygon(var(--cam-cut) 0, 100% 0, 100% calc(100% - var(--cam-cut)), calc(100% - var(--cam-cut)) 100%, 0 100%, 0 var(--cam-cut));
+}
+.fight .camera-view::before { /* the glass, inside a 1.5px violet edge */
+  inset: 1.5px; padding: 0; border-radius: 0; z-index: 0; -webkit-mask: none; mask: none;
+  background: linear-gradient(160deg, #2c2538, #0d0b12 30%, #1a1622 55%, #09080c 78%, #231d2e);
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+}
+.fight .camera-view::after { /* the melt along the foot (--rift-lava, baked once in rift/lava.ts) */
+  content: ""; position: absolute; left: 22%; right: 20%; bottom: 1.5px; height: 3px; z-index: 1; pointer-events: none;
+  background: var(--rift-lava, linear-gradient(90deg, #8a1804, #ffcc3a, #ff8410, #8a1804)) repeat-x left center / 160px 100%;
+  clip-path: polygon(0 50%, 5% 0, 95% 0, 100% 50%, 95% 100%, 5% 100%);
+}
+.fight .camera-frame {
+  z-index: 1; border-radius: 0; background: linear-gradient(#1a1622, #07060a);
+  clip-path: polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px);
+}
+.fight .camera-tag { border: 1.5px solid #8a7cc0; border-radius: 0; background: #0d0b12; color: #ece4ff; }
+.fight .camera-view:has(.camera-state[data-on="false"]) .camera-tag { border-color: #ff6a14; }

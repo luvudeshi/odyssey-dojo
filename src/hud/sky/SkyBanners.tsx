@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { EnemySpec } from "../../core/types";
 import { RatingFlash } from "../RatingFlash";
 import { TogetherFlash } from "../TogetherFlash";
+import { RiftPlate } from "./rift/RiftPlate";
 
 const SHOW_MS = 1800;
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"] as const;
@@ -13,7 +14,7 @@ export function roman(n: number): string {
 }
 
 export function PhaseLine({ index, name }: { index: number; name: string }) {
-  return <div className="sk-phase"><small>{roman(index + 1)}</small>{name}</div>;
+  return <div className="sk-phase"><RiftPlate tone="glass" blades /><small>{roman(index + 1)}</small>{name}</div>;
 }
 
 /**
@@ -45,6 +46,7 @@ export function SkyPhase({ enemy, index }: { enemy: EnemySpec; index: number }) 
 export function SkyIntro({ enemy }: { enemy: EnemySpec }) {
   return (
     <div className="sk-intro">
+      <RiftPlate tone="glass" blades />
       <h2>{enemy.name.toUpperCase()}</h2>
       <small>{enemy.title}</small>
     </div>

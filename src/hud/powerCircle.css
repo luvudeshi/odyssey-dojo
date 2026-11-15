@@ -10,9 +10,8 @@
   pointer-events: none; transition: bottom 0.25s ease-out;
   font-family: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif; color: #fff0d0;
 }
-/* The power-ready banner (src/ai/power/powerReady.css) takes the bottom strip while the meter is full: the disc sits
-   on top of it. The sum is that banner's bottom offset plus its two text lines and padding, with room for a third line. */
-.power-circle.is-lifted { bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 60px); }
+/* The power-ready banner (src/ai/power/powerReady.css) sits right of the disc on a wide screen, so the disc stays put.
+   On a phone it takes the whole bottom strip, so there the disc sits on top of it (see the end of this sheet). */
 .power-circle svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .power-circle__halo { fill: url(#pc-halo); opacity: 0; }
 .power-circle__halo-stop { stop-color: var(--pc-accent); }
@@ -50,4 +49,8 @@
 @media (prefers-reduced-motion: reduce) {
   .power-circle.is-full, .power-circle.is-full::after { animation: none; }
   .power-circle, .power-circle__spikes, .power-circle__fill { transition: none; }
+}
+/* A phone held upright: the banner takes the whole bottom strip, three lines stacked, and the disc sits on top of it. */
+@media (max-width: 760px) {
+  .power-circle.is-lifted { bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(26px, 2.5vw, 42px) + clamp(11px, 0.95vw, 16px) + 72px); }
 }
