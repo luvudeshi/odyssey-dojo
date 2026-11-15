@@ -22,7 +22,7 @@ const STAND_IN: Record<DefenseId, DefenseId> = {
  * warning times, phases, weak spots and health are untouched, and the input is not changed.
  * Strike habits change nothing here: the engine picks strikes without weights.
  */
-export function trainOn(enemy: EnemySpec, habits: readonly Habit[]): EnemySpec {
+export function trainOn(enemy: EnemySpec, habits: readonly Pick<Habit, "trains" | "severity">[]): EnemySpec {
   const pools = enemy.phases
     ? enemy.phases.map((phase) => enemy.attacks.filter((attack) => phase.attackIds.includes(attack.id)))
     : [enemy.attacks];
