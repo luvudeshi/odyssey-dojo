@@ -1,7 +1,7 @@
-/* Storm and bronze: the shared kit of the interface set (draft look "storm", switched on by ?look=storm).
+/* Storm and bronze: the shared kit of the interface set, the look of every menu and interface screen.
    Dark storm-teal paintings, cast bronze for everything you press, sea-glass panels with a thin bronze rim and rivets,
-   titles in gold. Every rule is scoped to :root[data-look="storm"], so without ?look nothing changes.
-   Kit: .set-title  .set-panel  .set-btn / .set-btn--primary  .set-back  .set-stat  .set-backdrop
+   titles in gold. The rules sit under :root:root so they outrank a screen's older single-class rules.
+   Kit: .set-backdrop  .set-title  .set-kicker  .set-sub  .set-panel  .set-btn / .set-btn--primary  .set-back  .set-stat
    The same rules also reach the screens' own classes (pebble buttons, the dojo's buttons, the account's cards) through the
    :is() lists, so settings and the rest follow without touching their markup. */
 :root {
@@ -24,7 +24,7 @@
   --st-rivet: radial-gradient(circle at 35% 30%, #ffe6b0 0 18%, #c98f37 45%, #4a2408 100%);
 }
 
-:root[data-look="storm"] {
+:root:root {
   /* A full-bleed painting; only a soft dark veil sits over it, where the words are. */
   .set-backdrop { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: var(--st-abyss); pointer-events: none; }
   .set-backdrop img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; }

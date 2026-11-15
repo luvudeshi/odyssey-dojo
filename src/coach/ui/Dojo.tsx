@@ -15,10 +15,8 @@ import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
 import { BronzeDefs, ShieldCard } from "../../screens/menuShields";
-import { lookIs } from "../../ui/lookSwitch";
 import { Backdrop } from "../../ui/set/Set";
 import { STYLE_DEVICES } from "../../ui/set/styleDevices";
-import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
 
@@ -158,33 +156,28 @@ export function Dojo(props: DojoProps) {
   // What Done changes in the fights: the game keeps `assessmentFrom(summary)` and tunes every monster with it.
   const tuned = useMemo(() => (summary && summary.reps.length > 0 ? tuningLine(assessmentFrom(summary), ENEMIES) : null), [summary]);
   const own = move ? view.reps.filter((rep) => rep.moveId === move.id) : [];
+  // On the end screen Back is Done: it hands the summary on, as the Done button does.
+  const leave = done && summary ? () => { onDone(summary); } : onQuit;
   const last = view.phase === "result" ? view.last : null;
-  const storm = lookIs("storm");
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      {storm ? <Backdrop src="/textures/set/storm/yard.jpg" /> : <ForgeScene />}
+      <Backdrop src="/textures/set/storm/yard.jpg" />
       <header className="dojo-top">
-        <p className={storm ? "dojo-title set-title" : "dojo-title"}>Training dojo <span>{style?.name ?? ""}</span></p>
-        {storm && picking && <h1 className="dojo-progress set-sub">What do you want to train?</h1>}
-        {!done && !picking && <p className={storm ? "dojo-progress set-sub" : "dojo-progress"}>Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
-        {!picking && <p className={storm ? "dojo-points set-stat" : "dojo-points"} aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
-        {onQuit && !done && <button type="button" className={storm ? "set-back dojo-quit" : "dojo-button dojo-quit"} onClick={onQuit}>{picking ? "Back" : "Quit"}</button>}
+        <p className="dojo-title set-title">Training dojo{style ? ": " : ""}<span>{style?.name ?? ""}</span></p>
+        {picking && <h1 className="dojo-progress set-sub">What do you want to train?</h1>}
+        {!done && !picking && <p className="dojo-progress set-sub">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
+        {!picking && <p className="dojo-points set-stat" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
+        {leave && <button type="button" className="set-back dojo-quit" onClick={leave}>{picking || done ? "Back" : "Quit"}</button>}
       </header>
 
       {picking && (
         <section className="dojo-pick">
-          {!storm && <h1 className="dojo-end-title">What do you want to train?</h1>}
-          <p className="dojo-closing">Each one is its strikes, then block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
+          <p className="dojo-closing">Each one is its strikes, then your defences: block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
           <div className="dojo-styles">
-            {storm && <BronzeDefs />}
-            {STYLES.map((each, index) => storm ? (
+            <BronzeDefs />
+            {STYLES.map((each, index) => (
               <ShieldCard key={each.id} className="dojo-style" autoFocus={index === 0} device={STYLE_DEVICES[each.id] ?? STYLE_DEVICES.hoplite} name={each.name} line={each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")} onClick={() => { setChosen(each); }} />
-            ) : (
-              <button key={each.id} type="button" className="dojo-button dojo-style" autoFocus={index === 0} onClick={() => { setChosen(each); }}>
-                <b>{each.name}</b>
-                <span>{each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")}</span>
-              </button>
             ))}
           </div>
           <p className="dojo-key">{tracker ? "The camera is on: stand where it sees your whole body." : "No camera: you will press a key for each move."}</p>

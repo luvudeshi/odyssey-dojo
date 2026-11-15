@@ -9,8 +9,8 @@ Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-dojo/issues). 
 A full-body 3D fight training game. Your webcam tracks your body. You follow Odysseus's route home, fight the monsters he met in the order he met them, and learn real fighting moves as you go.
 
 1. **Meet your god.** The camera looks at you and names the Olympian you take after. That god grants you one power.
-2. **Pick a fighting style.** Boxer (jab, cross, hook), Hoplite (spear thrust, overhead strike) or Pankration (kicks and knees).
-3. **Follow the quest map.** Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca. Each fight you win opens the next.
+2. **Pick a fighting style.** Boxer (jab, cross, hook), Hoplite (spear thrust, overhead strike), Karate, Kung Fu or Pankration (kicks and knees).
+3. **Follow the quest map.** Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca. Every stop is open from the start.
 4. **Fight.** Every exchange has two beats:
    - **Defend.** The monster winds up and a prompt says what stops it: BLOCK, DUCK, DODGE LEFT, DODGE RIGHT.
    - **Strike.** A weak spot lights up and a prompt names a strike. A faint ghost figure shows the pose to hit. The better you throw it, the more damage it does.
@@ -22,45 +22,32 @@ Every move also has a key, so the game runs with no camera and no network. That 
 
 **The judged demo is the Polyphemus fight.** It gets the polish. Everything else exists to make the quest real around it.
 
-## Status: where we are (updated Saturday 7:17 PM by the lead's agent)
+## Status: where we are (updated Sunday 3:30 AM, checked against `main` at PR #341)
 
-The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. `main` is green at over 1,600 tests.
+The lead's agent keeps this section true after every batch of merges. The [board](https://github.com/users/toyeshhm/projects/2) has the same items as cards. Every PR number below is merged.
 
 ### Done, on `main`
-- Fight rules: phases, finishing move that cannot be lost, strike quality scaling damage, divine power meter and god moves, a 3 second pause after a phase change so Athena's line is heard (#4, #5, #6, #23, #30, PR #176).
-- Calibration with a keyboard escape and the "step back" pause (#8). Fake-camera smoke test; the pose model runs once per camera frame (PR #146).
-- All six quest stops, each with its own monster, arena and sound: Polyphemus in the mouth of his cave at dusk (Quaternius giant), Circe, the Sirens, Scylla, Charybdis, the Suitors (#27, #53, PR #136 to #140, #147, #149). Looks decided by toyeshhm: Scylla as built, Polyphemus as the giant, Circe with marble columns, the Suitors with feast tables and real axes, the Sirens kept with small fixes. Charybdis alternates are still to show him.
-- Hero: the spartan with stowed gear (toyeshhm's pick), who follows the player's body in real time (PR #142, #159). Body tracking has only run on made-up frames and a fake camera.
-- Live camera panel with the tracked skeleton on the fight screen, no flash after resume, caption in step with the step-back pause (PR #153, #183).
-- Interface: black-figure pottery on the title, style select, quest map, intro, HUD, prompt card, win and loss (PR #134). Being replaced, see In progress.
-- Gold move ghost, off by default: toyeshhm saw fights with and without it and chose off. `?ghost=1` turns it on (PR #133, #197).
-- Sound: Athena's calls for every move and a phase line for every stop, story narration, monster taunts, music and effects, hooked up in the game; the taunt waits for Athena's phase line (PR #144, #149, #167, #177, #188). God scan as a step before the style menu (PR #144).
-- Online rooms: host and join screens, guest fight, touch buttons (PR #150). What you practised, for the result screen (PR #173). Win and intro wording per enemy, and the stake thrust on T (PR #186, #206).
-- Balance: a first-time player wins the first fight (toyeshhm's ruling), the five later stops retuned, adaptive difficulty (PR #135, #164, #76).
-- Detectors hold for any body size and distance and for a player turned 30 degrees; the baseline carries a 3D shoulder width and torso length (PR #137, #168).
-- Built but not yet shown in the game: the 15 second warm-up skill check (PR #165, #166), the real situation each attack stands for and the story ending of each stop (PR #169, #170), AI-made fights engine half (PR #78).
-- Styles (Boxer, Hoplite, Karate, Kung Fu, Pankration with kicks), their mythic figures, what each move teaches (#45, #74, #36, #25).
-- AI server: god scan, god card, replay sharing, rooms relay (#43, #62, #64, #65, PR #103).
-- Tools: frame rate check, licence report with audio credits, smoke run of every stop, demo preflight, pose recorder, a CREDITS.md row for every shipped asset, server tests on Windows (PR #141, #143, #162, #175, #104, #116, #185, #184).
-- Rules for agents: nobody sits blocked or idle, and every post from gatik-g gets a reply and, if worth building, a task (PR #152).
+- **The game is Odyssey Dojo** on screen, in the docs, in storage keys and file names (PR #296, #298). It reads as self-defense training: the tagline is "Learn real self-defense, one monster at a time." (PR #334), and the cards, the Dojo and the result screen say what each guard and move is for (PR #339).
+- **Main menu** on a painted storm scene with four bronze shields: Story mode, Multiplayer, Training Dojo, Account (PR #281, #293, #296, #328, #334, #338). A Keyboard or Camera setting decides how Story mode starts (PR #314).
+- **Quest:** all six stops are open from the map, each with its own monster, arena and sound: Polyphemus, Circe, the Sirens, Scylla, Charybdis, the Suitors (PR #296). A stop on the quest map, now a painted storm, starts its fight (PR #281, #328). A reload keeps the beaten stops (PR #320). The Sirens, Scylla and Charybdis got a last move, and the Sirens a second attack in their first phase (PR #318).
+- **Fight:** phases, a finishing move that cannot be lost, strike quality scaling damage, divine power with a 3D effect and a sound for each god (PR #280, #289), the guard shield as Athena's aegis (PR #285, #294), a real dodge (PR #305), a leap to the weak spot (PR #279), the boulder throw (PR #270). Jab, cross and hook read on either hand (PR #272). The hero strikes a pose for each god power (PR #330).
+- **Fight HUD in the Obsidian Rift look:** lava health bars, glass power disc, action cards, score (PR #323). The prompt card has a 3D mannequin that acts out the move (PR #275).
+- **Training Dojo** as an obsidian forge hall: an outline of each move, a grade and points for every try, what to work on at the end (PR #273, #325). The end screen says what the session changed in the fights (PR #292).
+- **Multiplayer** is one screen with Host, Join and a FaceTime card (PR #296, #326, #327). A guest who reloads gets the same room and seat back (PR #331). The FaceTime call, in `src/facetime/`, puts a friend's iPhone into the fight; it is drawn only when the server has it set up, and hang-up closes the room (PR #319, #321, #336). It has not been on a real call (`docs/facetime.md`).
+- **Account** is the hall of the hero: name, achievement badges with progress, an unlock notice after a fight, twelve more achievements (PR #290, #304, #317, #324).
+- **Sound:** menu, fight and last-stop music by Shane Ivers (PR #301, #333); an unlock chime and a sound for each kind of defend (PR #299); a war horn on a phase change (PR #315); Homer's lines run to their end as a fight starts and before a stop (PR #306, #316); Homer's closing line for the homecoming (PR #291); Scylla's taunt for each phase (PR #282).
+- **Hosting:** a kit to run the game on Vultr over https, in `deploy/vultr/` (PR #332, `docs/deploy-vultr.md`). Not run on a real instance.
+- **Accounts and the Hall of heroes on Tiger Data** (PR #322): the server routes, the database code and the tests. Off unless `DATABASE_URL` is set (`docs/accounts.md`). The sign-in dialog and the hall board are built and are not on a screen yet.
+- **Built, not on a screen:** the god scan character pick, which gives each god one of the five characters (PR #340), and a defense-first progress panel with its saved history (PR #341). Both are modules with tests.
+- Earlier, still true: calibration with a keyboard escape, the live camera panel, balance and adaptive difficulty, detectors that hold for any body size and a 30 degree turn, five styles (Boxer, Hoplite, Karate, Kung Fu, Pankration), 26 moves each with a line on what it is for, the AI server (god scan, rooms relay, replay sharing), the Muse's "How do you fight?" screen, reached only at `?ai=1` (PR #307), the demo runbook (PR #286) and credits for every shipped asset (PR #283).
 
-### In progress
-| What | Who | Where |
-|---|---|---|
-| Pebble mosaic interface (toyeshhm's pick, 6:19 PM) on every screen except the fight HUD: title, style select, map, intro, calibration, rooms, pause, settings, result panels. Carries the optional warm-up button before the first fight, "what you practised" and the ending on the result screen | lead's agents | #171, #50, branches `pebble-*`, landing as one PR |
-| Fight screen (toyeshhm, 7:04 PM): the HUD in the star-chart look (bars, score, power, phase line, prompt card with the situation line) around the camera panel in pebble mosaic | lead's agents | branches `fight-hud-*`, files `src/hud/sky/`, lands after the pebble PR |
-| Picked looks: Circe's marble columns and the Suitors' feast and axes (reviewed, merging); the Sirens' second singer clear of the card and the meadow at dusk; Charybdis alternates to show toyeshhm | lead's agents | PR #200, #202, branch `sirens-dusk`, #53 |
-| Fixes from the QA sweep: each stop plays its own sounds (conflict with #188 being resolved), Polyphemus and Scylla windups that read apart, weak-spot rings on the right place | lead's agents | PR #190, #204 |
-| Rooms over the internet: relay limits and an https tunnel (in review), a long-poll fallback for tunnels that drop the stream, one real tunnel test approved by toyeshhm | luvudeshi's agent, lead's agents | #29, #155, PR #199, #201, branch `rooms-poll-fallback` |
-| Webcam fight on a real body, and traces for tuning | toyeshhm | #7, #17 |
-| A beginner's floor at the later stops, jab and cross for narrow shoulders, trace margins report. Queued after: #191, #193, #194 | tagrawal029's agent | #127, #178, #192 |
-| Clip loudness and the offline check (merging). Lined up: licence check of tonight's assets, key scan of the built game, failure drill | luvudeshi's agent | PR #203, #205, #195, #196, #198 |
+### Still open
+- **Must:** one full webcam fight on a real body on the demo laptop, and detector tuning from real traces (#7, #17). The Devpost page, the demo video and the backup recording (#21, #130).
+- **Not finished:** waist-up play that never asks for a move the camera cannot see (the rules are in `src/moves/waistUp.ts` and are not connected to the fight, #239) and a smoke run on Windows (#193).
+- **Not tried on real hardware:** a FaceTime call, the Vultr host, a database on the demo laptop.
 
-### Left
-- **Must:** one full webcam fight on a real body on the demo laptop (the 8 PM checkpoint) and detector tuning from real traces (#7, #17). The pebble mosaic interface merged and checked on every screen, and the star-chart fight HUD on top of it. The lead's fix list (#179). Freeze tag at 1 AM.
-- **Should:** training mode, after the freeze (#172). Frame rate measured on the demo laptop at every stop. Player dressed per style (#18).
-- **On hold by toyeshhm:** the Devpost draft (#130). Demo video and backup recording, Sunday 7 to 10 AM (#21).
-- **Stretch, kept and not cut (toyeshhm, 6:41 PM):** AI-made fights screen (PR #92), god card and share panel (PR #109), two players on one camera (#28).
+### Not on `main`
+Branches that are not merged are not described here: other HUD looks, boss cutscenes, a shared menu look for every screen, a single Polyphemus model and lenient webcam detection.
 
 ### Art direction (toyeshhm, Saturday 4:15 PM)
 1. Stylized low-poly look with strong lighting.
@@ -68,7 +55,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 3. The player is an animated rigged hero that plays real clips when a move is detected, and the live camera panel shows the tracked body. The move ghost is off (7:00 PM).
 4. toyeshhm chooses the look and the models. Agents decide engineering only, and build model choices as candidates behind a URL flag.
 5. Hero (Saturday 5:20 PM): the spartan. His gear is not always out: the shield rides on his back and his hands are free to punch and block; the spear is drawn only for a spear move.
-6. Interface (Saturday 6:19 PM, replacing the Saturday 5:20 PM black-figure pottery): pebble mosaic, his pick from ten boards. The whole interface is laid in small river pebbles on a dark ground, as on the floors of Pella and Olynthos, with thin lead strips and a wave scroll along the borders. In the fight only edge pieces are laid: stone-by-stone health bars, one prompt card at the right edge (a rounded slate shield for DEFEND, a pointed warm spearhead for STRIKE). Move words, keys and timers stay plain type. The kit is `src/ui/pebble/`, its notes `docs/ui-pebble.md`. Fight screen only (7:04 PM): the HUD and prompt card in the star-chart look, the camera panel in pebble mosaic.
+6. Interface (Saturday 6:19 PM, replacing the Saturday 5:20 PM black-figure pottery; since Sunday 4 AM the screens have been restyled one by one, see Status, and the pebble kit still supplies the buttons and panels): pebble mosaic, his pick from ten boards. The whole interface is laid in small river pebbles on a dark ground, as on the floors of Pella and Olynthos, with thin lead strips and a wave scroll along the borders. In the fight only edge pieces are laid: stone-by-stone health bars, one prompt card at the right edge (a rounded slate shield for DEFEND, a pointed warm spearhead for STRIKE). Move words, keys and timers stay plain type. The kit is `src/ui/pebble/`, its notes `docs/ui-pebble.md`. Fight screen only (7:04 PM): the HUD and prompt card in the star-chart look, the camera panel in pebble mosaic.
 
 ## Features
 
@@ -77,7 +64,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 |---|---|---|
 | 1 | Webcam pose drives every move, with a key for each as fallback | #7 |
 | 2 | Calibration countdown; "step back, I can't see you" pause | #8 |
-| 3 | Style select: Boxer, Hoplite | built |
+| 3 | Style select: Boxer, Hoplite, Karate, Kung Fu, Pankration | built |
 | 4 | Moves taught in the fight, prompts that fade as you learn; each move says what it teaches | built, #4 |
 | 5 | The player's movements shown live on a 3D figure | built, #7 |
 | 6 | Damage scales with how well the move is done (GOOD, GREAT, PERFECT) | #23 |
@@ -87,7 +74,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 | 10 | Athena as voice coach, clips made ahead of time so it works offline | #14, #15 |
 | 11 | Hit feel: shake, flashes, sparks, a cave arena | #9, #10 |
 | 11a | Action-RPG battle view: our own character seen from behind, facing the monster; camera and characters move | #51 |
-| 12 | Quest map in Odyssey order, Polyphemus playable, the rest shown ahead | #26 |
+| 12 | Quest map in Odyssey order, every stop open | #26 |
 | 13 | Title, intro line, win and loss screens | #16 |
 | 14 | Detectors tuned on all three of us | #17 |
 | 15 | Devpost, demo video, backup recording | #21 |
@@ -109,11 +96,9 @@ The lead's agent keeps this section true after every batch of merges. The [board
 - More quest stops: Circe, the Sirens, Charybdis, the suitors.
 - Difficulty that adapts to the player. Rigged downloaded models.
 
-### Later: agreed, not started (do not begin until toyeshhm says so)
+### Later
 
-The direction is a fully fleshed-out game with action-RPG style battles. Nothing is waiting here now.
-
-The complete UI redesign (#52) was opened up by toyeshhm on Saturday at 5 PM: the menu, settings and pause are being built, and he picks the look. Sophisticated graphics and real 3D models (#53) moved to "in progress" on Saturday afternoon: looks are the top priority.
+Nothing is agreed and waiting. The direction is a fully fleshed-out game with action-RPG style battles.
 
 ## How it fits together
 
@@ -130,7 +115,7 @@ remote player -> net/ (rooms) ------------------------------------------->  |
                                                    |            |           |          |
                                              render/Scene    hud/Hud   audio/*    net/ (to guest)
 
-server/ (optional): Gemini and ElevenLabs keys, god reveal, AI fights, room relay.
+server/ (optional): Gemini and ElevenLabs keys, god reveal, AI fights, room relay, FaceTime rooms, accounts on Tiger Data.
 The game must start and play a full fight with the server off.
 ```
 

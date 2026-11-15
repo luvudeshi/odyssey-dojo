@@ -1,9 +1,8 @@
 /* Storm and bronze, per screen: how the kit (set.css) reaches the main menu, the Training Dojo and the Account screen.
-   All under ?look=storm. The pick will keep set.css and fold these into the screens' own files. Nothing here is under 18 px. */
-:root[data-look="storm"] {
+   Nothing here is under 18 px. */
+:root:root {
   /* ---------- main menu: the same title, text and ribbons as the other screens; shields and painting stay ---------- */
   .menu--title .set-title { margin-bottom: 0.4rem; }
-  .menu--title .verse { font: italic 400 clamp(21px, 1.7vw, 26px)/1.3 var(--st-body); color: var(--st-dim); }
   .menu--title p.lead { font: 700 clamp(20px, 1.5vw, 24px)/1.3 var(--st-body); color: var(--st-gold); letter-spacing: 0.02em; }
   .menu--title p.notice { font: 600 20px/1.3 var(--st-body); color: var(--st-dim); }
   .menu-shield__name, .dojo-style .menu-shield__name { font-family: var(--st-display); font-weight: 400; letter-spacing: 0.06em; font-size: clamp(20px, 1.55vw, 25px); }
@@ -67,13 +66,12 @@
   .dojo-end-title { font: 400 44px var(--st-display); letter-spacing: 0.04em; }
   .dojo-card h2 { font: 400 26px var(--st-display); letter-spacing: 0.06em; color: var(--st-gold); }
   .dojo-card:last-child h2 { color: var(--st-gold); }
-  .dojo-card { padding: 1.3rem 1.8rem 1.5rem; background-image: var(--st-rivet), var(--st-rivet), var(--st-rivet), var(--st-rivet), linear-gradient(rgba(12, 42, 46, 0.9), rgba(4, 18, 21, 0.92)); }
+  .dojo-card { clip-path: none; padding: 1.3rem 1.8rem 1.5rem; background-image: var(--st-rivet), var(--st-rivet), var(--st-rivet), var(--st-rivet), linear-gradient(rgba(12, 42, 46, 0.9), rgba(4, 18, 21, 0.92)); }
   .dojo-card li, .dojo-card p { font: 500 22px/1.3 var(--st-body); }
   .dojo-camera video { border-color: var(--st-bronze); box-shadow: 0 0 0 4px #04100f, 0 0 18px rgba(224, 165, 82, 0.4); }
 
   /* ---------- Account: the painted hall. Two open walls of trophies on light glass, the name and coins on the painting, one panel for the next deed ---------- */
   .acc-hall, .acc-hall__stage { background: var(--st-abyss); }
-  :is(.acc-hall__frieze, .acc-hall__dado, .acc-hall__floor, .acc-hall__light, .acc-col, .acc-bow, .acc-helm, .acc-hearth, .acc-title.set-title > span) { display: none; }
   .acc-title.set-title { left: 320px; width: 800px; top: 20px; white-space: nowrap; text-shadow: none; }
   .acc-count { left: 444px; right: auto; width: 552px; top: 112px; bottom: auto; }
   .acc-count b { font: 400 28px var(--st-display); color: var(--st-gold); }

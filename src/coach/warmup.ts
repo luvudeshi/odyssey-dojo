@@ -13,12 +13,12 @@ const STEP_MS = 2500;
 
 /** What the warm-up asks for, in order: the two basic punches, then the four defenses. 15 seconds in all. */
 export const WARMUP_STEPS: readonly WarmupStep[] = [
-  { id: "jab", moveId: "jab", say: "Jab: left fist straight out", ms: STEP_MS },
-  { id: "cross", moveId: "cross", say: "Cross: right fist straight out", ms: STEP_MS },
-  { id: "block", moveId: "block", say: "Block: both fists up to your face", ms: STEP_MS },
-  { id: "dodge_left", moveId: "dodge_left", say: "Dodge left: step to your left", ms: STEP_MS },
-  { id: "dodge_right", moveId: "dodge_right", say: "Dodge right: step to your right", ms: STEP_MS },
-  { id: "duck", moveId: "duck", say: "Duck: bend your knees, drop low", ms: STEP_MS },
+  { id: "jab", moveId: "jab", say: "Jab: left fist out to keep space", ms: STEP_MS },
+  { id: "cross", moveId: "cross", say: "Cross: right fist, your power hand", ms: STEP_MS },
+  { id: "block", moveId: "block", say: "Block: fists up to cover your head", ms: STEP_MS },
+  { id: "dodge_left", moveId: "dodge_left", say: "Dodge left: step off the line", ms: STEP_MS },
+  { id: "dodge_right", moveId: "dodge_right", say: "Dodge right: step off the line", ms: STEP_MS },
+  { id: "duck", moveId: "duck", say: "Duck: drop low under a swing", ms: STEP_MS },
 ];
 
 /** A move counts as seen at this confidence: the same line the fight uses (src/input/poseInput.ts). */

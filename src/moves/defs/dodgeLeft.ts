@@ -12,7 +12,7 @@ const SMALLEST = 0.75;
  */
 const HEAD = 0.5;
 /** The shift, in calibrated shoulder widths, that reads as a full dodge. The hold level (0.5) is half of it, about 10 cm. */
-const FULL = 0.5;
+const FULL = 0.45;
 
 /** How far the upper body has moved since calibration, in calibrated shoulder widths: negative to the player's left. */
 export function shiftOver(frames: readonly PoseFrame[], baseline: Baseline): number {
@@ -41,7 +41,7 @@ export const move: MoveDef = {
   name: "Dodge left",
   kind: "defend",
   prompt: "DODGE LEFT",
-  hint: "Lean or step to your left",
+  hint: "Step off the line to your left",
   key: "ArrowLeft",
   diagram: { leftElbow: [34, 46], leftWrist: [33, 60], rightElbow: [66, 46], rightWrist: [67, 60], shiftX: -14 },
   teaches: "Step off the line of a rush: a moving target is hard to reach and free to get away",
