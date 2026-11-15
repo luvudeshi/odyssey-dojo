@@ -5,20 +5,22 @@
 import type { CSSProperties } from "react";
 import type { EnemySpec } from "../core/types";
 import { Button, Panel } from "../ui/pebble";
+import { SetTitle } from "../ui/set/Set";
 import { BronzeDefs, GALLEY } from "./menuShields";
 import "./menuScene.css";
 import "./questMap.css";
+import "../ui/set/screens-end.css";
 
 const W = 1600, H = 900;
 export type Point = readonly [number, number];
 export type Box = readonly [number, number, number, number];
 
-/** Where Troy, each stop and Ithaca's harbour sit on the 1600 x 900 scene: each stop on its island in pano.jpg. */
-const TROY_AT: Point = [112, 600];
-const STOP_SLOTS: readonly Point[] = [[300, 412], [599, 518], [452, 352], [1016, 356], [1089, 667], [1384, 452]];
+/** Where Troy, each stop and Ithaca's harbour sit on the 1600 x 900 scene: each stop beside its island in pano.jpg, on open water, so the island stays in view. */
+const TROY_AT: Point = [100, 600];
+const STOP_SLOTS: readonly Point[] = [[300, 520], [599, 668], [548, 345], [905, 492], [872, 676], [1380, 645]];
 const HARBOUR_AT: Point = [1540, 520];
 // Medallion diameters on the scene: a stop, the next stop, and Troy.
-const STOP = 100, NEXT = 120, TROY = 88;
+const STOP = 74, NEXT = 88, TROY = 64;
 
 /** The course on the 1600 x 900 scene: Troy, each stop, then Ithaca's harbour. */
 export function routePoints(stops: number): readonly Point[] {
@@ -147,12 +149,12 @@ export function QuestMap(props: {
         <div className="menu-scene__rain menu-scene__rain--near" />
       </div>
       <header className="qm-head">
-        <h1 className="qm-title">The Road Home</h1>
-        <p>{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
+        <SetTitle>The Road Home</SetTitle>
+        <p className="set-sub">{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
       </header>
+      <button type="button" className="set-back qm-back-btn" onClick={props.onMenu}>Main menu</button>
       <div className="qm-foot">
         <Button onClick={props.onStyle}>Change style</Button>
-        <Button onClick={props.onMenu}>Main menu</Button>
       </div>
     </Panel>
   );

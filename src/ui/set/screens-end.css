@@ -1,0 +1,29 @@
+/* Storm and bronze on the quest map's chrome and the result screens. Kit pieces are used as they are (set.css); this file holds
+   only what is specific to these screens. Rules sit under :root:root like the kit's, so they outrank the older single-class rules. */
+:root:root {
+  /* ---- the result screen: a painting over the fight, the Back shield, and the panel ---- */
+  .end-stage { position: fixed; inset: 0; z-index: 19; }
+  .set-back.end-back { position: fixed; top: 24px; left: 26px; z-index: 21; }
+  /* The panel is FightScreen's .overlay (not mine to give a kit class), so it takes the kit panel's rules here. */
+  :is(.overlay:has(> .end-title), .overlay.guest-over) {
+    box-sizing: border-box; color: var(--st-ink); font-family: var(--st-body); border: 4px solid transparent; border-radius: 14px;
+    background:
+      var(--st-rivet) left 6px top 6px / 11px 11px no-repeat, var(--st-rivet) right 6px top 6px / 11px 11px no-repeat,
+      var(--st-rivet) left 6px bottom 6px / 11px 11px no-repeat, var(--st-rivet) right 6px bottom 6px / 11px 11px no-repeat,
+      linear-gradient(rgba(14, 52, 56, 0.86), rgba(4, 20, 23, 0.92)) padding-box,
+      linear-gradient(160deg, #ffe6b0, #d79a45 22%, #7a4416 55%, #c98f37 82%, #5a300f) border-box;
+    box-shadow: 0 0 0 1px #140a04, inset 0 0 0 2px #140a04, inset 0 3px 8px rgba(255, 230, 176, 0.16), inset 0 -10px 18px rgba(0, 0, 0, 0.35), 0 14px 30px rgba(0, 0, 0, 0.55);
+  }
+  :is(.overlay:has(> .end-title), .overlay.guest-over)::before { display: none; }
+  /* The defence line from the defence panel work, on the result panel. */
+  .overlay > .def-line { font: 700 20px/1.2 var(--st-body); color: var(--st-ink); }
+  .overlay > .def-line b { font: 400 28px var(--st-display); color: var(--st-gold); }
+  .end-title .set-title { font-size: clamp(30px, 2.8vw, 42px); padding-inline: 0.4em; }
+  .end-title.end-lost .set-title { background-image: linear-gradient(#ffe2d0, #e9a07f 45%, #b85a3a); }
+
+  /* ---- the quest map: only its title, hint line and two buttons ---- */
+  .menu > .qm-head { top: 14px; display: grid; justify-items: center; gap: 2px; }
+  .qm-head .set-sub { max-width: none; }
+  .menu > .qm-foot { gap: 20px; }
+  .menu > .qm-back-btn { position: absolute; top: 24px; left: 26px; z-index: 3; }
+}

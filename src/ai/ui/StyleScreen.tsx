@@ -1,13 +1,15 @@
 // Asks the player how they fight, in their own words, and shows the fight the Muse built from it as a title card.
-// Drawn with the pebble kit (src/ui/pebble): a panel, a stone heading and the kit's buttons. The rest is styleScreen.css.
+// Drawn with the storm kit (src/ui/set): the painted backdrop, the title, a bronze panel and the Back button. The rest is styleScreen.css.
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { prepareLine, speakLine, stopNarration } from "../../audio/narration";
 import { log } from "../../core/log";
 import type { EnemySpec } from "../../core/types";
 import { ENEMIES } from "../../enemies/registry";
 import { MOVES } from "../../moves/registry";
-import { Button, Panel, PebbleHeading } from "../../ui/pebble";
+import { Button } from "../../ui/pebble";
+import { Backdrop, SetTitle } from "../../ui/set/Set";
+import "../../ui/set/screens-flow.css";
 import { fightFromLevel } from "../adapt";
 import { generateLevel } from "../client";
 import type { GodId, LevelResponse, LevelSpec } from "../contracts";
@@ -153,10 +155,20 @@ export function StyleScreen(props: {
     );
   };
 
+  // The backdrop, the Back button and one bronze panel. A plain function, not a component, so a step change keeps the page mounted.
+  const shell = (className: string, children: ReactNode): ReactElement => (
+    <main className={`menu flow style-screen ${className}`}>
+      <Backdrop src="/textures/set/storm/hall.jpg" />
+      {onBack && <button type="button" className="set-back" onClick={onBack}>{backLabel}</button>}
+      {children}
+    </main>
+  );
+
   if (step.kind === "working") {
-    return (
-      <Panel as="main" ornament className="menu style-screen">
-        <p className="style-working" role="status">The Muse is composing...</p>
+    return shell("", (
+      <>
+        <p className="set-title style-working" role="status">The Muse is composing...</p>
+        <div className="set-panel style-panel">
         <p className="style-said">{phrase}</p>
         <div className="style-stones" aria-hidden="true">
           {Array.from({ length: STONES }, (_, index) => <span key={index} className="style-stone" style={nth(index)} />)}
@@ -164,8 +176,9 @@ export function StyleScreen(props: {
         <ul className="style-making" aria-hidden="true">
           {MAKING.map((line, index) => <li key={line} className="style-step" style={nth(index)}>{line}</li>)}
         </ul>
-      </Panel>
-    );
+        </div>
+      </>
+    ));
   }
 
   if (step.kind === "card") {
@@ -184,10 +197,10 @@ export function StyleScreen(props: {
       }
       onDone(made);
     };
-    return (
-      <Panel as="main" ornament className="menu style-screen style-card">
-        <p className="style-kicker">{source === "ai" ? "The Muse made this fight for you" : "A fight from the old songs"}</p>
-        <h1 className="style-title">{level.title}</h1>
+    return shell("style-card", (
+      <>
+        <SetTitle kicker={source === "ai" ? "The Muse made this fight for you" : "A fight from the old songs"}>{level.title}</SetTitle>
+        <div className="set-panel style-panel">
         <p className="style-heard">We heard: {level.interpretation}</p>
         <div className="style-foe">
           <p className="style-monster">{level.monster.name}</p>
@@ -207,15 +220,16 @@ export function StyleScreen(props: {
           <Button primary autoFocus onClick={fight}>Fight</Button>
           <Button onClick={() => { silence(); setStep({ kind: "ask" }); }}>Try another phrase</Button>
         </div>
-      </Panel>
-    );
+        </div>
+      </>
+    ));
   }
 
-  return (
-    <Panel as="main" ornament className="menu style-screen">
-      <PebbleHeading as="h1" text="How do you fight?" px={60} tone="ochre" />
-      <p className="style-lede">Say it your way. The Muse will build your fight from it.</p>
-      <form className="style-form" onSubmit={(event) => { event.preventDefault(); build(); }}>
+  return shell("", (
+    <>
+      <SetTitle>How do you fight?</SetTitle>
+      <p className="style-lede set-sub">Say it your way. The Muse will build your fight from it.</p>
+      <form className="style-form set-panel style-panel" onSubmit={(event) => { event.preventDefault(); build(); }}>
         <input
           ref={input}
           className="style-input"
@@ -244,7 +258,6 @@ export function StyleScreen(props: {
           <Button primary type="submit" className="style-build" disabled={cleanPhrase(phrase) === ""}>Build my fight</Button>
         </div>
       </form>
-      {onBack && <Button onClick={onBack}>{backLabel}</Button>}
-    </Panel>
-  );
+    </>
+  ));
 }

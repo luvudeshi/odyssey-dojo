@@ -4,19 +4,26 @@
 // At the end: the total, the highlights, and what to work on with a line on how.
 // Thin on purpose: the session is the pure state machine in ../dojo, ticked once per animation frame from a ref.
 // React renders only when the phase, the move or the repetition changes; the time bar is written straight to the page.
+import { keyName } from "./keyName";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FightingStyle, PoseFrame, PoseHistory } from "../../core/types";
 import { ENEMIES } from "../../enemies/registry";
+import { MissFlash, noteMiss } from "../../hud/MissFlash";
+import { createMissWatch } from "../../input/missWatch";
+import { createPoseInput } from "../../input/poseInput";
 import { MOVES } from "../../moves/registry";
-import { STYLES } from "../../styles/registry";
-import { DOJO_REPS, assessmentFrom, closingLine, currentMove, keyRep, movesFor, skipResult, startDojo, summariseDojo, tickDojo, tuningLine } from "../dojo";
+import { DOJO_REPS, assessmentFrom, closingLine, currentMove, keyRep, skipResult, startDojo, summariseDojo, tickDojo, tuningLine } from "../dojo";
 import type { DojoConfig, DojoRep, DojoState, DojoSummary } from "../dojo";
 import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
-import { guideFor } from "../guide";
-import { ForgeScene } from "./ForgeScene";
+import { DOJO_MEASURES, dojoGuideFor, dojoMoveOf } from "../catalog";
+import { Backdrop } from "../../ui/set/Set";
+import { DojoSetup } from "./DojoSetup";
+import type { DojoPick } from "./DojoSetup";
+import { DojoTrack } from "./DojoTrack";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
+import "../../ui/set/screens-dojo.css";
 
 /** What the dojo needs of the camera. The game's `PoseTracker` fits; so does anything that hands out frames. */
 export interface DojoTracker {
@@ -31,11 +38,11 @@ type DojoStyle = Pick<FightingStyle, "name" | "strikes">;
 export interface DojoProps {
   /** Null with no camera: every repetition is a key press. */
   tracker: DojoTracker | null;
-  /** The style to train. Left out or null (training opened before a style was chosen): the screen asks first. */
+  /** The style the setup step starts on. Left out or null: the one chosen last time, else the first. */
   style?: DojoStyle | null;
-  /** Move ids to train, in order. Left out: the style's strikes, then block, duck and both dodges. */
+  /** Move ids ticked when the setup step opens. Left out: last time's, else the style's strikes, then block, duck and both dodges. */
   moves?: readonly string[];
-  /** Repetitions of each move. Left out: 3. */
+  /** Tries at each move when the setup step opens. Left out: last time's, else 3. */
   reps?: number;
   /** The player pressed Done on the end screen. */
   onDone: (summary: DojoSummary) => void;
@@ -62,17 +69,18 @@ const viewOf = (state: DojoState): View => ({
 });
 
 const TIER_WORD: Readonly<Record<GradeTier, string>> = { excellent: "Excellent", good: "Good", needs_work: "Needs improvement" };
-const keyName = (key: string): string => (key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key);
 
 export function Dojo(props: DojoProps) {
-  const { tracker, moves, reps = DOJO_REPS, onDone, onQuit, timing } = props;
+  const { tracker, onDone, onQuit, timing } = props;
   const keyboard = props.keyboard ?? tracker === null;
-  const [chosen, setChosen] = useState<DojoStyle | null>(null);
-  const style = props.style ?? chosen;
-  // With a list of moves handed in there is nothing to choose.
-  const picking = !style && !moves;
-  // The list as text, so a parent that builds a new array on every render does not start the session again.
-  const listed = (moves ?? (style ? movesFor(style) : [])).join(",");
+  // The setup step comes before every session. `pick` is what was chosen there; null while that step is on screen.
+  const [pick, setPick] = useState<DojoPick | null>(null);
+  // What was picked a moment ago, so Change moves comes back to the same ticks.
+  const [last, setLast] = useState<DojoPick | null>(null);
+  const picking = pick === null;
+  // The list as text, so a new array on every render does not start the session again.
+  const listed = (pick?.moves ?? []).join(",");
+  const reps = pick?.reps ?? props.reps ?? DOJO_REPS;
   const timed = JSON.stringify(timing ?? {});
   const config = useMemo(
     () => ({ ...(JSON.parse(timed) as NonNullable<DojoProps["timing"]>), moves: listed === "" ? [] : listed.split(","), reps, keyboard }),
@@ -81,6 +89,7 @@ export function Dojo(props: DojoProps) {
   const [round, setRound] = useState(0);
   const session = useRef<DojoState>(null);
   const history = useRef<PoseHistory | null>(null);
+  const missWatch = useRef(createMissWatch());
   const root = useRef<HTMLElement>(null);
   const camera = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>(() => viewOf(startDojo(config, 0)));
@@ -97,6 +106,9 @@ export function Dojo(props: DojoProps) {
     session.current = state;
     history.current = null;
     setView(viewOf(state));
+    const readPose = createPoseInput(MOVES);
+    const watch = createMissWatch();
+    missWatch.current = watch;
     let handle = 0;
     const loop = (): void => {
       const now = performance.now();
@@ -104,6 +116,9 @@ export function Dojo(props: DojoProps) {
       const before = session.current ?? state;
       state = tickDojo(before, now, tracker?.read() ?? null);
       session.current = state;
+      // A wrong move or a weak try does not end the turn or cost the repetition: it flashes MISS and the player tries again.
+      const asked = state.phase === "go" && !state.hit ? currentMove(state) : undefined;
+      if (watch(asked?.id ?? null, asked?.kind === "defend", tracker ? readPose(state.history, asked?.kind === "strike" ? asked.id : null) : { held: new Set(), struck: [] }, false, now)) noteMiss();
       history.current = state.history.frames.length > 0 ? state.history : null;
       if (state.phase !== before.phase || state.moveIndex !== before.moveIndex || state.repIndex !== before.repIndex) setView(viewOf(state));
       root.current?.style.setProperty("--dojo-time", (state.phaseMs > 0 ? state.msLeft / state.phaseMs : 0).toFixed(3));
@@ -116,17 +131,24 @@ export function Dojo(props: DojoProps) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
       const state = session.current;
-      if (!state || event.repeat) return;
+      if (event.repeat) return;
       if (event.key === "Escape") {
         latest.current.onQuit?.();
         return;
       }
+      if (!state) return;
       // Space and Enter on a focused button press that button, nothing else.
       if (event.target instanceof HTMLButtonElement && (event.key === " " || event.key === "Enter")) return;
       const move = currentMove(state);
       const now = performance.now();
       let next = state;
       if (state.phase === "go" && move && (event.key === move.key || event.key === " ")) next = keyRep(state, now);
+      else if (state.phase === "go" && move) {
+        // Another move's key: the turn goes on, and MISS shows.
+        const other = [...MOVES.values()].find((each) => each.key === event.key && each.id !== move.id);
+        const defend = move.kind === "defend";
+        if (other && missWatch.current(move.id, defend, { held: new Set(other.kind === "defend" ? [other.id] : []), struck: other.kind === "defend" ? [] : [{ move: other.id, quality: 0.7, player: 0 }] }, false, now)) noteMiss();
+      }
       else if (state.phase === "result" && (event.key === " " || event.key === "Enter")) next = skipResult(state, now);
       if (next === state) return;
       event.preventDefault();
@@ -146,76 +168,81 @@ export function Dojo(props: DojoProps) {
     return () => { video.remove(); };
   }, [video]);
 
-  const ids = config.moves.filter((id) => MOVES.has(id));
-  const move = MOVES.get(ids[view.moveIndex] ?? "");
-  const guide = move ? guideFor(move) : null;
+  const ids = config.moves.filter((id) => dojoMoveOf(id) !== undefined);
+  const move = dojoMoveOf(ids[view.moveIndex] ?? "");
+  const guide = move ? dojoGuideFor(move) : null;
   const done = !picking && (view.phase === "done" || !move);
   const summary = useMemo(() => (done ? summariseDojo(view.reps) : null), [done, view.reps]);
   // What Done changes in the fights: the game keeps `assessmentFrom(summary)` and tunes every monster with it.
   const tuned = useMemo(() => (summary && summary.reps.length > 0 ? tuningLine(assessmentFrom(summary), ENEMIES) : null), [summary]);
   const own = move ? view.reps.filter((rep) => rep.moveId === move.id) : [];
-  const last = view.phase === "result" ? view.last : null;
+  // On the end screen Back is Done: it hands the summary on, as the Done button does.
+  const leave = done && summary ? () => { onDone(summary); } : onQuit;
+  const result = view.phase === "result" ? view.last : null;
+  const changeMoves = (): void => { setPick(null); };
 
   return (
-    <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      <ForgeScene />
+    <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={result?.grade.tier ?? ""}>
+      <Backdrop src={picking ? "/textures/set/storm/storm-armoury.jpg" : "/textures/set/storm/yard.jpg"} />
       <header className="dojo-top">
-        <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
-        {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
-        {!picking && <p className="dojo-points" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
-        {onQuit && !done && <button type="button" className="dojo-button dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</button>}
+        {/* The title is centred and Change moves sits top right: shrink a long style name so it ends before that button (about 0.7 em a letter). */}
+        <p className="dojo-title set-title" style={pick ? { fontSize: `min(var(--st-title), calc((100vw - 720px) / ${String((13 + pick.styleName.length) * 0.7)}))` } : undefined}>Training dojo{pick ? ": " : ""}<span>{pick?.styleName ?? ""}</span></p>
+        {!done && !picking && <p className="dojo-progress set-sub">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
+        {leave && <button type="button" className="set-back dojo-quit" onClick={leave}>{picking || done ? "Back" : "Quit"}</button>}
+        {!picking && (
+          <div className="dojo-top-right">
+            {!done && <button type="button" className="set-btn dojo-change" onClick={changeMoves}>Change moves</button>}
+            <p className="dojo-points set-stat" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>
+          </div>
+        )}
       </header>
 
       {picking && (
-        <section className="dojo-pick">
-          <h1 className="dojo-end-title">What do you want to train?</h1>
-          <p className="dojo-closing">Each one is its strikes, then your defences: block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
-          <div className="dojo-styles">
-            {STYLES.map((each, index) => (
-              <button key={each.id} type="button" className="dojo-button dojo-style" autoFocus={index === 0} onClick={() => { setChosen(each); }}>
-                <b>{each.name}</b>
-                <span>{each.strikes.map((id) => MOVES.get(id)?.name ?? id).join(", ")}</span>
-              </button>
-            ))}
-          </div>
-          <p className="dojo-key">{tracker ? "The camera is on: stand where it sees your whole body." : "No camera: you will press a key for each move."}</p>
-        </section>
+        <DojoSetup
+          camera={tracker !== null}
+          {...(last ? { last } : { ...(props.style ? { style: props.style } : {}), ...(props.moves ? { moves: props.moves } : {}), ...(props.reps === undefined ? {} : { reps: props.reps }) })}
+          onStart={(next) => { setPick(next); setLast(next); }}
+        />
       )}
 
       {!picking && !done && move && (
-        <div className="dojo-stage">
-          <div className="dojo-outline">
-            <MoveGuide key={move.id} move={move} history={() => history.current} size="large" />
+        <>
+          <div className="dojo-stage">
+            <MissFlash />
+            <div className="dojo-outline">
+              <MoveGuide key={move.id} move={move} history={() => history.current} size="large" guide={guide} table={DOJO_MEASURES} />
+            </div>
+            <section className="dojo-side" aria-live="polite">
+              <p className="dojo-cue">{view.phase === "show" ? "Watch the outline" : view.phase === "go" ? "Your turn!" : " "}</p>
+              <h1 className="dojo-name">{move.name}</h1>
+              {result ? (
+                <div className="dojo-result">
+                  <p className="dojo-grade">{result.grade.label}</p>
+                  <p className="dojo-gain">+{String(result.grade.points)}</p>
+                  {result.tip && <p className="dojo-tip">{result.tip}</p>}
+                </div>
+              ) : (
+                <>
+                  <p className="dojo-how">{guide?.how ?? move.hint}</p>
+                  <div className="dojo-time" role="presentation"><div className="dojo-time-fill" /></div>
+                  {keyboard && <p className="dojo-key">Keyboard: press <kbd>{keyName(move.key)}</kbd> on your turn</p>}
+                </>
+              )}
+              <ol className="dojo-dots" aria-label={`Repetition ${String(Math.min(config.reps, own.length + 1))} of ${String(config.reps)}`}>
+                {Array.from({ length: config.reps }, (_, index) => {
+                  const rep = own[index];
+                  return (
+                    <li key={index} data-tier={rep?.grade.tier ?? ""} data-now={!rep && index === own.length ? "true" : undefined}>
+                      <span className="dojo-dot" aria-hidden="true" />
+                      <span className="dojo-dot-word">{rep ? `+${String(rep.grade.points)}` : String(index + 1)}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
           </div>
-          <section className="dojo-side" aria-live="polite">
-            <p className="dojo-cue">{view.phase === "show" ? "Watch the outline" : view.phase === "go" ? "Your turn!" : " "}</p>
-            <h1 className="dojo-name">{move.name}</h1>
-            {last ? (
-              <div className="dojo-result">
-                <p className="dojo-grade">{last.grade.label}</p>
-                <p className="dojo-gain">+{String(last.grade.points)}</p>
-                {last.tip && <p className="dojo-tip">{last.tip}</p>}
-              </div>
-            ) : (
-              <>
-                <p className="dojo-how">{guide?.how ?? move.hint}</p>
-                <div className="dojo-time" role="presentation"><div className="dojo-time-fill" /></div>
-                {keyboard && <p className="dojo-key">Keyboard: press <kbd>{keyName(move.key)}</kbd> on your turn</p>}
-              </>
-            )}
-            <ol className="dojo-dots" aria-label={`Repetition ${String(Math.min(config.reps, own.length + 1))} of ${String(config.reps)}`}>
-              {Array.from({ length: config.reps }, (_, index) => {
-                const rep = own[index];
-                return (
-                  <li key={index} data-tier={rep?.grade.tier ?? ""} data-now={!rep && index === own.length ? "true" : undefined}>
-                    <span className="dojo-dot" aria-hidden="true" />
-                    <span className="dojo-dot-word">{rep ? `+${String(rep.grade.points)}` : String(index + 1)}</span>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        </div>
+          <DojoTrack moves={ids} index={view.moveIndex} reps={view.reps} moveOf={dojoMoveOf} />
+        </>
       )}
 
       {done && summary && (
@@ -250,7 +277,7 @@ export function Dojo(props: DojoProps) {
           {tuned && <p className="dojo-tuned">{tuned}</p>}
           <div className="dojo-buttons">
             <button type="button" className="dojo-button" onClick={() => { setRound((count) => count + 1); }}>Train again</button>
-            {chosen && !props.style && <button type="button" className="dojo-button" onClick={() => { setChosen(null); }}>Another style</button>}
+            <button type="button" className="dojo-button" onClick={changeMoves}>Change moves</button>
             <button type="button" className="dojo-button primary" autoFocus onClick={() => { onDone(summary); }}>Done</button>
           </div>
         </section>

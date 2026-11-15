@@ -1,4 +1,4 @@
-// The result-screen share panel: the player's god card, a button that saves it, and a button that shares the fight by QR.
+// The result-screen share panel: the player's hero card, a button that saves it, and a button that shares the fight by QR.
 // Nothing is sent until Share is pressed. With no server, the card and Save still work.
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { GodReveal } from "../../ai/revealGod";
@@ -9,7 +9,7 @@ import type { PaintedFrom, ShareFight } from "./shareFlow";
 import "./sharePanel.css";
 
 export interface SharePanelProps extends ShareFight {
-  /** The god from the scan. Null (scan skipped) gives the card of Odysseus himself. */
+  /** Always null in the game now. A god, when there is one, names the card; otherwise `hero` does. */
   readonly god: GodReveal | null;
   /** The recorded fight, when there is one. It is uploaded only if Share is pressed. */
   readonly video?: Blob | null;
@@ -60,7 +60,7 @@ function saveCard(url: string, name: string): void {
 }
 
 export function SharePanel(props: SharePanelProps) {
-  const { god, won, enemyName, fightTitle, score, style, video = null, onClose } = props;
+  const { god, hero, won, enemyName, fightTitle, score, style, video = null, onClose } = props;
   const [state, send] = useReducer(shareStep, IDLE);
   const [loaded, setLoaded] = useState<Portrait | null>(null);
   const [qr, setQr] = useState<HTMLImageElement | null>(null);
@@ -72,8 +72,8 @@ export function SharePanel(props: SharePanelProps) {
   // A code the canvas cannot draw (an SVG with no size, in some browsers) is left off the card, and so is "Scan".
   const qrOnCard = qr !== null && qr.naturalWidth > 0;
   const words = useMemo(
-    () => cardWords({ god, won, enemyName, fightTitle, score, style }, qrOnCard),
-    [god, won, enemyName, fightTitle, score, style, qrOnCard],
+    () => cardWords({ god, hero, won, enemyName, fightTitle, score, style }, qrOnCard),
+    [god, hero, won, enemyName, fightTitle, score, style, qrOnCard],
   );
   // A portrait counts only for the god it was loaded for.
   const settled = loaded !== null && loaded.god === god;
@@ -129,9 +129,9 @@ export function SharePanel(props: SharePanelProps) {
   const waiting = view.kind === "preparing";
 
   return (
-    <section className="share-panel" aria-label="Your god card">
+    <section className="share-panel" aria-label="Your hero card">
       {card ? (
-        <img className="share-card" src={card.url} alt={`The god card of ${words.godName}`} />
+        <img className="share-card" src={card.url} alt={`The hero card of ${words.godName}`} />
       ) : (
         <div className="share-card share-empty">Painting your card...</div>
       )}

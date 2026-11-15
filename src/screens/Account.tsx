@@ -1,16 +1,16 @@
-// The Account screen: the hall of the hero. The megaron at Ithaca seen straight on, red columns, the round hearth, the
-// great bow on the wall, and the hero's helmet on a marble herm with the name (the only "login") cut into it.
-// Every achievement is a trophy on the walls; hover or focus one to read how it is earned on the floor below.
-// The scene is drawn on a stage 1440 px wide and at least 800 tall, scaled to the window; a taller or wider window
-// gets more wall, floor and columns rather than empty bands. Everything is kept in this browser (src/account/store.ts).
+// The Account screen: the hall of the hero, painted (hall.jpg) with two walls of trophies on glass, the name and coins
+// between them, and the next deed in a panel. Hover or focus a trophy to read how it is earned.
+// The scene is drawn on a stage 1440 px wide and at least 800 tall, scaled to the window. Everything is kept in this browser (src/account/store.ts).
 import { type CSSProperties, useEffect, useState } from "react";
 import { type Achievement, achievements } from "../account/achievements";
 import { NAME_MAX, renameProfile, useProfile } from "../account/store";
-import { Bow, Column, Hearth, Helm } from "../account/ui/HallArt";
+import { AccountSignIn } from "../account/ui/AccountSignIn";
+import { HallOfHeroes } from "../account/ui/HallOfHeroes";
 import { Icon, type IconName } from "../account/ui/icons";
 import { Trophy, type TrophyEvents } from "../account/ui/Trophy";
 import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
+import { Backdrop } from "../ui/set/Set";
 import { Button, installGround } from "../ui/pebble";
 import "./account.css";
 
@@ -98,17 +98,9 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
   return (
     <main className="menu--account acc-hall">
       <div className="acc-hall__stage" style={style}>
-        <div className="acc-hall__frieze" aria-hidden="true" />
-        <div className="acc-hall__dado" aria-hidden="true" />
-        <div className="acc-hall__floor" aria-hidden="true" />
-        <div className="acc-hall__light" aria-hidden="true" />
+        <Backdrop src="/textures/set/storm/hall.jpg" />
         <div className="acc-hall__core" style={{ left: (stage.w - 1440) / 2 }}>
-          {stage.w >= 1540 && <><Column x={-36} /><Column x={1476} /></>}
-          <Column x={494} />
-          <Column x={946} />
-          <h1 className="acc-title"><span>Account</span>The Hall of the Hero</h1>
-          <Bow />
-          <Helm />
+          <h1 className="acc-title set-title">Account</h1>
           <div className="acc-herm">
             <label className="acc-name">
               <span>Your name</span>
@@ -118,14 +110,14 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
               {stats.map(([icon, value, label]) => <div key={label}><Icon name={icon} /><dd>{value}</dd><dt>{label}</dt></div>)}
             </dl>
           </div>
-          <Hearth />
           <Wall side="l" groups={groups.slice(0, 2)} activeId={activeId} events={events} />
           <Wall side="r" groups={groups.slice(2)} activeId={activeId} events={events} />
           <Detail feat={picked ?? feats.find((feat) => !feat.done)} picked={picked !== undefined} />
-          <p className="acc-count"><b>{feats.filter((feat) => feat.done).length}</b> of {feats.length} trophies hung</p>
+          <p className="acc-count set-sub"><b>{feats.filter((feat) => feat.done).length}</b> of {feats.length} trophies hung</p>
+          <AccountSignIn><HallOfHeroes /></AccountSignIn>
           <div className="acc-actions">
             <Button onClick={() => { setSettingsOpen(true); }}><WithIcon icon="sliders">Open settings</WithIcon></Button>
-            <Button primary onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
+            <Button className="set-back" onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
           </div>
         </div>
       </div>

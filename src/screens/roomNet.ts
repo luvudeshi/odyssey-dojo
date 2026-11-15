@@ -9,6 +9,13 @@ export const browserDeps: NetDeps = {
     source.onmessage = (event: MessageEvent<unknown>) => { stream.onmessage?.({ data: event.data }); };
     return stream;
   },
+  beacon: (url, body) => navigator.sendBeacon(url, body),
+  onPageGone(gone) {
+    // A page only put aside (kept for Back) is still in its room, so it says nothing.
+    const on = (event: PageTransitionEvent): void => { if (!event.persisted) gone(); };
+    window.addEventListener("pagehide", on);
+    return () => { window.removeEventListener("pagehide", on); };
+  },
 };
 
 /** How long the address lookup may take before the caller falls back to this page's own address. */

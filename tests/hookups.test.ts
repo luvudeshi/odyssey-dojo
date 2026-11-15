@@ -1,8 +1,8 @@
-// The screens ask the voice for the right lines, clean up after themselves, and the god scan can always be left.
+// The screens ask the voice for the right lines, clean up after themselves.
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { GOD_SCAN_LIMIT_MS, narrateHomecoming, narrateIntro, narrateResult, skipsScan } from "../src/screens/hookups";
+import { narrateHomecoming, narrateIntro, narrateResult } from "../src/screens/hookups";
 import type { StoryDeps } from "../src/screens/hookups";
 import { SettingsPanel } from "../src/ui/SettingsPanel";
 
@@ -36,12 +36,6 @@ test("the last stop's win asks for Homer's closing line, not the result line, an
   const { calls, deps } = recorder();
   narrateHomecoming(deps)();
   expect(calls).toEqual(["homecoming", "stop"]);
-});
-
-test("Esc and S skip the god scan, other keys do not, and the limit is well inside a three minute play", () => {
-  expect(["Escape", "s", "S"].every(skipsScan)).toBe(true);
-  expect([" ", "Enter", "j", "ArrowLeft"].some(skipsScan)).toBe(false);
-  expect(GOD_SCAN_LIMIT_MS).toBeLessThanOrEqual(30000);
 });
 
 test("the settings panel has a music volume slider next to the other two", () => {

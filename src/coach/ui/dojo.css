@@ -31,8 +31,7 @@
 }
 .dojo :is(button, kbd) { cursor: url("../../screens/cursor/arrowhead-hot.svg") 1 1, pointer; }
 :where(.dojo) :where(p, h1, h2, ul, ol) { margin: 0; padding: 0; }
-.dojo > .dojo-scene { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
-.dojo > :not(.dojo-scene, .dojo-camera) { position: relative; z-index: 1; }
+.dojo > :not(.set-backdrop, .dojo-camera) { position: relative; z-index: 1; }
 
 /* Titles burn like the boss's name in the fight: lava letters, drawn once. */
 .dojo-title, .dojo-end-title {
@@ -161,28 +160,6 @@
 .dojo-buttons { display: flex; gap: 1.25rem; margin-top: 0.4rem; }
 .dojo-buttons .dojo-button { padding: 0.75rem 2rem; font-size: 1.5rem; }
 
-/* Opened before a style was chosen: one shard of glass per style, each with a vein of lava. */
-.dojo-pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; text-align: center; }
-.dojo-pick .dojo-end-title { font-size: 3rem; }
-.dojo-pick .dojo-closing { max-width: 46rem; color: #e6dcef; }
-.dojo-styles { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6rem; max-width: 76rem; margin: 1.6rem 0 1rem; }
-.dojo-style {
-  --shard: polygon(14% 0, 86% 4%, 100% 24%, 95% 84%, 76% 100%, 20% 96%, 0 78%, 5% 15%);
-  --vein: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke-linejoin='round'%3E%3Cpath d='M95 0 L88 18 L96 34 L86 56 L93 72 L84 100 M86 56 L77 72 L79 90' stroke='%23ff6a10' stroke-opacity='0.45' stroke-width='7' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M95 0 L88 18 L96 34 L86 56 L93 72 L84 100 M86 56 L77 72 L79 90' stroke='%23ffd890' stroke-width='1.6' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E");
-  position: relative; isolation: isolate; display: grid; align-content: center; gap: 0.35rem; width: 13rem; min-height: 16rem; padding: 2rem 1.9rem 2rem 1.3rem;
-  text-align: center; background: none; border: 0; border-radius: 0; box-shadow: none; transition: transform 0.15s ease-out;
-}
-.dojo-style::before, .dojo-style::after { content: ""; position: absolute; z-index: -1; clip-path: var(--shard); }
-.dojo-style::before { inset: 0; background: linear-gradient(165deg, var(--dj-ice), #3a3348 32%, #3a3348 62%, var(--dj-ember)); }
-.dojo-style::after { inset: 3px; background: var(--vein) 0 0 / 100% 100% no-repeat, radial-gradient(ellipse at 70% 100%, #ff6a1440, transparent 60%), var(--dj-glass); }
-.dojo-style b { font-family: var(--dj-font); font-size: 1.35rem; letter-spacing: 0.1em; text-transform: uppercase; color: #fff8ee; text-shadow: 0 0 14px #ff6a14, 0 2px 0 #000; }
-.dojo-style span { font-size: 1.12rem; font-weight: 500; line-height: 1.3; letter-spacing: 0; color: #e6dcef; text-shadow: 0 1px 2px #000; }
-.dojo-style:hover { box-shadow: none; transform: translateY(-6px); }
-.dojo-style:hover::before { background: linear-gradient(165deg, var(--dj-hot), var(--dj-ember) 40%, #6a1a04 70%, var(--dj-hot)); }
-.dojo-style:focus-visible { outline: 3px solid #f0faff; outline-offset: 8px; }
-.dojo-style:focus-visible::before { background: linear-gradient(165deg, #f0faff, var(--dj-ice) 45%, #f0faff); }
-.dojo-pick > .dojo-key { padding: 0.35rem 1.6rem; color: #e6f6ff; background: linear-gradient(#231d2e, #07060a); clip-path: var(--dj-chip); }
-
 /* The player's own picture, small, in the corner, in a glass frame with an ice rim. Flipped so it moves like a mirror. */
 .dojo-camera { position: absolute; z-index: 2; right: 2rem; bottom: 1.5rem; }
 .dojo-camera video { display: block; width: 11rem; transform: scaleX(-1); border: 2px solid var(--dj-ice); border-radius: 4px; box-shadow: 0 0 0 4px #06050a, 0 0 18px #4aa0ff66; }
@@ -197,12 +174,6 @@
   .dojo-grade { font-size: 5rem; }
   .dojo[data-tier="needs_work"] .dojo-grade { font-size: 3.8rem; }
   .dojo-tip { font-size: 1.8rem; }
-  .dojo-pick .dojo-end-title { font-size: 3.8rem; }
-  .dojo-pick .dojo-closing { max-width: 56rem; font-size: 1.9rem; }
-  .dojo-styles { max-width: 96rem; gap: 2rem; }
-  .dojo-style { width: 15.5rem; min-height: 19rem; }
-  .dojo-style b { font-size: 1.6rem; }
-  .dojo-style span { font-size: 1.3rem; }
 }
 @media (max-width: 62rem) {
   .dojo-stage { flex-direction: column; }
@@ -211,5 +182,14 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .dojo-result { animation: none; }
-  .dojo-style { transition: none; }
 }
+
+/* MISS (the fight's flash, src/hud/MissFlash): the dojo has no hud.css, so it is placed here, over the stage, in the dojo's own type. */
+.dojo .hb-rating.hb-miss {
+  position: absolute; left: 50%; top: 4%; z-index: 5; transform: translateX(-50%); width: auto; padding: 0.15em 0.7em; pointer-events: none;
+  font: 700 3.2rem/1.1 var(--dj-font); letter-spacing: 0.14em; text-transform: uppercase; color: #ff6a5c;
+  background: #14111aee; border: 2px solid #ff6a5c; clip-path: var(--dj-chip); text-shadow: 0 0 10px #ff3a2a88, 0 2px 0 #2a0806;
+  animation: dojo-miss 0.7s ease-out both;
+}
+@keyframes dojo-miss { from { opacity: 0; transform: translateX(-50%) scale(1.25); } 25% { opacity: 1; } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .dojo .hb-rating.hb-miss { animation: none; } }

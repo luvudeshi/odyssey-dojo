@@ -3,8 +3,9 @@
 // been (fights this hour, a line of the last six hours, wins at each stop). Read from the server's /api/heroes, which
 // keeps every fight as a time series on Tiger Data.
 // With no accounts on the server there is no hall: this draws nothing and asks nothing. It learns that from the
-// account's state (../sync), which the sign-in part beside it (AccountSignIn) asks for when the page opens, so the
-// two are put on the page together. It brings its own styles (./hall.css).
+// account's state (../sync), which the sign-in part (AccountSignIn) asks for when the page opens, so the two are put
+// on the page together: on the Account screen the button goes inside that part, in its row of buttons,
+// <AccountSignIn><HallOfHeroes /></AccountSignIn>. It brings its own styles (./hall.css).
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { GODS } from "../../ai/gods/gods";

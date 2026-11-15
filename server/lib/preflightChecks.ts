@@ -35,7 +35,7 @@ const SPEECH_FALLBACK = "the game plays the bundled clips, and lines written at 
 const HEALTH_MS = 2000;
 /** How long the server's account status may take. The route answers within four seconds. */
 const ACCOUNTS_MS = 5000;
-const ACCOUNTS_FALLBACK = 'the game plays as before, the Account page says "Accounts are not available here." and nothing is saved to Tiger Data';
+const ACCOUNTS_FALLBACK = 'the game plays as before, the Account page shows no sign-in and no Hall of heroes, and nothing is saved to Tiger Data';
 /** Why the database did not open, in plain words. The words in brackets on the line are the ones the server logs (docs/accounts.md). */
 const ACCOUNTS_OFF: Readonly<Record<string, string>> = {
   no_database_url: "DATABASE_URL is missing in .env",

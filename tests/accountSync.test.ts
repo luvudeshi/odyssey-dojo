@@ -128,6 +128,15 @@ test("the form is told in plain words: name taken, wrong name or password, too m
   server.fail = 503;
   await p.account.signIn("Luv", PASSWORD);
   expect(said()).toBe(ERROR_TEXT.unavailable);
+  // The server makes no new accounts for now: its own words, not "too many tries" and not "not available".
+  for (const status of [429, 503]) {
+    server.fail = status;
+    server.failAs = "signups_closed";
+    await p.account.signUp("Luv3", PASSWORD);
+    expect(said(), String(status)).toBe(ERROR_TEXT.signups_closed);
+    expect(said()).toBe("No new accounts can be made right now. If you have one, sign in. Your progress is kept in this browser.");
+  }
+  delete server.failAs;
   server.fail = 400;
   await p.account.signUp("Luv2", PASSWORD);
   expect(said()).toBe(ERROR_TEXT.invalid);
