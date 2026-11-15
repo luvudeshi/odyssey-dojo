@@ -7,6 +7,7 @@ import { MOVES } from "../../src/moves/registry";
 import { EMPTY_HISTORY, JOINT, pushFrame } from "../../src/pose/signals";
 import { FRAME_MS, LEFT_OUT, READY, RIGHT_OUT, STANDING, blend, frameAt, pose, recording } from "../poseFixture";
 import type { BodyPose } from "../poseFixture";
+import { SEEDS, shaken } from "./looseMoves";
 
 const J = JOINT;
 const ASKED_AT = 20 * FRAME_MS + 600;
@@ -110,15 +111,11 @@ for (const id of ["front_kick", "knee"]) {
   });
 }
 
-test("standing still with every joint jittering a tenth of a shoulder width strikes nothing on any of these prompts (d)", () => {
-  const jitter = (frames: readonly PoseFrame[]): PoseFrame[] => frames.map((frame, i) => ({
-    ...frame,
-    image: frame.image.map((p) => ({ ...p, x: p.x + (i % 2 === 0 ? 1 : -1) * 0.008, y: p.y + (i % 3 === 0 ? 1 : -1) * 0.008 })),
-  }));
+test.each(SEEDS)("seed %i: standing still with every joint shaking randomly by a tenth of a shoulder width strikes nothing on any of these prompts (d)", (seed) => {
   const still: readonly (readonly [string, PoseFrame[]])[] = [
-    ["arms", jitter(recording([[READY, 1800]]))],
-    ["hanging", jitter(recording([[STANDING, 1800]]))],
-    ["legs", jitter(legMove([DOWN, DOWN], [DOWN, DOWN]))],
+    ["arms", shaken(recording([[READY, 33], [READY, 3000]]), seed, 0.1, null)],
+    ["hanging", shaken(recording([[STANDING, 33], [STANDING, 3000]]), seed, 0.1, null)],
+    ["legs", shaken(legMove([DOWN, DOWN], [DOWN, DOWN]), seed, 0.1, null)],
   ];
   for (const { id } of cases) for (const [, frames] of still) expect(struck(frames, id, id)).toBe(0);
   for (const id of ["front_kick", "knee"]) for (const [, frames] of still) expect(struck(frames, id, id)).toBe(0);
