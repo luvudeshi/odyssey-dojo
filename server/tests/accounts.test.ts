@@ -11,8 +11,6 @@ import type { Accounts } from "../lib/accounts";
 import { KNOWN_SESSION_MS } from "../lib/accountLimits";
 import type { Save } from "../lib/accountRules";
 import type { Db } from "../lib/db";
-import { dbSecrets } from "../lib/db";
-import { createRedactor } from "../lib/redact";
 import { captureLog } from "./support/drill";
 
 afterEach(() => { vi.restoreAllMocks(); });
@@ -141,7 +139,7 @@ test("a database that refuses every statement leaves accounts off, and its error
     query: () => { asked += 1; return Promise.reject(new Error(`password authentication failed for ${SECRET_URL} (${SECRET_PASSWORD})`)); },
     close: () => Promise.resolve(),
   };
-  const accounts = createAccounts(() => Promise.resolve(refusing), { now: () => now, redact: createRedactor(dbSecrets(SECRET_URL)) });
+  const accounts = createAccounts(() => Promise.resolve(refusing), { now: () => now });
   expect(await accounts.available()).toBe(false);
   for (const call of everyCall(accounts)) await expect(call()).rejects.toBeInstanceOf(Unavailable);
   // One attempt to make the tables, and then nothing more is sent until the retry time has passed.
@@ -159,6 +157,8 @@ test("a database that refuses every statement leaves accounts off, and its error
   expect(said).not.toContain(SECRET_PASSWORD);
   expect(said).not.toContain("made-up-host");
   expect(said).not.toContain("postgres://");
+  // Not the driver's own words either, only a short code.
+  expect(said).not.toContain("authentication failed");
 });
 
 /**

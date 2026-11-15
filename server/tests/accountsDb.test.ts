@@ -14,10 +14,10 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Config } from "../env";
-import { SIGNINS_PER_NAME_AND_ADDRESS } from "../lib/accountLimits";
+import { KNOWN_SESSION_MS, SIGNINS_PER_NAME_AND_ADDRESS } from "../lib/accountLimits";
 import { SAVE_BODY_BYTES } from "../lib/accountRules";
 import { MAX_SESSIONS, SESSION_MS, createAccounts, tables, tokenHash, verifyPassword } from "../lib/accounts";
-import { dbRedactor, openDb } from "../lib/db";
+import { APPLICATION, QUERY_MS, STATEMENT_MS, failureCode, openDb, tlsFor } from "../lib/db";
 import type { Db } from "../lib/db";
 
 const url = (process.env.TEST_DATABASE_URL ?? "").trim();
@@ -94,7 +94,7 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     const opened = await openDb(url);
     if (opened === null) throw new Error("TEST_DATABASE_URL is set but the database did not open: is the pg package installed, and does the database answer?");
     db = opened;
-    const accounts = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, redact: dbRedactor(url) });
+    const accounts = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock });
     const app = await createApp({ config, ai: NO_AI, accounts });
     const listening = app.listen(0, "127.0.0.1");
     await once(listening, "listening");
@@ -120,6 +120,19 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
       [t.accounts, t.saves, t.sessions],
     );
     expect(rows.map((row) => row.table_name)).toEqual([t.accounts, t.saves, t.sessions]);
+  });
+
+  test("the connection is encrypted when the address asks for it, carries the game's name, and a slow statement is stopped in time", async () => {
+    const [seen] = await sql<{ ssl: boolean; name: string; limit: string }>(
+      "select (select ssl from pg_stat_ssl where pid = pg_backend_pid()) as ssl, current_setting('application_name') as name, current_setting('statement_timeout') as limit", [],
+    );
+    expect(seen).toEqual({ ssl: tlsFor(url) !== false, name: APPLICATION, limit: `${String(STATEMENT_MS / 1000)}s` });
+    // The database stops it itself (57014), before this server's own limit, and the connection is still good afterwards.
+    const started = performance.now();
+    const stopped = await sql("select pg_sleep(30)", []).then(() => "it answered", failureCode);
+    expect(stopped).toBe("57014");
+    expect(performance.now() - started).toBeLessThan(QUERY_MS);
+    expect(await sql("select 1 as one", [])).toEqual([{ one: 1 }]);
   });
 
   test("sign up, save, sign in from a second browser, and the save is there", async () => {
@@ -277,7 +290,8 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     const { token } = await signUp(name);
     const started = clock;
     try {
-      clock = started + SESSION_MS - 1_000;
+      // The server takes a token it has just seen on trust for KNOWN_SESSION_MS, so the last look before the end is that long before it.
+      clock = started + SESSION_MS - KNOWN_SESSION_MS - 1_000;
       expect((await call("GET", "/api/account/save", { token })).status).toBe(200);
       clock = started + SESSION_MS;
       expect(await call("GET", "/api/account/save", { token })).toEqual({ status: 401, body: { error: "signed_out" } });

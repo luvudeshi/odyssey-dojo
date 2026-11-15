@@ -25,6 +25,11 @@ export interface Config {
    * the game keeps everything in the browser as before. It holds a password: never log it or send it anywhere (lib/db.ts).
    */
   readonly databaseUrl?: string | null;
+  /**
+   * A file of CA certificates the database's certificate must chain to, from DATABASE_CA_FILE. Null or left out:
+   * `sslmode=require` encrypts without checking the certificate, as a free Tiger Data service needs (lib/db.ts).
+   */
+  readonly databaseCaFile?: string | null;
   readonly timeouts: {
     readonly levelMs: number;
     /** The whole god scan, both attempts included. */
@@ -88,6 +93,7 @@ export function loadConfig(root: string = process.cwd()): Config {
     },
     distDir: resolve(root, "dist"),
     databaseUrl: value("DATABASE_URL"),
+    databaseCaFile: value("DATABASE_CA_FILE"),
     timeouts: TIMEOUTS,
   };
 }

@@ -67,7 +67,7 @@ export function smallBody(limit: number, tooBig: (response: Response) => void, n
 export const register: Register = (router, deps) => {
   const url = deps.config.databaseUrl ?? null;
   const redact = dbRedactor(url);
-  const accounts = deps.accounts ?? createAccounts(() => openDb(url), { redact });
+  const accounts = deps.accounts ?? createAccounts(() => openDb(url, { caFile: deps.config.databaseCaFile ?? null }));
   const limits = createAccountLimits();
   const strangers = createGate(STRANGERS_AT_ONCE, STRANGERS_WAITING);
 

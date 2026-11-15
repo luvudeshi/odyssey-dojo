@@ -9,9 +9,8 @@ import { createGate, createKnownSessions } from "./accountLimits";
 import type { Gate } from "./accountLimits";
 import { nameKey, saveSchema } from "./accountRules";
 import type { Save } from "./accountRules";
+import { failureCode } from "./db";
 import type { Db } from "./db";
-import { createRedactor } from "./redact";
-import type { Redact } from "./redact";
 
 /**
  * The cost of one password hash: 128 MB and about 0.2 s of one core on the demo laptop. N = 2^17, r = 8, p = 1 is
@@ -153,8 +152,6 @@ export interface AccountsOptions {
   readonly now?: () => number;
   /** A table name prefix, for tests. */
   readonly prefix?: string;
-  /** Turns a database error into a log line. The default hides nothing, so pass one that knows the connection string. */
-  readonly redact?: Redact;
   readonly gate?: Gate;
 }
 
@@ -178,7 +175,6 @@ const ISO = `'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'`;
  */
 export function createAccounts(open: () => Promise<Db | null>, options: AccountsOptions = {}): Accounts {
   const now = options.now ?? Date.now;
-  const redact = options.redact ?? createRedactor([]);
   const gate = options.gate ?? createGate();
   const t = tables(options.prefix);
   const schema = schemaSql(options.prefix);
@@ -215,7 +211,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
         log("info", "accounts_ready");
         return db;
       } catch (error) {
-        log("warn", "accounts_tables_failed", redact(error));
+        log("warn", "accounts_tables_failed", failureCode(error));
         return null;
       } finally {
         opening = null;
@@ -225,7 +221,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
   };
 
   /**
-   * One statement. A failure is logged without secrets and becomes Unavailable. No connection at all, or
+   * One statement. A failure is logged as its short code, never its message, and becomes Unavailable. No connection at all, or
    * FAILURES_TO_GIVE_UP failures in a row, also turn the routes off for STATUS_CACHE_MS.
    */
   const run = async (text: string, params: readonly unknown[]): Promise<unknown[]> => {
@@ -241,7 +237,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       believe(true);
       return rows;
     } catch (error) {
-      log("warn", "accounts_query_failed", redact(error));
+      log("warn", "accounts_query_failed", failureCode(error));
       failures += 1;
       if (failures >= FAILURES_TO_GIVE_UP) believe(false);
       throw new Unavailable();

@@ -19,10 +19,8 @@ import {
 } from "../lib/accountLimits";
 import { createAccounts, makeToken } from "../lib/accounts";
 import type { Accounts } from "../lib/accounts";
-import { dbSecrets } from "../lib/db";
 import type { Db } from "../lib/db";
 import { isAccountPath, isOpenPath, isTunnelPath, mayAnswer, readsOwnBody } from "../lib/localOnly";
-import { createRedactor } from "../lib/redact";
 import { STATUS_MS, smallBody } from "../routes/account";
 import { captureLog } from "./support/drill";
 
@@ -152,8 +150,9 @@ test("a DATABASE_URL that cannot be used leaves accounts off, and no part of it 
     expect([answer.status, JSON.parse(answer.text)], what).toEqual([503, { error: "unavailable" }]);
     answers.push(answer);
   }
-  // Said once, however many requests came: without the driver installed "no_driver", with it "no_answer".
-  expect(log.lines.filter((line) => line.includes("accounts_unavailable"))).toHaveLength(1);
+  // Said once, however many requests came: nothing listens there, so the driver is refused.
+  const said = log.lines.filter((line) => line.includes("accounts_unavailable"));
+  expect(said.map((line) => (JSON.parse(line) as { detail: unknown }).detail)).toEqual([{ reason: "no_answer", code: "ECONNREFUSED" }]);
   for (const text of [...answers.map((answer) => answer.text), ...log.lines]) {
     expect(text).not.toContain(SECRET_PASSWORD);
     expect(text).not.toContain("made-up-database-name");
@@ -167,7 +166,7 @@ test("a database that refuses every statement: 503 on every route, and its error
     query: () => Promise.reject(new Error(`password authentication failed for ${SECRET_URL} using ${SECRET_PASSWORD}`)),
     close: () => Promise.resolve(),
   };
-  const accounts = createAccounts(() => Promise.resolve(refusing), { redact: createRedactor(dbSecrets(SECRET_URL)) });
+  const accounts = createAccounts(() => Promise.resolve(refusing));
   const { call } = await serve({ accounts });
   const status = await call("GET", "/api/account/status");
   expect([status.status, JSON.parse(status.text)]).toEqual([200, { available: false }]);
