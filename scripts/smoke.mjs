@@ -51,7 +51,7 @@ const SCREEN_TIMEOUT_MS = 15_000;
 /** With --shots: the picture is taken on this prompt card of the fight, once it has been up this long. */
 const SHOT_CARD = 5;
 const SHOT_AFTER_MS = 500;
-/** The main menu's way in without a webcam: the name of the link under the three cards (src/screens/MainMenu.tsx). */
+/** The main menu's way in without a webcam: the name of the link under the four cards (src/screens/MainMenu.tsx). */
 const KEYBOARD_LINK = "Play on the keyboard instead";
 
 const args = process.argv.slice(2);
@@ -194,7 +194,7 @@ async function waitForButton(page, texts, what) {
  */
 async function enterFight(page, base, stop, style, styles, query) {
   await page.goto(`${base}/?stop=${stop.id}${query ? `&${query}` : ""}`);
-  // The main menu: the small link under the three cards. The cards start the webcam, so there is no fallback.
+  // The main menu: the small link under the four cards. The cards start the webcam, so there is no fallback.
   const keyboard = page.getByRole("button", { name: KEYBOARD_LINK, exact: true });
   await keyboard.waitFor({ timeout: SCREEN_TIMEOUT_MS }).catch(() => { throw new Error(`the main menu has no "${KEYBOARD_LINK}" button`); });
   await keyboard.click();
@@ -221,7 +221,7 @@ async function enterFight(page, base, stop, style, styles, query) {
  *
  * `over` is the result panel: a layer of the fight that holds two or more buttons outside a dialog (the pause menu
  * and the settings are dialogs; the camera panel holds one button). It is a loss when one of them offers the fight
- * again, or when there are three of them.
+ * again. The number of buttons says nothing: a win has "Your god card" next to the map and the style.
  *
  * The prompt card is found by structure, so it is the same code for the first HUD (`.prompt.defend`), the pebble card
  * (`.pb-card--defend`) and the star-chart card (`.sky-card--defend`): the nearest box around the key hint (`kbd`), or
@@ -243,7 +243,7 @@ function readHud(words) {
     const heading = panel.querySelector('h1, [role="heading"], [class*="title"]');
     return {
       over: true,
-      won: !buttons.some((button) => /again|retry/i.test(clean(button))) && buttons.length < 3,
+      won: !buttons.some((button) => /again|retry/i.test(clean(button))),
       title: clean(heading) || heading?.getAttribute("aria-label") || "",
       canvas: Boolean(fight.querySelector("canvas")),
     };

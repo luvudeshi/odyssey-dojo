@@ -139,8 +139,9 @@ async function platformFonts(context, page, selector) {
 }
 
 /**
- * Runs in the page: what the HUD shows right now. Every selector names the pebble HUD (hb-, pb-) and the star-chart
- * HUD (sky-, sk-) side by side. Health is read from the bars' meter role, which both have: a whole percentage.
+ * Runs in the page: what the HUD shows right now. Every selector names the pebble HUD (hb-, pb-), the star-chart
+ * HUD (sky-, sk-) and the forge bars (fg-) side by side. Health is read from the bars' meter role, which all of
+ * them have: a whole percentage.
  */
 function readHud() {
   const card = document.querySelector(".fight .hb-card, .fight .sky-card");
@@ -153,7 +154,7 @@ function readHud() {
     key: card?.querySelector("kbd")?.textContent ?? null,
     word: card?.querySelector(".pb-move, .sky-card__word")?.textContent ?? "",
     target: card?.querySelector(".pb-target, .sky-card__target")?.textContent ?? "",
-    score: Number.parseInt(document.querySelector(".fight .hb-score, .fight .sk-score__num")?.textContent ?? "", 10),
+    score: Number.parseInt(document.querySelector(".fight .hb-score, .fight .sk-score__num, .fight .fg-score__num")?.textContent ?? "", 10),
     you: percent(bars.find(mine)),
     enemy: percent(bars.find((bar) => !mine(bar))),
     ended,
@@ -198,7 +199,7 @@ async function playFight(page, log, maxMs) {
         else if (hud.you < card.you) tally.hitsTaken += 1;
         else tally.unclear += 1;
       } else if (card.target === "Finish it") {
-        tally.finisher = hud.ended && hud.heading.endsWith("falls");
+        tally.finisher = hud.ended && / falls?$/.test(hud.heading);
       } else if (hud.enemy < card.enemy) tally.strikes += 1;
       else flying = { enemy: card.enemy, until: Date.now() + LAND_MS };
       card = null;
@@ -207,7 +208,7 @@ async function playFight(page, log, maxMs) {
     if (hud.ended || Date.now() - started > maxMs) {
       if (held !== null) await page.keyboard.up(held);
       if (flying) tally.strikesMissed += 1;
-      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: hud.heading.endsWith("falls"), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
+      return { ...tally, keys: [...tally.keys], ended: hud.ended, won: / falls?$/.test(hud.heading), heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
     }
     if (!card && id) {
       if (hud.key === null) throw new CheckError("the prompt card shows no key: key hints are off in the saved settings");
