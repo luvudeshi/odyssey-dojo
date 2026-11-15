@@ -5,9 +5,11 @@
 //                                                                          (--cache=<file> keeps the transcripts somewhere else)
 // A machine transcript, not a person listening: docs/audio-heard.md says what that does and does not show.
 // Uses ElevenLabs speech to text (POST /v1/speech-to-text, checked against the API reference on 2026-11-14), which
-// gives the time of each word. Each clip is sent once: transcripts are kept in server/data/hear-clips.json (ignored
-// by git) under the hash of the clip's bytes, so a second run sends only clips that changed. With ffmpeg on PATH the
-// level at the end of each clip is measured too. Not part of make check. Never prints the key.
+// gives the time of each word and how sure it was of it: a clip with the right words and a half guessed one is
+// "unsure?". Each clip is sent once: transcripts are kept in server/data/hear-clips.json (ignored
+// by git) under what was asked and the hash of the clip's bytes, so a second run sends only clips that changed. With
+// ffmpeg on PATH the level at the end of each clip is measured too. A refused key, a rate limit, a request that gets
+// no answer in 60 s, or three failures in a row stop the run. Not part of make check. Never prints the key.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -15,58 +17,35 @@ import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { ElevenLabsError } from "../ai/elevenlabs";
 import { loadConfig } from "../env";
-import { withTimeout } from "../lib/timeout";
-import type { Heard, Report } from "./hearRules";
-import { END_WINDOW_MS, judge, voiceScript } from "./hearRules";
+import { TimeoutError, withTimeout } from "../lib/timeout";
+import type { Heard, Report, Verdict } from "./hearRules";
+import { END_WINDOW_MS, judge, readAnswer, REQUEST, requestTally, stopReason, transcriptId, voiceScript } from "./hearRules";
 
 const API = "https://api.elevenlabs.io/v1/speech-to-text";
-const MODEL = "scribe_v2";
 /** The folders that hold voice clips. Effects, stop sounds and music say nothing. */
 const VOICE_FOLDERS = ["athena", "narration", "taunts"] as const;
 const CACHE = "server/data/hear-clips.json";
 const SAMPLE_RATE = 44100;
-/** The HTTP statuses that mean this key or plan may not use the endpoint at all, so the run stops. */
-const REFUSED: ReadonlySet<number> = new Set([401, 402, 403]);
-
-/** The part of the API's answer this tool reads. Spaces between words come back as items of their own. */
-const Answer = z.object({
-  text: z.string(),
-  words: z.array(z.object({ text: z.string(), type: z.string(), start: z.number().nullish(), end: z.number().nullish() })),
-  audio_duration_secs: z.number().nullish(),
-});
-
 /** What is kept of one answer. */
 type Transcript = Pick<Heard, "text" | "words" | "durationMs">;
-const Cache = z.record(
-  z.string(),
-  z.object({
-    text: z.string(),
-    words: z.array(z.object({ text: z.string(), startMs: z.number(), endMs: z.number() })),
-    durationMs: z.number().nullable(),
-  }),
-);
+const Kept = z.object({
+  text: z.string(),
+  words: z.array(z.object({ text: z.string(), startMs: z.number(), endMs: z.number(), logprob: z.number().nullable() })),
+  durationMs: z.number().nullable(),
+});
 
 // A person reads this in a terminal, so it is plain lines on stdout, not the JSON lines log() writes.
 const say = (text: string): void => { process.stdout.write(`${text}\n`); };
 
 async function transcribe(key: string, bytes: Buffer, signal: AbortSignal): Promise<Transcript> {
   const form = new FormData();
-  form.set("model_id", MODEL);
-  form.set("language_code", "en");
-  form.set("tag_audio_events", "false");
-  form.set("timestamps_granularity", "word");
+  for (const [name, value] of Object.entries(REQUEST)) form.set(name, value);
   form.set("file", new Blob([new Uint8Array(bytes)], { type: "audio/mpeg" }), "clip.mp3");
   const response = await fetch(API, { method: "POST", headers: { "xi-api-key": key }, body: form, signal });
   // The API does not send the key back, but nothing it says is printed without making sure.
-  if (!response.ok) throw new ElevenLabsError(response.status, (await response.text().catch(() => "")).replaceAll(key, "<key>"));
-  const answer = Answer.parse(await response.json());
-  const words = answer.words.flatMap((word) =>
-    word.type === "word" && typeof word.start === "number" && typeof word.end === "number"
-      ? [{ text: word.text, startMs: Math.round(word.start * 1000), endMs: Math.round(word.end * 1000) }]
-      : [],
-  );
-  const seconds = answer.audio_duration_secs;
-  return { text: answer.text, words, durationMs: typeof seconds === "number" ? Math.round(seconds * 1000) : null };
+  const body = (await response.text().catch(() => "")).replaceAll(key, "<key>");
+  if (!response.ok) throw new ElevenLabsError(response.status, body);
+  return readAnswer(body);
 }
 
 /** The clip's length and the level of its last END_WINDOW_MS, from ffmpeg. Null when ffmpeg is not there or cannot read it. */
@@ -84,10 +63,23 @@ function measureEnd(file: string): { readonly durationMs: number; readonly endDb
   return { durationMs: (samples.length / SAMPLE_RATE) * 1000, endDb: rms > 0 ? Math.max(-120, 20 * Math.log10(rms)) : -120 };
 }
 
+/** The transcripts kept from earlier runs. An entry that does not read as one is dropped, so its clip is sent again. */
 function readCache(file: string): Record<string, Transcript> {
   if (!existsSync(file)) return {};
-  const parsed = Cache.safeParse(JSON.parse(readFileSync(file, "utf8")));
-  return parsed.success ? parsed.data : {};
+  let json: unknown;
+  try {
+    json = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return {};
+  }
+  const entries = z.record(z.string(), z.unknown()).safeParse(json);
+  if (!entries.success) return {};
+  const kept: Record<string, Transcript> = {};
+  for (const [id, entry] of Object.entries(entries.data)) {
+    const parsed = Kept.safeParse(entry);
+    if (parsed.success) kept[id] = parsed.data;
+  }
+  return kept;
 }
 
 function detail(report: Report): string {
@@ -95,6 +87,7 @@ function detail(report: Report): string {
   if (report.notHeard.length > 0) parts.push(`not heard: ${report.notHeard.join(" ")}`);
   if (report.extra.length > 0) parts.push(`heard and not in the line: ${report.extra.join(" ")}`);
   parts.push(...report.timing);
+  if (report.unsure.length > 0) parts.push(`not sure of: ${report.unsure.join(", ")}`);
   return parts.join("; ");
 }
 
@@ -111,10 +104,12 @@ async function main(): Promise<void> {
   const paths = [...new Set([...lines.keys(), ...onDisk])].sort();
   const key = loadConfig(root).elevenLabsKey;
 
-  const counts = { same: 0, differs: 0, "cut?": 0, failed: 0 };
-  let sent = 0;
+  const counts: Record<Verdict | "failed", number> = { same: 0, differs: 0, "cut?": 0, "unsure?": 0, failed: 0 };
+  let made = 0;
+  let answered = 0;
+  let failuresInARow = 0;
   let unmeasured = 0;
-  let refused: string | null = null;
+  let stopped: string | null = null;
   say(`${"clip".padEnd(42)} ${"verdict".padEnd(8)} expected | heard`);
   for (const path of paths) {
     const expected = lines.get(path);
@@ -132,22 +127,24 @@ async function main(): Promise<void> {
       continue;
     }
     const bytes = readFileSync(file);
-    const id = `${MODEL}:${createHash("sha256").update(bytes).digest("hex")}`;
+    const id = transcriptId(REQUEST, createHash("sha256").update(bytes).digest("hex"));
     let transcript = cache[id];
     if (transcript === undefined) {
-      if (key === null || refused !== null) {
-        fail(refused ?? "not sent: ELEVENLABS_API_KEY is not set");
+      if (key === null || stopped !== null) {
+        fail(`not sent: ${stopped ?? "ELEVENLABS_API_KEY is not set"}`);
         continue;
       }
+      made += 1;
       try {
         transcript = await withTimeout(60000, (signal) => transcribe(key, bytes, signal));
       } catch (error) {
-        const why = error instanceof Error ? error.message : String(error);
-        if (error instanceof ElevenLabsError && REFUSED.has(error.httpStatus)) refused = `not sent: ${why}`;
-        fail(`speech to text failed: ${why}`);
+        failuresInARow += 1;
+        stopped = stopReason({ httpStatus: error instanceof ElevenLabsError ? error.httpStatus : null, timedOut: error instanceof TimeoutError }, failuresInARow);
+        fail(`speech to text failed: ${error instanceof Error ? error.message : String(error)}`);
         continue;
       }
-      sent += 1;
+      answered += 1;
+      failuresInARow = 0;
       cache[id] = transcript;
       mkdirSync(dirname(cacheFile), { recursive: true });
       writeFileSync(cacheFile, `${JSON.stringify(cache)}\n`);
@@ -159,7 +156,8 @@ async function main(): Promise<void> {
     say(`${path.padEnd(42)} ${report.verdict.padEnd(8)} ${expected} | ${transcript.text}`);
     if (report.verdict !== "same") say(`${"".padEnd(51)} ${detail(report)}`);
   }
-  say(`${String(paths.length)} clips: ${String(counts.same)} same, ${String(counts.differs)} differ, ${String(counts["cut?"])} may be cut, ${String(counts.failed)} not checked. ${String(sent)} sent to speech to text, the rest read from ${cacheFile}`);
+  say(`${String(paths.length)} clips: ${String(counts.same)} same, ${String(counts.differs)} differ, ${String(counts["cut?"])} may be cut, ${String(counts["unsure?"])} unsure, ${String(counts.failed)} not checked. ${requestTally(made, answered)}; transcripts are kept in ${cacheFile}`);
+  if (stopped !== null) say(`The run stopped sending: ${stopped}`);
   if (unmeasured > 0) say(`ffmpeg could not read ${String(unmeasured)} clips (is it on PATH?), so the level at their end was not measured: a clip that stops mid-sound may show as "same"`);
   if (counts.failed > 0 || (flags.includes("--check") && counts.differs > 0)) process.exitCode = 1;
 }
