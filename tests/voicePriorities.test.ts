@@ -12,6 +12,7 @@ const LENGTH: Readonly<Record<string, number>> = {
   call_cross: 2040, call_uppercut: 2190, call_block: 1880, call_dodge_right: 1490,
   phase_1: 1720, phase_2: 2430, phase_any: 2430, taunt_polyphemus_1: 3240, taunt_polyphemus_4: 2690,
   win: 3320, loss: 3790, praise_1: 1410, warn_1: 1150, fight_start: 1280, call_stake_thrust: 2770,
+  call_dodge_left: 1440, warn_3: 1360,
 };
 
 function attack(counter: string): CombatEvent {
@@ -23,6 +24,12 @@ function opening(move: string): CombatEvent {
   return { type: "opening", weakSpot: polyphemus.weakSpots[0], move };
 }
 const hit: CombatEvent = { type: "enemyHit", move: "cross", damage: 12, quality: 1 };
+/** The player is hit by the attack this move would have countered. */
+function struck(counter: string): CombatEvent {
+  const landed = attack(counter);
+  if (landed.type !== "telegraph") throw new Error("not a telegraph");
+  return { type: "playerHit", attack: landed.attack, damage: landed.attack.damage };
+}
 const phaseTwo: CombatEvent = { type: "phaseChanged", index: 1, name: "The Club" };
 const phaseThree: CombatEvent = { type: "phaseChanged", index: 2, name: "Blinded" };
 const isAthena = (clip: string): boolean => !clip.startsWith("taunt_");
@@ -380,4 +387,149 @@ test("a retry soon after a phase change opens with fight_start, which ends befor
   expect(cut).toEqual(["phase_2@300"]);
   expect(ended).toEqual(["fight_start@1580"]);
   expect(taunts).toEqual([false]);
+});
+
+// Measured in a fight where the player took every hit: the next attack is shown 650 to 690 ms after a hit lands, and its
+// call cut Athena's warning there 20 times out of 20 ("Stay sha-", "Too sl-"). Now the warning is heard out and the call follows it.
+test("a call that arrives while a warning is spoken waits for it: the warning ends on its own and the call is spoken then", async () => {
+  const { frame, started, ended, cut, dipFor } = await startFight();
+  // Three hits taken in a row, at the measured times: a hit every 2.9 s, and the next attack shown 650 ms after each.
+  for (const [at, counter] of [[0, "block"], [2900, "dodge_left"], [5800, "dodge_right"]] as const) {
+    await until(at);
+    frame([struck("block")]);
+    await until(at + 650);
+    frame([attack(counter)]);
+  }
+  await until(9000);
+  // Each warning ran its 1150 ms, and the call behind it started in the moment it ended, 500 ms after it was asked for.
+  // The second hit landed while the held call was still being spoken, so it got no warning, and the call after it was on time.
+  expect(started).toEqual(["warn_1@0", "call_block@1150", "call_dodge_left@3550", "warn_1@5800", "call_dodge_right@6950"]);
+  expect(cut).toEqual([]);
+  expect(ended).toEqual(["warn_1@1150", "call_block@3030", "call_dodge_left@4990", "warn_1@6950", "call_dodge_right@8440"]);
+  expect([...dipFor]).toEqual([]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("only the newest call waits behind a warning, and a call that waited too long is not spoken", async () => {
+  const { voice, frame, started, cut } = await startFight();
+  frame([struck("block")]);
+  await until(300);
+  frame([attack("block")]);
+  await until(700);
+  // A second call before the warning is over replaces the first: one call follows the warning, not two.
+  frame([attack("dodge_right")]);
+  await until(3000);
+  expect(started).toEqual(["warn_1@0", "call_dodge_right@1150"]);
+
+  // The longest warning, and a call asked for 100 ms into it: by the time it ends the call is 1260 ms old.
+  vi.spyOn(Math, "random").mockReturnValue(0.99);
+  frame([struck("block")]);
+  await until(3100);
+  frame([attack("block")]);
+  await until(6000);
+  expect(voice.HELD_CALL_MS).toBeLessThan(1260);
+  expect(started.slice(2)).toEqual(["warn_3@3000"]);
+  expect(cut).toEqual([]);
+  expect(voice.voicePlaying()).toBeNull();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("a waiting call is dropped when its beat is over before the warning ends", async () => {
+  const { voice, frame, started, cut } = await startFight();
+  const recover = { kind: "recover", msLeft: 400 } as const;
+  const drops: readonly (() => void)[] = [
+    // The attack it called was defended, the strike it called landed or missed, or the monster is recovering.
+    () => { frame([{ type: "defended", attack: polyphemus.attacks[0] }]); },
+    () => { frame([hit]); },
+    () => { frame([{ type: "whiffed" }]); },
+    () => { voice.playVoice([], recover); },
+  ];
+  for (const [index, drop] of drops.entries()) {
+    const at = index * 3000;
+    await until(at);
+    frame([struck("block")]);
+    await until(at + 650);
+    frame([attack("block")]);
+    await until(at + 800);
+    drop();
+    await until(at + 2900);
+    expect(voice.voicePlaying(), String(index)).toBeNull();
+  }
+  // Four warnings heard whole and no call after any of them. Praise for the strike that landed was refused: she was speaking.
+  expect(started).toEqual(["warn_1@0", "warn_1@3000", "warn_1@6000", "warn_1@9000"]);
+  expect(cut).toEqual([]);
+});
+
+test.each(["won", "lost"] as const)("a call waiting behind a warning is never spoken once the fight is %s", async (result) => {
+  const line = result === "won" ? "win" : "loss";
+  for (const missing of [[], [line]]) {
+    vi.setSystemTime(0);
+    const { frame, started, cut } = await startFight(missing);
+    frame([struck("block")]);
+    await until(650);
+    frame([attack("block")]);
+    await until(900);
+    frame([{ type: result }]);
+    await until(9000);
+    // The result line takes the voice from the warning at once. With no clip for it the warning plays out, and still no call.
+    expect(started).toEqual(missing.length === 0 ? ["warn_1@0", `${line}@900`] : ["warn_1@0"]);
+    expect(cut).toEqual(missing.length === 0 ? ["warn_1@900"] : []);
+    expect(vi.getTimerCount()).toBe(0);
+  }
+});
+
+test("a phase line and the fight's first line do not wait for a warning, and the waiting call does not follow them", async () => {
+  const { voice, frame, started, cut } = await startFight();
+  frame([struck("block")]);
+  await until(650);
+  frame([attack("block")]);
+  await until(700);
+  frame([hit, phaseTwo]);
+  await until(5000);
+  // The phase line cut the warning as before; the monster's taunt followed it, and the call asked for at 650 ms did not.
+  expect(started).toEqual(["warn_1@0", "phase_1@700", "taunt_polyphemus_1@2500"]);
+  expect(cut).toEqual(["warn_1@700"]);
+
+  await until(6000);
+  frame([struck("block")]);
+  await until(6650);
+  frame([attack("block")]);
+  await until(6700);
+  expect(voice.speakLine("fight_start")).toBe(true);
+  await until(9000);
+  expect(started.slice(3)).toEqual(["warn_1@6000", "fight_start@6700"]);
+  expect(cut.slice(1)).toEqual(["warn_1@6700"]);
+});
+
+test("pausing or leaving the fight during a warning drops the call waiting behind it", async () => {
+  const { voice, frame, started, cut } = await startFight();
+  for (const [at, stop] of [[0, () => { voice.pauseFightVoice(true); }], [3000, () => { voice.stopFightVoice(); }]] as const) {
+    await until(at);
+    voice.pauseFightVoice(false);
+    frame([struck("block")]);
+    await until(at + 650);
+    frame([attack("block")]);
+    await until(at + 700);
+    stop();
+    await until(at + 2900);
+  }
+  expect(started).toEqual(["warn_1@0", "warn_1@3000"]);
+  expect(cut).toEqual(["warn_1@700", "warn_1@3700"]);
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+test("the finisher's call waits out a warning however long that takes, and is spoken once", async () => {
+  const { voice, started, cut } = await startFight();
+  const finisher = { kind: "finisher", move: "stake_thrust", msLeft: 6000, totalMs: 6000 } as const;
+  vi.spyOn(Math, "random").mockReturnValue(0.99);
+  voice.playVoice([struck("block")]);
+  await until(100);
+  voice.playVoice([{ type: "powerUnleashed", damage: 40 }], finisher);
+  for (let ms = 100; ms < 5000; ms += 100) {
+    await vi.advanceTimersByTimeAsync(100);
+    voice.playVoice([], finisher);
+  }
+  // It waited 1260 ms, longer than an ordinary call may, because the finisher's window is six seconds.
+  expect(started).toEqual(["warn_3@0", "call_stake_thrust@1360"]);
+  expect(cut).toEqual([]);
 });

@@ -14,6 +14,8 @@ const INDEX_URL = "/audio/athena/index.json";
 const MAX_CLIP_MS = 15000;
 /** How loud a monster's taunt is next to Athena: a little under her, so her call stays clear on top of it. */
 export const TAUNT_VOLUME = 0.7;
+/** A call that waited this long behind a warning is not spoken: its beat is nearly over, and the prompt card showed the move. */
+export const HELD_CALL_MS = 800;
 
 function pick(ids: readonly [string, ...string[]], random: () => number): string {
   return ids[Math.floor(random() * ids.length)] ?? ids[0];
@@ -69,6 +71,7 @@ function interrupts(next: string, playing: string): boolean {
   if (held === PHASE && next === "fight_start") return true;
   // A newer call beats an older one, whose beat has passed, and a newer phase line beats an older one. A call does not
   // beat a phase line, which is heard to its end: the call is dropped, not queued, and the prompt card shows the move.
+  // A call that beats a warning does not cut it either: createVoice holds the call until the warning ends.
   return tier > held || (tier === held && (tier === CALL || tier === PHASE));
 }
 
@@ -119,10 +122,22 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
   let current: { readonly id: string; stop: () => void } | null = null;
   let disposed = false;
   let finishing = false;
+  /** The newest call asked for while a warning was being spoken. It is said when the warning ends, if it is still worth saying. */
+  let waiting: { readonly id: string; readonly since: number } | null = null;
+  /** True during the finishing move: its window is long, so its call is worth saying however long it waited. */
+  let patient = false;
 
   const speak = (id: string): boolean => {
     if (disposed || !deps.available(id)) return false;
     if (current && !interrupts(id, current.id)) return false;
+    // A warning is a second long and a call always lands inside it. Cut there, it is half a word ("Stay sha-"), so the
+    // warning is heard out and the call follows it. Only calls wait: every other line that may cut a warning still does.
+    if (current && WARNINGS.some((warning) => warning === current?.id) && urgency(id) === CALL) {
+      waiting = { id, since: Date.now() };
+      return false;
+    }
+    // Whatever takes the voice now, a call that was waiting is not said after it.
+    waiting = null;
     // Stop before starting, so two lines are never heard together.
     current?.stop();
     const line = { id, stop: (): void => undefined };
@@ -130,6 +145,9 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
       if (current !== line) return;
       current = null;
       onSpeaking(false, who);
+      const next = waiting;
+      waiting = null;
+      if (next && (patient || Date.now() - next.since <= HELD_CALL_MS)) speak(next.id);
     };
     current = line;
     onSpeaking(true, who);
@@ -145,6 +163,11 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
   return {
     speak,
     handle(events, phase) {
+      // A waiting call belongs to the beat it was asked in. Any event but a newer call ends that beat, and so does a
+      // phase with nothing to call (the fight is over, or the monster is recovering), so the call is dropped.
+      const calling = phase === undefined || phase.kind === "defend" || phase.kind === "strike" || phase.kind === "finisher";
+      if (!calling || events.some((event) => event.type !== "telegraph" && event.type !== "opening")) waiting = null;
+      patient = phase?.kind === "finisher";
       const wanted: string[] = [];
       for (const event of events) {
         const id = lineFor(event, deps.random);
@@ -165,12 +188,15 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
     playing: () => current?.id ?? null,
     stop(id) {
       if (current?.id !== id) return;
+      // A warning that is cut off takes the call waiting behind it along: nothing comes back after a stop.
+      waiting = null;
       current.stop();
       current = null;
       onSpeaking(false, who);
     },
     dispose() {
       disposed = true;
+      waiting = null;
       current?.stop();
       if (current) onSpeaking(false, who);
       current = null;
@@ -328,8 +354,8 @@ export function stopLine(id: string): void {
 }
 
 /**
- * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. Nothing is queued, so nothing
- * comes back afterwards. With `keepEnding`, the result line and Homer's lines play on. The fight calls this through
+ * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. A call waiting behind a
+ * warning is dropped with it, so nothing comes back afterwards. With `keepEnding`, the result line and Homer's lines play on. The fight calls this through
  * useStopAudio when it is left.
  */
 export function stopFightVoice(keepEnding = false): void {
