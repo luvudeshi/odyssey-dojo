@@ -32,7 +32,7 @@ Before any of that, when the move did not count, these are said instead of blami
 
 | When | Part | Tip |
 | --- | --- | --- |
-| No frames, or the shoulders are unseen in half of them | camera | I cannot see you. Stand where your head, shoulders and hips are in the picture. |
+| No frames, or the shoulders are unseen in half of them | camera | I cannot see you. Stand where your head and shoulders are in the picture. |
 | Duck, dodge, jump or swift dash with no standing start to measure from | standing start | Stand still facing the camera for a second first, so I can measure the move. |
 | Front kick or knee with the knees and ankles out of the picture for the last second | feet in view | I cannot see your feet. Step back until your whole body is in the picture. |
 | No joint moved a quarter of a shoulder width from where it started | no move seen | I did not see a move. Take your time, then do it once, clearly. |
