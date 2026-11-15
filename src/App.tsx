@@ -1,6 +1,9 @@
 // Screen flow (see screens/flow.ts): main menu -> style -> quest map -> fight -> result -> map.
 import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
-import { recordFight, useProfile } from "./account/store";
+import { achievements, type Achievement } from "./account/achievements";
+import { getProfile, recordFight, useProfile } from "./account/store";
+import { newlyUnlocked } from "./account/unlocks";
+import { UnlockNotice } from "./account/ui/UnlockNotice";
 import "./screens/menus.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
@@ -48,6 +51,8 @@ export function App() {
   const stopIntro = useRef<() => void>(() => undefined);
   // The seed of the last fight written to the profile, so one result is counted once.
   const recorded = useRef(0);
+  // Achievements the last fight unlocked, shown over its result screen for a few seconds.
+  const [fresh, setFresh] = useState<readonly Achievement[]>([]);
   const [flow, dispatch] = useReducer(flowReducer, null, () => openAt(ENEMIES, new URLSearchParams(window.location.search).get("stop"), roomFromSearch(window.location.search)));
   const [hostLink, setHostLink] = useState<HostLink | null>(null);
   const [joined, setJoined] = useState<Joined | null>(null);
@@ -55,6 +60,8 @@ export function App() {
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
   const [god, setGod] = useState<GodReveal | null>(null);
   const [scanned, setScanned] = useState(false);
+  // A notice belongs to its own result screen: leaving it (retry, map, quit) drops what was left of it.
+  useEffect(() => { if (flow.screen !== "result") setFresh([]); }, [flow.screen]);
   const { musicVolume } = useSettings();
   useEffect(() => { setMusicVolume(musicVolume); }, [musicVolume]);
   // Menu music on every screen but the fight and its result. Silent until the first click, then it starts.
@@ -207,7 +214,9 @@ export function App() {
             onShown={() => {
               if (recorded.current !== flow.seed) {
                 recorded.current = flow.seed;
+                const before = achievements(getProfile(), ENEMIES);
                 recordFight({ enemyId: enemy.id, won, score, mastery });
+                setFresh(newlyUnlocked(before, achievements(getProfile(), ENEMIES)));
               }
               dispatch({ type: "ended", enemyId: enemy.id, won });
             }}
@@ -217,6 +226,7 @@ export function App() {
           />
         )}
       />
+      <UnlockNotice items={fresh} onDone={() => { setFresh([]); }} />
     </CameraPanelContext>
   );
 }
