@@ -1,8 +1,8 @@
 // Server settings, read once from the environment (and from .env at the repo root when it exists).
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { log } from "../src/core/log";
 import { tunnelAddress } from "./lib/address";
+import { loadEnvFile } from "./lib/envFile";
 
 const DEFAULT_PORT = 8787;
 
@@ -43,8 +43,7 @@ export function parsePort(raw: string | null): number {
 }
 
 export function loadConfig(root: string = process.cwd()): Config {
-  const envFile = resolve(root, ".env");
-  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  loadEnvFile(resolve(root, ".env"));
   const dataDir = resolve(root, "server/data");
   const fixedUrl = value("PUBLIC_BASE_URL") ?? value("PUBLIC_URL");
   return {
