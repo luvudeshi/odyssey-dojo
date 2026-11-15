@@ -45,6 +45,13 @@
   --pb-text-on-ochre: #1b1410;
   --pb-focus: #f6eedc;
 
+  /* Plain plaques under words (contrast with --pb-text: 16:1, 15:1, 9:1; --pb-text-on-ochre on --pb-ochre: 8:1). */
+  --pb-plaque: #15100e;
+  --pb-plaque-2: #211a16;
+  --pb-plaque-hover: #6b2e1e;
+  /* Width of the pebble band left showing around a panel's plaque. */
+  --pb-band: 12px;
+
   /* Type. System fonts only. Display for titles and labels; body for anything read in half a second. */
   --pb-font-body: Optima, "Gill Sans", Palatino, "Trebuchet MS", sans-serif;
   --pb-radius: 7px;
