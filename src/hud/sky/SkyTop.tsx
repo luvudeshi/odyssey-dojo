@@ -1,6 +1,6 @@
 // Everything the fight HUD draws except the prompt card and the power meter, which is the ring at the bottom centre
-// (src/hud/PowerCircle.tsx). Forge Fire layout: the monster's bar alone across the top, the score at the top right, and
-// the player's bar as a molten crescent on the floor under the hero, left of the ring, with the defend chip above it.
+// (src/hud/PowerCircle.tsx). Obsidian Rift layout: the monster's bar alone across the top, the score at the top right,
+// and the player's bar as a glass crescent on the floor under the hero, left of the power disc, with the defend chip above it.
 import { PLAYER_HP } from "../../combat/engine";
 import type { CombatState, EnemySpec } from "../../core/types";
 import { DefendFlash } from "../DefendFlash";

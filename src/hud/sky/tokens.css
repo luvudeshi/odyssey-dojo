@@ -13,4 +13,9 @@
   --sky-display: Optima, "Gill Sans", Candara, Palatino, Georgia, serif;
   --sky-label: "Gill Sans", "Gill Sans MT", "Trebuchet MS", sans-serif;
   --sky-verse: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  /* Obsidian Rift (the owner's pick for the fight HUD): wide carved capitals and the cold sheen on the black glass. */
+  --rift-font: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif;
+  --rift-violet: #d6c8ff;
+  --rift-ice: #9fd8ff;
+  --rift-ember: #ff6a14;
 }
