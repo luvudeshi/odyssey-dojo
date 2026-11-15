@@ -12,7 +12,9 @@ import { clothingTint } from "../gods/tint";
 import { revealGod } from "../revealGod";
 import type { GodReveal } from "../revealGod";
 import { revealSound } from "./revealSound";
-import { Button, Panel, PebbleHeading, installGround } from "../../ui/pebble";
+import { Button, installGround } from "../../ui/pebble";
+import { Backdrop, SetTitle } from "../../ui/set/Set";
+import "../../ui/set/screens-flow.css";
 import "./reveal.css";
 
 type Step =
@@ -72,8 +74,10 @@ export function RevealScreen(props: {
   onDone: (reveal: GodReveal) => void;
   /** Called once the god is on screen, so a host can stop its own time limit. */
   onRevealed?: () => void;
+  /** Where the Back button goes; no Back button when left out. */
+  onBack?: () => void;
 }) {
-  const { tracker, onDone, onRevealed } = props;
+  const { tracker, onDone, onRevealed, onBack } = props;
   const [step, setStep] = useState<Step>({ kind: "ask" });
   const frame = useRef<PoseFrame | null>(null);
   const preview = useRef<HTMLDivElement>(null);
@@ -143,7 +147,7 @@ export function RevealScreen(props: {
 
   if (step.kind === "ask") {
     return (
-      <Frame title="Which god hides in you?">
+      <Frame onBack={onBack} title="Which god hides in you?">
         <p className="reveal-kicker">In the Odyssey the gods walk among mortals in disguise.</p>
         {tracker ? (
           <>
@@ -169,7 +173,7 @@ export function RevealScreen(props: {
 
   if (step.kind === "pose") {
     return (
-      <Frame title="Strike your pose">
+      <Frame onBack={onBack} title="Strike your pose">
         <div className="reveal-preview" ref={preview} />
         <div className="reveal-count" key={step.left}>{step.left}</div>
       </Frame>
@@ -178,7 +182,7 @@ export function RevealScreen(props: {
 
   if (step.kind === "reading") {
     return (
-      <Frame title="The oracle is reading you" titleClass="reveal-pulse">
+      <Frame onBack={onBack} title="The oracle is reading you" titleClass="reveal-pulse">
         <p>A god stirs behind the disguise.</p>
       </Frame>
     );
@@ -188,32 +192,35 @@ export function RevealScreen(props: {
   const { reveal, portrait } = step;
   const god = GODS[reveal.god];
   return (
-    <Frame title={god.name} titleClass="reveal-name" accent={god.accent} kicker="A god walks among us in disguise">
-      <div className={`reveal-portrait${portrait === null ? " reveal-empty" : ""}`}>
-        {portrait !== null && <img src={portrait} alt="" />}
+    <Frame onBack={onBack} title={god.name} titleClass="reveal-name" accent={god.accent} kicker="A god walks among us in disguise">
+      <div className="reveal-split">
+        <div className={`reveal-portrait${portrait === null ? " reveal-empty" : ""}`}>
+          {portrait !== null && <img src={portrait} alt="" />}
+        </div>
+        <div className="reveal-lines">
+          <p className="reveal-epithet">{reveal.epithet}</p>
+          <p className="reveal-domain">{god.domain}</p>
+          <p className="reveal-reason">{reveal.reason}</p>
+          <p className="reveal-power">
+            <strong>{god.power.name}</strong> is yours: {god.power.blurb}
+          </p>
+          <p className="reveal-small">{GODS[reveal.rivalGod].name} has seen you, and sends monsters against you.</p>
+        </div>
       </div>
-      <p className="reveal-epithet">{reveal.epithet}</p>
-      <p className="reveal-domain">{god.domain}</p>
-      <p className="reveal-reason">{reveal.reason}</p>
-      <p className="reveal-power">
-        <strong>{god.power.name}</strong> is yours: {god.power.blurb}
-      </p>
-      <p className="reveal-small">{GODS[reveal.rivalGod].name} has seen you, and sends monsters against you.</p>
       <div className="reveal-buttons"><Button primary onClick={() => { onDone(reveal); }}>Begin the journey</Button></div>
     </Frame>
   );
 }
 
-/** One pebble panel on the dark ground; the title is the page's h1, set in stones. */
-function Frame(props: { title: string; titleClass?: string; accent?: string; kicker?: string; children: ReactNode }) {
+/** The storm backdrop, the kit title and one bronze panel. The title is the page's h1; a kicker sits above it. */
+function Frame(props: { title: string; titleClass?: string; accent?: string; kicker?: string; onBack: (() => void) | undefined; children: ReactNode }) {
   useEffect(() => { installGround(); }, []);
   return (
-    <main className="reveal" style={props.accent === undefined ? undefined : { ["--god" as string]: props.accent }}>
-      <Panel ornament className="reveal-panel">
-        {props.kicker !== undefined && <p className="reveal-kicker">{props.kicker}</p>}
-        <PebbleHeading as="h1" className={props.titleClass ?? ""} text={props.title} px={props.title.length <= 12 ? 52 : props.title.length > 22 ? 32 : 40} tone="ochre" />
-        {props.children}
-      </Panel>
+    <main className={`menu flow reveal${props.titleClass ? ` ${props.titleClass}` : ""}`} style={props.accent === undefined ? undefined : { ["--god" as string]: props.accent }}>
+      <Backdrop src="/textures/set/storm/camp.jpg" />
+      {props.onBack && <button type="button" className="set-back" onClick={props.onBack}>Back</button>}
+      <SetTitle {...(props.kicker === undefined ? {} : { kicker: props.kicker })}>{props.title}</SetTitle>
+      <div className="set-panel reveal-panel">{props.children}</div>
     </main>
   );
 }

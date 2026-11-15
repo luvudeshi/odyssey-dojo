@@ -1,21 +1,25 @@
 import { useEffect } from "react";
 import type { FightingStyle } from "../core/types";
-import { installGround, PebbleHeading, Panel } from "../ui/pebble";
+import { installGround } from "../ui/pebble";
+import { Backdrop, SetTitle } from "../ui/set/Set";
+import { STYLE_DEVICES } from "../ui/set/styleDevices";
+import { BronzeDefs, ShieldCard } from "./menuShields";
+import "../ui/set/screens-flow.css";
 
-export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: string; onPick: (style: FightingStyle) => void }) {
+export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: string; onPick: (style: FightingStyle) => void; onBack?: () => void }) {
   useEffect(() => { installGround(); }, []);
   return (
-    <Panel as="main" ornament className="menu menu--style">
-      <PebbleHeading as="h1" text="Choose your fighting style" px={42} tone="ochre" />
-      <p className="notice">{props.notice}</p>
-      <div className="styles">
+    <main className="menu menu--style flow">
+      <Backdrop src="/textures/set/storm/armoury.jpg" />
+      {props.onBack && <button type="button" className="set-back" onClick={props.onBack}>Back</button>}
+      <SetTitle>Choose your fighting style</SetTitle>
+      <p className="notice set-sub">{props.notice}</p>
+      <div className="flow-styles">
+        <BronzeDefs />
         {props.styles.map((style) => (
-          <button key={style.id} className="style-card" onClick={() => { props.onPick(style); }}>
-            <span className="style-card__name">{style.name}</span>
-            <small>{style.blurb}</small>
-          </button>
+          <ShieldCard key={style.id} className="flow-style" device={STYLE_DEVICES[style.id] ?? STYLE_DEVICES.hoplite} name={style.name} line={style.blurb} onClick={() => { props.onPick(style); }} />
         ))}
       </div>
-    </Panel>
+    </main>
   );
 }
