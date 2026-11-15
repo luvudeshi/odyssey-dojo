@@ -15,6 +15,7 @@ import { confirmCharacter } from "./characters/godCharacter";
 import { assessmentFrom } from "./coach";
 import { Dojo } from "./coach/ui/Dojo";
 import { log } from "./core/log";
+import { duoCamera } from "./duo/duoCamera";
 import { ENEMIES } from "./enemies/registry";
 import { CameraPanelContext } from "./hud/cameraPanel";
 import { cameraErrorMessage } from "./pose/cameraError";
@@ -64,6 +65,8 @@ export function App() {
   const [joined, setJoined] = useState<Joined | null>(null);
   // The boss cutscene plays over the map after a stop is picked, then the fight starts.
   const [cut, setCut] = useState<number | null>(null);
+  // Two players on one camera stays on for the fights started from its card, and goes off with them.
+  useEffect(() => { if (!flow.hosting && flow.screen !== "host") duoCamera.setOn(false); }, [flow.hosting, flow.screen]);
 
   // The character shown in the picker (the stored one at first), and whether the player has confirmed it.
   const [character, setCharacter] = useState<CharacterId>(loadCharacter);
