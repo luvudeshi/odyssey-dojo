@@ -1,11 +1,12 @@
 // Circe's fight: the courtyard of her hall of polished stone on the island of Aeaea, at evening. Her portico with
 // the great loom and the table of cups behind her, tall trees round the clearing, her tame lions and wolves, the
-// crew as pigs in a pen, and an evening sky beyond. Stylised low-poly, built in code, a handful of draw calls.
+// crew as pigs in a pen, and an evening sky beyond. Stylised low-poly, built in code except the marble columns, a handful of draw calls.
 // The sky is the scene background (an HDRI set by Atmosphere through `sky`); if it fails, the colour below stays.
 import { useEffect, useMemo } from "react";
 import { DoubleSide } from "three";
 import { useQualityLevel } from "../../quality";
 import { Braziers } from "../circe/Braziers";
+import { Columns } from "../circe/Columns";
 import { floorGeometry, glowGeometry, hallGeometry } from "../circe/hall";
 import { grassGeometry, hillGeometry, molyGlowGeometry, treeGeometry, yardGeometry } from "../circe/yard";
 import type { ArenaDef } from "../registry";
@@ -63,6 +64,7 @@ function CirceHall() {
         <mesh geometry={solids.hall} castShadow={high} receiveShadow={high}>
           <meshStandardMaterial vertexColors flatShading roughness={0.8} side={DoubleSide} />
         </mesh>
+        <Columns />
         <mesh geometry={solids.glow}>
           <meshBasicMaterial vertexColors toneMapped={false} />
         </mesh>
