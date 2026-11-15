@@ -40,6 +40,8 @@ export function baseUrl(arrival: Arrival): string {
 export const TUNNEL_FILE = "tunnel.json";
 /** The script touches the file every 5 seconds. One left behind by a crash or a reboot is ignored once it is this old. */
 export const TUNNEL_STALE_MS = 20_000;
+/** The file holds one address and one process id. A bigger one is not ours and is not read. */
+export const TUNNEL_FILE_MAX_BYTES = 1024;
 
 /** An address a phone can open from anywhere: https and a host, with no path, query, fragment or credentials. Anything else is null. */
 export function publicAddress(raw: unknown): string | null {
@@ -68,7 +70,9 @@ function isRunning(pid: unknown): boolean {
 export function tunnelAddress(dataDir: string, now: number = Date.now()): string | null {
   const file = join(dataDir, TUNNEL_FILE);
   try {
-    if (Math.abs(now - statSync(file).mtimeMs) > TUNNEL_STALE_MS) return null;
+    const stat = statSync(file);
+    // The size is looked at before the file is read, so a huge one costs nothing.
+    if (stat.size > TUNNEL_FILE_MAX_BYTES || Math.abs(now - stat.mtimeMs) > TUNNEL_STALE_MS) return null;
     const saved: unknown = JSON.parse(readFileSync(file, "utf8"));
     if (typeof saved !== "object" || saved === null || !("url" in saved) || !("pid" in saved)) return null;
     return isRunning(saved.pid) ? publicAddress(saved.url) : null;
