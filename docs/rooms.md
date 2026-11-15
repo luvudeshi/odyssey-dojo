@@ -31,9 +31,10 @@ Scan the QR code, or open the game and press **Fight together**, **Join a room**
 - The guest draws the state the host sends, about 15 times a second, and sends its strikes back. Only the host defends.
 - Guest leaves: the host carries on alone at once.
 - Host leaves: the guest sees "The host left the room." and a button back to the start.
+- Guest comes back mid-fight (its page closed or reloaded, or it joined late): the host says which fight is on again, with the newest state, as soon as the relay reports the guest, and the guest goes straight in. A guest already in that fight ignores the repeat (each start carries the fight's `id`). A guest that hears states but knows no fight sends `ask`, and the host answers with the start, at most once a second. Once the fight is over, or the host has left it, nothing is said again: a guest who joins then waits for the next one.
 - After a fight the guest waits; when the host starts the next one, the guest goes straight in.
 - Rooms live in the server's memory and hold two people. A room is removed 30 minutes after its last use: creating it, joining it, a stream or a poll starting, or a message that was let through. The host sends a small "keep" message every 5 minutes while its fight screen is open, so a quiet room lasts as long as the host does.
-- A guest's seat is freed 20 seconds after the guest goes (no open stream and no poll for 20 seconds). Coming back with the same token inside that time keeps the seat. After it the old token is refused and the code takes a new guest, so a guest who leaves, or a stranger who took the seat, does not cost the host a new room. The host's seat is never freed this way.
+- A guest's seat is freed 20 seconds after the guest goes (no open stream and no poll for 20 seconds). Coming back with the same token inside that time keeps the seat. `joinRoomAgain` in src/net/transport.ts keeps the token for the tab and tries it first, so a reload can return to its own seat without that wait (the join screen does not call it yet: issue #222). After it the old token is refused and the code takes a new guest, so a guest who leaves, or a stranger who took the seat, does not cost the host a new room. The host's seat is never freed this way.
 
 ## How messages travel
 

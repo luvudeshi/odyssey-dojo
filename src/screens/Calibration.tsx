@@ -7,7 +7,7 @@ import { sentence } from "../pose/cameraError";
 import { COUNTDOWN_MS, countdownStep, presenceAt } from "../pose/presence";
 import { EMPTY_HISTORY, baselineOf, pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
-import { Button } from "../ui/pebble";
+import { Button, Panel } from "../ui/pebble";
 import "./calibration.css";
 
 export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Baseline) => void; onSkip: () => void }) {
@@ -48,15 +48,15 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
   }, [tracker, onDone]);
 
   return (
-    <div className="overlay calibration">
+    <Panel as="div" ornament className="menu menu--small calibration">
       <h1>{stuck ? "Step back: I need to see your head and shoulders" : "Stand still, arms down"}</h1>
       <div className="calibration-cam">
         <CameraView tracker={tracker} poseRef={poseRef} paused={false} />
         <div className="calibration-guide" data-ok={seen} aria-hidden="true"><span>Head and shoulders inside the frame</span></div>
       </div>
-      <p className="prompt-word">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
+      <p className="countdown">{Math.max(1, Math.ceil((COUNTDOWN_MS - elapsed) / 1000))}</p>
       <p className="notice">{hint || "Hold it..."}</p>
       <Button primary={stuck} onClick={onSkip}>Use keyboard instead</Button>
-    </div>
+    </Panel>
   );
 }

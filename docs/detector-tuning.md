@@ -16,6 +16,32 @@ Record `idle` takes too: standing, shifting your weight, scratching your nose, w
 
 Useful takes for each move: one clean, one slow, one small, one from each person, and one from further back.
 
+## Record alone: the guided session
+
+Nobody has to click Record for each take. Open
+
+`http://localhost:5173/tools/recorder/index.html?person=<your name>`
+
+and press **Start guided session**, then step back. After a 10 second lead-in it goes through every move for take 1, then all again for take 2. For each take it shows the move name and hint very large and says them aloud, counts 4, 3, 2, 1 while you stand still with your arms down (the last second is the baseline), shows GO with the red skeleton for 3 seconds, and shows whether the detectors read the take. The default list is a Boxer fight against Polyphemus, 10 moves with idle, two takes: about 4 minutes.
+
+If it could not see you (under 20 frames, or under 10 in the baseline second) it says so and repeats the take, twice at most, then skips it. At the end, or on **Stop and save**, the browser downloads one file, `session-<person>-<yyyymmdd-hhmmss>.json`, and the page shows a table of move by take. **Download again** repeats the download. A reload loses the session.
+
+URL parameters:
+
+| Parameter | Meaning |
+|---|---|
+| `person=<name>` | Fills the Person box |
+| `moves=<ids>` | Comma list of move ids and `idle`. Unknown ids are dropped, and the page says so. Default: `idle,block,duck,dodge_left,dodge_right,jab,cross,hook,uppercut,stake_thrust` |
+| `takes=<1..5>` | Rounds through the list. Default 2 |
+
+Then split the file into traces. It never overwrites: a take gets the next free number for its move and person.
+
+```
+npx tsx tools/recorder/split.ts <session file> [out dir]
+```
+
+The out dir defaults to `tests/fixtures/poses`. It prints one line per file with what the detectors made of it.
+
 ## What the test checks
 
 `tests/moves/replay.test.ts` plays every file in `tests/fixtures/poses/` through all the detectors, frame by frame, with the same hold and release levels as the game (on at 0.70, off below 0.40).

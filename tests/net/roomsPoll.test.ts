@@ -73,11 +73,18 @@ async function serve(): Promise<string> {
   return `http://127.0.0.1:${String((listening.address() as AddressInfo).port)}`;
 }
 
+/** The real timer, kept from before any test swaps in a made-up one, so waiting on the network still works then. */
+const realTimeout = setTimeout;
+const realNow = Date.now.bind(Date);
+/** Long enough for a machine with every core busy, and inside the 30 s a test may take. */
+const UNTIL_MS = 20_000;
+
 async function until(what: string, done: () => boolean): Promise<void> {
-  for (let i = 0; i < 150; i++) {
+  for (const start = realNow(); realNow() - start < UNTIL_MS; ) {
     if (done()) return;
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await new Promise((resolve) => realTimeout(resolve, 20));
   }
+  if (done()) return;
   throw new Error(`timed out waiting for ${what}`);
 }
 
@@ -87,34 +94,51 @@ function start(seed: number): NetMessage {
 
 const seeds = (heard: readonly NetMessage[]): number[] => heard.flatMap((message) => (message.type === "start" ? message.seed : []));
 
-async function pair(base: string, deps: (who: "host" | "guest") => NetDeps): Promise<{ host: RoomTransport; guest: RoomTransport; guestHeard: NetMessage[] }> {
+async function pair(base: string, deps: (who: "host" | "guest") => NetDeps): Promise<{ host: RoomTransport; guest: RoomTransport; hostHeard: NetMessage[]; guestHeard: NetMessage[] }> {
   const hostDeps = deps("host");
   const room = await createRoom(hostDeps, base);
   if (typeof room === "string") throw new Error(room);
   const host = openRoom(hostDeps, room, base);
+  const hostHeard: NetMessage[] = [];
+  host.onMessage((message) => hostHeard.push(message));
   const guestDeps = deps("guest");
   const seat = await joinRoom(guestDeps, room.code, base);
   if (typeof seat === "string") throw new Error(seat);
   const guest = openRoom(guestDeps, seat, base);
   const guestHeard: NetMessage[] = [];
   guest.onMessage((message) => guestHeard.push(message));
-  return { host, guest, guestHeard };
+  return { host, guest, hostHeard, guestHeard };
 }
 
 test("a guest whose stream never delivers still gets every host message, in order, by polling", async () => {
+  // Only the timers are made up, so the guest gives up on its stream when the test says so, not when a busy machine
+  // gets round to it. The relay, the host's stream and every request are real.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const base = await serve();
   const quiet = silentStream();
-  const { host, guest, guestHeard } = await pair(base, (who) => ({
-    fetch: (url, init) => fetch(url, init), openStream: who === "host" ? realStream : () => quiet, streamProofMs: 150,
-  }));
-  // Some are sent before the guest gives up on its stream, some after.
+  const proofMs = 150;
+  // The host keeps the default wait: its stream is real, and it must stay on it however slowly the first line comes.
+  const { host, guest, hostHeard, guestHeard } = await pair(base, (who) => (who === "host"
+    ? { fetch: (url, init) => fetch(url, init), openStream: realStream }
+    : { fetch: (url, init) => fetch(url, init), openStream: () => quiet, streamProofMs: proofMs }));
+  // The host is connected before the guest first asks, so the guest is told so once and never told otherwise.
+  await until("the host's stream", () => hostHeard.length > 0);
+  // Five are sent before the guest gives up on its stream, five after.
   for (let seed = 1; seed <= 5; seed += 1) await host.send(start(seed));
-  await until("the switch", () => quiet.closed);
+  await vi.advanceTimersByTimeAsync(proofMs - 1);
+  expect(quiet.closed).toBe(false);
+  expect(guestHeard).toEqual([]);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(quiet.closed).toBe(true);
   for (let seed = 6; seed <= 10; seed += 1) await host.send(start(seed));
-  await until("every message", () => seeds(guestHeard).length === 10);
+  await until("every message", () => seeds(guestHeard).length >= 10);
+  // One more from the host comes last, so anything heard twice would already be in the list.
+  await host.send({ type: "end", won: true });
+  await until("the last message", () => guestHeard.some((message) => message.type === "end"));
   expect(seeds(guestHeard)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   // The relay's word on the host reaches the guest too, once.
   expect(guestHeard.filter((message) => message.type === "peer")).toEqual([{ type: "peer", joined: true }]);
+  expect(guestHeard.length).toBe(12);
   guest.close();
   host.close();
 });
