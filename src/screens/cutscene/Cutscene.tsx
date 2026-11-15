@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { playPhaseHorn } from "../../audio/sfx";
 import type { EnemySpec } from "../../core/types";
-import { CUT_AT, cutClock } from "./clock";
+import { cutClock } from "./clock";
+import { newSwallowed, noteDown, swallowAfter } from "./swallow";
 import { EPITHETS, bookLine } from "./stops";
 import { CUT_MS, NAME_AT, STILL_MS, barsAt, beatAt, plateAt } from "./timing";
 import "./cutscene.css";
 
 export function Cutscene({ enemy, onDone }: { enemy: EnemySpec; onDone: () => void }): ReactElement {
   const reduced = useRef(window.matchMedia("(prefers-reduced-motion: reduce)").matches).current;
-  const [ms, setMs] = useState(CUT_AT ?? 0);
+  const [ms, setMs] = useState(0);
   const done = useRef(onDone);
   useEffect(() => { done.current = onDone; }, [onDone]);
 
@@ -25,29 +26,46 @@ export function Cutscene({ enemy, onDone }: { enemy: EnemySpec; onDone: () => vo
     const finish = (): void => { if (!over) { over = true; done.current(); } };
     cutClock.enemyId = enemy.id;
     const tick = (): void => {
-      const t = CUT_AT ?? performance.now() - t0;
+      const t = performance.now() - t0;
       if (!reduced) cutClock.ms = t;
       setMs(t);
       if (!stung && t >= stingAt) { stung = true; playPhaseHorn(); }
-      if (CUT_AT === null && t >= total) { finish(); return; }
+      if (t >= total) { finish(); return; }
       handle = requestAnimationFrame(tick);
     };
     // The skipping key press is swallowed here so it never reaches the fight's keyboard reader. Browser shortcuts (Cmd, Ctrl, Alt) pass.
+    const swallowed = newSwallowed();
     const onKey = (event: KeyboardEvent): void => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (event.type === "keydown") finish();
+      noteDown(swallowed, event.code);
+      finish();
     };
-    // Releases are swallowed until a moment after unmount, so a key held at skip time cannot reach the fight.
-    const onUp = (event: KeyboardEvent): void => { event.stopImmediatePropagation(); };
+    // After the cutscene, only the keys it swallowed stay held back: their repeats and their one keyup.
+    const onAfter = (event: KeyboardEvent): void => {
+      if (swallowAfter(swallowed, event.type === "keyup" ? "keyup" : "keydown", event.code, event.repeat)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+      if (swallowed.keys.size === 0) removeAfter();
+    };
+    let afterTimer = 0;
+    const removeAfter = (): void => {
+      window.removeEventListener("keydown", onAfter, true);
+      window.removeEventListener("keyup", onAfter, true);
+      clearTimeout(afterTimer);
+    };
     window.addEventListener("keydown", onKey, true);
-    window.addEventListener("keyup", onUp, true);
     handle = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(handle);
       window.removeEventListener("keydown", onKey, true);
-      setTimeout(() => { window.removeEventListener("keyup", onUp, true); }, 400);
+      if (swallowed.keys.size > 0) {
+        window.addEventListener("keydown", onAfter, true);
+        window.addEventListener("keyup", onAfter, true);
+        afterTimer = window.setTimeout(removeAfter, 5000);
+      }
       cutClock.ms = null;
     };
   }, [enemy.id, reduced]);

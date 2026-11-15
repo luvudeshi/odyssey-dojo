@@ -6,7 +6,8 @@ import { moveAt } from "./timing";
 interface Start { px: number; py: number; pz: number; lx: number; ly: number; lz: number; fov: number; swing: number }
 
 const DEFAULT: Start = { px: -2.4, py: 0.6, pz: -0.4, lx: 0.2, ly: 2.6, lz: -4, fov: 40, swing: 2.4 };
-const STARTS: Readonly<Record<string, Partial<Start>>> = {};
+// Polyphemus: a narrow sweep keeps the camera inside the cave wall the whole way.
+const STARTS: Readonly<Record<string, Partial<Start>>> = { polyphemus: { swing: 0.6 } };
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
