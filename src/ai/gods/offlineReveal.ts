@@ -1,6 +1,8 @@
 // The god scan with no network: names the god hiding in the player from their stance, then their colours, then chance.
 import type { PoseFrame } from "../../core/types";
 import { log } from "../../core/log";
+import { asSentence } from "../revealText";
+import { rivalFor } from "../rivals";
 import { GODS, GOD_IDS } from "./gods";
 import type { GodId } from "./gods";
 import { STANCES, readStance } from "./stance";
@@ -61,7 +63,8 @@ function pick<T>(items: readonly [T, ...T[]], seed: number, salt: number): T {
 /** The best-attested rival half the time and any of them otherwise, so the famous quarrels are the ones players meet. */
 function pickRival(god: GodId, seed: number): GodId {
   const rivals = GODS[god].rivals;
-  return scramble(seed, 2) % 2 === 0 ? rivals[0] : pick(rivals, seed, 3);
+  // rivalFor is the same rule the server applies: never Athena and never the god itself, whatever the lists say.
+  return rivalFor(god, scramble(seed, 2) % 2 === 0 ? rivals[0] : pick(rivals, seed, 3));
 }
 
 /** A cue reader must never stop the reveal: a frame it cannot read is the same as no cue. */
@@ -82,7 +85,7 @@ export function offlineReveal(cues: RevealCues): Reveal {
   return {
     god,
     epithet: pick(GODS[god].epithets, cues.seed, 1),
-    reason,
+    reason: asSentence(reason),
     rivalGod: pickRival(god, cues.seed),
     source: "offline",
   };
