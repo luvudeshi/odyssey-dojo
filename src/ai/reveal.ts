@@ -5,7 +5,11 @@ import { RevealResponseSchema } from "./contracts";
 import type { RevealResponse } from "./contracts";
 
 const REVEAL_TIMEOUT_MS = 9000;
-const PORTRAIT_TIMEOUT_MS = 13000;
+/**
+ * The one long wait, because a painting takes this long. Nothing is held up by it: the god is on screen before the
+ * portrait is asked for, and the picture is filled in when it comes. The server gives up at portraitMs (server/env.ts).
+ */
+export const PORTRAIT_TIMEOUT_MS = 13000;
 
 export interface RevealOptions {
   readonly timeoutMs?: number;
