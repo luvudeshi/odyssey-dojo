@@ -34,7 +34,7 @@ const SECRET_URL = `postgres://dojo:${SECRET_PASSWORD}@127.0.0.1:1/made-up-datab
 const LAN = "192.168.1.20";
 /** What cloudflared puts on a request it hands to the server. The visitor's address is made up. */
 const TUNNEL = { "Cf-Connecting-Ip": "203.0.113.7", "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW", "X-Forwarded-For": "203.0.113.7", "X-Forwarded-Proto": "https", "Cdn-Loop": "cloudflare" };
-const PATHS = ["/api/account/status", "/api/account/signup", "/api/account/signin", "/api/account/signout", "/api/account/save"];
+const PATHS = ["/api/account/status", "/api/account/signup", "/api/account/signin", "/api/account/signout", "/api/account/save", "/api/account/rename", "/api/account/password"];
 const CREDENTIALS = { name: "Odysseus", password: "nine oars and a sail" };
 const SAVE = { save: { version: 1, profile: { name: "Odysseus", cleared: [], moves: {}, bestScore: 0, fights: 0, wins: 0, styles: ["boxer"] }, settings: {}, character: null } };
 
@@ -338,7 +338,7 @@ function fixed(): Fixed {
       return found;
     },
     remembered: (token) => (remembered && token === KNOWN_TOKEN ? ACCOUNT_ID : null),
-    readSave: () => answer("readSave", { save: null, updatedAt: null }),
+    readSave: () => answer("readSave", { save: null, updatedAt: null }), rename: (_id, name) => answer("rename", { name }), changePassword: () => answer("changePassword", "changed" as const),
     writeSave: () => answer("writeSave", { updatedAt: "2026-11-15T07:00:00.000Z" }),
     close: () => Promise.resolve(),
   };

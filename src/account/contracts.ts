@@ -50,3 +50,4 @@ export const StatusResponseSchema = z.object({ available: z.boolean() });
 export const SessionResponseSchema = z.object({ token: z.string().min(20).max(200), name: z.string().min(1).max(ACCOUNT_NAME_MAX) });
 export const SaveResponseSchema = z.object({ save: z.unknown(), updatedAt: z.string().max(60).nullable() });
 export const SavedResponseSchema = z.object({ updatedAt: z.string().max(60) });
+export const RenamedResponseSchema = z.object({ name: z.string().min(1).max(ACCOUNT_NAME_MAX) });

@@ -120,7 +120,7 @@ test("flag on: a request that was passed on may make a room, and no other closed
   // Through a tunnel on this machine the account paths and the hall of heroes answer as they do with the flag off,
   // and the spending routes stay closed.
   for (const flag of [false, true]) {
-    for (const path of ["/api/account/status", "/api/account/signin", "/api/account/save", "/api/heroes"]) expect(mayAnswer(path, "127.0.0.1", relayed, flag), path).toBe(true);
+    for (const path of ["/api/account/status", "/api/account/signin", "/api/account/save", "/api/account/rename", "/api/account/password", "/api/heroes"]) expect(mayAnswer(path, "127.0.0.1", relayed, flag), path).toBe(true);
     for (const path of ["/api/level", "/api/speech", "/api/account/other"]) expect(mayAnswer(path, "127.0.0.1", relayed, flag), path).toBe(false);
   }
 });

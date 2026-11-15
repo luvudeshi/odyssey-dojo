@@ -1,36 +1,191 @@
 # Odyssey Dojo
 
-A full-body 3D fight training game for HackUTA 2026 (theme: Homer's Odyssey). Your webcam tracks your body; you follow Odysseus's route home, block, dodge and strike the monsters he met, and learn each move mid-fight. 
+> **HackUTA 2026** (November 14 to 15, 2026). Theme: Homer's Odyssey.
+>
+> 🎮 **[Play at OdysseyDojo.club](https://odysseydojo.club)**
+<!-- link: the Devpost submission goes here once it is public -->
 
-## Start here
+**Learn real self-defense, one monster at a time.** Odyssey Dojo is a browser fighting game where your
+body is the controller. Your webcam watches you block, duck, dodge and strike while you follow Odysseus
+home past Polyphemus, Circe, the Sirens, Scylla, Charybdis and the suitors. Athena calls every move out
+loud, and every move says what it is for outside the game. Fight alone, with a friend in front of the
+same camera, in an online room, or with a friend on a FaceTime call.
 
-1. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the plan, every feature, how the pieces fit, who owns what, and the timeline.
-2. [docs/COORDINATION.md](docs/COORDINATION.md): how you and your coding agent claim a task and report on it.
-3. [The issue list](https://github.com/toyeshhm/odyssey-dojo/issues): one issue per task. Pick an `open` one nobody is assigned to.
+**Play at [OdysseyDojo.club](https://odysseydojo.club)** in Chrome with a webcam. No webcam? Every move has a key.
 
-Coding agents load `AGENTS.md` / `CLAUDE.md`, which point at the same two docs.
+### 🏛️ Sponsor tools at a glance
 
-## Run it
+| | Tool | What it does in Odyssey Dojo |
+|---|---|---|
+| 📞 | **Chert** | A friend FaceTimes the game from an iPhone, sees the fight on the call and strikes as the second fighter |
+| ☁️ | **Vultr** | Runs the game's server (rooms, accounts) in Docker with Caddy for https |
+| 🌐 | **GoDaddy** | The game's domain, [odysseydojo.club](https://odysseydojo.club) |
+| 🐯 | **Tiger Data** | Accounts and the Hall of heroes: every fight of a signed-in player is a row in a hypertable |
+| 🎙️ | **ElevenLabs** | The voices of Athena, Homer and every monster, plus the sound effects, all made ahead of time |
+| ✨ | **Google Gemini** | Writes a whole fight from one sentence about how you fight (a hidden page, `?ai=1`) |
 
-You need Node 22 or newer.
+<!-- picture: a fight in progress, the hero facing Polyphemus with the defend card on screen -->
+
+## 💡 Inspiration
+
+A self-defense class takes money, a schedule and the nerve to walk in. A laptop already has a camera.
+Dance games teach by showing a figure and scoring your copy of it. We wanted the same thing for a guard,
+a duck and a jab: stand up, copy the move, and hear at once what to fix.
+
+The Odyssey gave us the story. Odysseus does not get home by being the strongest. He gets past the
+Cyclops, the Sirens and Scylla by knowing what each one will do and having one answer ready, with Athena
+beside him telling him what to do. That is self-defense, and that is a coach.
+
+## 🥋 What it does
+
+- **Every fight has two beats.** The monster winds up and a card says how to stop it: BLOCK, DUCK,
+  DODGE LEFT or DODGE RIGHT. Then a weak spot opens and the card names a strike. The better you throw it,
+  the more damage it does: GOOD, GREAT or PERFECT.
+- **Every attack is a real situation.** Polyphemus reaching for you is "someone grabs for you", and the
+  answer is a guard. Each move carries one line on what it is for in real self-defense.
+- **Six stops in Homer's order.** Polyphemus, Circe, the Sirens, Scylla, Charybdis and the suitors, each
+  with its own monster, arena, attacks, sound and a finishing move. Polyphemus ends on the stake. A
+  painted cutscene opens each stop.
+- **Five heroes, five powers.** Pick Odysseus, Zeus, Poseidon, Athena or Achilles. Defends fill a power
+  meter, and a full meter lets your hero's power loose: Zeus's Thunderbolt, Poseidon's Trident Sweep,
+  Athena's Aegis Push, Odysseus's Moon Arrow or Achilles's Swift Dash.
+- **Five fighting styles:** Boxer, Jiu-jitsu, Karate, Kung Fu and Taekwondo.
+- **A Training Dojo.** Practise one move at a time with no monster. Every try gets a grade and one tip,
+  and the end screen says what to work on.
+- **Athena coaches out loud.** She calls every defend and strike, Homer narrates each stop, and every
+  monster taunts you. All of it ships with the game, so sound works offline.
+- **Play together, four ways.** The Multiplayer screen has four cards:
+  - **Host a room** and get a four-letter code and a QR code.
+  - **Join a room** from a laptop or a phone, with a camera, keys or touch buttons.
+  - **Two players, one camera:** both bodies are tracked and each gets a hero.
+  - **Call a friend on FaceTime:** the friend's iPhone shows the fight and the game reads their body
+    from the call. The card always shows; its Call button works only when the server has its phone
+    settings.
+
+  Two fighters who throw the same strike together hit twice as hard.
+- **Accounts and a Hall of heroes.** Sign in on the Account screen to keep your name, settings,
+  character and trophies on another browser, and see the best scores. A signed-in player can change
+  their sign-in name and password there. Without an account, progress stays in your browser.
+
+<!-- pictures: the storm main menu with its four shield cards, and the Multiplayer screen with its four cards, side by side -->
+
+
+## 🌟 What makes it different
+
+- **Your body is the whole controller.** MediaPipe tracks you in the browser with a model that ships with
+  the game, so tracking needs no outside service. Online rooms pass only small JSON messages.
+- **It works for any body.** Detectors measure in your own shoulder widths, taken while you stand still
+  before the fight, so height and distance from the camera do not matter. A player seen only from the
+  waist up can still fight: the game never asks for a kick the camera cannot see.
+- **It is kind on purpose.** A wrong try says MISS and the card stays up until the attack lands. While a
+  move is asked for, a rough attempt at it counts.
+- **The rules never touch the browser.** The fight engine is plain TypeScript, so the keyboard, the
+  webcam, a second body and a friend in another room all feed it the same input, and a whole fight is
+  tested as code.
+- **It never needs the network to play.** Every move has a key and every sound is a file. The server is
+  only for rooms, accounts, FaceTime and Gemini.
+
+## 🏛️ How we used each sponsor's tools
+
+### 📞 Chert: a friend on FaceTime
+A friend calls the game's line on FaceTime Video, with no app and no link. Chert bridges the call into a
+LiveKit room where the game's tab answers it. The tab sends the fight to the phone as the call's picture
+and sound, and reads the friend's body from the call's video with the same pose model the webcam uses.
+The friend strikes as the second fighter. On 15 November the game answered a real call from an iPhone
+and held it for 118.9 seconds. This runs on the one Mac that holds our trial line, so the hosted site
+shows the card but cannot take a call. Details: [docs/facetime.md](docs/facetime.md).
+
+### ☁️ Vultr: the game's server
+One Vultr instance in Dallas runs our Node server in Docker, with Caddy in front of it for https. It is
+the relay for online rooms and the home of accounts. The page itself is on Vercel and passes `/api/`
+calls to the instance at `api.odysseydojo.club`. The kit is in [deploy/vultr/](deploy/vultr), the steps in
+[docs/deploy-vultr.md](docs/deploy-vultr.md) and [docs/deploy-vercel.md](docs/deploy-vercel.md).
+
+### 🌐 GoDaddy: OdysseyDojo.club
+The game lives at **[odysseydojo.club](https://odysseydojo.club)**, served over https. A browser only gives
+a page the camera over https, so the domain is what lets anyone play with their body.
+
+### 🐯 Tiger Data: accounts and the Hall of heroes
+Accounts and the Hall of heroes run on Tiger Data (Postgres with TimescaleDB). Every finished fight of a
+signed-in player is a row in a **hypertable**, a **continuous aggregate** keeps each hero's best score by
+the hour, and `time_bucket_gapfill` draws recent activity with the quiet stretches as zeros. The server
+reaches it with one connection string and plays on without it. Details: [docs/accounts.md](docs/accounts.md).
+
+### 🎙️ ElevenLabs: Athena, Homer and the monsters
+Every voice line, sound effect and the win and loss stings were made with ElevenLabs ahead of time and
+ship as files, so a fight never calls ElevenLabs. Athena is Sarah, Homer is George, and each monster has
+its own voice. We ran the voice clips back through speech to text to check what each one says
+([docs/audio-heard.md](docs/audio-heard.md)).
+
+### ✨ Google Gemini: a fight from a sentence
+Open the game with `?ai=1`, type or say how you fight, and our server asks Gemini to write the fight: a
+named monster, its taunts, the place, the phases and Homer's lines. The key stays on the server. With no
+key or a slow answer, you get one of five fights that ship with the game. It has no menu button.
+
+### 🧰 Also built with
+**React 19 + TypeScript (strict) + Vite 8** · **three.js 0.187** with **React Three Fiber** for the arenas,
+monsters and heroes · **MediaPipe** (Google) for pose tracking in the browser · **Node + Express** (run with
+tsx) for rooms, accounts and AI · **LiveKit** for the FaceTime call · **Vercel** for the page.
+
+## ⚙️ How it works
+
+1. **See.** MediaPipe's pose model finds your joints in each webcam frame, in the browser.
+2. **Read.** Each of the 26 moves has its own detector, one file each in `src/moves/defs/`. It measures
+   against your own torso, so body size and distance do not matter.
+3. **Fight.** The keyboard, the webcam and a remote player all turn into the same input. The engine in
+   `src/combat/engine.ts` runs the phases, combo, power meter and finishing move, with no camera, clock or
+   graphics inside it.
+4. **Show.** The arena, the HUD and the sound only read the fight's state and events. Athena's lines and
+   the music are files picked by those events.
+
+The plan, the full feature list and how the folders fit together: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+<!-- picture: the Training Dojo with a grade and a tip on screen -->
+
+## 🧗 Challenges we ran into
+
+- **Bodies come in all sizes.** A fixed threshold works for one person. Every detector measures in the
+  player's own shoulder widths and holds for a 30 degree turn.
+- **Teaching without overclaiming.** A Siren's song is not something a person meets on the street, so
+  those attacks carry a general lesson instead of an invented assault.
+- **Webcam play must survive a bad room.** If the camera loses you, the fight pauses and asks you to step
+  back, or to press any move key to go on with the keyboard.
+- **Strikes did not look like they landed.** The hit counted but the hero stood still. Now he leaps so
+  his fist, foot or blade meets the weak spot.
+- **A phone in the fight.** Getting a FaceTime call into a browser tab meant a LiveKit room, a silent
+  bridge agent, and a tall 720 by 1280 picture of the fight sent back down the call.
+- **Four people and three coding agents in one repo.** Folder owners, one issue per task and a branch
+  for every change kept merges small ([docs/COORDINATION.md](docs/COORDINATION.md)).
+
+## 🎮 Try it
+
+**[OdysseyDojo.club](https://odysseydojo.club)** in Chrome with a webcam. Press **Story mode**, pick a hero
+and a style, choose a stop on the map, stand back so the camera sees you, and fight. To play on the
+keyboard, set **Play with** to Keyboard in the Account screen's settings.
+
+To run it locally (Node 22 or newer):
 
 ```bash
-make setup
+make setup   # npm packages and the pose-tracking model
+make dev     # the game on http://localhost:5173
 ```
+
+The game plays a full fight with no server. For rooms, accounts and Gemini, copy
+[.env.example](.env.example) to `.env`, add your keys, and run the game with its server:
 
 ```bash
-make dev
+npm run dev:all
 ```
 
-Open http://localhost:5173. Choose "Fight with your body" and allow the camera, or "Keyboard only".
+Keys stay on the server and never reach the browser. The routes that spend API credits answer only
+requests from the machine the server runs on. `npm run preflight` checks the clips, the pose model, the
+keys and the server before a demo. Every doc in the repo is listed in [docs/README.md](docs/README.md).
 
-`make setup` also copies the pose-tracking model into `public/mediapipe/`, so the game runs with no network after that.
-
-## Keyboard controls
+### ⌨️ Keyboard controls
 
 | Category | Move | Key |
 |---|---|---|
-| **Defenses** | Block | Space (hold) |
+| **Defends** | Block | Space (hold) |
 | | Dodge left / right | Left / Right arrow (hold) |
 | | Duck | Down arrow (hold) |
 | | Jump | Up arrow (hold) |
@@ -42,64 +197,32 @@ Open http://localhost:5173. Choose "Fight with your body" and allow the camera, 
 | | Knife hand, Rising palm | H, G |
 | | Double palm, Chain punch | P, C |
 | **Finisher** | Stake thrust (Polyphemus) | T |
-| **God Powers** (full meter) | Thunderbolt, Trident sweep, Aegis push | 1, 2, 3 |
-| | Swift dash, Moon arrow, Sun burst | 4, 5, 6 |
+| **Powers** (full meter) | Thunderbolt (Zeus), Trident sweep (Poseidon), Aegis push (Athena) | 1, 2, 3 |
+| | Swift dash (Achilles), Moon arrow (Odysseus), Sun burst | 4, 5, 6 |
 
-## AI server (optional)
+## 🏺 Team
 
-The game runs without it. With it, a phrase the player types becomes a generated fight, and (soon) the webcam picks which god they are.
+[toyeshhm](https://github.com/toyeshhm), [luvudeshi](https://github.com/luvudeshi),
+[tagrawal029](https://github.com/tagrawal029) and [gatik-g](https://github.com/gatik-g).
 
-Copy `.env.example` to `.env`, add your `GEMINI_API_KEY` and `ELEVENLABS_API_KEY`, then run both the game and the server:
+## 🤖 AI tools used
 
-```bash
-npm run dev:all
-```
+- **Claude Code** (Anthropic) helped write and review the code, with coding agents working on separate
+  branches under the rules in [AGENTS.md](AGENTS.md).
+- **ElevenLabs** made every voice line, sound effect and sting ahead of time.
+- **FLUX.2 Klein 4B**, run on our own laptop, painted the menu, map, cutscene and screen backdrops from
+  our own prompts.
+- **Google Gemini** writes the fights on the `?ai=1` page, as described above.
+- **MediaPipe** (Google) tracks the body.
 
-The keys stay on the server and never reach the browser. Every AI call has a timeout and a bundled fallback, so a slow or missing network only means a handcrafted level instead of a generated one. `GET /api/health` shows which services have a key. The server listens on your whole network so a phone can open a replay page, but the routes that spend your API credits (`/api/level`, `/api/reveal`, `/api/portrait` and `/api/speech`) answer only requests made from this machine and give any other device a 403.
+## 📜 Credits
 
-Before a demo, run `npx tsx server/tools/preflight.ts`. It prints one PASS, WARN or FAIL line each for the audio clips, the pose model files, the keys, Gemini, ElevenLabs and this server.
-A WARN means the game still runs; the line says what falls back or what to do. Only a FAIL (a missing Athena clip or pose file) exits non-zero.
-Add `--offline` to skip the Gemini and ElevenLabs calls. It never prints a key, and the ElevenLabs call costs no credits.
-The Gemini line shows which model answered and how long it took.
+Skies and textures from [Poly Haven](https://polyhaven.com) (CC0). Hero, Polyphemus, suitor and Charybdis
+models by Quaternius (CC0), feast tables from KayKit by Kay Lousberg (CC0), and the columns of Circe's
+hall: "Doric Greek Column" by Victor Viña, CC BY 3.0, via Poly Pizza. Music: "The Rise Of Heroes",
+"Passage Of Arms" and "The Fall Of Heroes" by Shane Ivers, [silvermansound.com](https://www.silvermansound.com),
+CC BY 4.0. Voices, sound effects and stings generated with ElevenLabs. Paintings generated by the team
+with FLUX.2 Klein 4B. Pose tracking and the Draco mesh decoder by Google (Apache License 2.0). The game
+loads no font files: it uses the fonts already on your computer.
 
-Sound effects in `public/audio/sfx/` and Athena's voice in `public/audio/athena/` were generated for this project with ElevenLabs.
-
-### Online rooms (relay)
-
-Two laptops can share a fight through the server. It only passes JSON messages between a host and one guest; it never reads them and needs no key. Rooms live in memory, hold two members and are removed after 30 idle minutes.
-
-| Call | Answer |
-|---|---|
-| `POST /api/rooms` | `{ code, token }`: a four-letter code and the host's token. 503 when 50 rooms are open. |
-| `POST /api/rooms/:code/join` | `{ token }` for the guest. 404 unknown room, 409 room full. |
-| `GET /api/rooms/:code/events?token=` | An event stream (Server-Sent Events). It opens with `{ type: "peer", joined }`, sends that again whenever the other member's stream opens or closes, and otherwise carries each message the other member sent. |
-| `POST /api/rooms/:code/send` | Body `{ token, message }`. The message, a JSON object of at most 16 KB, goes to the other member as it is. Answers `{ delivered }`: a message sent while the other member has no stream open is dropped. 401 wrong token, 404 unknown room, 413 too big. |
-
-Codes are matched without regard to case. These routes answer any device on your network, like the replay pages. To play, the host runs `npm start` and the guest opens `http://<host laptop address>:8787`. [docs/rooms.md](docs/rooms.md) has the screens.
-
-Limits, for when a tunnel puts the relay on the internet. Past any of the counted ones the answer is 429 `too_many_requests` with a `Retry-After` header in seconds.
-
-- **Body size.** 1 KB for create and join; for send, the 16 KB message plus 512 bytes for the token. A larger body gets 413 and is never held in memory. The server's 6 MB JSON parser only runs for the routes that this laptop alone may call.
-- **Creating rooms.** 6 a minute for each caller, and 3 live rooms at once. A fourth takes the place of the caller's room that nobody is connected to and was used longest ago; if somebody is connected to all three, the answer is 429 until one expires. Callers other than this laptop stop at 40 rooms (503), so the laptop that runs the server always has 10 for itself. The laptop is not limited, only bounded by the 50.
-- **Wrong codes and tokens.** 20 a minute for each caller on join, and 20 more on send and the event stream together. After that every such call gets 429, right code or wrong. There are 23^4 = 279,841 codes, so one caller needs about 58 hours on average to find one open room.
-- **Sends.** 120 a second for each member. The host sends about 15 a second.
-- **Streams.** One for each member: a newer one closes the older and uses the same place. 8 for each caller. A stream whose reader has stopped reading is closed once 1 MB is waiting for it.
-- **Who a caller is.** The address of the connection: an IPv4 address, or the /64 of an IPv6 one. A tunnel runs on this laptop, so for a connection from this laptop the caller is the address in `Cf-Connecting-Ip`, which Cloudflare writes itself. Other proxy headers (`X-Forwarded-For`, `X-Real-Ip`, `Forwarded`, `True-Client-Ip`, `Via`) are not believed: every request from this laptop that carries one and no `Cf-Connecting-Ip` shares one budget. The header is only used for counting.
-- **Idle rooms.** A room is removed, and its streams closed, 30 minutes after its last create, join, stream opening or send. An open stream alone does not keep it: a tab left open would hold a room for ever. So two connected players who send nothing have 30 minutes, and so has a host screen showing its code. To keep a quiet room longer the client has to send something now and then; it does not yet (issue #29).
-- **Stalled requests.** A request has 30 seconds to arrive, its headers 10. Node checks every 30 seconds, so a request that stops half way is closed 30 to 60 seconds after it began.
-
-## Before you open a PR
-
-```bash
-make check
-```
-
-That runs lint, typecheck, tests and a build. Add `?debug` to the URL to see every move detector's live confidence while you tune.
-
-## Add things
-
-- **A move:** copy `src/moves/defs/jab.ts`, change the fields and the detector, then name it in a style and in an enemy's weak spots.
-- **A monster:** copy `src/enemies/defs/polyphemus.ts` for its data and `src/render/monsters/models/Polyphemus.tsx` for its 3D model. Until the model exists, the game shows a placeholder block.
-- **A fighting style:** copy `src/styles/defs/boxer.ts`.
-
-No shared list needs editing for any of these; each folder is picked up automatically.
+Every shipped file has a row in [CREDITS.md](CREDITS.md), and `make credits` fails if one is missing.

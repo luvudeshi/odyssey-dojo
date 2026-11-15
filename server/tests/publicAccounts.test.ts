@@ -36,7 +36,7 @@ const relayedFrom = (hop: string, visitor = "198.51.100.77"): Record<string, str
 });
 const VISITOR = relayedFrom("203.0.113.7");
 const ACCOUNT_PATHS = [
-  "/api/account/status", "/api/account/signup", "/api/account/signin", "/api/account/signout", "/api/account/save", "/api/account/fights", "/api/heroes",
+  "/api/account/status", "/api/account/signup", "/api/account/signin", "/api/account/signout", "/api/account/save", "/api/account/fights", "/api/account/rename", "/api/account/password", "/api/heroes",
 ] as const;
 /** Every API path that must stay closed to a request that was passed on, flag or no flag. */
 const CLOSED = [
@@ -147,6 +147,8 @@ function standIns(): { readonly accounts: Accounts; readonly heroes: Heroes; rea
       return Promise.resolve(token === KNOWN_TOKEN ? ACCOUNT_ID : null);
     },
     remembered: (token) => (signedIn && token === KNOWN_TOKEN ? ACCOUNT_ID : null),
+    rename: (_accountId, name) => Promise.resolve({ name }),
+    changePassword: () => Promise.resolve("changed" as const),
     readSave: () => Promise.resolve({ save: stored as never, updatedAt: stored === null ? null : "2026-11-15T07:00:00.000Z" }),
     writeSave: (_accountId, save) => {
       stored = save;

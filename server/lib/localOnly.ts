@@ -29,7 +29,7 @@ export function wasRelayed(headers: IncomingHttpHeaders): boolean {
   });
 }
 
-const ACCOUNT = /^\/api\/account\/(?:status|signup|signin|signout|save|fights)\/?$/;
+const ACCOUNT = /^\/api\/account\/(?:status|signup|signin|signout|save|fights|rename|password)\/?$/;
 
 /**
  * True for the account paths: a player signs in from any browser, so the tunnel reaches them as well as this machine.

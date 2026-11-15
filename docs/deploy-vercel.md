@@ -1,7 +1,7 @@
 # Hosting the page on Vercel, with the Vultr server behind it for rooms
 
-Today one Vultr instance serves everything at `https://odysseydojo.club`: the page, its files and the room relay
-([deploy-vultr.md](deploy-vultr.md)). This page describes a split:
+Until Sunday 15 November one Vultr instance served everything at `https://odysseydojo.club`: the page, its files and the room relay
+([deploy-vultr.md](deploy-vultr.md)). This page describes the split that replaced it:
 
 - **Vercel** serves the page and its files (the build in `dist/`) on the bare domain, `odysseydojo.club`.
 - **The Vultr instance** stays up as the room server on `api.odysseydojo.club`.
