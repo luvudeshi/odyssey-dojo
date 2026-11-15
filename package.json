@@ -13,7 +13,8 @@
     "server": "tsx server/main.ts",
     "dev:server": "tsx watch server/main.ts",
     "dev:all": "concurrently -k -n web,api \"vite\" \"tsx watch server/main.ts\"",
-    "start": "vite build && tsx server/main.ts"
+    "start": "vite build && tsx server/main.ts",
+    "preflight": "tsx server/tools/preflight.ts"
   },
   "dependencies": {
     "@google/genai": "3.3.0",
