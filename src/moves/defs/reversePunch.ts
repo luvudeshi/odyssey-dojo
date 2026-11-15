@@ -2,7 +2,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { elbowAngle, latest } from "../../pose/signals";
-import { armThrust, wristRise } from "../handSignals";
+import { strike, wristRise } from "../handSignals";
 
 export const move: MoveDef = {
   id: "reverse_punch",
@@ -15,9 +15,9 @@ export const move: MoveDef = {
   teaches: "Knees a little bent and back straight give you a steady base, so you stay on your feet",
   detect(history) {
     const frame = latest(history);
-    if (!frame || !armThrust(history, "right")) return 0;
+    if (!frame || strike(history, "right") < 0.7) return 0;
     // The pulling hand: low at the hip, with the elbow bent behind it (a hanging arm is straight).
-    return wristRise(frame, "left") < -0.9 && elbowAngle(frame, "left") < 130 ? 1 : 0;
+    return wristRise(frame, "left") < -0.75 && elbowAngle(frame, "left") < 135 ? 1 : 0;
   },
   quality(history) {
     return strikeQuality(history, { sides: ["right"] });
