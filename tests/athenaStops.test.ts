@@ -45,30 +45,52 @@ function expectClip(id: string, label: string): void {
   expect(statSync(path).size, label).toBeLessThan(MAX_CLIP_BYTES);
 }
 
-/** A won fight through the real engine, with only the listed clips available. Returns the phase lines Athena spoke. */
-function phaseLinesHeard(enemy: EnemySpec): string[] {
-  const spoken: string[] = [];
-  const voice = createVoice({
+/** How long a clip plays, from its size: the clips are 128 kbps, so 16 bytes a millisecond. */
+function realClipMs(id: string): number {
+  return statSync(`public${clipUrl(id)}`).size / 16;
+}
+
+/**
+ * A won fight through the real engine, with only the listed clips available. Each clip plays for `clipMs(id)` and each
+ * strike lands `strikeAfterMs` after its opening. Returns each phase line Athena started and how long it was heard.
+ */
+function phaseLinesHeard(enemy: EnemySpec, stepMs = STEP_MS, strikeAfterMs = 0, clipMs: (id: string) => number = () => 0): Map<string, number> {
+  const heard = new Map<string, number>();
+  const voice: { clip: { readonly id: string; readonly from: number; readonly endsAt: number; readonly done: () => void } | null } = { clip: null };
+  let now = 0;
+  const over = (): void => {
+    if (voice.clip?.id.startsWith("phase_")) heard.set(voice.clip.id, now - voice.clip.from);
+    voice.clip = null;
+  };
+  const athena = createVoice({
     available: (id) => listed.has(id),
     play: (id, done) => {
-      spoken.push(id);
-      // Every clip is over at once, so no line is skipped because another is still playing.
-      done();
-      return () => undefined;
+      const clip = { id, from: now, endsAt: now + clipMs(id), done };
+      voice.clip = clip;
+      return () => {
+        if (voice.clip === clip) over();
+      };
     },
     random: () => 0,
   });
   let state = startFight(enemy, 7);
-  for (let tick = 0; tick < 8000 && state.phase.kind !== "won" && state.phase.kind !== "lost"; tick += 1) {
+  for (let tick = 0; tick < 40_000 && state.phase.kind !== "won" && state.phase.kind !== "lost"; tick += 1) {
+    now += stepMs;
+    const ended = voice.clip;
+    if (ended && now >= ended.endsAt) {
+      over();
+      ended.done();
+    }
     const phase = state.phase;
     const held = new Set(phase.kind === "defend" ? [phase.attack.counter] : []);
-    const struck = phase.kind === "strike" || phase.kind === "finisher" ? [{ move: phase.move, quality: 1, player: 0 as const }] : [];
-    const result = step(state, enemy, style, { held, struck }, STEP_MS);
+    const ready = (phase.kind === "strike" || phase.kind === "finisher") && phase.totalMs - phase.msLeft >= strikeAfterMs;
+    const struck = ready ? [{ move: phase.move, quality: 1, player: 0 as const }] : [];
+    const result = step(state, enemy, style, { held, struck }, stepMs);
     state = result.state;
-    voice.handle(result.events, state.phase);
+    athena.handle(result.events, state.phase);
   }
   expect(state.phase.kind, enemy.id).toBe("won");
-  return spoken.filter((id) => id.startsWith("phase_"));
+  return heard;
 }
 
 test("every move in the registry has a call of its own with a clip, unless it is generic on purpose", () => {
@@ -97,8 +119,12 @@ test("each stop's later phases have a line of their own", () => {
   for (const enemy of ENEMIES) {
     const heard = laterPhases(enemy).map((event) => lineFor(event, () => 0));
     const names = (enemy.phases ?? []).slice(1).map((phase) => `phase_${phaseSlug(phase.name)}`).join(", ");
-    expect(heard, `${enemy.id}: a new or renamed phase needs a line in src/audio/athenaLines.ts (${names})`).toEqual(EXPECTED[enemy.id]);
+    const expected = EXPECTED[enemy.id];
+    // A stop added later is not pinned here: it gets the generic line until its own lines are written.
+    if (expected === undefined) continue;
+    expect(heard, `${enemy.id}: a renamed phase needs a line in src/audio/athenaLines.ts (${names})`).toEqual(expected);
   }
+  for (const id of Object.keys(EXPECTED)) expect(ENEMIES.some((enemy) => enemy.id === id), id).toBe(true);
 });
 
 test("no enemy but Polyphemus is ever given phase_1 or phase_2, and he still is", () => {
@@ -109,8 +135,21 @@ test("no enemy but Polyphemus is ever given phase_1 or phase_2, and he still is"
   }
 });
 
-test("a fight through the engine speaks each stop's own phase lines, in order", () => {
-  for (const enemy of ENEMIES) expect(phaseLinesHeard(enemy), enemy.id).toEqual(EXPECTED[enemy.id]);
+test("a fight through the engine speaks each stop's own phase lines, in order, when every clip is over at once", () => {
+  for (const enemy of ENEMIES) {
+    const expected = EXPECTED[enemy.id];
+    if (expected !== undefined) expect([...phaseLinesHeard(enemy).keys()], enemy.id).toEqual(expected);
+  }
+});
+
+test("with clips of their real length, a phase line starts when the strike lands while its call is still playing", () => {
+  for (const enemy of ENEMIES) {
+    const wanted = laterPhases(enemy).map((event) => lineFor(event, () => 0));
+    // 16 ms frames, and a strike 800 ms after the opening: the strike's call (1.9 s or more) has not ended yet.
+    const heard = phaseLinesHeard(enemy, 16, 800, realClipMs);
+    expect([...heard.keys()], enemy.id).toEqual(wanted);
+    for (const ms of heard.values()) expect(ms, enemy.id).toBeGreaterThan(0);
+  }
 });
 
 test("a phase with no line of its own gets the generic line, never a Polyphemus line", () => {
@@ -128,6 +167,9 @@ test("a phase with no line of its own gets the generic line, never a Polyphemus 
   expect(lineFor({ type: "phaseChanged", index: 1, name: "Blinded" }, first)).toBe("phase_2");
   expect(phaseSlug("The Meadow of Bones")).toBe("the_meadow_of_bones");
   expect(phaseLineId("the meadow of bones")).toBe("phase_the_meadow_of_bones");
+  // An event off the network may carry no name, or one that is not text: the generic line, and no throw.
+  expect(lineFor({ type: "phaseChanged", index: 1 } as never, first)).toBe(ANY_PHASE);
+  for (const name of [undefined, null, 5, {}]) expect(phaseLineId(name)).toBe(ANY_PHASE);
   expect(ANY_PHASE).toBe("phase_any");
 });
 
