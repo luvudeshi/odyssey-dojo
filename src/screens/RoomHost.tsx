@@ -59,7 +59,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
     props.onSolo();
   };
 
-  const back = <button type="button" className="set-back mp-back" onClick={leave}>Close the room</button>;
+  const back = <button type="button" className="set-back mp-back" onClick={leave}>{phase.kind === "open" ? "Close the room" : "Back"}</button>;
 
   if (phase.kind !== "open") {
     return (
