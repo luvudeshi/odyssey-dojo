@@ -77,6 +77,8 @@ const SCREEN_MS = process.argv.includes("--dev") ? 45_000 : 15_000;
 const CAMERA_MS = 90_000;
 /** A host with no camera: how long after "Start" the room must still be there (the camera is refused within a second). */
 const NO_CAMERA_MS = 4_000;
+/** How long the host tries the god scan's Skip button before it takes the Esc key instead. */
+const SKIP_MS = 3_000;
 /** How long the guest may take to show what the host shows. */
 const FOLLOW_MS = 8_000;
 /** How long the fight may take to its first hit, on either side. */
@@ -274,25 +276,35 @@ function pressablePoint(button) {
   return null;
 }
 
+/** Runs in the page: why a button cannot be pressed (off the page, or what lies on its middle), for a step's line. */
+function coveredBy(button) {
+  const box = button.getBoundingClientRect();
+  const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+  if (!top) return `is off the page (its box is at ${String(Math.round(box.x))}, ${String(Math.round(box.y))} and the page is ${String(window.innerWidth)} x ${String(window.innerHeight)})`;
+  return `is covered by <${top.tagName.toLowerCase()}${typeof top.className === "string" && top.className ? ` class="${top.className}"` : ""}>`;
+}
+
 /**
  * Clicks a button. The screens are being restyled, so a button is found by what it does first (`selector`, built
  * from structure and attributes) and by its words only when that finds nothing. The click goes to a point where the
  * button is on top (pressablePoint); a button that is covered all over fails the step.
  */
-async function press(page, what, { selector = null, name }) {
-  const deadline = Date.now() + SCREEN_MS;
-  let covered = false;
+async function press(page, what, { selector = null, name, wait = SCREEN_MS }) {
+  const deadline = Date.now() + wait;
+  let covered = "";
   for (;;) {
     for (const target of [selector && page.locator(selector).first(), page.getByRole("button", { name }).first()].filter(Boolean)) {
       if (await target.isVisible().catch(() => false) && await target.isEnabled().catch(() => false)) {
         const point = await target.evaluate(pressablePoint).catch(() => null);
-        covered = point === null;
-        if (point === null) continue;
+        if (point === null) {
+          covered = await target.evaluate(coveredBy).catch(() => "is covered");
+          continue;
+        }
         await target.click({ position: { x: point.x, y: point.y }, timeout: SCREEN_MS });
         return point.middle ? "" : "pressed off its middle, which another button covers";
       }
     }
-    if (Date.now() >= deadline) throw new Error(covered ? `the button to ${what} is covered: no part of it can be pressed` : `no button to ${what}`);
+    if (Date.now() >= deadline) throw new Error(covered ? `the button to ${what} ${covered}: no part of it can be pressed` : `no button to ${what}`);
     await sleep(100);
   }
 }
@@ -310,7 +322,8 @@ function readWhere() {
   const title = document.querySelector("main h1");
   const heading = (title?.getAttribute("aria-label") ?? title?.textContent ?? "").trim();
   const notice = [...document.querySelectorAll('main [role="alert"], main [role="status"]')].map((node) => node.textContent?.trim() ?? "").find((line) => line !== "") ?? "";
-  return `"${[heading, notice].filter(Boolean).join(": ") || document.body.innerText.trim().slice(0, 80)}"`;
+  // One line: a step's line is cut at the first line break.
+  return `"${([heading, notice].filter(Boolean).join(": ") || document.body.innerText.trim().slice(0, 80)).replace(/\s+/g, " ")}"`;
 }
 
 /**
@@ -582,8 +595,18 @@ async function hostStartsFight(page, hostCamera) {
   let styleName = "";
   let enemy = "";
   let character = "";
+  let skipped = "god scan skipped by its button";
   try {
-    if (camera !== null) await press(page, "skip the god scan", { selector: "button.scan-skip", name: /^skip/i });
+    // The scan's own Skip button first. When it cannot be pressed (off the page, or covered) the key it names is
+    // used, and the step's line says so: a person who does not know the key has no way to skip.
+    if (camera !== null) {
+      try {
+        await press(page, "skip the god scan", { selector: "button.scan-skip", name: /^skip/i, wait: SKIP_MS });
+      } catch (error) {
+        await page.keyboard.press("Escape");
+        skipped = `god scan skipped with the Esc key, because ${firstLine(error)}`;
+      }
+    }
     // The five characters come between the scan and the styles; the one already chosen is taken as it is.
     const done = page.locator("button.character-done").first();
     await done.waitFor({ timeout: SCREEN_MS });
@@ -591,7 +614,7 @@ async function hostStartsFight(page, hostCamera) {
     await press(page, "confirm the character", { selector: "button.character-done", name: /^fight as/i });
     const style = page.locator("main button:has(small):not(nav button)").first();
     await style.waitFor({ timeout: SCREEN_MS });
-    styleName = await style.evaluate((element) => element.firstChild?.textContent?.trim() ?? "", null, { timeout: SCREEN_MS });
+    styleName = await style.evaluate((element) => (element.querySelector(".menu-shield__name")?.textContent || element.firstChild?.textContent || "").trim(), null, { timeout: SCREEN_MS });
     await style.click({ timeout: SCREEN_MS });
     const stop = page.locator("button.stop.open").first();
     await stop.waitFor({ timeout: SCREEN_MS });
@@ -599,13 +622,14 @@ async function hostStartsFight(page, hostCamera) {
     enemy = await stop.evaluate((element) => (element.querySelector(".qm-plate, .lbl")?.firstChild?.textContent ?? element.textContent ?? "").trim(), null, { timeout: SCREEN_MS });
     // The click on the stop starts the fight; with the camera on, calibration comes first.
     await stop.click({ timeout: SCREEN_MS });
-    if (camera !== null) await press(page, "play on the keyboard at calibration", { selector: ".calibration button", name: "Use keyboard instead" });
+    // Calibration has a "Back" button too (it leaves for the map), so the keyboard button is the one that is not it.
+    if (camera !== null) await press(page, "play on the keyboard at calibration", { selector: ".calibration button:not(.set-back)", name: "Use keyboard instead" });
     // The fight holds several canvases (the 3D view and the HUD's pebble pieces), so the first is waited for.
     await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_MS });
   } catch (error) {
     throw new Error(`after "Start" the host did not get from ${camera === null ? "the character screen" : "the god scan"} to the fight, its page shows ${await page.evaluate(readWhere).catch(() => "nothing")} (${firstLine(error)})`);
   }
-  const way = camera === null ? "no camera, so no god scan and no calibration: the room is kept and the host plays on the keyboard" : "fake camera up, god scan skipped";
+  const way = camera === null ? "no camera, so no god scan and no calibration: the room is kept and the host plays on the keyboard" : `fake camera up, ${skipped}`;
   return `"${friend.notice}", ${way}, character ${character}, style ${styleName}, against ${enemy}${camera === null ? "" : ", keyboard taken at calibration"}`;
 }
 
