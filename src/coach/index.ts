@@ -17,6 +17,9 @@ export type { Grade, GradeTier } from "./grade";
 // The training dojo: a session over a list of moves, graded repetition by repetition. The screen is ./ui/Dojo.
 export {
   COUNT_FROM, DOJO_DEFAULTS, DOJO_DEFENDS, DOJO_REPS, KEY_TIP, SKILL_VALUE, STRIKE_FOR_EXCELLENT, SURE_FOR_EXCELLENT, assessmentFrom, closingLine,
-  currentMove, gradeAttempt, gradeRep, gradedQuality, keyRep, movesFor, quickMoves, skillFrom, skipResult, startDojo, summariseDojo, tickDojo, tuningLine, tuningOf,
+  currentMove, gradeAttempt, gradeRep, gradedQuality, keyRep, movesFor, quickMoves, skillFrom, skipResult, startDojo, summariseDojo, tickDojo, trackOf, tuningLine, tuningOf,
 } from "./dojo";
-export type { DojoConfig, DojoPhase, DojoRep, DojoState, DojoSummary, Hit, MoveReport, Tuning, WorkOn } from "./dojo";
+export type { DojoConfig, DojoPhase, DojoRep, DojoState, DojoSummary, DojoTrack, Hit, MoveReport, TrackStep, Tuning, WorkOn } from "./dojo";
+// What the dojo can train and the list a player ticks before a session: the game's moves and styles plus the dojo's own (./extra).
+export { DOJO_CHOICE_KEY, DOJO_MEASURES, REPS_CHOICES, dojoGuideFor, dojoMenu, dojoMoveOf, dojoStyles, loadChoice, pickedInOrder, saveChoice, startingSetup } from "./catalog";
+export type { DojoChoice, DojoMenuGroup, DojoMenuMove, DojoStyleDef } from "./catalog";

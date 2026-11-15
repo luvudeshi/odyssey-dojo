@@ -2,12 +2,14 @@
 // ticks, the choice kept for next time, and a session that trains exactly the ticked moves in the order shown.
 import { describe, expect, test } from "vitest";
 import {
-  DOJO_CHOICE_KEY, DOJO_DEFENDS, REPS_CHOICES, WHOLE_BODY_NOTE, dojoMenu, dojoMoveOf, dojoStyles, loadChoice, menuIds, needsWholeBody, pickedInOrder,
+  DOJO_CHOICE_KEY, DOJO_DEFENDS, DOJO_MEASURES, REPS_CHOICES, WHOLE_BODY_NOTE, dojoGuideFor, dojoJudgeRep, dojoMenu, dojoTipFor, dojoMoveOf, dojoStyles, loadChoice, menuIds, needsWholeBody, pickedInOrder,
   saveChoice, startingSetup, usualMoves,
 } from "../src/coach/catalog";
 import type { ChoiceStorage, DojoMenuGroup, DojoStyleDef } from "../src/coach/catalog";
-import { keyRep, movesFor, startDojo, summariseDojo, tickDojo } from "../src/coach/dojo";
-import { EXTRA_MOVES, EXTRA_STYLES } from "../src/coach/extra";
+import { COUNT_FROM, currentMove, gradeAttempt, gradeRep, keyRep, movesFor, startDojo, summariseDojo, tickDojo, trackOf } from "../src/coach/dojo";
+import type { DojoRep } from "../src/coach/dojo";
+import { EXTRA_MOVES, EXTRA_STYLES, EXTRA_TIPS, extraMove } from "../src/coach/extra";
+import { PRACTICE_TIPS, judgeRep } from "../src/coach/practice";
 import { POWER_MOVES } from "../src/combat/engine";
 import type { MoveDef } from "../src/core/types";
 import { MOVES } from "../src/moves/registry";
@@ -19,11 +21,13 @@ const group = (menu: readonly DojoMenuGroup[], id: DojoMenuGroup["id"]): string[
 
 /** A made-up move only the dojo knows, copied from a real one so it has a detector and a picture. */
 const made = (id: string, name: string, kind: MoveDef["kind"] = "strike"): MoveDef => ({ ...need(MOVES.get(kind === "defend" ? "block" : "jab")), id, name, kind });
-const ELBOW = made("elbow_strike", "Elbow strike");
-const SIDE_KICK = made("side_kick", "Side kick");
+const BUMP = made("shoulder_bump", "Shoulder bump");
+const AXE_KICK = made("axe_kick", "Axe kick");
 const PARRY = made("parry", "Parry", "defend");
-const MUAY_THAI: DojoStyleDef = { id: "muay_thai", name: "Muay Thai", line: "Elbows and kicks.", strikes: ["elbow_strike", "side_kick", "jab"] };
-const EXTRAS = { moves: [ELBOW, SIDE_KICK, PARRY], styles: [MUAY_THAI] };
+const SAVATE: DojoStyleDef = { id: "savate", name: "Savate", line: "Kicks and bumps.", strikes: ["shoulder_bump", "axe_kick", "jab"] };
+const EXTRAS = { moves: [BUMP, AXE_KICK, PARRY], styles: [SAVATE] };
+/** No extras at all: the game's own moves and styles only. */
+const NONE = { moves: [], styles: [] };
 
 /** A stand-in for localStorage. */
 function memory(start: Record<string, string> = {}): ChoiceStorage & { readonly kept: Record<string, string> } {
@@ -35,8 +39,8 @@ const throwing: ChoiceStorage = { getItem: () => { throw new Error("private wind
 describe("the moves and styles the dojo knows", () => {
   test("a move is looked up in the game's registry first, then among the extra ones", () => {
     expect(dojoMoveOf("jab")).toBe(MOVES.get("jab"));
-    expect(dojoMoveOf("elbow_strike")).toBeUndefined();
-    expect(dojoMoveOf("elbow_strike", EXTRAS.moves)).toBe(ELBOW);
+    expect(dojoMoveOf("shoulder_bump")).toBeUndefined();
+    expect(dojoMoveOf("shoulder_bump", EXTRAS.moves)).toBe(BUMP);
     // An extra move cannot take the place of one of the game's.
     expect(dojoMoveOf("jab", [made("jab", "Not the jab")])).toBe(MOVES.get("jab"));
     expect(dojoMoveOf("no_such_move", EXTRAS.moves)).toBeUndefined();
@@ -46,9 +50,9 @@ describe("the moves and styles the dojo knows", () => {
     expect(dojoStyles([]).map((style) => style.id)).toEqual(STYLES.map((style) => style.id));
     for (const style of STYLES) expect(styleOf(style.id)).toMatchObject({ name: style.name, line: style.blurb, strikes: style.strikes });
     const withExtra = dojoStyles(EXTRAS.styles);
-    expect(withExtra.map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "muay_thai"]);
+    expect(withExtra.map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "savate"]);
     // A second style with an id already taken is left out.
-    expect(dojoStyles([{ ...MUAY_THAI, id: "boxer" }]).filter((style) => style.id === "boxer")).toHaveLength(1);
+    expect(dojoStyles([{ ...SAVATE, id: "boxer" }]).filter((style) => style.id === "boxer")).toHaveLength(1);
   });
 
   test("the stub of extras the dojo ships with is read without a fault, whatever it holds", () => {
@@ -59,7 +63,7 @@ describe("the moves and styles the dojo knows", () => {
 
 describe("the list a player ticks", () => {
   test("the boxer's list: its strikes, kicks and knees, the defends, then the strikes of the other styles", () => {
-    const menu = dojoMenu(styleOf("boxer"), { extras: {} });
+    const menu = dojoMenu(styleOf("boxer"), { extras: NONE });
     expect(menu.map((each) => each.id)).toEqual(["style", "kicks", "defends", "more"]);
     expect(menu.map((each) => each.title)).toEqual(["Boxer strikes", "Kicks and knees", "Defends", "More moves"]);
     expect(group(menu, "style")).toEqual(["jab", "cross", "hook", "uppercut"]);
@@ -90,14 +94,21 @@ describe("the list a player ticks", () => {
   });
 
   test("a style whose own strikes are kicks keeps them in its own group, marked, and has no second kicks group", () => {
-    const menu = dojoMenu(styleOf("pankration"), { extras: {} });
+    const menu = dojoMenu(styleOf("pankration"), { extras: NONE });
     expect(group(menu, "style")).toEqual(["front_kick", "knee", "hammer_fist", "uppercut"]);
     expect(menu.map((each) => each.id)).toEqual(["style", "defends", "more"]);
     expect(need(menu[0]).moves.map((move) => move.wholeBody)).toEqual([true, true, false, false]);
   });
 
   test("the usual list for a style is ticked in the order the list shows it", () => {
-    for (const style of dojoStyles()) expect(pickedInOrder(dojoMenu(style), movesFor(style)), style.id).toEqual(movesFor(style));
+    for (const style of dojoStyles([])) expect(pickedInOrder(dojoMenu(style), movesFor(style)), style.id).toEqual(movesFor(style));
+    // A dojo style with a block among its strikes trains the same moves, with that block down among the defends.
+    for (const style of dojoStyles()) {
+      const picked = pickedInOrder(dojoMenu(style), movesFor(style));
+      expect([...picked].sort(), style.id).toEqual([...movesFor(style)].sort());
+      const firstDefend = picked.findIndex((id) => dojoMoveOf(id)?.kind === "defend");
+      expect(picked.slice(firstDefend).every((id) => dojoMoveOf(id)?.kind === "defend"), style.id).toBe(true);
+    }
     expect(usualMoves(styleOf("boxer"))).toEqual(movesFor(styleOf("boxer")));
   });
 
@@ -110,23 +121,23 @@ describe("the list a player ticks", () => {
 
   test("extra moves show up: a leg move under kicks, a defend under defends, a strike under more moves", () => {
     const menu = dojoMenu(styleOf("boxer"), { extras: EXTRAS });
-    expect(group(menu, "kicks")).toEqual(["front_kick", "knee", "side_kick"]);
+    expect(group(menu, "kicks")).toEqual(["front_kick", "knee", "axe_kick"]);
     expect(group(menu, "defends")).toEqual(["block", "duck", "dodge_left", "dodge_right", "parry"]);
-    expect(group(menu, "more")).toContain("elbow_strike");
-    expect(group(menu, "more")).not.toContain("side_kick");
-    expect(need(menu.flatMap((each) => each.moves).find((move) => move.id === "elbow_strike")).name).toBe("Elbow strike");
-    expect(needsWholeBody(SIDE_KICK)).toBe(true);
-    expect(needsWholeBody(ELBOW)).toBe(false);
+    expect(group(menu, "more")).toContain("shoulder_bump");
+    expect(group(menu, "more")).not.toContain("axe_kick");
+    expect(need(menu.flatMap((each) => each.moves).find((move) => move.id === "shoulder_bump")).name).toBe("Shoulder bump");
+    expect(needsWholeBody(AXE_KICK)).toBe(true);
+    expect(needsWholeBody(BUMP)).toBe(false);
     const ids = menuIds(menu);
     expect(new Set(ids).size).toBe(ids.length);
     // Without the extras none of them is offered.
-    expect(menuIds(dojoMenu(styleOf("boxer"), { extras: {} })).filter((id) => ["side_kick", "parry", "elbow_strike"].includes(id))).toEqual([]);
+    expect(menuIds(dojoMenu(styleOf("boxer"), { extras: NONE })).filter((id) => ["axe_kick", "parry", "shoulder_bump"].includes(id))).toEqual([]);
   });
 
   test("an extra style trains its own strikes, extra and not, and its kick says it needs the whole body", () => {
-    const menu = dojoMenu(styleOf("muay_thai", dojoStyles(EXTRAS.styles)), { extras: EXTRAS });
-    expect(need(menu[0]).title).toBe("Muay Thai strikes");
-    expect(group(menu, "style")).toEqual(["elbow_strike", "side_kick", "jab"]);
+    const menu = dojoMenu(styleOf("savate", dojoStyles(EXTRAS.styles)), { extras: EXTRAS });
+    expect(need(menu[0]).title).toBe("Savate strikes");
+    expect(group(menu, "style")).toEqual(["shoulder_bump", "axe_kick", "jab"]);
     expect(need(menu[0]).moves.map((move) => move.wholeBody)).toEqual([false, true, false]);
     expect(group(menu, "kicks")).toEqual(["front_kick", "knee"]);
     expect(group(menu, "more")).not.toContain("jab");
@@ -139,6 +150,101 @@ describe("the list a player ticks", () => {
     expect(menuIds(dojoMenu(styleOf("boxer"), { extras: { moves: [power] } }))).toContain("sky_fire");
     expect(menuIds(dojoMenu(styleOf("boxer")))).not.toContain("thunderbolt");
     expect(group(dojoMenu(styleOf("boxer"), { include: ["thunderbolt", "jab", "nothing"] }), "more").at(-1)).toBe("thunderbolt");
+  });
+});
+
+describe("the dojo's own moves and styles (src/coach/extra)", () => {
+  const NAMES = ["roundhouse_kick", "side_kick", "low_kick", "elbow_strike", "palm_heel", "wrist_release", "high_block", "low_block"];
+
+  test("every extra move is found by id and none is in the game's registry", () => {
+    expect(EXTRA_MOVES.map((move) => move.id).sort()).toEqual([...NAMES].sort());
+    for (const id of NAMES) {
+      expect(dojoMoveOf(id), id).toBe(extraMove(id));
+      expect(MOVES.has(id), id).toBe(false);
+    }
+  });
+
+  test("the four dojo styles are offered after the game's five", () => {
+    expect(dojoStyles().map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "taekwondo", "self_defense", "muay_thai", "karate_basics"]);
+  });
+
+  test("Taekwondo is all kicks: its own group holds them, with the whole-body note", () => {
+    const menu = dojoMenu(styleOf("taekwondo"));
+    expect(group(menu, "style")).toEqual(["front_kick", "roundhouse_kick", "side_kick", "low_kick", "knee"]);
+    expect(need(menu[0]).note).toBe(WHOLE_BODY_NOTE);
+    expect(need(menu[0]).moves.every((move) => move.wholeBody)).toBe(true);
+    expect(menu.map((each) => each.id)).toEqual(["style", "defends", "more"]);
+  });
+
+  test("for a style with no kicks of its own, all five kicks are under Kicks and knees", () => {
+    const menu = dojoMenu(styleOf("boxer"));
+    expect(group(menu, "kicks")).toEqual(["front_kick", "knee", "roundhouse_kick", "side_kick", "low_kick"]);
+    expect(need(menu.find((each) => each.id === "kicks")).note).toBe(WHOLE_BODY_NOTE);
+    expect(need(menu[0]).note).toBeNull();
+  });
+
+  test("high block and low block are defends: under Defends for every style, never among the strikes", () => {
+    for (const style of dojoStyles()) {
+      const menu = dojoMenu(style);
+      expect(group(menu, "defends"), style.id).toEqual(expect.arrayContaining(["block", "duck", "dodge_left", "dodge_right", "high_block", "low_block"]));
+      for (const each of menu) if (each.id !== "defends") expect(each.moves.filter((move) => move.kind === "defend"), `${style.id} ${each.id}`).toEqual([]);
+    }
+    // Karate basics lists both blocks with its strikes; they are still ticked at first.
+    const karate = styleOf("karate_basics");
+    expect(group(dojoMenu(karate), "style")).toEqual(["reverse_punch", "knife_hand", "front_kick", "side_kick"]);
+    expect(group(dojoMenu(karate), "defends")).toEqual(["block", "duck", "dodge_left", "dodge_right", "high_block", "low_block"]);
+    expect(startingSetup({ saved: { style: "karate_basics", moves: [], reps: 3 } }, 3).ticked).toEqual(expect.arrayContaining(["high_block", "low_block"]));
+  });
+
+  test("the hand strikes are under More moves for a style that does not have them", () => {
+    expect(group(dojoMenu(styleOf("boxer")), "more")).toEqual(expect.arrayContaining(["elbow_strike", "palm_heel", "wrist_release"]));
+  });
+
+  test("every move on every list has an outline, a checklist table and a key of its own", () => {
+    const ids = [...new Set(dojoStyles().flatMap((style) => menuIds(dojoMenu(style))))];
+    for (const id of ids) {
+      const move = need(dojoMoveOf(id));
+      expect(dojoGuideFor(move), id).not.toBeNull();
+      expect(DOJO_MEASURES[id], id).toBeDefined();
+    }
+    const keys = ids.map((id) => need(dojoMoveOf(id)).key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(NAMES.map((id) => need(dojoMoveOf(id)).key).sort()).toEqual(["a", "d", "e", "o", "v", "w", "x", "y"]);
+  });
+
+  test("an extra move's tips are its own: a missed try with nobody moving, and the fallback line", () => {
+    const kick = need(dojoMoveOf("roundhouse_kick"));
+    expect(dojoTipFor(kick)).toBe(need(EXTRA_TIPS.roundhouse_kick).tip);
+    expect(dojoTipFor(need(dojoMoveOf("jab")))).toBe(PRACTICE_TIPS.strike.tip);
+    const missed = gradeAttempt(kick, []);
+    expect(missed.grade.tier).toBe("needs_work");
+    expect(missed.tip).toBeTruthy();
+    expect(dojoJudgeRep(need(dojoMoveOf("jab")), [])).toEqual(judgeRep(need(dojoMoveOf("jab")), []));
+  });
+
+  test("a Taekwondo session on the keyboard: every kick, in order, each counted by its own key press", () => {
+    const moves = pickedInOrder(dojoMenu(styleOf("taekwondo")), ["roundhouse_kick", "front_kick", "high_block"]);
+    expect(moves).toEqual(["front_kick", "roundhouse_kick", "high_block"]);
+    let state = startDojo({ moves, reps: 1, keyboard: true }, 0);
+    const asked: string[] = [];
+    for (let now = 0; state.phase !== "done" && now < 60_000; now += 50) {
+      state = tickDojo(state, now, null);
+      if (state.phase !== "go") continue;
+      asked.push(need(currentMove(state)).key);
+      state = keyRep(state, now);
+    }
+    expect(asked).toEqual(["f", "o", "y"]);
+    const summary = summariseDojo(state.reps);
+    expect(summary.moves.map((move) => move.name)).toEqual(["Front kick", need(dojoMoveOf("roundhouse_kick")).name, "High block"]);
+    expect(summary.grades.excellent).toBe(3);
+  });
+
+  test("an extra defend made in front of the camera counts: its detector answers 1, over the dojo's 0.6", () => {
+    for (const id of ["high_block", "low_block"]) {
+      const move = need(dojoMoveOf(id));
+      expect(move.kind, id).toBe("defend");
+      expect(gradeAttempt(move, [], null, COUNT_FROM, { quality: 1, reactMs: 400, sure: true }).grade.tier, id).toBe("excellent");
+    }
   });
 });
 
@@ -186,9 +292,9 @@ describe("what the setup step starts on", () => {
   });
 
   test("an extra style can be the one kept, with its extra moves ticked", () => {
-    const setup = startingSetup({ extras: EXTRAS, saved: { style: "muay_thai", moves: ["elbow_strike", "parry"], reps: 3 } }, 3);
-    expect(setup.style).toBe(MUAY_THAI);
-    expect(setup.ticked).toEqual(["elbow_strike", "parry"]);
+    const setup = startingSetup({ extras: EXTRAS, saved: { style: "savate", moves: ["shoulder_bump", "parry"], reps: 3 } }, 3);
+    expect(setup.style).toBe(SAVATE);
+    expect(setup.ticked).toEqual(["shoulder_bump", "parry"]);
   });
 });
 
@@ -252,14 +358,71 @@ describe("a session of hand-picked moves", () => {
 
   test("a move only the dojo knows is trained like any other, by its own name", () => {
     const moveOf = (id: string): MoveDef | undefined => dojoMoveOf(id, EXTRAS.moves);
-    const played = playKeys(["elbow_strike", "parry", "jab"], 1, moveOf);
-    expect(played.asked).toEqual(["elbow_strike", "parry", "jab"]);
-    expect(summariseDojo(startDojo({ moves: ["elbow_strike"] }, 0, moveOf).reps, moveOf).moves).toEqual([]);
-    let state = startDojo({ moves: ["elbow_strike"], reps: 1, keyboard: true }, 0, moveOf);
+    const played = playKeys(["shoulder_bump", "parry", "jab"], 1, moveOf);
+    expect(played.asked).toEqual(["shoulder_bump", "parry", "jab"]);
+    expect(summariseDojo(startDojo({ moves: ["shoulder_bump"] }, 0, moveOf).reps, moveOf).moves).toEqual([]);
+    let state = startDojo({ moves: ["shoulder_bump"], reps: 1, keyboard: true }, 0, moveOf);
     state = tickDojo(state, 5000, null, moveOf);
     state = keyRep(state, 5001, moveOf);
-    expect(summariseDojo(state.reps, moveOf).moves.map((move) => move.name)).toEqual(["Elbow strike"]);
+    expect(summariseDojo(state.reps, moveOf).moves.map((move) => move.name)).toEqual(["Shoulder bump"]);
     // Without the lookup the dojo does not know it, so it is left out and there is nothing to train.
-    expect(startDojo({ moves: ["elbow_strike"] }, 0).phase).toBe("done");
+    expect(startDojo({ moves: ["shoulder_bump"] }, 0).phase).toBe("done");
+  });
+});
+
+describe("the strip of moves along the bottom of a session", () => {
+  const LIST = ["jab", "cross", "front_kick", "roundhouse_kick", "block", "high_block"];
+  const graded = (moveId: string, how: "excellent" | "good" | "missed"): DojoRep => {
+    const move = need(dojoMoveOf(moveId));
+    if (how === "missed") return gradeRep(move, { counted: false, quality: 0, peak: 0, tip: null, part: null });
+    return gradeRep({ ...move, quality: () => 0 }, { counted: true, quality: how === "excellent" ? 0.9 : 0.4, peak: 1, tip: null, part: null }, 400);
+  };
+
+  test("at the start nothing is done: the first move is the current one and the rest are next, in order", () => {
+    const track = trackOf(LIST, 0, []);
+    expect(track).toMatchObject({ done: 0, total: 6 });
+    expect(track.steps.map((step) => step.moveId)).toEqual(LIST);
+    expect(track.steps.map((step) => step.status)).toEqual(["current", "next", "next", "next", "next", "next"]);
+    expect(track.steps.every((step) => step.best === null && step.points === 0 && step.tries === 0)).toBe(true);
+    expect(track.steps.map((step) => step.name).slice(2, 4)).toEqual(["Front kick", need(dojoMoveOf("roundhouse_kick")).name]);
+  });
+
+  test("two moves done, the third under way: each shows its best grade and its points so far", () => {
+    const reps = [graded("jab", "good"), graded("jab", "excellent"), graded("cross", "missed"), graded("cross", "missed"), graded("front_kick", "good")];
+    const track = trackOf(LIST, 2, reps);
+    expect(track).toMatchObject({ done: 2, total: 6 });
+    expect(track.steps.map((step) => step.status)).toEqual(["done", "done", "current", "next", "next", "next"]);
+    expect(track.steps.map((step) => step.best)).toEqual(["excellent", "needs_work", "good", null, null, null]);
+    expect(track.steps.map((step) => step.points)).toEqual([250, 50, 100, 0, 0, 0]);
+    expect(track.steps.map((step) => step.tries)).toEqual([2, 2, 1, 0, 0, 0]);
+  });
+
+  test("the session over: every move is done; an index out of range or not a number does not throw", () => {
+    expect(trackOf(LIST, LIST.length, []).steps.every((step) => step.status === "done")).toBe(true);
+    expect(trackOf(LIST, 99, [])).toMatchObject({ done: 6, total: 6 });
+    expect(trackOf(LIST, -3, []).steps[0]?.status).toBe("current");
+    expect(trackOf(LIST, Number.NaN, []).done).toBe(0);
+    expect(trackOf([], 0, [])).toEqual({ steps: [], done: 0, total: 0 });
+  });
+
+  test("an id nobody knows is left out, as the session leaves it out, and the lookup can be handed in", () => {
+    expect(trackOf(["jab", "no_such_move", "block"], 1, []).steps.map((step) => [step.moveId, step.status])).toEqual([["jab", "done"], ["block", "current"]]);
+    const moveOf = (id: string): MoveDef | undefined => dojoMoveOf(id, EXTRAS.moves);
+    expect(trackOf(["shoulder_bump", "jab"], 0, [], moveOf).steps.map((step) => step.name)).toEqual(["Shoulder bump", "Jab"]);
+    expect(trackOf(["shoulder_bump", "jab"], 0, []).steps.map((step) => step.name)).toEqual(["Jab"]);
+  });
+
+  test("it follows a played session: the count of done moves rises by one as each move's last try is graded", () => {
+    let state = startDojo({ moves: LIST, reps: 2, keyboard: true }, 0);
+    const seen: number[] = [];
+    for (let now = 0; state.phase !== "done" && now < 600_000; now += 50) {
+      state = tickDojo(state, now, null);
+      if (state.phase === "go") state = keyRep(state, now);
+      const track = trackOf(state.config.moves, state.moveIndex, state.reps);
+      if (seen.at(-1) !== track.done) seen.push(track.done);
+    }
+    expect(seen).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    const end = trackOf(state.config.moves, state.moveIndex, state.reps);
+    expect(end.steps.map((step) => [step.status, step.best, step.points, step.tries])).toEqual(LIST.map(() => ["done", "excellent", 300, 2]));
   });
 });

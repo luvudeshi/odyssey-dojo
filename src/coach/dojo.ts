@@ -5,11 +5,11 @@
 // Every number is a first guess, not yet tuned on a real body.
 import type { EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
-import { DOJO_DEFENDS, dojoMoveOf, usualMoves } from "./catalog";
+import { DOJO_DEFENDS, dojoJudgeRep, dojoMoveOf, dojoTipFor, usualMoves } from "./catalog";
 import type { Assessment, Focus, SkillLevel, StepResult } from "./contract";
 import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
 import type { Grade, GradeTier } from "./grade";
-import { KEYBOARD_REP, PRACTICE_TIPS, judgeRep, summarise } from "./practice";
+import { KEYBOARD_REP, PRACTICE_TIPS, summarise } from "./practice";
 import type { RepResult } from "./practice";
 import { AVERAGE_BELOW, BEGINNER_BELOW, STRONG_FROM, tuneFor } from "./warmup";
 
@@ -165,12 +165,12 @@ export function gradeRep(move: MoveDef, result: RepResult, reactMs: number | nul
   // A near miss counts, but is never better than Good.
   const quality = nearMiss && result.counted ? Math.min(finite(result.quality), NEAR_MISS_QUALITY) : gradedQuality(move, result);
   const grade = gradeFor(result.counted, quality);
-  const tip = grade.tier === "needs_work" ? (result.tip ?? PRACTICE_TIPS[move.kind].tip) : grade.tier === "good" ? result.tip : null;
+  const tip = grade.tier === "needs_work" ? (result.tip ?? dojoTipFor(move)) : grade.tier === "good" ? result.tip : null;
   return { moveId: move.id, result, grade, quality, tip, reactMs: result.counted ? reactMs : null };
 }
 
 /**
- * Judges the frames of one attempt (`judgeRep`), leniently: a near miss (the detector reached `countFrom` but not the
+ * Judges the frames of one attempt (`judgeRep`, or `judgeExtraRep` for a move only the dojo knows), leniently: a near miss (the detector reached `countFrom` but not the
  * fight's 0.7) counts, at the quality of how sure the detector got, so it is Good and never Excellent. `hit` is what
  * the screen saw while the player moved; what was counted then stays counted, whatever the second look says.
  */
@@ -178,7 +178,7 @@ export function gradeAttempt(
   move: MoveDef, frames: readonly PoseFrame[], baseline: PoseHistory["baseline"] = null,
   countFrom: number = COUNT_FROM, hit: Hit | null = null,
 ): DojoRep {
-  const read = judgeRep(move, frames, baseline);
+  const read = dojoJudgeRep(move, frames, baseline);
   if (read.counted) return gradeRep(move, read, hit?.reactMs ?? null);
   if (hit?.sure) return gradeRep(move, { ...read, counted: true, quality: finite(hit.quality) }, hit.reactMs);
   if (hit || read.peak >= countFrom) return gradeRep(move, { ...read, counted: true, quality: finite(hit?.quality ?? read.peak) }, hit?.reactMs ?? null, true);
@@ -251,6 +251,48 @@ export function keyRep(state: DojoState, nowMs: number, moveOf: Lookup = registr
 /** Leaves the grade early and goes on to the next repetition. */
 export function skipResult(state: DojoState, nowMs: number): DojoState {
   return state.phase === "result" ? advance(state, nowMs) : state;
+}
+
+/** One move on the strip along the bottom of a session. */
+export interface TrackStep {
+  readonly moveId: string;
+  readonly name: string;
+  /** "done": every repetition of it is over. "current": the one being trained. "next": still to come. */
+  readonly status: "done" | "current" | "next";
+  /** The best grade among its repetitions so far; null before the first. */
+  readonly best: GradeTier | null;
+  /** The points its repetitions have earned so far. */
+  readonly points: number;
+  /** How many of its repetitions have been graded. */
+  readonly tries: number;
+}
+
+/** What the strip shows: every move of the session in the order trained, and how many are finished. */
+export interface DojoTrack {
+  readonly steps: readonly TrackStep[];
+  readonly done: number;
+  readonly total: number;
+}
+
+const BEST_FIRST: readonly GradeTier[] = ["excellent", "good", "needs_work"];
+
+/**
+ * The session as a row of moves: the ones before `moveIndex` are done, that one is the current one, the rest are
+ * next, in order. Each carries its best grade and its points so far. With `moveIndex` at or past the end (the
+ * session is over) every move is done. An id the lookup does not know is left out, as `startDojo` leaves it out.
+ */
+export function trackOf(moves: readonly string[], moveIndex: number, reps: readonly DojoRep[], moveOf: Lookup = registry): DojoTrack {
+  const known = moves.flatMap((id) => { const move = moveOf(id); return move ? [move] : []; });
+  const at = Number.isFinite(moveIndex) ? Math.max(0, Math.floor(moveIndex)) : 0;
+  const steps = known.map((move, index): TrackStep => {
+    const own = reps.filter((each) => each.moveId === move.id);
+    return {
+      moveId: move.id, name: move.name, status: index < at ? "done" : index === at ? "current" : "next",
+      best: BEST_FIRST.find((tier) => own.some((each) => each.grade.tier === tier)) ?? null,
+      points: own.reduce((sum, each) => sum + each.grade.points, 0), tries: own.length,
+    };
+  });
+  return { steps, done: Math.min(at, steps.length), total: steps.length };
 }
 
 /** How one move went over its repetitions. */
