@@ -4,7 +4,7 @@
 // The figure and the checklist come from ../guide.
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { Baseline, MoveDef, PoseHistory } from "../../core/types";
-import { VIEW, guideFor, liveChecks, poseAt, toScreen, towardOf } from "../guide";
+import { VIEW, fitView, guideFor, liveChecks, poseAt, toScreen, towardOf } from "../guide";
 import type { Guide, GuideEnd, GuideJoint, ScreenFigure } from "../guide";
 import "./moveGuide.css";
 
@@ -17,14 +17,17 @@ export interface MoveGuideProps {
   /** Time left to make the move and the whole time given. Left out, no time bar is drawn. */
   msLeft?: number;
   msTotal?: number;
-  size?: "large" | "medium";
+  /**
+   * "card" (the default) fits the prompt card: a box 260 px wide and at most 300 px tall, with the figure, the
+   * instruction and three checks, and no name (the card has its own). "medium" and "large" are for a screen of their own.
+   */
+  size?: "card" | "medium" | "large";
   /** True (the default): the player's left is at the left of the picture, like the camera view, so it is copied like a mirror. */
   mirrored?: boolean;
 }
 
 type Side = "left" | "right";
 const SIDES: readonly Side[] = ["left", "right"];
-const ROWS = 4;
 /** How long the match stays lit after a strike is read, which is over in a frame or two. */
 const MATCH_SHOWN_MS = 700;
 const HEAD = 11;
@@ -47,10 +50,11 @@ const lit = (moving: readonly GuideEnd[], end: GuideEnd): boolean =>
   moving.some((each) => each === end || (each.slice(0, -4) === end.slice(0, -4) && !each.endsWith("Wrist") && !end.endsWith("Wrist")));
 
 /** One figure. Every part carries a data attribute so `paint` can move it without React. */
-function Figure({ figure, moving, live, children }: { figure: ScreenFigure; moving: readonly GuideEnd[]; live?: boolean; children?: React.ReactNode }) {
+function Figure(props: { figure: ScreenFigure; moving: readonly GuideEnd[]; view: string; live?: boolean; children?: React.ReactNode }) {
+  const { figure, moving, view, live, children } = props;
   const body = moving.includes("head") ? "mg-lit" : undefined;
   return (
-    <svg className={live ? "mg-svg mg-live" : "mg-svg"} viewBox={`0 ${String(VIEW.top)} ${String(VIEW.width)} ${String(VIEW.height)}`} aria-hidden="true">
+    <svg className={live ? "mg-svg mg-live" : "mg-svg"} viewBox={view} aria-hidden="true">
       <line className="mg-floor" x1="20" y1="192" x2={VIEW.width - 20} y2="192" />
       {children}
       <polygon className={body} data-torso="" points={torsoPoints(figure)} />
@@ -116,7 +120,8 @@ function useReducedMotion(): boolean {
 }
 
 export function MoveGuide(props: MoveGuideProps) {
-  const { move, history, baseline, msLeft, msTotal, size = "large", mirrored = true } = props;
+  const { move, history, baseline, msLeft, msTotal, size = "card", mirrored = true } = props;
+  const rowCount = size === "card" ? 3 : 4;
   const guide = useMemo(() => guideFor(move), [move]);
   const still = useReducedMotion();
   const root = useRef<HTMLElement>(null);
@@ -140,7 +145,7 @@ export function MoveGuide(props: MoveGuideProps) {
       }
       const { history: read, baseline: standing, msLeft: left, msTotal: total } = latest.current;
       const frames = read();
-      const live = standing === undefined ? liveChecks(move, frames) : liveChecks(move, frames, standing);
+      const live = liveChecks(move, frames, standing === undefined ? frames?.baseline : standing, rowCount);
       if (live.matched) matchedAt = now;
       const matched = now - matchedAt < MATCH_SHOWN_MS;
       rows.forEach((row, index) => {
@@ -164,10 +169,11 @@ export function MoveGuide(props: MoveGuideProps) {
     };
     handle = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(handle); };
-  }, [move, guide, still, mirrored]);
+  }, [move, guide, still, mirrored, rowCount]);
 
   const first = guide?.keyframes[0];
-  const checks = liveChecks(move, null).checks;
+  const checks = liveChecks(move, null, null, rowCount).checks;
+  const view = guide && size === "card" ? fitView(guide, mirrored) : `0 ${String(VIEW.top)} ${String(VIEW.width)} ${String(VIEW.height)}`;
   // Without motion: every different pose of the loop side by side, in order.
   const steps = (guide?.keyframes ?? []).filter((key, index, all) => JSON.stringify(key.pose) !== JSON.stringify(all[index - 1]?.pose));
   const screen = (key: Guide["keyframes"][number]): ScreenFigure => toScreen(key.pose, towardOf(key), mirrored);
@@ -180,12 +186,12 @@ export function MoveGuide(props: MoveGuideProps) {
           {still
             ? steps.map((key, index) => (
               <figure key={key.t}>
-                <Figure figure={screen(key)} moving={guide.moving} />
+                <Figure figure={screen(key)} moving={guide.moving} view={view} />
                 <figcaption>{String(index + 1)}</figcaption>
               </figure>
             ))
             : (
-              <Figure figure={screen(first)} moving={guide.moving} live>
+              <Figure figure={screen(first)} moving={guide.moving} view={view} live>
                 <defs>
                   <marker id="mg-head" viewBox="0 0 10 10" refX="6" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="16" orient="auto">
                     <path d="M0 0L10 5L0 10z" />
@@ -207,7 +213,7 @@ export function MoveGuide(props: MoveGuideProps) {
           <span className="mg-match-number">0%</span>
         </div>
         <ol className="mg-checks" aria-label="What the camera is looking for">
-          {Array.from({ length: ROWS }, (_, index) => (
+          {Array.from({ length: rowCount }, (_, index) => (
             <li key={index} hidden={!checks[index]} data-met="false">
               <span className="mg-tick" aria-hidden="true" />
               <span className="mg-label">{checks[index]?.label ?? ""}</span>

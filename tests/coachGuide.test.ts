@@ -13,42 +13,8 @@ import { MEASURES } from "../src/moves/measures";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, pushFrame } from "../src/pose/signals";
 import { following } from "../tools/guide/body";
-import { GOD_GOOD } from "./godMoveSequences";
-import type { Arm, Key, Leg } from "./helpers/poses";
-import {
-  ACROSS, CHOP, COCKED, DOWN, GUARD, HIP, HOOK_IN, HOOK_OUT, LATERAL, LEG_CHAMBER, LEG_DOWN, LEG_KICK, LEG_KNEE,
-  OVERHEAD, PALM, PUNCH, STAKE_CHEST, STAKE_DOWN, histories, pose, sequence, standing, withLegs,
-} from "./helpers/poses";
-
-const both = (arm: Arm) => pose(arm, arm);
-const left = (arm: Arm) => pose(arm, DOWN);
-const right = (arm: Arm) => pose(DOWN, arm);
-const keys = (...pairs: [number, ReturnType<typeof pose>][]): Key[] => pairs.map(([t, p]) => ({ t, pose: p }));
-const leg = (shape: Leg = LEG_DOWN) => withLegs(pose(DOWN), LEG_DOWN, shape);
-
-/** Each move done right: the performances the detector tests use, which do not export their tables. */
-const PERFORMANCES: Record<string, Key[]> = {
-  jab: keys([0, pose(DOWN)], [150, left(COCKED)], [300, left(PUNCH)]),
-  cross: keys([0, pose(DOWN)], [150, right(COCKED)], [300, right(PUNCH)]),
-  hook: keys([0, left(HOOK_OUT)], [100, left(HOOK_OUT)], [250, left(HOOK_IN)]),
-  uppercut: keys([0, pose(DOWN)], [250, right(GUARD)]),
-  rising_palm: keys([0, pose(DOWN)], [250, left(GUARD)]),
-  hammer_fist: keys([0, pose(DOWN)], [300, left(OVERHEAD)], [500, left(CHOP)]),
-  overhead_strike: keys([0, pose(DOWN)], [300, right(OVERHEAD)], [500, right(CHOP)]),
-  knife_hand: keys([0, pose(DOWN)], [200, right(ACROSS)], [450, right(LATERAL)]),
-  reverse_punch: keys([0, pose(DOWN)], [150, pose(HIP, COCKED)], [300, pose(HIP, PUNCH)]),
-  spear_thrust: keys([0, pose(DOWN)], [150, both(COCKED)], [300, both(PUNCH)]),
-  double_palm: keys([0, pose(DOWN)], [150, both(COCKED)], [300, both(PALM)]),
-  chain_punch: keys([0, pose(DOWN)], [100, left(COCKED)], [250, left(PUNCH)], [350, right(COCKED)], [500, right(PUNCH)]),
-  stake_thrust: keys([0, pose(DOWN)], [300, both(STAKE_CHEST)], [500, both(STAKE_DOWN)]),
-  front_kick: keys([0, leg()], [100, leg()], [300, leg(LEG_CHAMBER)], [450, leg(LEG_KICK)]),
-  knee: keys([0, leg()], [100, leg()], [300, leg(LEG_KNEE)], [500, leg(LEG_KNEE)]),
-  block: keys([0, pose(DOWN)], [250, both(GUARD)], [450, both(GUARD)]),
-  duck: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, 0, 0.12)], [500, pose(DOWN, DOWN, 0, 0.12)]),
-  dodge_left: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, -0.12, 0)], [500, pose(DOWN, DOWN, -0.12, 0)]),
-  dodge_right: keys([0, pose(DOWN)], [300, pose(DOWN, DOWN, 0.12, 0)], [500, pose(DOWN, DOWN, 0.12, 0)]),
-  ...GOD_GOOD,
-};
+import { PERFORMANCES } from "./helpers/crossFire";
+import { histories, sequence, standing } from "./helpers/poses";
 
 const ALL = [...MOVES.values()];
 function moveOf(id: string): MoveDef {
@@ -200,18 +166,25 @@ test("with no frames the checklist is the list of what to do, all unmet, and not
   expect(liveChecks(duck, ducked, null).matched).toBe(false);
 });
 
-test("the component shows the name, the instruction, the time bar and the checklist rows", () => {
+test("the component shows the instruction, the time bar and the checklist: three rows on the card, four and the name when larger", () => {
   for (const id of ["jab", "block", "front_kick"]) {
     const move = moveOf(id);
-    const html = renderToStaticMarkup(createElement(MoveGuide, { move, history: () => null, msLeft: 1500, msTotal: 3000 }));
-    expect(html).toContain(`>${move.name}</h2>`);
-    expect(html).toContain(guide(move).how);
-    expect(html).toContain("mg-time-fill");
-    expect(html.match(/<li[ >]/g)?.length).toBe(4);
-    expect(html).toContain(liveChecks(move, null).checks[0]?.label);
-    expect(html).toContain("mg-lit");
+    const card = renderToStaticMarkup(createElement(MoveGuide, { move, history: () => null, msLeft: 1500, msTotal: 3000 }));
+    expect(card).toContain("move-guide card");
+    expect(card).toContain(guide(move).how);
+    expect(card).toContain("mg-time-fill");
+    expect(card.match(/<li[ >]/g)?.length).toBe(3);
+    expect(card).toContain(liveChecks(move, null).checks[0]?.label);
+    expect(card).toContain("mg-lit");
+    const large = renderToStaticMarkup(createElement(MoveGuide, { move, history: () => null, size: "large" }));
+    expect(large).toContain(`>${move.name}</h2>`);
+    expect(large.match(/<li[ >]/g)?.length).toBe(4);
+    expect(large).not.toContain("mg-time-fill");
   }
-  const plain = renderToStaticMarkup(createElement(MoveGuide, { move: moveOf("duck"), history: () => null, size: "medium" }));
-  expect(plain).not.toContain("mg-time-fill");
-  expect(plain).toContain("move-guide medium defend");
+  // Three rows at most on the card, for every move, and still the ones that matter first.
+  for (const move of ALL) {
+    const three = liveChecks(move, null, null, 3).checks;
+    expect(three.length, move.id).toBeLessThanOrEqual(3);
+    expect(three).toEqual(liveChecks(move, null).checks.slice(0, 3));
+  }
 });
