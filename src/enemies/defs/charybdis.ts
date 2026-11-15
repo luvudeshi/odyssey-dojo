@@ -33,7 +33,7 @@ export const enemy: EnemySpec = {
   ],
   weakSpots: [
     { id: "maw", label: "the throat of the whirlpool", position: [0, 1.4, 0.2], moves: ["overhead_strike", "cross", "hook", "hammer_fist", "knife_hand", "double_palm", "front_kick"] },
-    { id: "crest", label: "the crest of the wave", position: [0.5, 3.2, 0.7], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "uppercut"] },
+    { id: "crest", label: "the crest of the wave", position: [0.3, 3.2, 1.6], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "uppercut"] },
   ],
   taunts: [
     "Three times a day she drinks the sea, and three times gives it back.",

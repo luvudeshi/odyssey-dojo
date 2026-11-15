@@ -1,4 +1,4 @@
-.PHONY: setup dev lint test check ready credits fps
+.PHONY: setup dev lint test check ready credits fps tunnel
 
 setup:
 	npm install
@@ -28,3 +28,7 @@ credits:
 # Frame rate of every stop at each quality level, in headless Chrome. Writes docs/perf.md.
 fps:
 	node scripts/fps.mjs
+
+# Opens a Cloudflare quick tunnel to the server so a guest's phone gets https and its camera works (docs/rooms-tunnel.md).
+tunnel:
+	node scripts/tunnel.mjs
