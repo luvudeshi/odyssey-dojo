@@ -115,6 +115,8 @@ test("player one leaving: the player who stayed becomes player one, drawn where 
     // Moved and sized to the first player's place, so the stance measured for the hero still fits.
     const home = homeOf(seats.first?.image ?? []);
     expect([home.x, home.y, home.w].map((n) => Number(n.toFixed(3))), `frame ${String(i)}`).toEqual([0.3, 0.35, 0.12]);
+    // The camera panel draws them where they really stand.
+    expect(at(seats.firstSeen)).toBe(0.7);
     expect(seats.second).toBeNull();
     expect(seats.players).toBe(1);
   });
@@ -166,4 +168,26 @@ test("the camera store: off looks for one body, on looks for two and keeps playe
   expect(camera.second(t + LEAVE_MS + 1)).toBeNull();
   camera.setOn(false);
   expect([camera.wanted(), camera.players(t), camera.second(t)]).toEqual([1, 1, null]);
+});
+
+test("the camera store: after player two takes over, the frame to draw over the picture is where they really stand", () => {
+  const camera = createDuoCamera();
+  camera.setOn(true);
+  let t = 0;
+  const feed = (count: number, bodies: () => Body[]) => {
+    let last: Seats["first"] = null;
+    for (let i = 0; i < count; i += 1) { t += FRAME_MS; last = camera.take(bodies(), t); }
+    return last;
+  };
+  const both = feed(JOINED, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]);
+  // Before anyone leaves the drawn frame is the fight's own frame.
+  expect(both && camera.seen(both)).toBe(both);
+  const promoted = feed(Math.ceil(PROMOTE_MS / FRAME_MS) + 5, () => [body(0.7, 0.54, 0.16)]);
+  expect(at(promoted)).toBe(0.3);
+  expect(promoted && at(camera.seen(promoted))).toBe(0.7);
+  // An older frame, or one from somewhere else, is drawn as it is.
+  expect(both && camera.seen(both)).toBe(both);
+  // Off: nothing is changed.
+  camera.setOn(false);
+  expect(promoted && camera.seen(promoted)).toBe(promoted);
 });

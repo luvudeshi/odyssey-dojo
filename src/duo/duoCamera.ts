@@ -14,6 +14,11 @@ export interface DuoCamera {
   wanted(): 1 | 2;
   /** Every body in one picture (mirrored, as PoseFrame) and its time. Returns player one's frame, or null. */
   take(bodies: readonly Body[], t: number): PoseFrame | null;
+  /**
+   * The frame to draw over the camera's picture for a frame `take` gave out: the same frame, except after player
+   * two took the hero's place, when it is the body where it really stands and not where the hero stood.
+   */
+  seen(frame: PoseFrame): PoseFrame;
   /** Player two's newest frame, or null when there is none or it is older than a moment. */
   second(now: number): PoseFrame | null;
   /** 2 while a second player has joined and is still there. */
@@ -24,11 +29,13 @@ export function createDuoCamera(): DuoCamera {
   const seating = createSeating();
   let on = false;
   let second: PoseFrame | null = null;
+  let firstSeen: PoseFrame | null = null;
   return {
     setOn(next) {
       if (next === on) return;
       on = next;
       second = null;
+      firstSeen = null;
       seating.reset();
     },
     on: () => on,
@@ -36,8 +43,10 @@ export function createDuoCamera(): DuoCamera {
     take(bodies, t) {
       const seats = seating.next(bodies, t);
       if (seats.second) second = seats.second;
+      firstSeen = seats.firstSeen;
       return seats.first;
     },
+    seen: (frame) => (on && firstSeen && firstSeen.t === frame.t ? firstSeen : frame),
     second: (now) => (on && second && now - second.t < LEAVE_MS ? second : null),
     players: (now) => (on ? seating.players(now) : 1),
   };

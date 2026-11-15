@@ -58,8 +58,8 @@
   font-size: min(46px, calc(100cqi / (var(--chars, 6) * 0.8))); overflow-wrap: normal; word-break: normal; hyphens: manual;
 }
 .sky-card--mini .sky-card__word { font-size: min(44px, calc(100cqi / (var(--chars, 6) * 0.8))); }
-.sky-card__target { font: 700 17px/1.2 var(--rift-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rim-text); }
-.sky-card__situation { font: 17px/1.3 var(--sky-display); color: #ddd2c4; }
+.sky-card__target { font: 700 18px/1.2 var(--rift-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rim-text); }
+.sky-card__situation { font: 18px/1.3 var(--sky-display); color: #ddd2c4; }
 .sky-card__hint { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; font: 18px/1.3 var(--sky-label); }
 .sky-key { min-width: 36px; padding: 7px 10px; box-sizing: border-box; border: 1.6px solid var(--rim, #9fd8ff); border-radius: 3px; background: #14111a; box-shadow: 0 0 10px -2px var(--rim, #9fd8ff); font: 700 20px/1 var(--sky-label); color: #fff6ea; }
 .sky-key kbd { all: unset; font: inherit; }

@@ -33,6 +33,11 @@ const HOME_FRAMES = 15;
 export interface Seats {
   /** Player one, the hero: what the fight reads as its one player. */
   readonly first: PoseFrame | null;
+  /**
+   * Player one's frame as it is in the camera's picture. The same as `first`, except after player two took the
+   * hero's place: `first` is then moved to where the hero stood, and this is where the player really stands.
+   */
+  readonly firstSeen: PoseFrame | null;
   /** Player two's body, as soon as it is seen (also before they count as joined). */
   readonly second: PoseFrame | null;
   /** 2 only while a second player has joined and has not left. */
@@ -126,6 +131,7 @@ export function createSeating(): Seating {
       const raw = frameOf(firstBody, t);
       return {
         first: raw && moved ? rebase(raw, moved.from, moved.to) : raw,
+        firstSeen: raw,
         second: frameOf(secondBody, t),
         players: two ? 2 : 1,
       };
