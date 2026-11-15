@@ -1,9 +1,10 @@
-// The screen flow as a pure reducer: title -> style -> map -> intro (optional warm-up) -> fight -> result -> map.
+// The screen flow as a pure reducer: main menu (title) -> style -> map -> fight -> result -> map.
+// A stop on the map starts its fight at once. Training and Account are panels of the title screen, kept in App.
 import type { Assessment } from "../coach/contract";
 import { tuneFor } from "../coach/warmup";
 import type { EnemySpec, FightingStyle } from "../core/types";
 
-export type Screen = "title" | "together" | "host" | "join" | "guest" | "style" | "map" | "intro" | "fight" | "result";
+export type Screen = "title" | "host" | "join" | "guest" | "style" | "map" | "fight" | "result";
 
 export interface Flow {
   readonly screen: Screen;
@@ -15,7 +16,7 @@ export interface Flow {
   readonly cleared: readonly string[];
   /** True while this player hosts an online room: the fight is shared with a guest. */
   readonly hosting: boolean;
-  /** What the optional warm-up found out about the player; null until it is done. The monsters are tuned with it. */
+  /** What the Training Dojo found out about the player; null until a session is finished. The monsters are tuned with it. */
   readonly assessment: Assessment | null;
 }
 
@@ -23,15 +24,13 @@ export type FlowAction =
   | { readonly type: "ready" }
   | { readonly type: "pickStyle"; readonly style: FightingStyle }
   | { readonly type: "changeStyle" }
-  | { readonly type: "enter"; readonly index: number }
-  | { readonly type: "begin"; readonly seed: number }
+  | { readonly type: "enter"; readonly index: number; readonly seed: number }
   | { readonly type: "warmed"; readonly assessment: Assessment }
   | { readonly type: "ended"; readonly enemyId: string; readonly won: boolean }
   | { readonly type: "retry"; readonly seed: number }
   | { readonly type: "restart"; readonly seed: number }
   | { readonly type: "quit" }
   | { readonly type: "toMap" }
-  | { readonly type: "together" }
   | { readonly type: "hostRoom" }
   | { readonly type: "joinRoom" }
   | { readonly type: "joined" }
@@ -53,32 +52,29 @@ export function openAt(enemies: readonly EnemySpec[], stopId: string | null, roo
 
 export function flowReducer(flow: Flow, action: FlowAction): Flow {
   switch (action.type) {
-    case "together":
-      return flow.screen === "title" ? { ...flow, screen: "together" } : flow;
     case "hostRoom":
-      return flow.screen === "together" ? { ...flow, screen: "host" } : flow;
+      return flow.screen === "title" ? { ...flow, screen: "host" } : flow;
     case "joinRoom":
-      return flow.screen === "together" ? { ...flow, screen: "join" } : flow;
+      return flow.screen === "title" ? { ...flow, screen: "join" } : flow;
     case "joined":
       return flow.screen === "join" ? { ...flow, screen: "guest" } : flow;
     case "hosted":
       return flow.screen === "host" ? { ...flow, screen: "style", hosting: action.together } : flow;
     case "toTitle":
-      return flow.screen === "together" || flow.screen === "host" || flow.screen === "join" || flow.screen === "guest"
+      return flow.screen === "host" || flow.screen === "join" || flow.screen === "guest" || flow.screen === "style" || flow.screen === "map"
         ? { ...flow, screen: "title", hosting: false }
         : flow;
     case "ready":
-      return flow.screen === "title" ? { ...flow, screen: "style" } : flow;
+      // Back from the main menu with a style already chosen: straight to the map.
+      return flow.screen === "title" ? { ...flow, screen: flow.style ? "map" : "style" } : flow;
     case "pickStyle":
       return flow.screen === "style" ? { ...flow, style: action.style, screen: "map" } : flow;
     case "changeStyle":
       return flow.screen === "map" || flow.screen === "result" ? { ...flow, screen: "style" } : flow;
     case "enter":
-      return flow.screen === "map" && flow.style ? { ...flow, index: action.index, screen: "intro" } : flow;
-    case "begin":
-      return flow.screen === "intro" ? { ...flow, seed: action.seed, screen: "fight" } : flow;
+      return flow.screen === "map" && flow.style ? { ...flow, index: action.index, seed: action.seed, screen: "fight" } : flow;
     case "warmed":
-      return flow.screen === "intro" ? { ...flow, assessment: action.assessment } : flow;
+      return { ...flow, assessment: action.assessment };
     case "ended":
       if (flow.screen !== "fight") return flow;
       return {
@@ -93,7 +89,7 @@ export function flowReducer(flow: Flow, action: FlowAction): Flow {
     case "quit":
       return flow.screen === "fight" ? { ...flow, screen: "map" } : flow;
     case "toMap":
-      return flow.screen === "result" || flow.screen === "intro" ? { ...flow, screen: "map" } : flow;
+      return flow.screen === "result" ? { ...flow, screen: "map" } : flow;
   }
 }
 
@@ -113,7 +109,7 @@ export function unlocked(
   return enemies.every((enemy, i) => i >= index || !canPlay[i] || cleared.includes(enemy.id));
 }
 
-/** The monster for this fight: tuned to the player when the warm-up was done, the registry's own otherwise. */
+/** The monster for this fight: tuned to the player when a training session was finished, the registry's own otherwise. */
 export function enemyFor(enemy: EnemySpec, assessment: Assessment | null): EnemySpec {
   return assessment ? tuneFor(enemy, assessment) : enemy;
 }

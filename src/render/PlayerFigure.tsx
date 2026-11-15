@@ -25,6 +25,8 @@ export const HOME_Z = 1.2;
 /** No new webcam frame for this long and the stance takes over. */
 const STALE_SECONDS = 0.5;
 const BLEND_SECONDS = 0.12;
+/** How far a dodge throws him sideways (metres). */
+const DODGE_X = 0.9;
 const SETTLE_SECONDS = 0.8;
 const BRONZE = <meshStandardMaterial color="#c8963c" metalness={0.8} roughness={0.35} />;
 
@@ -114,14 +116,13 @@ export function PlayerFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null>
       if (fist) place(fist.position, joint(pose, index === 0 ? J.leftWrist : J.rightWrist));
     });
 
-    // Steps about the arena, damped back to the mark.
-    const striking = action === "punch" || action === "thrust";
-    const targetZ =
-      0.6 * decay(now, battle.playerHitAt, 0.4) -
-      (striking ? 0.15 : 0) + (action === "defeat" ? 0.4 : 0) - (action === "victory" ? 0.3 : 0);
+    // Steps about the arena, damped back to the mark. A strike adds no step: the leap carries him, and a mark that
+    // drifted while he flew would make him slide after landing.
+    const targetZ = 0.6 * decay(now, battle.playerHitAt, 0.4) + (action === "defeat" ? 0.4 : 0) - (action === "victory" ? 0.3 : 0);
     // The webcam lean already shows a dodge; only the stance needs help sliding.
-    const targetX = live ? 0 : action === "dodgeLeft" ? -0.7 : action === "dodgeRight" ? 0.7 : 0;
-    battle.heroX = MathUtils.damp(battle.heroX, targetX, 9, dt);
+    const targetX = live ? 0 : action === "dodgeLeft" ? -DODGE_X : action === "dodgeRight" ? DODGE_X : 0;
+    // Dodges snap aside and back; the other steps ease.
+    battle.heroX = MathUtils.damp(battle.heroX, targetX, 18, dt);
     battle.heroZ = MathUtils.damp(battle.heroZ, targetZ, 9, dt);
     // A counted strike's leap to the monster is measured on the GLB hero (hero/reach.ts); this figure rides along.
     figure.current?.position.set(battle.heroX + battle.reachX, battle.reachY, HOME_Z + battle.heroZ + battle.reachZ);

@@ -1,6 +1,7 @@
 // Content for the end-of-fight overlay: the stop's ending, the moves learned and where to go next.
 // FightScreen draws the .overlay and its title and score line; endPanel.css lays that wrapper as a pebble panel.
 import { useEffect } from "react";
+import { getProfile } from "../account/store";
 import { ENEMIES } from "../enemies/registry";
 import { endingFor } from "../enemies/endings";
 import { Button, PebbleHeading, installGround } from "../ui/pebble";
@@ -25,6 +26,7 @@ export function EndPanel(props: {
   const learned = practisedFrom(props.mastery);
   const practised = practisedLines(learned);
   const ending = endingFor(enemyId);
+  const hero = getProfile().name.trim();
   const name = ENEMIES.find((enemy) => enemy.id === enemyId)?.name ?? enemyId;
   return (
     <>
@@ -33,7 +35,7 @@ export function EndPanel(props: {
         <p className="end-line">{won ? ending.win : ending.loss}</p>
         <p className="end-lesson">{ending.lesson}</p>
       </div>
-      <p className="end-result">{won ? "The way onward is open." : "The gods turn their faces away. Rise and try again."}</p>
+      <p className="end-result">{hero ? `${hero}: ` : ""}{won ? "The way onward is open." : "The gods turn their faces away. Rise and try again."}</p>
       <div className="learned end-learned">
         <h2>Moves learned</h2>
         {learned.length === 0 ? <p>None yet.</p> : (

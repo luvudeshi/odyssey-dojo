@@ -28,7 +28,7 @@ import { sentence } from "../pose/cameraError";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
 import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
-import { battle, noteInput } from "../render/battle";
+import { battle, noteInput, stampPower } from "../render/battle";
 import { Scene } from "../render/Scene";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
@@ -56,6 +56,7 @@ export function FightScreen(props: {
   const [powerCount, setPowerCount] = useState(0);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
+  const patronRef = useRef<GodId>(god ?? "athena");
   const overRef = useRef(false);
   const [lost, setLost] = useState(false);
   const [lostWhy, setLostWhy] = useState("");
@@ -107,6 +108,7 @@ export function FightScreen(props: {
       // With the guest gone, nothing waits for a second strike: the host carries on alone at once.
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
+      const from = current;
       const result = step(current, enemy, style, input, dt);
       last = now;
       current = result.state;
@@ -118,7 +120,10 @@ export function FightScreen(props: {
         if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(enemy.id);
       });
       playVoice(result.events, current.phase);
-      if (result.events.some((event) => event.type === "powerUnleashed")) setPowerCount((n) => n + 1);
+      if (result.events.some((event) => event.type === "powerUnleashed")) {
+        stampPower(battle, patronRef.current, now / 1000, from);
+        setPowerCount((n) => n + 1);
+      }
       setState(current);
       handle = requestAnimationFrame(tick);
     };
@@ -135,6 +140,7 @@ export function FightScreen(props: {
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   // With no god (keyboard play or a skipped scan) Athena lends her aegis, as the power-ready banner says.
   const patron: GodId = god ?? "athena";
+  useEffect(() => { patronRef.current = patron; }, [patron]);
   const running = view === "off";
   useStopAudio(enemy.id, !running || over);
   useEffect(() => { overRef.current = over; pausedRef.current = !running; }, [over, running]);
@@ -159,7 +165,7 @@ export function FightScreen(props: {
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <SkyHud enemy={enemy} state={state} history={readHistory} />
-      <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} />
+      <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
       <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
       <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
