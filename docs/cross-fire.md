@@ -47,7 +47,7 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 | 20 trident_sweep | . | . | cat | . | cat | . | . | cat | . | cat | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . |
 | 21 aegis_push | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
 | 22 swift_dash | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | cat | . | . | . | . |
-| 23 moon_arrow | . | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . |
+| 23 moon_arrow | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . |
 | 24 sun_burst | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . |
 | 25 jump | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . |
 | 26 stake_thrust | . | . | . | . | cat | . | cat | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | cat |
@@ -63,14 +63,15 @@ styles (a karate reverse punch reading as a boxer's cross) are never asked of th
 fight, and the fight only counts the strike it asked for.
 
 Before this issue 15 such pairs fired. Seven were fixed then, and an eighth (thunderbolt read as uppercut) by the
-lenient-strikes PR; seven are left and pinned.
+lenient-strikes PR; seven are left and pinned. The moon arrow's cross and chain punch reads went away when a punch had to
+be in front of the shoulder.
 
 Jab and cross are distinct again, by the owner's later ruling: the jab is the left hand and the cross the right, so a
 right-hand punch reads as a cross only. The karate reverse punch, knife hand and the chain punch still read as a cross
 (and the chain punch as a jab); those are two styles' strikes and never asked of one player.
 
 The loosened gates (the lenient-moves PR) let the god gestures read as ordinary strikes too: the trident sweep as a
-hook, spear thrust, knife hand, double palm and chain punch; the moon arrow as a cross and chain punch; the sun burst
+hook, spear thrust, knife hand, double palm and chain punch; the sun burst
 as a knife hand; the thunderbolt as an uppercut again. A god gesture is done on purpose with the power ring full, the
 fight spends the power on it, and the extra reads only count if one of them is also the prompted strike, so they are
 pinned in `LEFT` rather than guarded. The MISS flash ignores a frame in which a power move was thrown.

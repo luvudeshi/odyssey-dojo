@@ -18,6 +18,12 @@ test("a wrong strike during a strike prompt flashes MISS once", () => {
   expect(watch(strikePhase("jab"), threw("hook"), [])).toBe(false);
 });
 
+test("no MISS when the prompted strike counted on the same frame as another strike", () => {
+  const watch = createMissWatch();
+  const both: CombatInput = { held: new Set(), struck: [{ move: "rising_palm", quality: 0.7, player: 0 }, { move: "jab", quality: 0.7, player: 0 }] };
+  expect(watch(strikePhase("jab"), both, [])).toBe(false);
+});
+
 test("the right strike, or standing still, never flashes MISS", () => {
   const watch = createMissWatch();
   for (let i = 0; i < 300; i++) expect(watch(strikePhase("jab"), idle, [])).toBe(false);
