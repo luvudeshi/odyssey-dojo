@@ -66,7 +66,7 @@ describe("which variables are secrets", () => {
   });
 
   it("goes by the look of the value too", () => {
-    for (const value of [GOOGLE_KEY, ELEVEN_KEY, "f3a9c1d7e5b2a8c4f6d0e1b3", "QWxhZGRpbjpvcGVuIHNlc2FtZQ=="]) expect(looksLikeKey(value), "a made-up key").toBe(true);
+    for (const value of [GOOGLE_KEY, ELEVEN_KEY, "f3a9c1d7e5b2a8c4f6d0e1b3", "QWxhZGRpbjpvcGVuIHNlc2FtZQ=="]) expect(looksLikeKey(value), "a made-up key").toBe(true); // gitleaks:allow (made-up keys: the test needs values that look real)
     for (const value of ["https://game.example.com:8787", "8787", "production", "true", "/usr/local/share/odyssey2026/data", "a plain sentence of words", "abc123"]) {
       expect(looksLikeKey(value), value).toBe(false);
     }
