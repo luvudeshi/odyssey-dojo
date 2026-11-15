@@ -36,9 +36,10 @@
 .set-account__actions .set-btn { width: 100%; }
 .set-btn .acc-btn__icon { width: 24px; height: 24px; margin: 0; stroke: currentColor; fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .set-account__deeds { padding: 38px clamp(16px, 2vw, 28px) 20px; }
-.set-account__count { position: absolute; right: 26px; top: 28px; font: 700 18px/1 var(--mb-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mb-ink-soft); }
+.set-account__count { text-align: right; margin: 0 0 8px !important; font: 700 18px/1 var(--mb-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mb-ink-soft); }
 .set-account__count b { font: 700 28px var(--mb-display); color: var(--mb-ink); }
-.set-account__groups { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(14px, 2.4vh, 26px) clamp(16px, 2vw, 32px); }
+.set-account__groups { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto auto; grid-auto-flow: column; gap: clamp(14px, 2.4vh, 26px) clamp(16px, 2vw, 32px); align-items: start; }
+.set-account__groups section:nth-child(1) { grid-row: 1 / 3; } .set-account__groups section:nth-child(2) { grid-row: 3 / 5; } .set-account__groups section:nth-child(3) { grid-row: 1 / 3; } .set-account__groups section:nth-child(4) { grid-row: 3 / 5; }
 .set-account__groups h2 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 8px; padding-bottom: 4px; font: 700 19px/1.2 var(--mb-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--mb-ink); border-bottom: 3px solid transparent; border-image: var(--mb-leaf) 1; }
 .set-account__groups h2 b { font: 700 19px var(--mb-label); color: var(--mb-gold-deep); }
 .set-account__groups ul { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 4px; margin: 0; padding: 0; list-style: none; }
@@ -73,7 +74,7 @@
 :root[data-look="marble"] .dojo-pick .dojo-closing { font: 500 clamp(18px, 2.6vh, 22px)/1.35 var(--mb-body); color: var(--mb-ink-soft); text-shadow: none; }
 :root[data-look="marble"] .dojo-closing { text-shadow: none; }
 :root[data-look="marble"] .dojo-styles { gap: 18px; margin: 14px 0 6px; max-width: 70rem; }
-:root[data-look="marble"] .dojo-style { display: grid; align-content: start; justify-items: center; gap: 8px; width: 12.5rem; min-height: 14rem; padding: 40px 14px 18px; border-radius: 16px 16px 10px 10px; text-transform: none; letter-spacing: 0; }
+:root[data-look="marble"] .dojo-style { display: grid; align-content: start; justify-items: center; gap: 8px; width: 12.5rem; min-height: 0; padding: 40px 14px 22px; border-radius: 16px 16px 10px 10px; text-transform: none; letter-spacing: 0; }
 :root[data-look="marble"] .dojo-style::before { content: ""; position: absolute; inset: auto; left: 50%; top: 10px; z-index: 0; width: 26px; height: 26px; margin-left: -13px; clip-path: none; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1b8, var(--mb-gold) 60%, var(--mb-gold-deep)); box-shadow: 0 2px 3px rgba(24, 36, 60, 0.4); }
 :root[data-look="marble"] .dojo-style::after { content: none; }
 :root[data-look="marble"] .dojo-style:hover::before { background: radial-gradient(circle at 35% 30%, #fff1b8, var(--mb-gold) 60%, var(--mb-gold-deep)); }
@@ -125,3 +126,11 @@
 :root[data-look="marble"] .dojo-tuned { font: 500 21px/1.3 var(--mb-body); color: var(--mb-ink); text-shadow: none; }
 :root[data-look="marble"] .dojo-buttons .dojo-button { font-size: 20px; padding: 12px 32px; }
 :root[data-look="marble"] .dojo-camera video { border: 3px solid var(--mb-gold); box-shadow: 0 0 0 4px #fff, var(--mb-shadow-up); }
+
+.set-account__hero .set-title { font-size: clamp(26px, 4.2vh, 36px); }
+
+/* A big window: the same layout, scaled up, so the sheets do not look small on the painting. */
+@media (min-width: 1700px) and (min-height: 1000px) {
+  .set-menu > :not(.set-backdrop, .set-defs, .set-overlay) { zoom: 1.25; }
+  .set-account__grid { zoom: 1.25; }
+}

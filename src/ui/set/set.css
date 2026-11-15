@@ -25,8 +25,8 @@
   --mb-shadow-up: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 16px 24px -8px rgba(24, 36, 60, 0.5), 0 4px 8px rgba(24, 36, 60, 0.28);
   /* Veined marble: two layers of ridged noise, drawn once as a tile. */
   --mb-veins:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='340'><filter id='f' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='turbulence' baseFrequency='0.006 0.012' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.48  0 0 0 0 0.55  -15 0 0 0 3.1'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.5'/></svg>") 0 0 / 520px 340px,
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='f' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='turbulence' baseFrequency='0.02 0.034' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.58  0 0 0 0 0.64  -16 0 0 0 3.0'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.35'/></svg>") 0 0 / 300px 300px;
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='340'><filter id='f' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='turbulence' baseFrequency='0.006 0.012' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.48  0 0 0 0 0.55  -15 0 0 0 3.1'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.2'/></svg>") 0 0 / 520px 340px,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='f' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='turbulence' baseFrequency='0.02 0.034' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.58  0 0 0 0 0.64  -16 0 0 0 3.0'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.13'/></svg>") 0 0 / 300px 300px;
   --mb-meander: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='16' viewBox='0 0 24 16'><path d='M0 14.5H24M20 14.5V2H4V10H12V6' fill='none' stroke='%239c7420' stroke-width='2.4' stroke-linecap='square'/></svg>") 0 0 / 24px 16px repeat-x;
 }
 .set-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
@@ -138,3 +138,4 @@
   .set-btn, .set-back, .set-plaque { transition: none; }
   .set-btn:hover, .set-back:hover, .set-plaque:hover { transform: none; }
 }
+:root[data-look="marble"] body { font-variant-numeric: lining-nums; }
