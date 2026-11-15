@@ -139,8 +139,9 @@ async function platformFonts(context, page, selector) {
 }
 
 /**
- * Runs in the page: what the HUD shows right now. Every selector names the pebble HUD (hb-, pb-) and the star-chart
- * HUD (sky-, sk-) side by side. Health is read from the bars' meter role, which both have: a whole percentage.
+ * Runs in the page: what the HUD shows right now. Every selector names the pebble HUD (hb-, pb-), the star-chart
+ * HUD (sky-, sk-) and the forge bars (fg-) side by side. Health is read from the bars' meter role, which all of
+ * them have: a whole percentage.
  */
 function readHud() {
   const card = document.querySelector(".fight .hb-card, .fight .sky-card");
@@ -153,7 +154,7 @@ function readHud() {
     key: card?.querySelector("kbd")?.textContent ?? null,
     word: card?.querySelector(".pb-move, .sky-card__word")?.textContent ?? "",
     target: card?.querySelector(".pb-target, .sky-card__target")?.textContent ?? "",
-    score: Number.parseInt(document.querySelector(".fight .hb-score, .fight .sk-score__num")?.textContent ?? "", 10),
+    score: Number.parseInt(document.querySelector(".fight .hb-score, .fight .sk-score__num, .fight .fg-score__num")?.textContent ?? "", 10),
     you: percent(bars.find(mine)),
     enemy: percent(bars.find((bar) => !mine(bar))),
     ended,
