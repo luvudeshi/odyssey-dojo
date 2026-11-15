@@ -98,8 +98,9 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
   /** The newest message number heard; the relay numbers each member's messages 1, 2, 3 and so on. */
   let last = 0;
   let peer: boolean | null = null;
-  let closed = false;
-  let polling = false;
+  const state = { closed: false, polling: false };
+  // A call, so the checks after an await are not narrowed to "still open".
+  const isClosed = (): boolean => state.closed;
   let inFlight: AbortController | null = null;
 
   const hear = (raw: unknown): void => {
@@ -124,15 +125,15 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
   };
 
   const pollLoop = async (): Promise<void> => {
-    while (!closed) {
+    while (!isClosed()) {
       const ask = new AbortController();
       inFlight = ask;
       let again = false;
       try {
         const response = await deps.fetch(`${path}/poll?${query}&after=${String(last)}`, { method: "GET", signal: ask.signal });
-        if (closed || response.status === 404 || response.status === 401) return;
+        if (isClosed() || response.status === 404 || response.status === 401) return;
         const data = response.ok ? await response.json() : null;
-        if (closed) return;
+        if (isClosed()) return;
         again = !takePoll(data);
       } catch {
         again = true;
@@ -142,10 +143,9 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
   };
 
   const stream = deps.openStream(`${path}/events?${query}`);
-  let proof: ReturnType<typeof setTimeout> | undefined;
   const usePolling = (): void => {
-    if (closed || polling) return;
-    polling = true;
+    if (state.closed || state.polling) return;
+    state.polling = true;
     clearTimeout(proof);
     stream.onmessage = null;
     stream.onerror = null;
@@ -153,7 +153,7 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     void pollLoop();
     stream.close();
   };
-  proof = setTimeout(usePolling, deps.streamProofMs ?? STREAM_PROOF_MS);
+  const proof = setTimeout(usePolling, deps.streamProofMs ?? STREAM_PROOF_MS);
   stream.onerror = usePolling;
   stream.onmessage = (event) => {
     clearTimeout(proof);
@@ -180,7 +180,7 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
       listeners.push(listener);
     },
     close() {
-      closed = true;
+      state.closed = true;
       clearTimeout(proof);
       stream.onmessage = null;
       stream.onerror = null;
