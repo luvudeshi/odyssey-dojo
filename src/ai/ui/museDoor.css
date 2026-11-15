@@ -1,0 +1,18 @@
+/* The main menu's way in to the Muse's fight (museDoor.tsx): one button at the foot of the menu, under the four shields.
+   Its name is the shields' own bronze ribbon (.menu-shield__name) and its line is set as theirs is, with the kit's tokens (--st-*).
+   It sits under the camera problem card (z-index 20) and above the storm. */
+.muse-door {
+  position: fixed; left: 50%; bottom: 30px; z-index: 2; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center;
+  min-width: 0; margin: 0; padding: 6px 10px 6px; border: 0; border-radius: 14px; background: none; box-shadow: none; color: var(--st-ink);
+  font-family: var(--st-body); text-transform: none; letter-spacing: normal; cursor: pointer;
+}
+.muse-door:hover, .muse-door:active { background: none; box-shadow: none; color: var(--st-ink); }
+.muse-door:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 4px; }
+.muse-door .menu-shield__name { margin-top: 0; }
+.muse-door:is(:hover, :focus-visible) .menu-shield__name { filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.6)) brightness(1.12); }
+.muse-door__line {
+  display: block; margin-top: 6px; padding: 2px 12px; white-space: nowrap; font: 700 18px/1.3 var(--st-body); color: var(--st-ink);
+  text-shadow: 0 0 3px #000, 0 1px 4px #000, 0 0 12px #000; background: radial-gradient(closest-side, rgba(3, 7, 9, 0.7), transparent); border-radius: 12px;
+}
+/* On a short window the line would reach the shields' own lines, so the ribbon stands alone. */
+@media (max-height: 660px) { .muse-door { bottom: 20px; } .muse-door__line { display: none; } }
