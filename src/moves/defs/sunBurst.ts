@@ -1,5 +1,5 @@
 import { strikeQuality } from "../../pose/quality";
-import type { MoveDef, PoseFrame } from "../../core/types";
+import type { Baseline, MoveDef, PoseFrame } from "../../core/types";
 import { JOINT, distance2d, joint, latest, recent, shoulderWidth } from "../../pose/signals";
 import { armOut, bodyWidth } from "../handSignals";
 
@@ -7,11 +7,12 @@ import { armOut, bodyWidth } from "../handSignals";
 const WIDE = 0.875;
 
 /** True when the arm is straight out to its own side, not forward. */
-function wide(frame: PoseFrame, side: "left" | "right"): boolean {
+function wide(frame: PoseFrame, side: "left" | "right", baseline: Baseline | null): boolean {
   const left = side === "left";
   const shoulder = joint(frame.world, left ? JOINT.leftShoulder : JOINT.rightShoulder);
   const wrist = joint(frame.world, left ? JOINT.leftWrist : JOINT.rightWrist);
-  return armOut(frame, side) && (left ? shoulder.x - wrist.x : wrist.x - shoulder.x) > WIDE * bodyWidth(frame);
+  const out = left ? shoulder.x - wrist.x : wrist.x - shoulder.x;
+  return armOut(frame, side, baseline) && out > WIDE * bodyWidth(frame, baseline);
 }
 
 function handsTogether(frame: PoseFrame): boolean {
@@ -31,7 +32,7 @@ export const move: MoveDef = {
   teaches: "Bursting both arms out from your chest breaks a front grab and opens space to leave.",
   detect(history) {
     const frame = latest(history);
-    if (!frame || !wide(frame, "left") || !wide(frame, "right")) return 0;
+    if (!frame || !wide(frame, "left", history.baseline) || !wide(frame, "right", history.baseline)) return 0;
     return recent(history, 500).some(handsTogether) ? 1 : 0;
   },
   quality(history) {
