@@ -30,7 +30,7 @@ function Stage({ god }: { god: GodId | null }) {
       <div style={{ ...box, right: 24, top: "50%", width: 272, height: 380, transform: "translateY(-50%)" }}>prompt card</div>
       <div style={{ ...box, left: "50%", bottom: 14, width: 250, height: 32, transform: "translateX(-50%)" }}>power chip (pebble HUD)</div>
       <div style={{ ...box, left: 100, top: 92, width: 196, height: 38 }}>power chip (star chart)</div>
-      <div style={{ ...box, left: "38%", top: "22%", width: "14%", height: "58%" }}>hero</div>
+      <div style={{ ...box, left: "37%", top: "56%", width: "11%", height: "34%" }}>hero</div>
       {VOICE ? <PowerReady god={god} power={1} keyboard={KEYS} /> : <PowerReady god={god} power={1} keyboard={KEYS} announce={silent} />}
     </div>
   );
@@ -38,7 +38,7 @@ function Stage({ god }: { god: GodId | null }) {
 
 /** Every god and no god, camera and keyboard, each in a short dark cell with the banner at its foot. */
 function Wall() {
-  const cell = { position: "relative", height: 190, background: DARK, "--power-ready-bottom": "22px" } as CSSProperties;
+  const cell = { position: "relative", height: 200, background: DARK, "--power-ready-bottom": "22px", "--power-ready-left": "8px", "--power-ready-right": "8px" } as CSSProperties;
   return (
     <main style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, padding: 6, background: "#000" }}>
       {ALL.flatMap((god) =>
