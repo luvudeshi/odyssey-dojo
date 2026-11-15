@@ -53,7 +53,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 - **in the game** Quest map: each fight you win opens the next. `?stop=<id>` jumps to a stop.
 - **in the game** An intro line, a win line and a loss line per enemy, and a story ending per stop on the result screen.
 - **in the game** The real situation each monster attack stands for, shown with the defend prompt.
-- **in the game** Alternate looks behind a URL flag: `?look=` for Charybdis. Polyphemus has one model and no flag.
+- **in the game** Alternate looks behind URL flags: `?model=` for Polyphemus, `?look=` for Charybdis.
 
 ## Coaching, warm-up and practice
 
