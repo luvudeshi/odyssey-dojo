@@ -1,9 +1,12 @@
-// Pictures of the fight's feedback flash (src/hud/MissFlash.tsx, src/coach/extra/fightFlash.ts) over a real fight:
-// starts the dev server on a free port, opens the first stop in Story mode on the keyboard, plays it, and saves
-//   live-strike.png, live-defend.png   the flash the fight itself raised for a strike that landed and a defend that counted
-//   excellent.png, great.png, good.png, needs-improvement.png   each grade, with a tip, raised over the same fight
-// Keyboard play only ever earns one grade (a key press has one quality and no body to read), so the four grades are
-// raised through the game's own `noteFeedback`, the call the fight makes: the same element, place and timing.
+// Pictures of the fight's flash for attempts that need work (src/hud/MissFlash.tsx, src/coach/extra/fightFlash.ts)
+// over a real fight: starts the dev server on a free port, opens the first stop in Story mode on the keyboard, plays
+// it, and saves
+//   strong-strike.png   a strike made on its key: no flash from here (only the game's own hit word, as on main)
+//   failed-defend.png   a defend prompt left alone, so the attack hits: NEEDS IMPROVEMENT and the key to hold
+//   missed-prompt.png   a strike prompt left to run out: MISS and the key to press
+//   weak-strike.png, fair-strike.png   NEEDS IMPROVEMENT and GOOD with a body tip. A key press has no body to read,
+//     so these two are raised through the game's own `noteFeedback` (the call the fight makes) with tips the
+//     grading gives: the same element, place and timing, but not from a real camera.
 // For every picture it prints the flash's box and whether it is inside the screen and clear of the prompt card.
 //
 //   node scripts/feedback-flash-shots.mjs --shots=<folder> [--size=1280x720] [--url=http://127.0.0.1:5173] [--reduced]
@@ -32,12 +35,10 @@ const LIVE_TIMEOUT_MS = 60_000;
 /** A picture is taken this long after the flash comes up: past the pop, well inside the hold. */
 const SETTLE_MS = 500;
 const STORY_CARD = /^Story mode/;
-/** The grades, with a tip as long as a tip may be (24 characters), so the widest case is the one looked at. */
-const GRADES = [
-  { file: "excellent", feedback: { grade: "EXCELLENT", points: 150, tip: null } },
-  { file: "great", feedback: { grade: "GREAT", points: 100, tip: "Guard hand by your chin" } },
-  { file: "good", feedback: { grade: "GOOD", points: 50, tip: "Turn your hips into it" } },
-  { file: "needs-improvement", feedback: { grade: "NEEDS IMPROVEMENT", points: 25, tip: "Extend your arm fully" } },
+/** Raised by hand: a key press is never graded weak, so these stand for what a camera player would see. */
+const BODY_CASES = [
+  { file: "weak-strike", feedback: { word: "NEEDS IMPROVEMENT", tip: "Guard hand by your chin" } },
+  { file: "fair-strike", feedback: { word: "GOOD", tip: "Turn your hips into it" } },
 ];
 
 const args = process.argv.slice(2);
@@ -148,16 +149,18 @@ function readFlash() {
 }
 
 /**
- * Plays the fight by its prompt card (holds the defend key, presses the strike key) until `wanted(card)` was the
- * card when a flash came up, or the time runs out. Returns true when the flash is up.
+ * Plays the fight by its prompt card: holds the defend key and presses the strike key, except where `skip` says to
+ * leave a defend or a strike alone. Stops when `done(card, struckAt)` is true (struckAt: when a strike key was last
+ * pressed) or the time runs out. Returns true when it stopped by `done`.
  */
-async function playUntilFlash(page, wanted, held) {
+async function playUntil(page, skip, held, done) {
   const started = Date.now();
   let lastStrike = 0;
   while (Date.now() - started < LIVE_TIMEOUT_MS) {
     const card = await page.evaluate(readCard);
     if (card.over) return false;
-    if (card.key && card.defend) {
+    if (await done(card, lastStrike)) return true;
+    if (card.key && card.defend && !skip.defend) {
       if (held.key !== card.key) {
         if (held.key) await page.keyboard.up(held.key);
         await page.keyboard.down(card.key);
@@ -166,16 +169,18 @@ async function playUntilFlash(page, wanted, held) {
     } else {
       if (held.key) await page.keyboard.up(held.key);
       held.key = null;
-      if (card.key && Date.now() - lastStrike > 150) {
+      if (card.key && !card.defend && !skip.strike && Date.now() - lastStrike > 150) {
         await page.keyboard.press(card.key);
         lastStrike = Date.now();
       }
     }
-    if (card.key && wanted(card) && await page.evaluate(() => Boolean(document.querySelector(".hb-feedback")))) return true;
     await sleep(40);
   }
   return false;
 }
+
+/** Runs in the page: the words of the flash up now, or "". */
+const flashWords = (page) => page.evaluate(() => document.querySelector(".hb-feedback")?.getAttribute("aria-label") ?? "");
 
 async function main() {
   const shots = option("shots", "");
@@ -215,17 +220,40 @@ async function main() {
       if (!ok) failed += 1;
       say(`${ok ? "PASS" : "FAIL"} ${label}: "${seen.words}" box ${JSON.stringify(flash)} card ${JSON.stringify(card)} inside=${String(inside)} clear-of-card=${String(clear)} pointer-events=${seen.pointer}`);
     };
-    for (const [file, label, wanted] of [["live-strike", "the fight's own flash for a strike", (card) => !card.defend], ["live-defend", "the fight's own flash for a defend", (card) => card.defend]]) {
-      if (await playUntilFlash(page, wanted, held)) await shoot(file, label);
-      else { failed += 1; say(`FAIL ${label}: no flash came up in ${String(LIVE_TIMEOUT_MS / 1000)} s`); }
-      // Let that flash go before the next one is looked for.
-      await page.waitForFunction(() => !document.querySelector(".hb-feedback"), null, { timeout: 5000 }).catch(() => undefined);
-    }
+    const fail = (label) => { failed += 1; say(`FAIL ${label}: did not come up in ${String(LIVE_TIMEOUT_MS / 1000)} s`); };
+    const gone = () => page.waitForFunction(() => !document.querySelector(".hb-feedback"), null, { timeout: 5000 }).catch(() => undefined);
+    // 1. A strike made on its key: 800 ms after the press there is no flash from here.
+    const strong = await playUntil(page, {}, held, async (card, struckAt) => struckAt > 0 && Date.now() - struckAt > 800);
+    if (strong) {
+      const words = await flashWords(page);
+      await page.screenshot({ path: join(out, "strong-strike.png") });
+      if (words) failed += 1;
+      say(`${words ? "FAIL" : "PASS"} strong strike: flash ${words ? `"${words}"` : "none"}`);
+    } else fail("strong strike");
+    await gone();
+    // 2. A defend prompt left alone: the attack hits.
+    if (await playUntil(page, { defend: true }, held, async () => /^Needs improvement/.test(await flashWords(page)))) await shoot("failed-defend", "failed defend");
+    else fail("failed defend");
+    await gone();
+    // 3. A strike prompt left to run out.
+    if (await playUntil(page, { strike: true }, held, async () => /^Miss/.test(await flashWords(page)))) await shoot("missed-prompt", "missed prompt");
+    else fail("missed prompt");
     if (held.key) await page.keyboard.up(held.key);
-    for (const { file, feedback } of GRADES) {
+    await gone();
+    // 4. What a camera player sees for a weak strike, raised by hand (see the top of this file).
+    // Each is raised just as a strike prompt comes up, so nothing from the fight replaces it before the picture.
+    for (const { file, feedback } of BODY_CASES) {
+      // The first look at a strike card right after a defend: the strike's whole window is still ahead.
+      let afterDefend = false;
+      const fresh = async (card) => {
+        const now = afterDefend && Boolean(card.key) && !card.defend;
+        afterDefend = Boolean(card.defend);
+        return now;
+      };
+      if (!await playUntil(page, { strike: true }, held, fresh)) { fail(file); continue; }
       await page.evaluate(async (result) => { (await import("/src/hud/MissFlash.tsx")).noteFeedback(result); }, feedback);
-      await shoot(file, feedback.grade);
-      await sleep(1900);
+      await shoot(file, `${feedback.word} (raised by hand)`);
+      await gone();
     }
   } finally {
     await browser?.close().catch(() => undefined);

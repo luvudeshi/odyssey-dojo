@@ -1,9 +1,9 @@
 // The MISS word: the same flash as GOOD / GREAT / PERFECT (it wears the same class for size and place), in a cold red.
-// The same element also grades a move that counted (a strike that landed, a defend that held): the grade word, the
-// bonus for it and one short tip on a second line. What it says and how long it stays is src/coach/extra/fightFlash.ts;
-// its look is fightFlash.css beside that. It is only shown: nothing is spoken.
+// In a story fight the same element also says what to fix after an attempt that needs work: MISS for a strike prompt
+// that went by, GOOD or NEEDS IMPROVEMENT for a weak strike or a failed defend, with one short line under the word.
+// When and what is src/coach/extra/fightFlash.ts; its look is fightFlash.css beside that. Nothing is spoken.
 import { useEffect, useReducer } from "react";
-import { GRADE_KEYS, NO_FLASH, flashMs, flashStep, spokenLine } from "../coach/extra/fightFlash";
+import { NO_FLASH, WORD_KEYS, flashMs, flashStep, spokenLine } from "../coach/extra/fightFlash";
 import type { FlashFeedback } from "../coach/extra/fightFlash";
 import { RiftPlate } from "./sky/rift/RiftPlate";
 import "./missFlash.css";
@@ -15,21 +15,18 @@ export function noteMiss(): void {
   listeners.forEach((listen) => { listen(null); });
 }
 
-/** Flash a grade for a move that has just counted. It takes the place of whatever the flash is showing. */
+/** Flash a word with a line on what to do. It takes the place of whatever the flash is showing. */
 export function noteFeedback(feedback: FlashFeedback): void {
   listeners.forEach((listen) => { listen(feedback); });
 }
 
-/** The flash's words for a grade. On its own so it can be drawn without a fight. */
+/** The flash's words. On its own so it can be drawn without a fight. */
 export function FeedbackWords({ feedback }: { feedback: FlashFeedback }) {
-  const grade = GRADE_KEYS[feedback.grade];
+  const key = WORD_KEYS[feedback.word];
   return (
-    <div className="hb-rating hb-feedback" data-feedback={grade} role="status" aria-live="polite" aria-label={spokenLine(feedback)}>
-      <RiftPlate tone={grade === "needs-improvement" ? "ice" : grade === "good" ? "glass" : "lava"} blades={grade === "excellent"} />
-      <span className="hb-feedback__top" aria-hidden="true">
-        <strong>{feedback.grade}</strong>
-        <b>+{feedback.points}</b>
-      </span>
+    <div className={`hb-rating hb-feedback${key === "miss" ? " hb-miss" : ""}`} data-feedback={key} role="status" aria-live="polite" aria-label={spokenLine(feedback)}>
+      <RiftPlate tone={key === "good" ? "glass" : "ice"} />
+      <strong className="hb-feedback__top" aria-hidden="true">{feedback.word}</strong>
       {feedback.tip && <span className="hb-feedback__tip" aria-hidden="true">{feedback.tip}</span>}
     </div>
   );
