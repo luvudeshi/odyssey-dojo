@@ -37,6 +37,8 @@ const box = () => {
 };
 const mode = process.env.FAKE_MODE;
 if (mode === "up") { box(); stay(); }
+// A cloudflared that takes its time to stop: the real one waits for requests still in flight, and a room's event stream is one.
+if (mode === "stubborn") { process.on("SIGTERM", () => undefined); box(); stay(); }
 if (mode === "dies") { box(); setTimeout(() => process.exit(1), 400); }
 if (mode === "silent") stay();
 if (mode === "offline") {
@@ -187,11 +189,13 @@ async function roomBase(port: number): Promise<unknown> {
 /**
  * A server that says which address it hands to phones, as /api/rooms/address does, or has no such route when `base` is null.
  * With `guarded` false it stands for a server started before the tunnel guard: a marked GET /api/level gets that server's 404, not a 403.
+ * With `vite` true it has the one file only a Vite dev server has.
  */
-async function gameThatSays(base: string | null, guarded = true): Promise<number> {
+async function gameThatSays(base: string | null, guarded = true, vite = false): Promise<number> {
   const server = createServer((request, response) => {
     const says = request.url === "/api/rooms/address";
     if (request.url === "/api/level") response.writeHead(guarded && "cf-ray" in request.headers ? 403 : 404).end();
+    else if (request.url === "/@vite/client") response.writeHead(vite ? 200 : 404, { "Content-Type": "text/javascript" }).end();
     else if (says && base === null) response.writeHead(404).end();
     else response.writeHead(200, { "Content-Type": says ? "application/json" : "text/html" }).end(says ? JSON.stringify({ base }) : "<!doctype html>");
   });
@@ -297,6 +301,32 @@ test("SIGTERM and a closed terminal stop it the same way", async () => {
   expect(starts().map((start) => isRunning(start.pid))).toEqual([false, false]);
 });
 
+test("the address is taken back as soon as the script is told to stop, before a slow cloudflared has gone", async () => {
+  const { port } = await game();
+  const file = join(dataDir, TUNNEL_FILE);
+  for (const name of ["SIGTERM", "SIGINT"] as const) {
+    const script = tunnel("stubborn", [String(port)], { TUNNEL_BEAT_MS: "50", TUNNEL_KILL_MS: "1500" });
+    await until("the last line", () => script.out().includes("Press Ctrl+C"));
+    expect(await roomBase(port), name).toBe(ADDRESS);
+    const standIn = starts().at(-1)?.pid ?? 0;
+
+    script.signal(name);
+    await until("the file to go", () => !existsSync(file));
+    // cloudflared is still running, and the server already hands out the plain address again.
+    expect(isRunning(standIn), name).toBe(true);
+    expect(await roomBase(port), name).toMatch(/^http:\/\//);
+    // No beat writes the file back while cloudflared lingers.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(isRunning(standIn), name).toBe(true);
+    expect(existsSync(file), name).toBe(false);
+
+    // It is killed in the end, and the script ends as after any stop.
+    expect(await script.done, name).toBe(0);
+    expect(isRunning(standIn), name).toBe(false);
+    expect(existsSync(file), name).toBe(false);
+  }
+});
+
 test("a script killed outright leaves its file behind, and the server stops using it at once", async () => {
   const { port, pageUrl } = await game();
   const lan = new URL(await pageUrl()).origin;
@@ -365,6 +395,12 @@ test("it will not open a tunnel to nothing or to an unguarded server: no server,
   const old = tunnel("up", [String(await gameThatSays(ADDRESS, false))]);
   expect(await old.done).toBe(1);
   expect(oneLine(old.err())).toContain("does not refuse the AI routes to a request from a tunnel, so no tunnel was opened.");
+
+  // The Vite dev server passes the other checks, since it proxies /api/ to the game, but it blocks a tunnel's host name.
+  const dev = await gameThatSays(ADDRESS, true, true);
+  const vite = tunnel("up", [String(dev)]);
+  expect(await vite.done).toBe(1);
+  expect(oneLine(vite.err())).toBe(`Port ${String(dev)} is the Vite dev server. Point the tunnel at the game server (port 8787 unless you changed it).`);
 
   for (const bad of ["abc", "0", "65536", "80 80", "-1"]) {
     const script = tunnel("up", [bad]);
