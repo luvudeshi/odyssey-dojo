@@ -23,7 +23,7 @@
   color: transparent; background: linear-gradient(#fff4c0, #ffd040 30%, #ff8410 62%, #c8300a); -webkit-background-clip: text; background-clip: text;
   -webkit-text-stroke: 0.8px #2a0602; filter: drop-shadow(0 0 6px rgba(255, 90, 10, 0.7)) drop-shadow(0 2px 2px #000); /* static text: drawn once */
 }
-.sky-hud .fg-boss__phase { justify-self: end; font: 700 18px/1 var(--rift-font); letter-spacing: 0.12em; text-transform: uppercase; color: var(--rift-violet); text-shadow: 0 2px 3px #000, 0 0 2px #000; }
+.sky-hud .fg-boss__phase { white-space: nowrap; justify-self: end; font: 700 18px/1 var(--rift-font); letter-spacing: 0.12em; text-transform: uppercase; color: var(--rift-violet); text-shadow: 0 2px 3px #000, 0 0 2px #000; }
 .sky-hud .fg-boss__bar { position: relative; display: flex; align-items: center; height: 56px; margin-top: 10px; }
 .sky-hud .fg-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 
