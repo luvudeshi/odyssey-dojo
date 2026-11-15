@@ -4,6 +4,7 @@
 //   npx tsx server/tools/genClips.ts story           Homer's lines   -> public/audio/narration/<id>.mp3
 //                                                    monster taunts  -> public/audio/taunts/<id>.mp3
 //   npx tsx server/tools/genClips.ts sfx             sound effects   -> public/audio/sfx/<event>.mp3
+//                                                    (--only=<clip> makes just that one; with --force, only that one again)
 //   npx tsx server/tools/genClips.ts music           music, ambience -> public/audio/music/<scene>.mp3
 //   npx tsx server/tools/genClips.ts stops           each later stop's ambience and monster sounds
 //                                                    -> public/audio/stops/<enemy id>/<clip>.mp3
@@ -35,7 +36,10 @@ interface Job {
 
 // Best first. The first model the key is allowed to use wins.
 const SPEECH_MODELS = ["eleven_v4", "eleven_multilingual_v2"] as const;
-/** What each combat event should sound like, and for how many seconds. */
+/**
+ * What each combat event should sound like, and for how many seconds. The last five are not events: the chime for an
+ * unlocked achievement and one sound for each kind of defend (src/audio/cues.ts names them).
+ */
 const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]>> = {
   telegraph: ["A giant winding up a heavy wooden club in a stone cave, low ominous whoosh rising in tension", 1],
   defended: ["A bronze shield blocking a heavy blow, sharp metallic clang with a short ring", 0.8],
@@ -48,6 +52,17 @@ const SOUNDS: Readonly<Record<string, readonly [prompt: string, seconds: number]
   powerUnleashed: ["A divine thunderclap with a burst of crackling holy energy", 2],
   won: ["A short triumphant ancient Greek fanfare of brass horns and drums", 3],
   lost: ["A dark low descending drone with distant thunder, the sound of defeat", 3],
+  // The chime is the fifth take, picked by measurement, not by ear (docs/audio-levels.md has the numbers). Asking for
+  // "plucked lyre notes ending on a bell tone" and for "plucked harp notes" gave one low pluck each; "small bells" and
+  // "a glockenspiel" gave a thin sparkle nearly all above 3 kHz. This one has several notes in its first 0.4 s.
+  unlock: ["A short achievement chime: a quick upward arpeggio of four bright notes on a lyre and small bells, warm and sparkling, ending on a clear high note", 1.1],
+  defendBlock: ["A sword striking a bronze shield, one short sharp metallic clang at once, dry with almost no ring", 0.6],
+  // The dodge is the fifth take. The four before ("a body moving past", "something swinging past and missing", "a thin
+  // fast swish", "a thin stick swung very fast") each came back as one thump of under 0.1 s; this one swells and fades over 0.35 s.
+  defendDodge: ["A quick breathy swoosh, a short gust of wind sweeping past, bright and airy, like a cloak whipped aside", 0.7],
+  // The duck is the second take: the first ("one deep low swish of air, short", asked for as 0.5 s) was a 0.1 s thump.
+  defendDuck: ["A heavy wooden club swung hard through the air just overhead, one deep low whoosh passing by", 0.7],
+  defendJump: ["A light quick leap off the ground, a soft springy upward whoosh with a faint flutter of cloth, short", 0.5],
 };
 
 interface Track {
@@ -266,7 +281,11 @@ async function main(): Promise<void> {
   if (command === "sfx") {
     const folder = join(PUBLIC, "sfx");
     mkdirSync(folder, { recursive: true });
+    const only = flags.filter((flag) => flag.startsWith("--only=")).map((flag) => flag.slice("--only=".length));
+    const unknown = only.filter((event) => !Object.hasOwn(SOUNDS, event));
+    if (unknown.length > 0) throw new Error(`no such sound effect: ${unknown.join(", ")}`);
     for (const [event, [prompt, seconds]] of Object.entries(SOUNDS)) {
+      if (only.length > 0 && !only.includes(event)) continue;
       const target = join(folder, `${event}.mp3`);
       if (existsSync(target) && !force) continue;
       try {
