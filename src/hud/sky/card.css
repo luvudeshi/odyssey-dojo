@@ -5,19 +5,21 @@
 .sky-card { --rim: var(--rift-ice); --rim-text: #a8dcff; position: absolute; right: 24px; top: 50%; width: 300px; box-sizing: border-box; transform: translateY(-50%); text-align: center; color: #f6f0ff; pointer-events: none; }
 .sky-card--strike, .sky-card--finish { --rim: var(--rift-ember); --rim-text: #ffb04a; }
 .sky-card__shape { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
-.sky-card__aura { fill: none; stroke: var(--rim); stroke-width: 10; stroke-opacity: 0.22; stroke-linejoin: round; }
-.sky-card__aura--wide { stroke-width: 24; stroke-opacity: 0.09; }
+.sky-card__aura { fill: none; stroke: #ff5a10; stroke-width: 10; stroke-opacity: 0.3; stroke-linejoin: round; }
+.sky-card__aura--wide { stroke-width: 24; stroke-opacity: 0.13; }
 .sky-card__plate { fill: #050407; stroke: #000; stroke-width: 3; stroke-linejoin: round; }
-.sky-card__rim { fill: none; stroke: var(--rim); stroke-width: 1.6; stroke-opacity: 0.9; stroke-linejoin: round; }
+/* The rim cools from white-hot at the top to deep red at the foot: its stroke is a gradient set in SkyPromptCard.tsx. */
+.sky-card__rim { fill: none; stroke-width: 2.6; stroke-linejoin: round; }
 .sky-card__panel { stroke: #000; stroke-width: 2; stroke-linejoin: round; }
 .sky-card__sheen { fill: none; stroke: #e6f6ff; stroke-width: 1; stroke-opacity: 0.6; }
-.sky-card__crack { fill: none; stroke: #ffd890; stroke-width: 1.2; }
+.sky-card__crack { fill: none; stroke: #ffd890; stroke-width: 1.3; }
 .sky-card__crack--glow { stroke: #ff5a10; stroke-width: 3.6; stroke-opacity: 0.6; }
 .sky-card__glint { fill: #f0faff; }
 .sky-card__trough { fill: none; stroke: #020103; stroke-width: 8; stroke-linecap: round; }
 .sky-card__timer { fill: none; stroke: #e6f6ff; stroke-width: 3.5; stroke-linecap: round; }
 .sky-card__timer--glow { stroke: #4aa0ff; stroke-width: 9; stroke-opacity: 0.5; }
-.sky-card--strike .sky-card__timer, .sky-card--finish .sky-card__timer { stroke: #ffe080; }
+.sky-card--strike .sky-card__timer--lava, .sky-card--finish .sky-card__timer--lava { stroke-width: 8; stroke-linecap: butt; }
+.sky-card--strike .sky-card__timer--core, .sky-card--finish .sky-card__timer--core { stroke: #fff2c0; stroke-width: 1.6; stroke-opacity: 0.8; }
 .sky-card--strike .sky-card__timer--glow, .sky-card--finish .sky-card__timer--glow { stroke: #ff5a10; stroke-opacity: 0.75; }
 .sky-card__pulse { fill: none; stroke: #ffb040; stroke-width: 4; stroke-linejoin: round; animation: sky-pulse 0.9s ease-in-out infinite alternate; }
 .sky-card__burst path { fill: #ffd060; stroke: #3a0c02; stroke-width: 1.2; }
@@ -29,8 +31,11 @@
   font: 700 19px/1 var(--rift-font); letter-spacing: 0.3em; color: #eef8ff; text-shadow: 0 0 8px var(--rim), 0 0 2px var(--rim);
   background: var(--rim); clip-path: var(--cut);
 }
+/* A hot plate: its rim runs from white-hot to red for a strike; a defend keeps the ice-blue rim the health bars use for defence. */
+.sky-card--strike .sky-card__tag, .sky-card--finish .sky-card__tag { background: linear-gradient(#fff2c0, #ff9a2a 45%, #c8300a); }
+.sky-card--strike .sky-card__tag::before, .sky-card--finish .sky-card__tag::before { background: #2a0a04; }
 .sky-card__tag::before { content: ""; position: absolute; inset: 1.6px; z-index: -1; background: #07060a; clip-path: var(--cut); }
-.sky-card--strike .sky-card__tag, .sky-card--finish .sky-card__tag { top: 14px; color: #ffd27a; }
+.sky-card--strike .sky-card__tag, .sky-card--finish .sky-card__tag { top: 14px; color: #fff0d0; text-shadow: 0 0 8px #ff5a10, 0 0 2px #ff5a10; }
 
 /* The text sits in the flow, so the glass (measured) grows with it. Top padding clears the tag and the timer or the point. */
 .sky-card__in { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 46px 22px 24px; container-type: inline-size; }
@@ -53,8 +58,8 @@
   font-size: min(46px, calc(100cqi / (var(--chars, 6) * 0.8))); overflow-wrap: normal; word-break: normal; hyphens: manual;
 }
 .sky-card--mini .sky-card__word { font-size: min(44px, calc(100cqi / (var(--chars, 6) * 0.8))); }
-.sky-card__target { font: 700 17px/1.2 var(--rift-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rim-text); }
-.sky-card__situation { font: 17px/1.3 var(--sky-display); color: #ddd2c4; }
+.sky-card__target { font: 700 18px/1.2 var(--rift-font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--rim-text); }
+.sky-card__situation { font: 18px/1.3 var(--sky-display); color: #ddd2c4; }
 .sky-card__hint { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; font: 18px/1.3 var(--sky-label); }
 .sky-key { min-width: 36px; padding: 7px 10px; box-sizing: border-box; border: 1.6px solid var(--rim, #9fd8ff); border-radius: 3px; background: #14111a; box-shadow: 0 0 10px -2px var(--rim, #9fd8ff); font: 700 20px/1 var(--sky-label); color: #fff6ea; }
 .sky-key kbd { all: unset; font: inherit; }
@@ -63,6 +68,18 @@
 
 @keyframes sky-pulse { from { stroke-opacity: 0.25; } to { stroke-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sky-card__pulse { animation: none; } }
+
+/* A short screen (1280 x 720 and the like): the card hangs from a fixed line under the boss bar instead of centring, so it
+   clears the bar above and the power banner below. Its figure and padding shrink; the real-life line (defend cards) waits. */
+@media (max-height: 780px) and (min-width: 761px) {
+  .sky-card { top: 136px; transform: none; }
+  .sky-card .move-guide, .sky-card:not(.sky-card--full) .move-guide { --mg-figure: 124px; }
+  .sky-card .mg-figure { padding: 6px 8px 4px; }
+  .sky-card__situation { display: none; }
+  .sky-card .sky-card__in { padding: 46px 22px 22px; gap: 6px; }
+  .sky-card--strike .sky-card__in, .sky-card--finish .sky-card__in { padding: 50px 22px 40px; }
+  .sky-card__word, .sky-card--mini .sky-card__word { font-size: min(40px, calc(100cqi / (var(--chars, 6) * 0.8))); }
+}
 
 /* A phone (the touch guest): a narrow card under the monster's bar, above the touch strip. Word, target, key. */
 @media (max-height: 520px), (max-width: 760px) {

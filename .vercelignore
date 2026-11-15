@@ -1,0 +1,21 @@
+# What is not sent to Vercel. Vercel only builds the page (npm run build), which reads src/, public/, index.html,
+# package.json, package-lock.json, vite.config.ts, tsconfig.json and scripts/vendor-pose.sh. See docs/deploy-vercel.md.
+#
+# Everything .gitignore keeps out is listed here again, so this file is enough by itself whether or not the Vercel
+# CLI also reads .gitignore. Above all the .env files: they hold keys and must never leave the laptop.
+.env
+.env.*
+node_modules
+dist
+public/mediapipe
+server/data
+.claude/worktrees
+.DS_Store
+
+# Not needed to build the page. docs/ alone is larger than the 100 MB a Hobby account may upload from the CLI.
+docs
+demoVideo
+tests
+server
+tools
+deploy

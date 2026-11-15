@@ -21,6 +21,9 @@ const SEND_WINDOW_MS = 1_000;
  * switches from the stream to polling) can ask for "everything after N". The host sends about 15 states a second and
  * the send limit is 120 a second, so 256 covers 2 to 17 seconds of play, far more than the gap between two polls.
  * It also bounds memory: 256 messages of at most MAX_MESSAGE_BYTES is 4 MB at worst per seat.
+ * That only holds because the backlog keeps each message as its JSON text and reads it back when a poll answers.
+ * Kept as the objects they parse to, 16 KB of "[],[],[]..." or "{},{},{}..." took 50 to 85 MB a seat, and a dozen
+ * such rooms ran a server with a 1 GB heap out of memory.
  */
 export const BACKLOG_MESSAGES = 256;
 /** A long poll that finds nothing new answers with an empty list after this long. */
@@ -28,6 +31,7 @@ export const POLL_HOLD_MS = 20_000;
 /**
  * A member with no stream open and no poll for this long has gone: the other member is told, and a guest's seat is
  * given back so a new guest can join. A reconnect with the same token inside this time keeps the seat. The host's seat is never given back.
+ * A member that says it is leaving (`leave`) does not wait for this.
  */
 export const AWAY_MS = 20_000;
 /** No I, L or O: a code read aloud or off a screen cannot be mistyped. 23^4 = 279,841 codes; ./roomLimits has the guessing odds. */
@@ -38,7 +42,7 @@ export type RelayMessage = Readonly<Record<string, unknown>>;
 export interface Listener {
   /** `seq` is the message's number at this seat; a stream sends it as the event id. */
   readonly message: (message: RelayMessage, seq: number) => void;
-  /** The room is gone, or this member opened a newer stream. */
+  /** The room is gone, this member opened a newer stream, or it said it is leaving. */
   readonly end: () => void;
 }
 export interface Attached { readonly peerJoined: boolean; readonly detach: () => void }
@@ -64,7 +68,8 @@ interface Member {
   /** When this member last opened, closed or finished a stream or a poll. */
   seenMs: number;
   seq: number;
-  readonly backlog: { readonly seq: number; readonly message: RelayMessage }[];
+  /** Each message as its JSON text: see BACKLOG_MESSAGES. */
+  readonly backlog: { readonly seq: number; readonly text: string }[];
   sendsFromMs: number;
   sends: number;
 }
@@ -96,7 +101,7 @@ export function createRoomStore(now: () => number = Date.now) {
   /** Numbers a message for `member`, keeps it in the backlog, and hands it to the open stream and the held poll, if any. */
   const deliver = (member: Member, message: RelayMessage): void => {
     member.seq += 1;
-    member.backlog.push({ seq: member.seq, message });
+    member.backlog.push({ seq: member.seq, text: JSON.stringify(message) });
     if (member.backlog.length > BACKLOG_MESSAGES) member.backlog.shift();
     member.listener?.message(message, member.seq);
     const waiting = member.poll;
@@ -119,8 +124,10 @@ export function createRoomStore(now: () => number = Date.now) {
           if (room.guest !== null) deliver(room.guest, peerEvent(false));
         }
         if (room.guest !== null && gone(room.guest)) {
-          if (room.guest.here) deliver(room.host, peerEvent(false));
+          const guest = room.guest;
+          // The seat is emptied before the host is told, so a held poll this answers says the guest is not here.
           room.guest = null;
+          if (guest.here) deliver(room.host, peerEvent(false));
         }
         continue;
       }
@@ -157,6 +164,9 @@ export function createRoomStore(now: () => number = Date.now) {
     if (peer !== null) deliver(peer, peerEvent(true));
   };
 
+  /** Nobody is connected to the room, and it was last used `graceMs` ago or longer. */
+  const leftBehind = (room: Room, graceMs: number): boolean => !room.host.here && room.guest?.here !== true && now() - room.activeMs >= graceMs;
+
   return {
     sweep,
     size: (): number => rooms.size,
@@ -169,14 +179,27 @@ export function createRoomStore(now: () => number = Date.now) {
      * For an owner at its cap. Removes the one of its rooms that nobody is connected to and was used longest ago (a host
      * who pressed Back leaves one behind) and returns 0. When somebody is connected to every one, nothing is removed
      * and the answer is the seconds until the first of them would expire.
+     * With `graceMs`, a room used more recently than that is left alone as well: where many people are one owner
+     * (PUBLIC_ROOMS=1), a room made a moment ago belongs to a host whose page has not connected yet.
      */
-    freeOne: (owner: string): number => {
+    freeOne: (owner: string, graceMs = 0): number => {
       sweep();
       const held = [...rooms].filter(([, room]) => room.owner === owner).sort(([, a], [, b]) => a.activeMs - b.activeMs);
-      const empty = held.find(([, room]) => !room.host.here && room.guest?.here !== true);
+      const empty = held.find(([, room]) => leftBehind(room, graceMs));
       if (empty !== undefined) rooms.delete(empty[0]);
       const oldest = held[0];
       return empty !== undefined || oldest === undefined ? 0 : Math.max(1, Math.ceil((oldest[1].activeMs + IDLE_MS - now()) / 1000));
+    },
+    /**
+     * For when every room that callers other than `except` may hold is taken (PUBLIC_ROOMS=1). Removes the one of their
+     * rooms that nobody is connected to and that was used longest ago, at least `graceMs` ago, and says whether it found one.
+     * Without this, rooms that strangers made and left would keep new hosts out for IDLE_MS.
+     */
+    freeOther: (except: string, graceMs: number): boolean => {
+      sweep();
+      const empty = [...rooms].filter(([, room]) => room.owner !== except && leftBehind(room, graceMs)).sort(([, a], [, b]) => a.activeMs - b.activeMs)[0];
+      if (empty !== undefined) rooms.delete(empty[0]);
+      return empty !== undefined;
     },
     /** A new room and its host token, or null when the server already holds MAX_ROOMS. `owner` is who it counts against. */
     create: (owner = ""): { code: string; token: string } | null => {
@@ -237,7 +260,7 @@ export function createRoomStore(now: () => number = Date.now) {
       const from = Math.min(after, self.seq);
       const result = (): PollResult => ({
         seq: self.seq,
-        messages: self.backlog.filter((entry) => entry.seq > from),
+        messages: self.backlog.filter((entry) => entry.seq > from).map((entry) => ({ seq: entry.seq, message: JSON.parse(entry.text) as RelayMessage })),
         peer: other()?.here === true,
       });
       room.activeMs = now();
@@ -262,6 +285,34 @@ export function createRoomStore(now: () => number = Date.now) {
           if (answer) reply(result());
         },
       };
+    },
+    /**
+     * The member says it is going (its page is closing): what AWAY_MS would do, done now. Its stream and its held
+     * poll are ended. A guest's seat is free at once and its token stops working, so it joins as new if it comes
+     * back. The host keeps its seat and its token, as after any other absence, and is here again with its next
+     * stream or poll. The other member hears "peer: false" if it had been told this one was here.
+     * A guest's leave is not use of the room. A host's leave is: the room it left is covered for the same grace as a
+     * room whose host just asked (a public server gives AWAY_MS), so a host whose page reloads finds its room there.
+     * Without a grace, a room that both have left can go to the owner's next create at once.
+     */
+    leave: (code: string, token: string): "left" | Refusal => {
+      const found = seat(code, token);
+      if (typeof found === "string") return found;
+      const { room, self, other } = found;
+      const stream = self.listener;
+      const held = self.poll;
+      const told = self.here;
+      self.listener = null;
+      self.poll = null;
+      self.here = false;
+      self.seenMs = now();
+      if (self === room.host) room.activeMs = now();
+      else room.guest = null;
+      const peer = other();
+      if (told && peer !== null) deliver(peer, peerEvent(false));
+      stream?.end();
+      held?.reply(held.result());
+      return "left";
     },
     /**
      * A message sent while the other member is not connected is "dropped": it is kept for a poll to read, but the sender is told nobody got it.

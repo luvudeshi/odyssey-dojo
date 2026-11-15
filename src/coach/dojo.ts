@@ -3,20 +3,21 @@
 // ("result"). At the end: the total, the best move, and what to work on with one line on how. Frames and a clock in,
 // state out: no screen here. The screen is ./ui/Dojo. docs/dojo.md has the rules in plain words.
 // Every number is a first guess, not yet tuned on a real body.
-import type { EnemySpec, FightingStyle, MoveDef, PoseFrame, PoseHistory } from "../core/types";
-import { MOVES } from "../moves/registry";
+import type { EnemySpec, MoveDef, PoseFrame, PoseHistory } from "../core/types";
 import { EMPTY_HISTORY, clamp01, pushFrame } from "../pose/signals";
+import { ASK_GRACE_MS } from "../input/poseInput";
+import { DOJO_DEFENDS, dojoJudgeRep, dojoMoveOf, dojoTipFor, usualMoves } from "./catalog";
 import type { Assessment, Focus, SkillLevel, StepResult } from "./contract";
 import { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
 import type { Grade, GradeTier } from "./grade";
-import { KEYBOARD_REP, PRACTICE_TIPS, judgeRep, summarise } from "./practice";
+import { KEYBOARD_REP, PRACTICE_TIPS, summarise } from "./practice";
 import type { RepResult } from "./practice";
 import { AVERAGE_BELOW, BEGINNER_BELOW, STRONG_FROM, tuneFor } from "./warmup";
 
 /** Repetitions of each move. Three, not practice's ten: a whole session is about two minutes. */
 export const DOJO_REPS = 3;
-/** The four defends every style trains after its strikes. */
-export const DOJO_DEFENDS: readonly string[] = ["block", "duck", "dodge_left", "dodge_right"];
+/** The four defends every style trains after its strikes. The list is kept with the rest of what the dojo can train. */
+export { DOJO_DEFENDS };
 /** The fight counts a move at 0.7. Training counts a near miss too: it is graded Good, never Excellent. */
 export const COUNT_FROM = 0.6;
 /** The most frames kept for one repetition (the second before it and the attempt). */
@@ -27,7 +28,7 @@ const LEAD_MS = 1000;
 export const KEY_TIP = "Press the key shown for the move while the bar is running.";
 
 export interface DojoConfig {
-  /** Move ids, in the order they are trained. Ids the registry does not know are left out. */
+  /** Move ids, in the order they are trained. Ids the dojo does not know (./catalog) are left out. */
   readonly moves: readonly string[];
   readonly reps: number;
   /** How long the figure plays before the first repetition of a move, and before each later one. */
@@ -49,13 +50,16 @@ export const DOJO_DEFAULTS: Omit<DojoConfig, "moves"> = {
   reps: DOJO_REPS, showMs: 2000, againMs: 1000, goMs: 3000, settleMs: 300, resultMs: 1200, countFrom: COUNT_FROM, keyboard: false,
 };
 
+/** A style as these lists need it: the game's, or one only the dojo knows. */
+interface Strikes { readonly strikes: readonly string[] }
+
 /** The whole list for a style: its strikes, then the four defends. */
-export function movesFor(style: Pick<FightingStyle, "strikes">): string[] {
-  return [...new Set([...style.strikes, ...DOJO_DEFENDS])];
+export function movesFor(style: Strikes): string[] {
+  return usualMoves(style);
 }
 
 /** A short list for a demo: the style's first two strikes, then block, duck and one dodge. Five moves. */
-export function quickMoves(style: Pick<FightingStyle, "strikes">): string[] {
+export function quickMoves(style: Strikes): string[] {
   return [...new Set([...style.strikes.slice(0, 2), "block", "duck", "dodge_left"])];
 }
 
@@ -98,7 +102,8 @@ export interface DojoState {
 }
 
 type Lookup = (id: string) => MoveDef | undefined;
-const registry: Lookup = (id) => MOVES.get(id);
+/** Every move the dojo can train: the game's own, then the ones only the dojo knows (./catalog). */
+const registry: Lookup = (id) => dojoMoveOf(id);
 const finite = (value: number): number => (Number.isFinite(value) ? clamp01(value) : 0);
 
 export function startDojo(config: Partial<DojoConfig> & Pick<DojoConfig, "moves">, nowMs: number, moveOf: Lookup = registry): DojoState {
@@ -161,12 +166,12 @@ export function gradeRep(move: MoveDef, result: RepResult, reactMs: number | nul
   // A near miss counts, but is never better than Good.
   const quality = nearMiss && result.counted ? Math.min(finite(result.quality), NEAR_MISS_QUALITY) : gradedQuality(move, result);
   const grade = gradeFor(result.counted, quality);
-  const tip = grade.tier === "needs_work" ? (result.tip ?? PRACTICE_TIPS[move.kind].tip) : grade.tier === "good" ? result.tip : null;
+  const tip = grade.tier === "needs_work" ? (result.tip ?? dojoTipFor(move)) : grade.tier === "good" ? result.tip : null;
   return { moveId: move.id, result, grade, quality, tip, reactMs: result.counted ? reactMs : null };
 }
 
 /**
- * Judges the frames of one attempt (`judgeRep`), leniently: a near miss (the detector reached `countFrom` but not the
+ * Judges the frames of one attempt (`judgeRep`, or `judgeExtraRep` for a move only the dojo knows), leniently: a near miss (the detector reached `countFrom` but not the
  * fight's 0.7) counts, at the quality of how sure the detector got, so it is Good and never Excellent. `hit` is what
  * the screen saw while the player moved; what was counted then stays counted, whatever the second look says.
  */
@@ -174,7 +179,7 @@ export function gradeAttempt(
   move: MoveDef, frames: readonly PoseFrame[], baseline: PoseHistory["baseline"] = null,
   countFrom: number = COUNT_FROM, hit: Hit | null = null,
 ): DojoRep {
-  const read = judgeRep(move, frames, baseline);
+  const read = dojoJudgeRep(move, frames, baseline);
   if (read.counted) return gradeRep(move, read, hit?.reactMs ?? null);
   if (hit?.sure) return gradeRep(move, { ...read, counted: true, quality: finite(hit.quality) }, hit.reactMs);
   if (hit || read.peak >= countFrom) return gradeRep(move, { ...read, counted: true, quality: finite(hit?.quality ?? read.peak) }, hit?.reactMs ?? null, true);
@@ -225,7 +230,10 @@ export function tickDojo(state: DojoState, nowMs: number, frame: PoseFrame | nul
   const frames = fresh ? [...state.frames, fresh].slice(-MAX_FRAMES) : state.frames;
   let hit = state.hit;
   if (fresh && !hit) {
-    const confidence = finite(move.detect(history));
+    // The move practised is the one asked for, so it may read loose (`detectAsked`) on the frames since "go" and the grace.
+    const attempt = history.frames.filter((old) => fresh.t - old.t <= elapsed - ASK_GRACE_MS);
+    const loose = move.detectAsked && attempt.length >= 3 ? move.detectAsked({ ...history, frames: attempt }) : 0;
+    const confidence = finite(Math.max(move.detect(history), loose));
     if (confidence >= state.config.countFrom) {
       // A strike is scored at the frame it counts, the way the fight scores it.
       const sure = confidence >= 0.7;
@@ -252,6 +260,48 @@ export function keyRep(state: DojoState, nowMs: number, moveOf: Lookup = registr
 /** Leaves the grade early and goes on to the next repetition. */
 export function skipResult(state: DojoState, nowMs: number): DojoState {
   return state.phase === "result" ? advance(state, nowMs) : state;
+}
+
+/** One move on the strip along the bottom of a session. */
+export interface TrackStep {
+  readonly moveId: string;
+  readonly name: string;
+  /** "done": every repetition of it is over. "current": the one being trained. "next": still to come. */
+  readonly status: "done" | "current" | "next";
+  /** The best grade among its repetitions so far; null before the first. */
+  readonly best: GradeTier | null;
+  /** The points its repetitions have earned so far. */
+  readonly points: number;
+  /** How many of its repetitions have been graded. */
+  readonly tries: number;
+}
+
+/** What the strip shows: every move of the session in the order trained, and how many are finished. */
+export interface DojoTrack {
+  readonly steps: readonly TrackStep[];
+  readonly done: number;
+  readonly total: number;
+}
+
+const BEST_FIRST: readonly GradeTier[] = ["excellent", "good", "needs_work"];
+
+/**
+ * The session as a row of moves: the ones before `moveIndex` are done, that one is the current one, the rest are
+ * next, in order. Each carries its best grade and its points so far. With `moveIndex` at or past the end (the
+ * session is over) every move is done. An id the lookup does not know is left out, as `startDojo` leaves it out.
+ */
+export function trackOf(moves: readonly string[], moveIndex: number, reps: readonly DojoRep[], moveOf: Lookup = registry): DojoTrack {
+  const known = moves.flatMap((id) => { const move = moveOf(id); return move ? [move] : []; });
+  const at = Number.isFinite(moveIndex) ? Math.max(0, Math.floor(moveIndex)) : 0;
+  const steps = known.map((move, index): TrackStep => {
+    const own = reps.filter((each) => each.moveId === move.id);
+    return {
+      moveId: move.id, name: move.name, status: index < at ? "done" : index === at ? "current" : "next",
+      best: BEST_FIRST.find((tier) => own.some((each) => each.grade.tier === tier)) ?? null,
+      points: own.reduce((sum, each) => sum + each.grade.points, 0), tries: own.length,
+    };
+  });
+  return { steps, done: Math.min(at, steps.length), total: steps.length };
 }
 
 /** How one move went over its repetitions. */

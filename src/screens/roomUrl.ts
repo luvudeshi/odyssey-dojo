@@ -6,10 +6,13 @@ export function joinUrl(base: string, code: string): string {
   return `${base.replace(/\/+$/, "")}/?room=${cleanCode(code)}`;
 }
 
+export function isLocalHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
 /** A page already on a real address is reachable as it is; a page on localhost needs the server's LAN address. */
 export function reachableBase(origin: string, hostname: string, lanBase: string | null): string {
-  const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-  return local && lanBase !== null ? lanBase : origin;
+  return isLocalHost(hostname) && lanBase !== null ? lanBase : origin;
 }
 
 export type GuestMode = "camera" | "keyboard" | "touch";
@@ -39,3 +42,10 @@ export const ROOM_MESSAGES: Readonly<Record<string, string>> = {
   slow_down: "Too many tries from this network. Wait a minute and try again.",
   unreachable: "Cannot reach the game server. Is it running?",
 };
+
+const NOT_OPEN = "Rooms are not open on this site yet. Play alone, or run the game on your own computer to host a room.";
+
+/** The line for a failed room call. "Is it running?" is for developers, so a hosted copy says rooms are closed instead (the hosted server also answers 403, which lands on unreachable). */
+export function roomMessage(error: string, hostname: string): string {
+  return error === "unreachable" && !isLocalHost(hostname) ? NOT_OPEN : (ROOM_MESSAGES[error] ?? "");
+}

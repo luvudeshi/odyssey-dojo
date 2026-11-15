@@ -162,7 +162,7 @@ test("a pose held with no wind-up, or half the motion, counts as nothing", () =>
   expect(detect("elbow_strike", [0, pose(DOWN)], [200, arm(ELBOW_WOUND, "left")], [600, arm(ELBOW_WOUND, "left")])).toBe(0);
   expect(detect("elbow_strike", [0, arm(ELBOW_ACROSS, "left")], [600, arm(ELBOW_ACROSS, "left")])).toBe(0);
   // A hand lifted slowly to face height, and both hands pushed out together.
-  expect(detect("palm_heel", [0, pose(DOWN)], [200, arm(COCKED, "left")], [1400, arm(PALM_UP, "left")])).toBe(0);
+  expect(detect("palm_heel", [0, pose(DOWN)], [200, arm(COCKED, "left")], [2600, arm(PALM_UP, "left")])).toBe(0);
   expect(detect("palm_heel", [0, pose(DOWN)], [150, pose(COCKED)], [300, pose(PALM_UP)])).toBe(0);
   // A punch pulled straight back is not a release: the arm was not held out first.
   expect(detect("wrist_release", [0, pose(DOWN)], [150, arm(COCKED, "left")], [300, arm(PUNCH, "left")], [450, arm(COCKED, "left")])).toBe(0);
@@ -190,16 +190,19 @@ test("no extra move counts while a game move is done right", () => {
  * - front_kick checks a lifted, folded knee and then a high, straight leg, not which way the foot went, so it
  *   reads the roundhouse and the side kick too.
  * - jab and cross read a fast straight arm at any height near the shoulder, so they read the palm heel too.
+ * - knee was loosened with the game's other moves (a short lift now counts), so it reads the chamber of the roundhouse and the side kick too.
+ * - The lenient gates (a move counts when the right arm moves) also let jab and cross read the wrist release's arm
+ *   held out, and rising_palm and uppercut read the low block's hand coming up to start its sweep.
  */
 const ALSO: Record<string, readonly string[]> = {
-  roundhouse_kick: ["front_kick"],
-  side_kick: ["front_kick"],
+  roundhouse_kick: ["front_kick", "knee"],
+  side_kick: ["front_kick", "knee"],
   low_kick: [],
   elbow_strike: [],
   palm_heel: ["cross", "jab"],
-  wrist_release: [],
+  wrist_release: ["cross", "jab"],
   high_block: [],
-  low_block: [],
+  low_block: ["rising_palm", "uppercut"],
 };
 
 test("the game's nearest move does not count on an extra move, except where the list above says so", () => {

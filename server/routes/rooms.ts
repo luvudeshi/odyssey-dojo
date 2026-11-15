@@ -1,18 +1,26 @@
-// Online rooms over plain HTTP: create, join, an event stream that pushes the other member's messages, and send.
+// Online rooms over plain HTTP: create, join, an event stream that pushes the other member's messages, send, and leave.
 // The rooms and their rules live in ../lib/rooms and the limits in ../lib/roomLimits; this file only turns them into requests and answers.
 import express from "express";
 import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
 import {
-  MAX_ROOMS_PER_CLIENT, MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
-  THIS_MACHINE, clientKey, createRoomLimits,
+  MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
+  THIS_MACHINE, clientKey, createRoomLimits, roomsPerClient,
 } from "../lib/roomLimits";
-import { MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
+import { publicRooms } from "../lib/localOnly";
+import { AWAY_MS, MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
 import type { Refusal, RelayMessage } from "../lib/rooms";
 
-/** A comment line this often keeps proxies and browsers from closing a quiet stream. */
-export const HEARTBEAT_MS = 15_000;
+/**
+ * A "beat" this often keeps proxies and browsers from closing a quiet stream, and tells the page its stream is alive:
+ * a page that stops getting beats knows the stream died without a word and polls instead (STREAM_QUIET_MS in
+ * src/net/transport.ts, which must stay well above this). It is a comment line for readers that only want the
+ * stream kept open, and a data line with no number for the page. It is the server talking, not a player, so it
+ * does not count as use of the room.
+ */
+export const HEARTBEAT_MS = 5_000;
+const BEAT = `: keep\ndata: ${JSON.stringify({ type: "beat" })}\n\n`;
 const STREAM_HEADERS = { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" };
 
 function refuse(response: Response, refusal: Refusal): void {
@@ -34,8 +42,9 @@ function tooLarge(response: Response): void {
  * is thrown away as it arrives once it passes the limit, and the 413 is written when it ends; a body that never
  * ends is closed by the server's request timeout (REQUEST_TIMEOUT_MS).
  */
-function body(limit: number): RequestHandler {
-  const parse = express.json({ limit });
+function body(limit: number, anyType = false): RequestHandler {
+  // `anyType` reads the body as JSON whatever it is labelled: see the leave route.
+  const parse = express.json(anyType ? { limit, type: () => true } : { limit });
   return (request, response, next) => {
     if (Number(request.headers["content-length"] ?? 0) > limit) {
       tooLarge(response);
@@ -52,7 +61,7 @@ function body(limit: number): RequestHandler {
 export const register: Register = (router) => {
   const rooms = createRoomStore();
   const limits = createRoomLimits();
-  const client = (request: Request): string => clientKey(request.socket.remoteAddress, request.headers);
+  const client = (request: Request): string => clientKey(request.socket.remoteAddress, request.headers, publicRooms());
   /**
    * Answers a wrong code or token on a send or a stream. Once a client has had too many it gets 429 for both,
    * so trying codes there tells a stranger nothing more. A member with the right token never comes through here.
@@ -69,24 +78,33 @@ export const register: Register = (router) => {
 
   router.post(["/api/rooms", "/api/rooms/:code/join"], body(SMALL_BODY_BYTES));
   router.post("/api/rooms/:code/send", body(MAX_MESSAGE_BYTES + SEND_ENVELOPE_BYTES));
+  // A page says it is leaving with navigator.sendBeacon, which cannot set a header: a string goes out as text/plain.
+  router.post("/api/rooms/:code/leave", body(SMALL_BODY_BYTES, true));
 
   router.post("/api/rooms", (request, response) => {
     const who = client(request);
+    const open = publicRooms();
+    // With public rooms one caller can be many people (../lib/roomLimits), so a room made a moment ago is not taken
+    // from a host whose page has not connected yet. AWAY_MS is how long a member may be gone before the room says so.
+    const grace = open ? AWAY_MS : 0;
     let wait = limits.create(who);
     // A caller at its cap gets the place of a room it left behind: there is no call that closes a room.
-    if (wait === 0 && who !== THIS_MACHINE && rooms.heldBy(who) >= MAX_ROOMS_PER_CLIENT) wait = rooms.freeOne(who);
+    if (wait === 0 && who !== THIS_MACHINE && rooms.heldBy(who) >= roomsPerClient(open)) wait = rooms.freeOne(who, grace);
     if (wait > 0) {
       slowDown(response, wait);
       return;
     }
     // Other callers stop short of the cap, so they can never take the last rooms from the laptop that runs the server.
     const kept = who === THIS_MACHINE ? 0 : ROOMS_KEPT_FOR_THIS_MACHINE;
-    const room = rooms.size() - rooms.heldBy(THIS_MACHINE) >= MAX_ROOMS - kept ? null : rooms.create(who);
+    const full = (): boolean => rooms.size() - rooms.heldBy(THIS_MACHINE) >= MAX_ROOMS - kept;
+    // With public rooms, a stranger at that cap gets the place of a room some stranger left behind.
+    const room = full() && !(open && who !== THIS_MACHINE && rooms.freeOther(THIS_MACHINE, grace)) ? null : rooms.create(who);
     if (room === null) {
       log("warn", "rooms_at_cap", { rooms: rooms.size() });
       response.status(503).json({ error: "too_many_rooms" });
       return;
     }
+    limits.made(who);
     log("info", "room_created", { code: room.code, rooms: rooms.size() });
     response.json(room);
   });
@@ -141,7 +159,7 @@ export const register: Register = (router) => {
     push(peerEvent(attached.peerJoined));
     const heartbeat = setInterval(() => {
       rooms.sweep();
-      write(": keep\n\n");
+      write(BEAT);
     }, HEARTBEAT_MS);
     response.on("close", () => {
       clearInterval(heartbeat);
@@ -201,5 +219,39 @@ export const register: Register = (router) => {
     if (result === "slow") slowDown(response, 1);
     else if (result === "unknown" || result === "denied") refuseCounted(response, client(request), result);
     else response.json({ delivered: result === "sent" });
+  });
+
+  /**
+   * A member says it is leaving: {"token": "..."} in the body, the same proof a send carries. The other member is
+   * told at once and a guest's seat is free at once (rooms.leave), where a page that only closes is noticed after AWAY_MS.
+   * Every leave that names no seat gets one answer, whether the code is wrong, the room is gone, the token is wrong
+   * or the guest already left, so this call says less than a send does. Those are counted with wrong sends and
+   * streams and get 429 past that budget, so it adds no guesses. A member with the right token never meets that
+   * budget, as with a send. Every leave is counted as a poll, so a loop of them is stopped like a loop of polls.
+   */
+  router.post("/api/rooms/:code/leave", (request, response) => {
+    const who = client(request);
+    const sent: unknown = request.body;
+    const token = isRelayMessage(sent) ? sent.token : undefined;
+    if (typeof token !== "string") {
+      response.status(400).json({ error: "bad_request" });
+      return;
+    }
+    const wait = limits.poll(who);
+    if (wait > 0) {
+      slowDown(response, wait);
+      return;
+    }
+    if (rooms.leave(request.params.code, token) === "left") {
+      response.json({ left: true });
+      return;
+    }
+    const wrongWait = limits.wrongWait(who, "member");
+    if (wrongWait > 0) {
+      slowDown(response, wrongWait);
+      return;
+    }
+    limits.wrongCount(who, "member");
+    response.status(404).json({ error: "not_in_room" });
   });
 };

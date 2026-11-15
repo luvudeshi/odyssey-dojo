@@ -1,6 +1,7 @@
 // The fight HUD in the star-chart look: same decisions as the pebble Hud, only the look differs.
 import { situationFor } from "../../enemies/situations";
 import type { CombatState, EnemySpec, PoseHistory } from "../../core/types";
+import { finisherLine } from "../../enemies/finishers";
 import { MOVES } from "../../moves/registry";
 import { SkyTop } from "./SkyTop";
 import { SkyPromptCard } from "./SkyPromptCard";
@@ -20,7 +21,7 @@ export function SkyHud({ enemy, state, history }: { enemy: EnemySpec; state: Com
             phase.kind === "defend"
               ? `${phase.attack.name} incoming`
               : phase.kind === "finisher"
-                ? "Finish it"
+                ? finisherLine(enemy.id)
                 : `Hit ${phase.weakSpot.label}`
           }
           situation={phase.kind === "defend" ? situationFor(enemy.id, phase.attack.id) : null}
