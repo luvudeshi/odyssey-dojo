@@ -53,7 +53,7 @@ export function Calibration(props: { tracker: PoseTracker; onDone: (baseline: Ba
     <main className="menu flow calibration">
       <Backdrop src="/textures/set/storm/camp.jpg" />
       {onBack && <button type="button" className="set-back" onClick={onBack}>Back</button>}
-      <SetTitle>{stuck ? "Step back: I need to see your head and shoulders" : "Stand still, arms down"}</SetTitle>
+      <SetTitle>{stuck ? "Step back so I can see you" : "Stand still, arms down"}</SetTitle>
       <div className="set-panel calibration-panel">
         <div className="calibration-cam">
           <CameraView tracker={tracker} poseRef={poseRef} paused={false} />

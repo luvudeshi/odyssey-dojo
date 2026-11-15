@@ -1,9 +1,11 @@
 /* Calibration: the camera is the main thing on the screen, so the player can see where they stand. The page, title and panel are the storm kit's (src/ui/set/screens-flow.css). */
-.calibration-cam { position: relative; width: min(46vh, 26rem); margin: 0; }
+.calibration-cam { position: relative; width: min(50vh, 26rem); margin: 0; }
 /* The camera panel is normally a corner badge; here it sits in the flow at full width, in bronze, with captions big enough to read. */
 .calibration-cam .camera-view { position: relative; left: auto; bottom: auto; width: 100%; background: var(--st-abyss); border: 3px solid var(--st-bronze); box-shadow: 0 0 0 2px var(--st-bronze-dark), 0 6px 16px #000a; }
 .calibration-cam .camera-view::before { display: none; }
-.calibration-cam .camera-view figcaption, .calibration-cam .camera-tag { font: 700 18px/1.2 var(--st-body); letter-spacing: 0.04em; }
+.calibration-cam .camera-view figcaption, .calibration-cam .camera-tag { font: 700 18px/1.2 var(--st-body); letter-spacing: 0.02em; }
+.calibration-cam .camera-view figcaption { flex-wrap: nowrap; align-items: flex-end; gap: 4px; padding: 8px 6px; }
+.calibration-cam .camera-tag { padding: 2px 6px; }
 /* The guide covers the picture only (4:3, the same box as the video), not the caption below it. */
 .calibration-guide {
   position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 4 / 3; box-sizing: border-box; z-index: 31; pointer-events: none;
