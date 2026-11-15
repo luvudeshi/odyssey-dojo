@@ -20,7 +20,7 @@ export interface DojoTrackProps {
   moveOf?: (id: string) => MoveDef | undefined;
 }
 
-const TIER_WORD: Readonly<Record<GradeTier, string>> = { excellent: "Excellent", good: "Good", needs_work: "Needs work" };
+const TIER_WORD: Readonly<Record<GradeTier, string>> = { excellent: "Excellent", good: "Good", needs_work: "Needs improvement" };
 const STATE_WORD = { done: "Done", current: "Now", next: "Next" } as const;
 
 export function DojoTrack(props: DojoTrackProps) {
