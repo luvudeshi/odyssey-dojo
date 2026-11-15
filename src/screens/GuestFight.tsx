@@ -18,6 +18,8 @@ import type { PoseTracker } from "../pose/tracker";
 import { noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
 import { STYLES } from "../styles/registry";
+import { Button, WaveBorder, installGround } from "../ui/pebble";
+import "./endPanel.css";
 import type { Joined } from "./RoomJoin";
 
 interface Fight { readonly enemyId: string; readonly styleId: string; readonly seed: number }
@@ -39,6 +41,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   const [state, setState] = useState<CombatState | null>(null);
   const poseRef = useRef<PoseFrame | null>(null);
   const touched = useRef<string[]>([]);
+  useEffect(() => { installGround(); }, []);
 
   useEffect(() => {
     const keyboard = createKeyboard(MOVES);
@@ -89,10 +92,11 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
       {!over && <button className="quiet room-leave" onClick={onLeave}>Leave the room</button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
       {over && (
-        <div className="overlay">
+        <div className="overlay guest-over">
+          <WaveBorder className="guest-wave" />
           <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
           <p className="notice">Waiting for the host to go on.</p>
-          <button onClick={onLeave}>Leave the room</button>
+          <div className="end-buttons"><Button primary onClick={onLeave}>Leave the room</Button></div>
         </div>
       )}
     </div>
