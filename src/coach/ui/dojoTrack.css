@@ -19,7 +19,8 @@
   flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 0.6rem; margin: 0; padding: 0.3rem; list-style: none;
   overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--dt-line) transparent;
 }
-.dojo-track-row:focus-visible { outline: 3px solid #f0faff; outline-offset: 2px; }
+/* Drawn inside the row: the edge fade below would mask a ring drawn outside it. */
+.dojo-track-row:focus-visible { outline: 3px solid #f0faff; outline-offset: -3px; }
 .dojo-track-chip {
   flex: none; display: flex; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.8rem; white-space: nowrap;
   font-size: 1.15rem; color: var(--dt-dim); background: #14111a; border: 2px solid var(--dt-line); border-radius: 4px;
@@ -37,3 +38,5 @@
 .dojo-track-chip[data-status="done"][data-tier="good"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-good); }
 .dojo-track-chip[data-status="done"][data-tier="needs_work"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-needs); }
 .dojo-track-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Soft fade at both edges so a chip cut by the scroll does not end mid-word. */
+.dojo-track-row { -webkit-mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); mask-image: linear-gradient(90deg, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); }
