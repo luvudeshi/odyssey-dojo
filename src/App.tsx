@@ -26,6 +26,8 @@ import { MONSTER_MODELS } from "./render/monsters/registry";
 import { SharePanel } from "./replay/ui/SharePanel";
 import { Account } from "./screens/Account";
 import { EndPanel } from "./screens/EndScreen";
+import { lessonsFrom } from "./lessons/lessons";
+import { recordDefense } from "./lessons/defenseStore";
 import { enemyFor, flowReducer, openAt, playable } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
@@ -242,9 +244,10 @@ export function App() {
         god={god?.god ?? null}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
         onQuit={() => { stopIntro.current(); hostLink?.stop(); dispatch({ type: "quit" }); }}
-        renderEnd={(won, score, mastery, tally) => (
+        renderEnd={(won, score, mastery, tally, events) => (
           <EndPanel
             won={won}
+            defense={lessonsFrom(events)}
             enemyId={enemy.id}
             mastery={mastery}
             card={(close) => <SharePanel god={god} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
@@ -253,6 +256,7 @@ export function App() {
                 recorded.current = flow.seed;
                 const styleId = flow.style?.id ?? "";
                 noting(() => { recordFight({ enemyId: enemy.id, won, score, mastery, styleId, tally }); });
+                recordDefense(events, enemy.id);
               }
               dispatch({ type: "ended", enemyId: enemy.id, won });
             }}
