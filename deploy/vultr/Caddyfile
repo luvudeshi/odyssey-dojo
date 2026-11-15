@@ -8,5 +8,5 @@
 	@files not path /api/*
 	encode @files zstd gzip
 
-	reverse_proxy game:8787
+	reverse_proxy 127.0.0.1:8787
 }
