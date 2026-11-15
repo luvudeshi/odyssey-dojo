@@ -1,33 +1,34 @@
-/* The "How do you fight?" screen. Every class starts with style- so nothing here can touch the rest of the game. */
-.style-screen { justify-content: safe center; overflow-y: auto; }
-.style-screen .style-title { font-size: clamp(1.8rem, 4.6vw, 3.4rem); max-width: 20em; line-height: 1.15; text-wrap: balance; }
-.style-lede { margin: 0 0 1.4rem; font-size: 1.15rem; opacity: 0.85; }
-.style-form { width: min(46rem, 100%); display: flex; flex-direction: column; align-items: center; }
-.style-input { width: 100%; font: inherit; font-size: clamp(1.25rem, 3vw, 1.9rem); text-align: center; color: var(--marble); caret-color: var(--gold); background: #0006; border: 0; border-bottom: 3px solid var(--gold); padding: 0.9rem 1rem; outline: none; }
-.style-input::placeholder { color: var(--marble); opacity: 0.4; font-style: italic; }
-.style-input:focus-visible { background: #0009; box-shadow: 0 0 2.5rem #e8b84a26; }
-.style-chips { display: flex; flex-wrap: wrap; justify-content: center; margin: 0.9rem 0 0.7rem; }
-.style-chip { font-size: 0.95rem; color: var(--marble); background: none; border: 1px solid #e8b84a80; border-radius: 999px; padding: 0.35rem 0.9rem; margin: 0.25rem; }
-.style-chip:hover, .style-chip:focus-visible { color: var(--gold); border-color: var(--gold); }
-.style-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
-.style-primary:disabled { opacity: 0.4; cursor: default; }
-.style-quiet { font-size: 1rem; color: var(--marble); background: none; border: 1px solid #f1ead94d; }
-.style-quiet:hover, .style-quiet:focus-visible { border-color: var(--marble); }
-.style-listening { color: var(--gold); border-color: var(--gold); animation: style-pulse 1.2s ease-in-out infinite; }
-.style-back { border-color: transparent; opacity: 0.7; margin-top: 1rem; }
-.style-working { margin: 0; font-size: clamp(1.4rem, 3.6vw, 2.2rem); color: var(--gold); letter-spacing: 0.06em; animation: style-pulse 1.8s ease-in-out infinite; }
-.style-said { font-style: italic; opacity: 0.6; }
-.style-card > * { animation: style-rise 0.8s ease-out both; }
-.style-heard { margin: 0 0 1.4rem; max-width: 42rem; font-size: 1.15rem; font-style: italic; opacity: 0.9; }
-.style-monster { margin: 0; font-size: 1.5rem; letter-spacing: 0.05em; }
-.style-setting { margin: 0.4rem 0 1rem; max-width: 42rem; font-family: system-ui, sans-serif; opacity: 0.75; }
-.style-phases { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
-.style-phase { font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); border: 1px solid #e8b84a80; padding: 0.2rem 0.7rem; }
-.style-palette { display: flex; width: min(22rem, 80%); height: 6px; margin: 1.2rem 0; outline: 1px solid #f1ead926; }
-.style-swatch { flex: 1; }
-.style-note { margin: 0 0 0.6rem; font-size: 0.85rem; opacity: 0.55; }
-@keyframes style-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+/* The "How do you fight?" screen, drawn with the pottery theme's tokens (src/theme.css): ink on clay, or clay on an ink plaque.
+   Every rule sits under .style-screen, so nothing here touches the rest of the game and each one outranks the theme's ".menu p" and "button" rules.
+   Nothing readable is faded: on clay, see-through ink is too faint to read. */
+main.style-screen { height: auto; min-height: calc(100% - 28px); justify-content: safe center; }
+.style-screen .style-title { font-size: clamp(1.8rem, 4.6vw, 3.4rem); max-width: 20em; line-height: 1.15; text-wrap: balance; overflow-wrap: anywhere; }
+.style-screen .style-lede { margin: 0 0 1.4rem; font-size: 1.15rem; }
+.style-screen .style-form { width: min(46rem, 100%); display: flex; flex-direction: column; align-items: center; }
+.style-screen .style-input { width: 100%; font: inherit; font-size: clamp(1.1rem, 3vw, 1.9rem); text-align: center; color: var(--white); caret-color: var(--clay-light); background: var(--ink); border: var(--bw-line) solid var(--ink); border-radius: 0; box-shadow: 0 0 0 var(--bw-line) var(--clay-light); padding: 0.9rem 0.6rem; outline: none; }
+.style-screen .style-input::placeholder { color: var(--clay-light); font-style: italic; }
+.style-screen .style-input:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
+.style-screen .style-chips { display: flex; flex-wrap: wrap; justify-content: center; margin: 0.9rem 0 0.7rem; }
+/* The theme's button is wide, upper case and widely spaced; a chip is a short quote in the player's own words. Hover and press come from the theme. */
+.style-screen .style-chip { min-width: 0; text-transform: none; letter-spacing: normal; font-size: 0.95rem; color: var(--ink); background: transparent; padding: 0.35rem 0.9rem; margin: 0.25rem; }
+.style-screen .style-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; }
+.style-screen .style-primary:disabled { opacity: 0.45; }
+.style-screen .style-quiet { font-size: 1rem; color: var(--ink); background: transparent; }
+.style-screen .style-listening { color: var(--white); background: var(--purple); animation: style-pulse 1.2s ease-in-out infinite; }
+.style-screen .style-back { border-color: transparent; margin-top: 1rem; }
+.style-screen .style-working { margin: 0 0 0.9rem; padding: 0.3rem 1.6rem; font-size: clamp(1.4rem, 3.6vw, 2.2rem); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--clay-light); background: var(--ink); animation: style-pulse 1.8s ease-in-out infinite; }
+.style-screen .style-said { max-width: 42rem; margin: 0; font-size: 1.25rem; font-style: italic; overflow-wrap: anywhere; }
+.style-screen.style-card > * { animation: style-rise 0.8s ease-out both; }
+.style-screen .style-heard { margin: 0 0 1.2rem; max-width: 42rem; font-size: 1.15rem; font-style: italic; overflow-wrap: anywhere; }
+.style-screen .style-monster { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.05em; }
+.style-screen .style-setting { margin: 0.4rem 0 1rem; max-width: 42rem; font-size: 1.05rem; }
+.style-screen .style-phases { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
+.style-screen .style-phase { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--clay-light); background: var(--ink); padding: 0.2rem 0.7rem; }
+.style-screen .style-palette { display: flex; width: min(22rem, 80%); height: 12px; margin: 1.2rem 0; border: var(--bw-line) solid var(--ink); }
+.style-screen .style-swatch { flex: 1; }
+.style-screen .style-note { margin: 0 0 0.6rem; font-size: 0.95rem; font-style: italic; }
+@keyframes style-pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
 @keyframes style-rise { from { opacity: 0; transform: translateY(0.6rem); } }
 @media (prefers-reduced-motion: reduce) {
-  .style-working, .style-listening, .style-card > * { animation: none; }
+  .style-screen .style-working, .style-screen .style-listening, .style-screen.style-card > * { animation: none; }
 }
