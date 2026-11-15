@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { getProfile } from "../account/store";
+import { DefenseLine } from "../account/ui/DefensePanel";
 import { HOMECOMING_ID, NARRATION_LINES } from "../audio/narrationLines";
 import { ENEMIES } from "../enemies/registry";
 import { endingFor } from "../enemies/endings";
@@ -22,6 +23,8 @@ export function EndPanel(props: {
   won: boolean;
   enemyId: string;
   mastery: Readonly<Record<string, number>>;
+  /** What this fight's attacks came to; the line "Defended X of Y" sits above the score. Left out: no line. */
+  defense?: { readonly attacksSeen: number; readonly attacksDefended: number };
   /** Called once when the panel appears, so the flow records the result. */
   onShown: () => void;
   onRetry: () => void;
@@ -90,6 +93,7 @@ export function EndPanel(props: {
     <>
       {stage}
       <div className={`end-title ${won ? "" : "end-lost"}`}><SetTitle as="p">{won ? fallsLine(enemyId, name) : "You are struck down"}</SetTitle></div>
+      {props.defense && <DefenseLine seen={props.defense.attacksSeen} defended={props.defense.attacksDefended} />}
       {showCard ? props.card?.(() => { setShowCard(false); }) : (
         <>
           <div className="end-ending">
