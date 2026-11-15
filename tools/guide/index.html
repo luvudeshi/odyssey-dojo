@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Move guide</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; }
+      body { padding: 20px; background: var(--clay, #c9602b); color: var(--ink, #170d08); font: 16px/1.4 system-ui, sans-serif; }
+      /* Stand-ins for the dark pebble theme's variables, which are not on this branch yet. */
+      body.pebble {
+        background: #15100e; color: #f6eedc;
+        --pb-ground-deep: #0d0a09; --pb-text: #f6eedc; --pb-ochre: #d9a34a; --pb-terra: #b8553a; --pb-radius-panel: 14px;
+        --pb-font-body: Optima, "Gill Sans", Palatino, "Trebuchet MS", sans-serif;
+      }
+      .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 16px; }
+      select, button { font: inherit; padding: 6px 12px; }
+      p { max-width: 60rem; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>
