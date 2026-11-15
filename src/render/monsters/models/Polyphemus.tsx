@@ -14,8 +14,10 @@ function Flat({ color }: { color: string }) {
 }
 
 function Polyphemus({ windup, attackId, weakSpotId, defeated, phaseIndex, hitFlash }: MonsterProps) {
-  const rightArm = attackId === "club_left" || attackId === "boulder" ? windup : 0;
-  const leftArm = attackId === "club_right" || attackId === "grab" ? windup : 0;
+  // From phase 2 both club swings lift the arm that holds the club.
+  const clubArm = attackId === "club_left" || (attackId === "club_right" && phaseIndex >= 1);
+  const rightArm = clubArm || attackId === "boulder" ? windup : 0;
+  const leftArm = (attackId === "club_right" && phaseIndex < 1) || attackId === "grab" ? windup : 0;
   return (
     <group scale={SCALE} rotation={[defeated ? -1.2 : 0, 0, 0]}>
       <mesh castShadow position={[0, 2.1, 0]} scale={[1, 1, 0.8]}>
