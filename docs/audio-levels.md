@@ -203,7 +203,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
 | music | 4 | -37.7 | -12.9 | -9.8 | 27.9 | -33.1 (-36.5 to -28.6) |
-| narration | 11 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
+| narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
 | power | 6 | -37.8 | -23.5 | -12.1 | 25.7 | -18.9 (-22.0 to -16.7) |
 | sfx | 11 | -31.1 | -18.4 | -10.7 | 20.4 | -25.8 (-41.2 to -16.7) |
 | stops (ambience) | 5 | -38.0 | -23.0 | -12.2 | 25.8 | -38.2 (-39.1 to -37.6) |
@@ -333,6 +333,7 @@ None.
 | `narration/homer_before_scylla.mp3` | 7.76 | -19.0 | -1.5 | 70 | 132 | 0.0 | -19.0 |
 | `narration/homer_before_sirens.mp3` | 6.96 | -19.0 | -1.6 | 39 | 148 | 0.0 | -19.0 |
 | `narration/homer_before_suitors.mp3` | 6.96 | -19.0 | -2.3 | 40 | 124 | 0.0 | -19.0 |
+| `narration/homer_homecoming.mp3` | 9.52 | -19.9 | -1.6 | 57 | 110 | 0.0 | -19.9 |
 
 ### power
 
