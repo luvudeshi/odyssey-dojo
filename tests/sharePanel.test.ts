@@ -56,6 +56,13 @@ test("with no god but a hero the card is of that hero", () => {
   expect(cardWords({ ...fight, god: null, hero: "Odysseus" })).toMatchObject({ godName: "Odysseus", epithet: "sacker of cities" });
 });
 
+test("a hero's power is named on the card, next to the domain line", () => {
+  expect(cardWords({ ...fight, god: null, hero: "Odysseus", power: "MOON ARROW" })).toMatchObject({
+    epithet: "sacker of cities", domain: "King of Ithaca · Power: Moon Arrow",
+  });
+  expect(cardWords({ ...fight, god: null, hero: "Zeus", power: "THUNDERBOLT" }).domain).toBe("Fighter at the dojo · Power: Thunderbolt");
+});
+
 test("with no god the card is of Odysseus, and a broken score or name still makes a card the server accepts", () => {
   const words = cardWords({ ...fight, god: null, won: false, score: Number.NaN, style: " ", enemyName: "x".repeat(200) });
   expect(words).toMatchObject({ godName: "Odysseus", epithet: "sacker of cities", domain: "King of Ithaca", score: 0, won: false });
