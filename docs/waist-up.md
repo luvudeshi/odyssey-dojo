@@ -122,7 +122,7 @@ detector, and `tests/waistUp.test.ts` checks them.
 
 With the legs out of view, all five styles keep a hand strike, every weak spot of all six monsters gets an askable
 strike from the player's style (one that fits the spot whenever the style has one that does), every attack's
-counter is askable, and so are the three finishers.
+counter is askable, and so are the six finishers (one per stop since issue #33).
 
 Two things to know before wiring it in:
 
