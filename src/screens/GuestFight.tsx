@@ -118,6 +118,7 @@ export function GuestFight(props: { joined: Joined; onLeave: () => void }) {
     props.onLeave();
   };
   if (sawHost && !link.hostHere()) return <Notice line="The host left the room." onLeave={leave} button="Back to the start" />;
+  if (link.stopped()) return <Notice line="The host ended the fight. Stay here for the next one, or leave." onLeave={leave} button="Leave the room" />;
   if (!fight) return <Notice line={sawHost ? "You are in. Waiting for the host to start." : "Joining..."} onLeave={leave} button="Leave the room" />;
   return <Fighting key={fight.seed} link={link} fight={fight} mode={mode} tracker={tracker} onLeave={leave} />;
 }

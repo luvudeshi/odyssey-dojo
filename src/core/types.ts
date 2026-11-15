@@ -177,7 +177,7 @@ export type CombatEvent =
   | { readonly type: "defended"; readonly attack: EnemyAttack }
   | { readonly type: "playerHit"; readonly attack: EnemyAttack; readonly damage: number }
   | { readonly type: "opening"; readonly weakSpot: WeakSpot; readonly move: string }
-  | { readonly type: "enemyHit"; readonly move: string; readonly damage: number; readonly quality: number }
+  | { readonly type: "enemyHit"; readonly move: string; readonly damage: number; readonly quality: number; readonly together?: true }
   | { readonly type: "phaseChanged"; readonly index: number; readonly name: string }
   | { readonly type: "finished"; readonly move: string }
   | { readonly type: "powerUnleashed"; readonly damage: number }

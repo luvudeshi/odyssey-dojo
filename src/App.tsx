@@ -142,7 +142,7 @@ export function App() {
       link={flow.hosting ? hostLink : null}
       seed={flow.seed}
       onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
-      onQuit={() => { dispatch({ type: "quit" }); }}
+      onQuit={() => { hostLink?.stop(); dispatch({ type: "quit" }); }}
       renderEnd={(won, _score, mastery) => (
         <EndPanel
           won={won}
