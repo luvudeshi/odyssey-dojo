@@ -14,7 +14,7 @@ import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
 import { startFight, step } from "../combat/engine";
-import type { Baseline, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
+import type { Baseline, CombatEvent, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
 import { CameraView } from "../hud/CameraView";
 import { PowerCircle } from "../hud/PowerCircle";
@@ -55,7 +55,7 @@ export function FightScreen(props: {
   onQuit?: () => void;
   /** Online room: the guest's strikes join the fight and the state goes back to them. Left out in single play. */
   link?: HostLink | null;
-  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>) => ReactNode;
+  renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>, events: readonly CombatEvent[]) => ReactNode;
 }) {
   const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
@@ -65,6 +65,8 @@ export function FightScreen(props: {
   const overRef = useRef(false);
   // What this fight adds to the profile's counters; handed to the result panel with the score.
   const tally = useRef<FightTally>(newTally());
+  // Every event of this fight, for the defence record and the result panel's "Defended X of Y".
+  const fightEvents = useRef<CombatEvent[]>([]);
   const [lost, setLost] = useState(false);
   const [lostWhy, setLostWhy] = useState("");
   const [state, setState] = useState(() => startFight(enemy, seed));
@@ -83,6 +85,7 @@ export function FightScreen(props: {
     const watchMiss = createMissWatch();
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
+    fightEvents.current = [];
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
@@ -125,6 +128,7 @@ export function FightScreen(props: {
       if (watchMiss(from.phase, input, result.events)) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
+      fightEvents.current.push(...result.events);
       result.events.forEach((event) => {
         playEvent(event); noteHit(event); notePhase(event);
         if (event.type === "won") startMusic("win");
@@ -196,7 +200,7 @@ export function FightScreen(props: {
         <div className="overlay">
           <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
-          {renderEnd(state.phase.kind === "won", state.score, state.mastery, tally.current)}
+          {renderEnd(state.phase.kind === "won", state.score, state.mastery, tally.current, fightEvents.current)}
         </div>
       )}
     </div>
