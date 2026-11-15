@@ -11,10 +11,10 @@ Homer's lines are our own words, not a translation. Each is about 20 words and s
 | Folder | What | Index |
 |---|---|---|
 | `public/audio/narration/` | Homer's 11 new lines | `public/audio/narration/index.json` |
-| `public/audio/taunts/` | 13 new taunts | `public/audio/taunts/index.json` |
+| `public/audio/taunts/` | 15 new taunts | `public/audio/taunts/index.json` |
 | `public/audio/athena/` | The 4 Homer lines and 4 Polyphemus taunts recorded first | `public/audio/athena/index.json` |
 
-The game only asks for clips an index lists, and stays silent for the rest. The 24 new clips are 2.2 MB together. Each is between 2.7 and 8.8 seconds.
+The game only asks for clips an index lists, and stays silent for the rest. The 26 new clips are 2.3 MB together. Each is between 2.7 and 8.8 seconds.
 
 ## New lines
 
@@ -38,6 +38,8 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `taunt_sirens_2` | The Sirens | The Sirens taunt the player | No one rows past until he has heard the sweetness of our song. |
 | `taunt_sirens_3` | The Sirens | The Sirens taunt the player | We know all that was suffered at Troy. We know everything that happens on the earth. |
 | `taunt_scylla_1` | Scylla | Scylla taunts the player | Six of your crew. That is the toll. |
+| `taunt_scylla_2` | Scylla | Scylla taunts the player | Six mouths, and every one is hungry. |
+| `taunt_scylla_3` | Scylla | Scylla taunts the player | Row, little king. No oar outruns my necks. |
 | `taunt_charybdis_1` | Charybdis | Charybdis taunts the player | Three times a day she drinks the sea, and three times gives it back. |
 | `taunt_charybdis_2` | Charybdis | Charybdis taunts the player | Not even the Earth-shaker could pull you out of there. |
 | `taunt_charybdis_3` | Charybdis | Charybdis taunts the player | Hold to the fig tree. Hold until she gives your timbers back. |
@@ -45,7 +47,9 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `taunt_suitors_2` | The Suitors | The suitors taunt the player | Stranger, you have shot your last. The vultures will have you here. |
 | `taunt_suitors_3` | The Suitors | The suitors taunt the player | Friends, draw your swords and hold the tables up against his arrows! |
 
-Scylla has one taunt because her file has one, so the "two or three taunts per monster" point of issue #86 is still open for her. When `src/enemies/defs/scylla.ts` gets more, add `taunt_scylla_2` and `taunt_scylla_3` to `TAUNT_LINES` and to this table, run the clip tool again, and change Scylla's range in `tests/narrationLines.test.ts` from `[1, 3]` to `[2, 3]`.
+Scylla's second and third taunts were recorded later the same day, once `src/enemies/defs/scylla.ts` had three: the same command, the same voice (Harry) and the same model (`eleven_v4`), one take each. Before that she had one clip and said the same line at every phase change. A taunt is picked at random each time, so a line can still come twice in one fight.
+
+Two lines in the monsters' files have no clip and are never spoken: Circe's fourth ("You are Odysseus. Hermes told me you would come.") and the suitors' third ("It was Antinous who led us. Spare your own people and we will pay it all back."). `taunt_suitors_3` is the suitors' fourth line.
 
 ## Lines recorded first
 
