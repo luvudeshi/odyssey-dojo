@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { playEvent } from "../audio/sfx";
 import { pauseMusic, resumeMusic, startMusic } from "../audio/music";
 import { speakMonsterTaunt, stopStory } from "../audio/storyVoice";
+import { useStopAudio } from "../audio/useStopAudio";
 import { playVoice, speakLine } from "../audio/voice";
 import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
@@ -112,6 +113,7 @@ export function FightScreen(props: {
 
   const over = state.phase.kind === "won" || state.phase.kind === "lost";
   const running = view === "off";
+  useStopAudio(enemy.id, !running || over);
   useEffect(() => { overRef.current = over; pausedRef.current = !running; }, [over, running]);
 
   useEffect(() => {
