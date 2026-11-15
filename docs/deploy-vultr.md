@@ -6,6 +6,8 @@ camera over https.
 
 `odysseydojo.us` is the worked example in this page. Replace it everywhere with the domain that was registered.
 
+To serve the page from Vercel and keep this instance as the room server only, see [deploy-vercel.md](deploy-vercel.md).
+
 **Run for real once.** The kit was run on a 1 vCPU / 2 GB instance in Dallas on Ubuntu 24.04. The first build took
 about ten minutes. It serves `https://odysseydojo.club` with a certificate Caddy got by itself. `www.` is not served.
 The code was copied to the instance, not cloned (see "If you copy the code up instead of cloning" in step 4). See
