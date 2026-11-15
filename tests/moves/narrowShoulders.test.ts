@@ -85,9 +85,10 @@ test.each(NARROW)("$name: the baseline reads the narrow shoulders and the same t
 });
 
 describe.each([FIXTURE, ...NARROW])("$name", ({ build, up, down }) => {
-  test.each(PUNCHES)("a %s counts from level to the pinned angles, and as nothing else", (move, side) => {
+  // Jab and cross read on either hand, so each punch fires both.
+  test.each(PUNCHES)("a %s counts from level to the pinned angles, as a jab and a cross and nothing else", (_move, side) => {
     for (let degrees = -down; degrees <= up; degrees++) {
-      expect(fired(punchOn(build, side, degrees)), `${String(degrees)} degrees above level`).toEqual([move]);
+      expect(fired(punchOn(build, side, degrees)), `${String(degrees)} degrees above level`).toEqual(["cross", "jab"]);
     }
   });
 

@@ -438,7 +438,8 @@ test("a guard, a jab and a slow lean set off no god move", () => {
   const jabbed = play([...hold(bent, 6), ...hold(straight, 6), ...hold(stand, 20)]);
   const leaned = play(ease(stand, shifted(stand, -0.7 * WIDTH, 0), 24));
   expect(seen(guarded)).toEqual(["block"]);
-  expect(seen(jabbed)).toEqual(["jab"]);
+  // Jab and cross read on either hand, so the jab fires the cross too; neither is a god move.
+  expect(seen(jabbed)).toEqual(["cross", "jab"]);
   expect(seen(leaned)).toEqual(["dodge_left"]);
 });
 

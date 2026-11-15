@@ -25,14 +25,14 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 
 | done \ read | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 jab | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 2 cross | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 1 jab | cat | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 2 cross | cat | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 3 hook | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 4 uppercut | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 5 spear_thrust | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 6 overhead_strike | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
-| 7 reverse_punch | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 8 knife_hand | . | cat | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 7 reverse_punch | cat | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 8 knife_hand | cat | cat | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
 | 10 double_palm | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
 | 11 chain_punch | cat | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
@@ -64,6 +64,13 @@ fight, and the fight only counts the strike it asked for.
 
 Before this issue 15 such pairs fired. Seven were fixed then, and an eighth (thunderbolt read as uppercut) by the
 lenient-strikes PR; seven are left and pinned.
+
+Jab and cross are a ninth and tenth pair left on purpose. By the owner's ruling a reasonable attempt must count
+every time, so both read a straight punch on either hand: a player told to jab often throws the strong hand. A
+straight punch therefore fires both, which costs nothing, because the fight counts only the strike it asked for.
+The prompt card still shows the jab on the left and the cross on the right. For the same reason the karate reverse
+punch and knife hand, which already read as a cross, now read as a jab too; those are two styles' strikes and
+never asked of one player.
 
 ## Fixed
 
@@ -119,8 +126,10 @@ stops. That is good news when it happens: take the pair out of `LEFT` and out of
 | aegis push | double palm | Kung Fu | The same. |
 | aegis push | spear thrust | Hoplite | A thrust is both arms snapped straight at shoulder height, and so is a push. Only the hand spacing could split them, and the existing spear thrust tests thrust with the wrists 0.72 shoulder widths apart, inside the push's 0.9. Where a real player's hands end up in the picture needs a real trace. |
 | swift dash | dodge right | every style | By design: a dash is one fast step to the side, and a step to the side is a dodge. A dodge is held, not thrown, and does nothing while the fight waits for a strike. |
+| jab | cross | Boxer | By the owner's ruling: both read a straight punch on either hand, so a reasonable attempt counts every time. |
+| cross | jab | Boxer | The same. |
 
-The first five and the last need a design change, not a threshold: one of each pair would have to become a
+The first five and the dash need a design change, not a threshold: one of each pair would have to become a
 different gesture. The fight counts only the move it asked for, so the cost today is that either gesture
 answers either prompt.
 
@@ -131,7 +140,7 @@ pinned in the same test (`OUTSIDE`) so a change shows up.
 
 | Done | Also read as | Why |
 |---|---|---|
-| reverse punch, knife hand | cross | The right arm is punched out fast. The cross does not look at the left hand's hip, or at where the right hand started. |
+| reverse punch, knife hand | jab, cross | The right arm is punched out fast. The cross does not look at the left hand's hip, or at where the right hand started, and the jab reads either hand too. |
 | chain punch | jab, cross | A chain punch is a jab and then a cross. |
 | double palm | spear thrust | Both arms snapped straight; see aegis push above. |
 | stake thrust | aegis push | The stake's grip at the chest is the push's start, and the arms end straight. The stake is only asked for as the Polyphemus finisher. |
