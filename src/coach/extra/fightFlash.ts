@@ -6,6 +6,7 @@
 // the MISS flash's own element (src/hud/MissFlash.tsx). Nothing here is spoken or played.
 import type { CombatEvent, CombatInput, CombatPhase, PoseHistory } from "../../core/types";
 import { MOVES } from "../../moves/registry";
+import { REACT_TIP, defendMissFeedback } from "./defendMissFeedback";
 import { TIP_MAX, strikeFeedback, tipsFor } from "./strikeFeedback";
 import type { StrikeFeedback } from "./strikeFeedback";
 
@@ -70,22 +71,16 @@ export function missedStrike(moveId: string, history: PoseHistory | null, sinceM
   return { word: "MISS", tip: tip ?? howTo(moveId) };
 }
 
-/** No move at all in the warning, or nothing better to say. */
-export const REACT_TIP = "React sooner";
+/** What a failed defend says when the body gave nothing better (defendMissFeedback's own words for no move). */
+export { REACT_TIP };
 
 /**
- * Stand-in for defendMissFeedback (branch defend-timing-tips: same arguments, same answer): what went wrong with a
- * defend that failed, read from the body over the warning. Until that lands it always says "React sooner". To swap
- * it in, change the one call in failedDefend below to `defendMissFeedback(...)`, imported from "./defendMissFeedback".
+ * A defend that failed: NEEDS IMPROVEMENT and what went wrong, read from the body over the warning by
+ * defendMissFeedback ("React sooner", "A beat sooner", "Duck, don't block"...); on the keyboard, the key to hold.
  */
-export function defendMissStandIn(_defendId: string, _history: PoseHistory, _startMs: number, _endMs: number): StrikeFeedback {
-  return { grade: "NEEDS IMPROVEMENT", points: 0, tip: REACT_TIP };
-}
-
-/** A defend that failed: NEEDS IMPROVEMENT and what went wrong; on the keyboard, the key to hold. */
 export function failedDefend(defendId: string, history: PoseHistory | null, startMs: number, endMs: number): FlashFeedback {
   if (history === null) return { word: "NEEDS IMPROVEMENT", tip: keyReminder(defendId, true) ?? REACT_TIP };
-  return { word: "NEEDS IMPROVEMENT", tip: defendMissStandIn(defendId, history, startMs, endMs).tip ?? REACT_TIP };
+  return { word: "NEEDS IMPROVEMENT", tip: defendMissFeedback(defendId, history, startMs, endMs).tip ?? REACT_TIP };
 }
 
 // ---------- which moments get a flash ----------

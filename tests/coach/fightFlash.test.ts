@@ -12,6 +12,7 @@ import {
   shouldShowFeedback, spokenLine,
 } from "../../src/coach/extra/fightFlash";
 import type { FlashFeedback, FlashState, FlashWord } from "../../src/coach/extra/fightFlash";
+import { defendMissFeedback } from "../../src/coach/extra/defendMissFeedback";
 import { FEEDBACK_POINTS, TIP_MAX, strikeFeedback } from "../../src/coach/extra/strikeFeedback";
 import type { FeedbackGrade, StrikeFeedback } from "../../src/coach/extra/strikeFeedback";
 import type { CombatEvent, CombatInput, CombatPhase, PoseHistory } from "../../src/core/types";
@@ -95,7 +96,12 @@ test("a failed defend flashes NEEDS IMPROVEMENT: the key to hold on the keyboard
   expect(failedDefend("block", null, 0, 1000)).toEqual({ word: "NEEDS IMPROVEMENT", tip: keyReminder("block", true) });
   expect(keyReminder("block", true)).toBe("Hold Space");
   for (const [id, move] of MOVES) if (move.key.startsWith("Arrow")) expect(keyReminder(id, true)).toMatch(/^Hold [←→↑↓]$/);
-  expect(failedDefend("block", standing, 0, 1000)).toEqual({ word: "NEEDS IMPROVEMENT", tip: REACT_TIP });
+  // On camera: defendMissFeedback's reading of the warning, "React sooner" when it has nothing to say.
+  const window = [standing.frames[0]?.t ?? 0, standing.frames.at(-1)?.t ?? 0] as const;
+  const onCamera = failedDefend("block", standing, window[0], window[1]);
+  expect(onCamera).toEqual({ word: "NEEDS IMPROVEMENT", tip: defendMissFeedback("block", standing, window[0], window[1]).tip ?? REACT_TIP });
+  expect(onCamera.tip).toBe(REACT_TIP);
+  expect(failedDefend("block", { frames: [], baseline: null }, 0, 1000).tip).toBe(REACT_TIP);
 });
 
 /** A keyboard fight in 50 ms steps with the given choices. Returns each flash and the final score. */
