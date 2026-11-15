@@ -1,7 +1,8 @@
 // The leave call from the page's side. Both links here only poll, as the hosted page does: a poll that stops says
 // nothing to the relay, so without the leave call the other member would hear of it AWAY_MS (20 s) later at best.
-// close() is the member leaving for good and sends it; a page that is only loaded again must not, or the seat its
-// kept token stands for would be gone. The relay and every request are real.
+// close() sends it, and so does a link that is told its page is going (onPageGone). A guest's page that is loaded
+// again then joins as new, with no wait; a page that is not told sends nothing and comes back on its kept token.
+// The relay and every request are real.
 import { once } from "node:events";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -71,8 +72,8 @@ function memoryStore(): SeatStore & { token(): string | null } {
 /** One browser page's way to the relay: real requests, a list of what it asked, and a plug the test can pull. */
 interface Page {
   readonly deps: NetDeps;
-  /** Every leave call this page made: the token in its body and whether it was asked with keepalive. */
-  readonly leaves: { token: unknown; keepalive: boolean | undefined }[];
+  /** Every leave call this page made: the token in its body, how it went out, and the content type it was given. */
+  readonly leaves: { token: unknown; by: "beacon" | "keepalive" | "plain"; type: string | undefined }[];
   readonly asked: string[];
   /** Cuts every request on its way and refuses new ones until `plug()`: a page that was thrown away, or a lost network. */
   unplug(): void;
@@ -83,7 +84,10 @@ interface Page {
   unwatched: number;
 }
 
-function page(watchPageGone = false): Page {
+type Beacon = "none" | "yes" | "no";
+
+/** `beacon`: the page has navigator.sendBeacon, which takes the call ("yes") or turns it down ("no"). */
+function page(watchPageGone = false, beacon: Beacon = "none"): Page {
   let cut = new AbortController();
   let off = false;
   const made: Page = {
@@ -98,11 +102,22 @@ function page(watchPageGone = false): Page {
       openStream: () => { throw new Error("a poll-only link opened a stream"); },
       fetch: (url, init) => {
         made.asked.push(url);
-        if (url.endsWith("/leave")) made.leaves.push({ token: (JSON.parse(init.body ?? "{}") as { token?: unknown }).token, keepalive: init.keepalive });
+        if (url.endsWith("/leave")) {
+          made.leaves.push({ token: (JSON.parse(init.body ?? "{}") as { token?: unknown }).token, by: init.keepalive === true ? "keepalive" : "plain", type: init.headers?.["Content-Type"] });
+        }
         if (off) return Promise.reject(new Error("unplugged"));
         const { signal, ...rest } = init;
         return fetch(url, { ...rest, signal: signal ? AbortSignal.any([signal, cut.signal]) : cut.signal });
       },
+      ...(beacon === "none" ? {} : {
+        beacon: (url: string, body: string) => {
+          if (beacon === "no") return false;
+          made.leaves.push({ token: (JSON.parse(body) as { token?: unknown }).token, by: "beacon", type: "text/plain" });
+          // What the browser does with a string: a POST labelled text/plain, sent whatever becomes of the page.
+          void fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" }, body }).catch(() => undefined);
+          return true;
+        },
+      }),
       ...(watchPageGone ? {
         onPageGone: (gone: () => void) => {
           made.pageGone = gone;
@@ -127,9 +142,9 @@ interface Pair {
 }
 
 /** A host and a guest in one room on the real relay, both polling, each told the other is here. */
-async function pair(base: string, watchPageGone = false): Promise<Pair> {
-  const hostPage = page(watchPageGone);
-  const guestPage = page(watchPageGone);
+async function pair(base: string, watchPageGone = false, beacon: Beacon = "none"): Promise<Pair> {
+  const hostPage = page(watchPageGone, beacon);
+  const guestPage = page(watchPageGone, beacon);
   const room = await createRoom(hostPage.deps, base);
   if (typeof room === "string") throw new Error(room);
   const host = openRoom(hostPage.deps, room, base);
@@ -162,26 +177,29 @@ test("a polling host that closes its link is reported to the guest at once, not 
   room.host.close();
   await until("the guest hears the host left", () => peers(room.guestHeard).at(-1) === false);
   expect(realNow() - started).toBeLessThan(SOON_MS);
-  expect(room.hostPage.leaves.length).toBe(1);
-  // Asked so that a closing page still gets it out.
-  expect(room.hostPage.leaves[0]?.keepalive).toBe(true);
+  // Asked so that a closing page still gets it out, and with no label of its own, so it leaves as text/plain like a beacon.
+  expect(room.hostPage.leaves.map((leave) => [leave.by, leave.type])).toEqual([["keepalive", undefined]]);
   // Closing twice says it once.
   room.host.close();
   expect(room.hostPage.leaves.length).toBe(1);
-  // The room is closed with its host: nobody new walks into it.
-  room.guest.close();
-  await until("the guest's leave", () => room.guestPage.leaves.length === 1);
-  await pause(100);
-  expect(await tryJoin(base, room.code)).toBe("unknown_room");
+  // The host's link is closed: it does not poll again, so the relay does not take the host for back.
+  const polls = room.hostPage.asked.filter((url) => url.includes("/poll?")).length;
+  await pause(200);
+  expect(room.hostPage.asked.filter((url) => url.includes("/poll?")).length).toBe(polls);
+  expect(peers(room.guestHeard).at(-1)).toBe(false);
 });
 
 test("a polling guest that closes its link frees its seat at once and the host is told", async () => {
   const base = await serve();
   const room = await pair(base);
   expect(await tryJoin(base, room.code)).toBe("room_full");
+  const token = room.store.token();
+  expect(token).not.toBeNull();
   room.guest.close();
   await until("the host hears the guest left", () => peers(room.hostHeard).at(-1) === false);
-  expect(room.guestPage.leaves).toEqual([{ token: room.store.token(), keepalive: true }]);
+  expect(room.guestPage.leaves).toEqual([{ token, by: "keepalive", type: undefined }]);
+  // The dead token is not kept for the tab's next page.
+  expect(room.store.token()).toBeNull();
   // No 409 while the relay waits out its 20 seconds: the seat is free now.
   expect(await tryJoin(base, room.code)).toBe("joined");
   expect(await tryJoin(base, room.code)).toBe("room_full");
@@ -189,7 +207,7 @@ test("a polling guest that closes its link frees its seat at once and the host i
   expect(peers(room.hostHeard)).toEqual([true, false]);
 });
 
-test("a guest's page that is loaded again sends no leave call and is back on its own seat", async () => {
+test("a guest's page that is thrown away without a word sends no leave call, and its next page is back on its own seat", async () => {
   const base = await serve();
   const room = await pair(base);
   const token = room.store.token();
@@ -214,18 +232,54 @@ test("a guest's page that is loaded again sends no leave call and is back on its
   await until("the strike", () => room.hostHeard.some((message) => message.type === "strike"));
 });
 
-test("only a host's link watches for the page going; told so, it sends the leave call once and close() adds nothing", async () => {
+test("a link told its page is going closes: one leave by the beacon, no poll after it, and close() adds nothing", async () => {
   const base = await serve();
-  const room = await pair(base, true);
-  // A guest's page that goes may be a reload, so its link did not ask to be told.
-  expect(room.guestPage.pageGone).toBeNull();
+  const room = await pair(base, true, "yes");
   expect(room.hostPage.pageGone).not.toBeNull();
   room.hostPage.pageGone?.();
   await until("the guest hears the host left", () => peers(room.guestHeard).at(-1) === false);
   room.hostPage.pageGone?.();
   room.host.close();
-  expect(room.hostPage.leaves.length).toBe(1);
+  // The relay ended the host's held poll with the leave; a link still polling would have brought the host back.
+  await pause(200);
+  expect(peers(room.guestHeard).at(-1)).toBe(false);
+  expect(room.hostPage.leaves.map((leave) => [leave.by, leave.type])).toEqual([["beacon", "text/plain"]]);
+  // The beacon took it, so nothing was asked the other way.
+  expect(room.hostPage.asked.some((url) => url.endsWith("/leave"))).toBe(false);
   expect(room.hostPage.unwatched).toBe(1);
+});
+
+test("a guest's page that is loaded again, and says so as it goes, joins as new at once: no refusal, no wait", async () => {
+  const base = await serve();
+  const room = await pair(base, true, "yes");
+  const first = room.store.token();
+  // The reload: the old page's pagehide, then its requests die with it.
+  room.guestPage.pageGone?.();
+  room.guestPage.unplug();
+  await until("the host hears the guest left", () => peers(room.hostHeard).at(-1) === false);
+  expect(room.guestPage.leaves).toEqual([{ token: first, by: "beacon", type: "text/plain" }]);
+  expect(room.store.token()).toBeNull();
+
+  // The new page has the tab's store, which holds no seat now: one join, taken at once, and no "ask" with a dead token.
+  const again = page(true, "yes");
+  const seat = await joinRoomAgain(again.deps, room.code, room.store, base);
+  if (typeof seat === "string") throw new Error(seat);
+  expect(seat.token).not.toBe(first);
+  expect(again.asked.map((url) => url.slice(url.lastIndexOf("/")))).toEqual(["/join"]);
+  expect(room.store.token()).toBe(seat.token);
+  const link = openRoom(again.deps, seat, base);
+  links.push(link);
+  await until("the host hears the guest is back", () => peers(room.hostHeard).at(-1) === true);
+  expect(await link.send({ type: "strike", move: "jab", quality: 0.7 })).toBe(true);
+  await until("the strike", () => room.hostHeard.some((message) => message.type === "strike"));
+});
+
+test("a beacon the browser turns down falls back to the request with keepalive", async () => {
+  const base = await serve();
+  const room = await pair(base, false, "no");
+  room.guest.close();
+  await until("the host hears the guest left", () => peers(room.hostHeard).at(-1) === false);
+  expect(room.guestPage.leaves.map((leave) => [leave.by, leave.type])).toEqual([["keepalive", undefined]]);
 });
 
 test("a guest that took a seat again leaves with its new token only, and one whose seat is lost sends nothing", async () => {
@@ -240,18 +294,22 @@ test("a guest that took a seat again leaves with its new token only, and one who
   vi.setSystemTime(Date.now() + AWAY_MS + 1);
   // Any call makes the relay look at its seats.
   expect(await room.host.send({ type: "stop" })).toBe(false);
-  await until("the host hears the guest went", () => peers(room.hostHeard).at(-1) === false);
   // The network is back: the relay refuses the old token and the link joins again by itself.
   room.guestPage.plug();
-  await until("the host hears the guest is back", () => peers(room.hostHeard).at(-1) === true);
+  await until("the guest has a new seat", () => room.store.token() !== first);
   const second = room.store.token();
-  expect(second).not.toBe(first);
+  expect(second).not.toBeNull();
   expect(room.guestPage.leaves).toEqual([]);
+  // The new seat works: the host hears the guest's strike.
+  await until("the strike", () => {
+    void room.guest.send({ type: "strike", move: "jab", quality: 0.7 });
+    return room.hostHeard.some((message) => message.type === "strike");
+  });
 
   room.guest.close();
   await until("the host hears the guest left", () => peers(room.hostHeard).at(-1) === false);
   // One leave, for the seat it holds now; the dead token is never sent.
-  expect(room.guestPage.leaves).toEqual([{ token: second, keepalive: true }]);
+  expect(room.guestPage.leaves).toEqual([{ token: second, by: "keepalive", type: undefined }]);
   expect(await tryJoin(base, room.code)).toBe("joined");
 
   // A second guest loses its seat to a stranger while it is away: it is told the host is gone and has no seat to give back.
