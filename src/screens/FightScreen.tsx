@@ -20,9 +20,8 @@ import { keyboardTakesOver } from "../pose/escape";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
 import { pushFrame } from "../pose/signals";
 import type { PoseTracker } from "../pose/tracker";
-import { noteInput } from "../render/battle";
+import { battle, noteInput } from "../render/battle";
 import { Scene } from "../render/Scene";
-import { battle } from "../render/battle";
 import { useSettings } from "../settings/store";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
@@ -55,6 +54,7 @@ export function FightScreen(props: {
   const preview = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    battle.styleId = style.id;
     startMusic("fight");
     speakLine("fight_start");
     const keyboard = createKeyboard(MOVES);

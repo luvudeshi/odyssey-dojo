@@ -21,6 +21,21 @@ export function EndPanel(props: {
     .map(([id, count]) => ({ name: MOVES.get(id)?.name ?? id, count }));
   return (
     <>
+      <div className="vase-scene" aria-hidden="true">
+        {props.won ? (
+          <>
+            <i className="laurel" />
+            <i className="ship" />
+            <i className="laurel flip" />
+          </>
+        ) : (
+          <>
+            <i className="palmette" />
+            <i className="owl" />
+            <i className="palmette" />
+          </>
+        )}
+      </div>
       <p>{props.won ? "The way onward is open." : "The gods turn their faces away. Rise and try again."}</p>
       <div className="learned">
         <h2>Moves learned</h2>
@@ -29,8 +44,8 @@ export function EndPanel(props: {
         )}
       </div>
       {!props.won && <button autoFocus onClick={props.onRetry}>Fight again</button>}
-      <button autoFocus={props.won} onClick={props.onMap}>{props.won ? "Back to the map" : "Map"}</button>
-      <button onClick={props.onStyle}>Change style</button>
+      <button className={props.won ? "" : "quiet"} autoFocus={props.won} onClick={props.onMap}>{props.won ? "Back to the map" : "Map"}</button>
+      <button className="quiet" onClick={props.onStyle}>Change style</button>
     </>
   );
 }

@@ -29,8 +29,8 @@ export const enemy: EnemySpec = {
     },
   ],
   weakSpots: [
-    { id: "neck", label: "an outstretched neck", position: [0.8, 3, 0.8], moves: ["hook", "overhead_strike", "knife_hand", "hammer_fist", "rising_palm"] },
-    { id: "jaw", label: "a snapping jaw", position: [-0.6, 3.6, 1], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "front_kick", "uppercut"] },
+    { id: "neck", label: "an outstretched neck", position: [1.34, 3.06, 1.12], moves: ["hook", "overhead_strike", "knife_hand", "hammer_fist", "rising_palm"] },
+    { id: "jaw", label: "a snapping jaw", position: [-0.69, 3.53, 1.28], moves: ["jab", "cross", "spear_thrust", "reverse_punch", "chain_punch", "double_palm", "front_kick", "uppercut"] },
   ],
   taunts: ["Six of your crew. That is the toll.", "Six mouths, and every one is hungry.", "Row, little king. No oar outruns my necks."],
 };
