@@ -1,7 +1,7 @@
 // The live camera panel on the fight screen: the player's own picture with the tracked skeleton drawn on it,
 // and a caption saying whether the body is tracked and which move was just recognised. Drawn from one
 // requestAnimationFrame loop over refs, so React never re-renders per frame (memo keeps the per-frame FightScreen state from reaching it).
-import { memo, useEffect, useRef } from "react";
+import { memo, useContext, useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import type { PoseFrame } from "../core/types";
 import { MOVES } from "../moves/registry";
@@ -10,6 +10,7 @@ import { battle } from "../render/battle";
 import { useSettings } from "../settings/store";
 import { NO_FLASH, flashText, nextFlash, presenceOf } from "./cameraCaption";
 import type { Flash } from "./cameraCaption";
+import { CameraPanelContext, offersCamera, panelNote, panelState } from "./cameraPanel";
 import "./cameraView.css";
 import { headStones, skeletonLines, stonesAlong } from "./skeletonLines";
 
@@ -26,13 +27,19 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef<HTMLSpanElement>(null);
   const move = useRef<HTMLSpanElement>(null);
+  // Never null on the fight screen: without a live picture the same frame says why, and offers the camera when it can.
+  const panel = useContext(CameraPanelContext);
+  const shown = panelState(tracker !== null, panel.status);
+  const video = tracker && shown === "live" ? tracker.video : null;
 
   useEffect(() => {
     const box = holder.current;
     const surface = canvas.current;
     const context = surface?.getContext("2d");
-    if (!tracker || !box || !surface || !context) return;
-    box.append(tracker.video);
+    const label = state.current;
+    const flashLabel = move.current;
+    if (!video || !box || !surface || !context) return;
+    box.append(video);
     // The size changes rarely, so it is read when the box resizes and not every frame.
     let cssWidth = box.clientWidth;
     let cssHeight = box.clientHeight;
@@ -47,7 +54,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
     let shownMove = "";
     const tick = (): void => {
       // Size the frame to the camera's real shape so the skeleton lines up with the picture whatever the aspect.
-      const { videoWidth, videoHeight } = tracker.video;
+      const { videoWidth, videoHeight } = video;
       const shape = videoWidth > 0 && videoHeight > 0 ? `${String(videoWidth)} / ${String(videoHeight)}` : "";
       if (box.style.aspectRatio !== shape) box.style.aspectRatio = shape;
       const ratio = window.devicePixelRatio || 1;
@@ -68,10 +75,15 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(handle); watcher.disconnect(); tracker.video.remove(); };
-  }, [tracker, poseRef]);
+    return () => {
+      cancelAnimationFrame(handle);
+      watcher.disconnect();
+      video.remove();
+      if (label) label.dataset.on = "false";
+      if (flashLabel) flashLabel.textContent = "";
+    };
+  }, [video, poseRef]);
 
-  if (!tracker) return null;
   return (
     <figure className={mirror ? "camera-view mirror" : "camera-view"} aria-label="Your camera">
       <div className="camera-frame" ref={holder}>
@@ -80,8 +92,12 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       <figcaption>
         <span className="camera-tag">Your body</span>
         <i className="camera-dot" aria-hidden="true" />
-        <span ref={state} className="camera-state" data-on="false">I can't see you</span>
+        <span ref={state} className="camera-state" data-on="false">{shown === "live" ? "I can't see you" : panelNote(shown)}</span>
         <span ref={move} className="camera-move" aria-live="polite" />
+        {offersCamera(shown) && panel.onCamera && (
+          // Inline so the HUD restyle owns the look; the panel ignores the pointer, this button must not.
+          <button type="button" style={{ pointerEvents: "auto", minWidth: 0, margin: 0, padding: "0 0.4rem", fontSize: "inherit" }} onClick={panel.onCamera}>Use camera</button>
+        )}
       </figcaption>
     </figure>
   );

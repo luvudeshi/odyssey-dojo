@@ -1,7 +1,14 @@
-// The camera panel's pure parts: skeleton maths (mirror on and off), the tracking caption and the move flash.
+// The camera panel's pure parts: skeleton maths (mirror on and off), the tracking caption and the move flash,
+// and the panel itself in each state: live picture, camera starting or restarting, and keyboard mode.
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import type { Landmark } from "../src/core/types";
+import { CameraView } from "../src/hud/CameraView";
 import { FLASH_SECONDS, NO_FLASH, flashText, nextFlash, presenceOf } from "../src/hud/cameraCaption";
+import { CameraPanelContext, offersCamera, panelNote, panelState } from "../src/hud/cameraPanel";
+import type { CameraStatus } from "../src/pose/cameraSession";
+import type { PoseTracker } from "../src/pose/tracker";
 import { headStones, skeletonLines, stonesAlong } from "../src/hud/skeletonLines";
 import { JOINT } from "../src/pose/signals";
 import { shiftBattleTimes } from "../src/ui/pauseState";
@@ -107,4 +114,42 @@ test("the head cluster is a centre and a ring of six, with an outer ring of twel
   expect(small).toHaveLength(7);
   expect(small[0]).toEqual({ x: 10, y: 10 });
   expect(headStones({ x: 10, y: 10 }, 20, 2)).toHaveLength(19);
+});
+
+const panel = (status: CameraStatus, tracker: PoseTracker | null, onCamera: (() => void) | null = () => undefined): string =>
+  renderToStaticMarkup(createElement(CameraPanelContext, { value: { status, onCamera } }, createElement(CameraView, { tracker, poseRef: { current: null }, paused: false })));
+const someTracker: PoseTracker = { video: {} as HTMLVideoElement, read: () => null, stop: () => undefined };
+
+test("webcam mode with a live camera shows the picture's frame and the tracking caption, no button", () => {
+  const html = panel("live", someTracker);
+  expect(html).toContain('class="camera-frame"');
+  expect(html).toContain("I can&#x27;t see you");
+  expect(html).not.toContain("Use camera");
+});
+
+test("a camera on its way or restarting keeps the panel with a plain message, no button", () => {
+  expect(panel("starting", someTracker)).toContain("Camera starting...");
+  expect(panel("restarting", someTracker)).toContain("Camera stopped. Restarting...");
+  expect(panel("restarting", someTracker)).not.toContain("Use camera");
+  expect(panel("starting", null)).toContain("Camera starting...");
+});
+
+test("keyboard mode, or a camera that would not come back, keeps the panel and offers the camera", () => {
+  const keyboard = panel("off", null);
+  expect(keyboard).toContain('class="camera-frame"');
+  expect(keyboard).toContain("Keyboard mode");
+  expect(keyboard).toContain(">Use camera</button>");
+  expect(panel("live", null)).toContain("Keyboard mode");
+  expect(panel("failed", someTracker)).toContain("Camera stopped");
+  expect(panel("failed", someTracker)).toContain("Use camera");
+  expect(panel("off", null, null)).not.toContain("Use camera");
+});
+
+test("panel states: no tracker is keyboard play unless the camera is starting", () => {
+  expect(panelState(false, "live")).toBe("keyboard");
+  expect(panelState(false, "failed")).toBe("keyboard");
+  expect(panelState(false, "starting")).toBe("starting");
+  expect(panelState(true, "restarting")).toBe("restarting");
+  expect(offersCamera("keyboard") && offersCamera("failed") && !offersCamera("live") && !offersCamera("starting")).toBe(true);
+  expect(panelNote("live")).toBe("");
 });
