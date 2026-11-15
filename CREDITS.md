@@ -2,8 +2,8 @@
 
 Every file in the game's `public` folder has a row here. There are three kinds:
 
-- Art we downloaded: skies, textures and models. All of it is CC0 (public domain).
-- Things the team made: the voices, sounds and music (generated with ElevenLabs) and the icons (drawn in code).
+- Art we downloaded: skies, textures and models. All of it is CC0 (public domain) except one model: the columns of Circe's hall are CC BY 3.0, and their row carries the credit that licence asks for.
+- Things the team made: the voices, sounds and music (generated with ElevenLabs), and the icons and the browser tab emblem (drawn in code).
 - Bundled software: the pose tracker and the mesh decoder, which Google publishes under the Apache License 2.0. They are at the end of this file.
 
 `make credits` checks that no file is missing. `docs/licences.md` has the full list and says which sources were opened to check each licence.
@@ -48,8 +48,10 @@ His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
 | Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.com/packs/universalbasecharacters.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0) | CC0 |
+| KayKit Dungeon Remastered 1.0, by Kay Lousberg: long feast table with a tablecloth, stool, chair and food platter, unchanged | `public/models/suitors/kkd_*.glb`, the feast tables in the great hall | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 (its `LICENSE.txt` says CC0) | CC0 |
+| Wooden Axe (1K), by Ulan Cabanilla, from Poly Haven. The diffuse and ARM maps and the mesh are unchanged; the `.gltf` was edited to leave out the normal map | `public/models/suitors/ph/wooden_axe/`, the twelve axes for the bow contest | https://polyhaven.com/a/wooden_axe | CC0 |
 
-Their gear, the hall and its props are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens and Scylla are built in code too and ship no model file. Their logs are in `docs/models/`.
+The suitors' gear and the hall itself are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens and Scylla are built in code too and ship no model file of their own; the columns of Circe's hall are downloaded and have their own section below. The logs are in `docs/models/`.
 
 ## Charybdis
 
@@ -57,29 +59,31 @@ The whirlpool is built in code. The anglerfish, tentacles and scenery are downlo
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| Anglerfish, Tentacle, Rock_4, Rock_6, Rock_Moss_4, CommonTree_5, CommonTree_Dead_3, Viking_boat, Sail_ship, by Quaternius | Charybdis and her strait, `public/models/charybdis/*.glb` | https://quaternius.com | CC0 |
-| Rock Moss Set 01, by Kless Gyzen | Rocks of the tentacle look (`?look=b`), `public/models/charybdis/rocks/` | https://polyhaven.com/a/rock_moss_set_01 | CC0 |
-| three.js Water and Sky examples | Sea and sky of the Charybdis stop | https://github.com/mrdoob/three.js | MIT |
+| Anglerfish, by Quaternius, via Poly Pizza | `public/models/charybdis/Anglerfish.glb`, the fish that lunges out of the whirlpool | https://poly.pizza/m/MRjSlwCjHM | CC0 |
+| Tentacle, by Quaternius, via Poly Pizza | `public/models/charybdis/Tentacle.glb`, the arms on the whirlpool's rim | https://poly.pizza/m/BR1vpIvvvv | CC0 |
+| Viking Boat, by Quaternius, via Poly Pizza | `public/models/charybdis/Viking_boat.glb`, a wrecked boat on the water | https://poly.pizza/m/J7SCPiNoSy | CC0 |
+| Sail Ship, by Quaternius, via Poly Pizza | `public/models/charybdis/Sail_ship.glb`, a wrecked ship on the water | https://poly.pizza/m/cIzO4MBPqI | CC0 |
+| Rock_4, Rock_6, Rock_Moss_4, CommonTree_5 and CommonTree_Dead_3, by Quaternius. The model log names the Ultimate Nature Pack as their source | `public/models/charybdis/Rock_4.glb`, `public/models/charybdis/Rock_6.glb`, `public/models/charybdis/Rock_Moss_4.glb`, `public/models/charybdis/CommonTree_5.glb`, `public/models/charybdis/CommonTree_Dead_3.glb`, the sea stacks, the cliffs and the fig tree | https://quaternius.com/packs/ultimatenature.html | CC0 |
+| Rock Moss Set 01 (1K), by Kless Gyzen, from Poly Haven, unchanged | Rocks of the tentacle look (`?look=b`), `public/models/charybdis/rocks/` | https://polyhaven.com/a/rock_moss_set_01 | CC0 |
+
+The sea and the sky of the Charybdis stop use the Water and Sky examples of three.js (https://github.com/mrdoob/three.js, MIT). They are code from the `three` npm package, compiled into the game: no file under `public` comes from them, and the water's normal map is made in code.
 
 ## Icons
 
 | Asset | File | Source | Licence |
 |---|---|---|---|
 | Ship, owl, palmette and laurel ornaments of the pottery look | `public/ui/ship.svg`, `public/ui/owl.svg`, `public/ui/palmette.svg`, `public/ui/laurel.svg` | SVG shapes written in code for PR #134 | Drawn by the team |
-| Eye icon in the browser tab | `public/favicon.svg` | Four plain SVG shapes, added by the lead in PR #105 | Drawn by the team |
+| Pebble mosaic emblem in the browser tab | `public/favicon.svg` | Written by our own script, `npx tsx scripts/gen-pebble-favicon.ts`, which draws the emblem of `src/ui/pebble/brand.ts` as SVG stones (PR #218). It replaced the eye icon of PR #105 | Drawn by the team |
+
+The pebble mosaic logo and emblem on the screens are drawn by the same code while the game runs (`src/ui/pebble/`). The guard shield, the power effects and Polyphemus's thrown boulder are drawn in code too (`src/render/effects/`). None of them ships a file.
 
 ## Circe
 
 | Asset | Used for | URL | Licence |
 |---|---|---|---|
-| "Doric Greek Column" by Victor Vina, via Poly Pizza | `public/models/circe/doric.glb`, the six marble columns of Circe's portico | https://poly.pizza/m/5VD5-v8NBZ4 | CC BY 3.0, credit: Victor Vina |
+| "Doric Greek Column" by Victor Viña, via Poly Pizza | `public/models/circe/doric.glb`, the six marble columns of Circe's portico | https://poly.pizza/m/5VD5-v8NBZ4 | CC BY 3.0. Credit: "Doric Greek Column" by Victor Viña, CC BY 3.0, via Poly Pizza |
 
-## The Suitors
-
-| Asset | Used for | URL | Licence |
-|---|---|---|---|
-| KayKit Dungeon Remastered: long tablecloth feast table, stool, chair and food platter (Kay Lousberg) | `public/models/suitors/kkd_*.glb`, the feast tables in the great hall | https://github.com/KayKit-Game-Assets/KayKit-Dungeon-Remastered-1.0 | CC0 |
-| Wooden Axe (1K diffuse and ARM maps, Poly Haven) | `public/models/suitors/ph/wooden_axe/`, the twelve axes for the bow contest | https://polyhaven.com/a/wooden_axe | CC0 |
+The licence is Creative Commons Attribution 3.0, https://creativecommons.org/licenses/by/3.0/. The game scales the column and stands six copies of it on the portico.
 
 ## Voices and sound effects
 
