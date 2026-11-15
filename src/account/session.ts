@@ -8,7 +8,7 @@ import { log } from "../core/log";
 import type { AccountClient, AccountError } from "./client";
 import { ACCOUNT_NAME_MAX, ACCOUNT_NAME_MIN, PASSWORD_MAX, PASSWORD_MIN } from "./contracts";
 import type { Save } from "./contracts";
-import { mergeSaves } from "./merge";
+import { changesBetween, mergeSaves } from "./merge";
 import { applySave, emptySnapshot, readSave, sameSave, snapshot } from "./snapshot";
 import type { LocalStores } from "./snapshot";
 import { cleanName } from "./store";
@@ -145,6 +145,8 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
   let pulled = false;
   /** Achievement ids the account holds, kept in every save sent so none is dropped. */
   let known: readonly string[] = [];
+  /** This browser's save as it was right after it last joined with the account on this page. What differs from it since was changed here. */
+  let joinedAs: Save | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   /** The round that is under way, if one is. At most one request is out at a time. */
   let working: Promise<void> | null = null;
@@ -164,6 +166,7 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
     timer = null;
     pulled = false;
     known = [];
+    joinedAs = null;
     again = false;
     edits = 0;
     sentEdits = 0;
@@ -263,11 +266,13 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
     }
     const mineNow = who();
     if (!mineNow) return "later";
-    // Changes made here that the account does not have are not undone by the save they are about to be joined with.
-    const prefer = (mineNow.merged && mineNow.unsent) || edits > sentEdits ? "local" : "account";
     // Another player's leftover progress is not joined in: the account starts from its own save.
     const local = mineNow.fresh ? emptySnapshot(stores) : snapshot(stores);
-    const merged = mergeSaves(local, theirs, { accountName: mine.name, prefer: mineNow.fresh ? "account" : prefer });
+    // Changes made here that the account does not have are not undone by the save they are about to be joined with.
+    // What was not changed here (the hero name of a browser that only won a fight) gives way to the account's.
+    const waiting = !mineNow.fresh && ((mineNow.merged && mineNow.unsent) || edits > sentEdits);
+    const prefer = !waiting ? "account" : joinedAs ? changesBetween(joinedAs, local) : "local";
+    const merged = mergeSaves(local, theirs, { accountName: mine.name, prefer });
     applying = true;
     try {
       applySave(stores, merged);
@@ -275,6 +280,7 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
       applying = false;
     }
     known = merged.achievements ?? [];
+    joinedAs = snapshot(stores);
     pulled = true;
     keep({ ...mineNow, merged: true, fresh: false });
     again = false;

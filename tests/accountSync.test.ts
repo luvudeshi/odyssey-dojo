@@ -716,3 +716,26 @@ test("a save that could not be fetched at sign-in: changes made since are not un
   expect(b.settings.get().musicVolume).toBe(0.9);
   expect(p.account.get().status).toBe("unknown");
 });
+
+test("two browsers signed in: a fight on the one that was not looking does not undo a rename and a volume change made on the other", async () => {
+  const server = fakeServer();
+  const a = page(server);
+  await a.account.signUp("Luv", PASSWORD);
+  const b = page(server);
+  await b.account.signIn("Luv", PASSWORD);
+  a.profile.rename("Luv the Bold");
+  a.settings.set({ musicVolume: 0.2 });
+  a.pick("zeus");
+  await afterDelay();
+  // B knows nothing of that and wins a fight.
+  b.profile.record(fight("circe", true, 3000));
+  await afterDelay();
+  expect(server.saveOf("Luv")).toMatchObject({ profile: { name: "Luv the Bold", cleared: ["circe"] }, settings: { musicVolume: 0.2 }, character: "zeus" });
+  expect(b.profile.get().name).toBe("Luv the Bold");
+  expect(b.settings.get().musicVolume).toBe(0.2);
+  expect(b.stores.character.get()).toBe("zeus");
+  // What B itself changes still wins.
+  b.settings.set({ sfxVolume: 0.4 });
+  await afterDelay();
+  expect(server.saveOf("Luv")).toMatchObject({ profile: { name: "Luv the Bold" }, settings: { musicVolume: 0.2, sfxVolume: 0.4 } });
+});
