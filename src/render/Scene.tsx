@@ -11,7 +11,10 @@ import { battle, nowSeconds, resetBattle, syncBattle } from "./battle";
 import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { Boulder } from "./effects/Boulder";
 import { HitEffects } from "./effects/HitEffects";
+import { DefendBurst } from "./effects/DefendBurst";
+import { GuardShield } from "./effects/GuardShield";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { finisherSpot } from "./strikeReach";
@@ -94,6 +97,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
               hitFlash: hitPulse(),
             })}
             <HitEffects state={state} finishAt={finishAt} />
+            <Boulder />
             {weakSpot && (
               <mesh position={[...weakSpot.position]}>
                 <torusGeometry args={[0.45, 0.06, 8, 32]} />
@@ -103,6 +107,8 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           </MonsterRig>
           <CameraRig />
           <Hero poseRef={poseRef} />
+          <GuardShield />
+          <DefendBurst />
           {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
           <Effects />
           <QualityGovernor />

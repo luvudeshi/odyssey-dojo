@@ -131,9 +131,9 @@ test("a front kick is not a knee, a knee is not a front kick, and neither is a h
   expect(thrown(kneeMotion("left")).struck).toEqual(["knee"]);
   // The kick coming back down through the chamber does not turn into a knee.
   expect(thrown([...kickMotion("right"), legs(950, CHAMBER), legs(1050)]).struck).toEqual(["front_kick"]);
-  // A jab thrown with the legs in view is still only a jab.
+  // A jab thrown with the legs in view is still only a straight punch (jab and cross read on either hand).
   const jab = [legs(700, DOWN, "right", {}, LEFT_BENT), legs(900, DOWN, "right", {}, LEFT_OUT)];
-  expect(thrown(jab).struck).toEqual(["jab"]);
+  expect(thrown(jab).struck).toEqual(["cross", "jab"]);
 });
 
 test("no kick is read when the tracker cannot see the knees and ankles", () => {
