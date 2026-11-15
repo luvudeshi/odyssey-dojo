@@ -14,37 +14,39 @@
 .pb-emblem, .pb-logo { display: inline-block; line-height: 0; }
 
 .pb-heading { display: block; margin: 0; padding: 0; line-height: 0; font-weight: 700; }
-.pb-heading--plain { line-height: 1.2; font-family: var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--pb-ochre-light); text-shadow: 0 0 3px var(--pb-outline), 0 1px 0 var(--pb-outline); }
+.pb-heading--plain { line-height: 1.15; font-family: var(--pb-font-body); font-weight: 700; letter-spacing: 0.01em; text-transform: none; color: var(--pb-ochre-light); text-shadow: none; }
+
+/* Words sit on a plain plaque: the pebble ground shows only as a band (--pb-band) around it, never behind the text. */
+.menu::before, .ui-panel::before, .overlay::before, .reveal-panel::before {
+  content: ""; position: absolute; inset: var(--pb-band-top, var(--pb-band)) var(--pb-band) var(--pb-band); pointer-events: none;
+  border-radius: 8px; background: var(--pb-plaque);
+}
 
 .pb-meter { position: relative; display: block; }
 .pb-meter canvas { display: block; position: absolute; left: 0; top: 0; }
 .pb-meter .pb-loose { pointer-events: none; }
 
-/* Buttons: stones are canvases behind a real text label. */
+/* Buttons: a plain plaque with the label in solid type. Rest is dark, hover terracotta, primary ochre with dark ink. */
 .pb-btn {
-  position: relative; box-sizing: border-box; min-width: 120px; min-height: 40px; padding: 10px 22px; margin: 0;
-  border: 0; border-radius: var(--pb-radius); background: transparent; cursor: pointer; color: var(--pb-text);
-  font: 700 15px/1.1 var(--font-display); letter-spacing: 0.14em; text-transform: uppercase;
-  transition: transform 80ms ease-out, filter 120ms;
+  position: relative; box-sizing: border-box; min-width: 120px; min-height: 48px; padding: 10px 24px; margin: 0;
+  border: 2px solid var(--pb-lead); border-radius: var(--pb-radius); background: var(--pb-plaque-2); cursor: pointer; color: var(--pb-text);
+  font: 700 18px/1.2 var(--pb-font-body); letter-spacing: 0.02em; text-transform: none;
+  transition: transform 80ms ease-out, background-color 120ms, border-color 120ms;
 }
 .pb-btn canvas { position: absolute; left: 0; top: 0; pointer-events: none; }
-.pb-btn__label { position: relative; display: block; text-shadow: 0 0 3px var(--pb-outline), 0 0 3px var(--pb-outline), 0 1px 0 var(--pb-outline); }
-.pb-btn__hover { opacity: 0; transition: opacity 120ms; }
-.pb-btn:hover .pb-btn__hover, .pb-btn.is-hover .pb-btn__hover, .pb-btn:active .pb-btn__hover { opacity: 1; }
-.pb-btn:hover { outline: 2px solid var(--pb-lead); outline-offset: 4px; }
+.pb-btn__label { position: relative; display: block; }
+.pb-btn:hover, .pb-btn.is-hover, .pb-btn:active { background: var(--pb-plaque-hover); border-color: var(--pb-ochre); }
 .pb-btn .pb-btn__focus { left: -16px; opacity: 0; }
-.pb-btn:focus-visible, .pb-btn.is-focus { outline: 3px solid var(--pb-focus); outline-offset: 5px; }
+.pb-btn:focus-visible, .pb-btn.is-focus { outline: 3px solid var(--pb-focus); outline-offset: 4px; }
 .pb-btn:focus-visible .pb-btn__focus, .pb-btn.is-focus .pb-btn__focus { opacity: 1; }
-.pb-btn:active { transform: translateY(1px); filter: brightness(0.92); }
-.pb-btn:disabled { cursor: default; opacity: 0.45; filter: grayscale(0.7); outline: none; transform: none; }
-.pb-btn:disabled .pb-btn__hover { opacity: 0; }
-.pb-btn--primary { color: var(--pb-text-on-ochre); }
-.pb-btn--primary .pb-btn__label { text-shadow: 0 0 3px rgba(248, 240, 220, 0.95), 0 0 3px rgba(248, 240, 220, 0.95); }
-.pb-btn--primary:hover { filter: brightness(1.1); }
+.pb-btn:active { transform: translateY(1px); }
+.pb-btn:disabled { cursor: default; opacity: 0.45; outline: none; transform: none; background: var(--pb-plaque-2); border-color: var(--pb-lead); }
+.pb-btn--primary { color: var(--pb-text-on-ochre); background: var(--pb-ochre); border-color: var(--pb-cream); }
+.pb-btn--primary:hover, .pb-btn--primary.is-hover, .pb-btn--primary:active { background: var(--pb-ochre-light); border-color: var(--pb-foam); }
 
 /* Fields: label, control, value. */
-.pb-field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 3.2em; gap: 14px; align-items: center; padding: 8px 0; color: var(--pb-text); font: 600 16px/1.2 var(--pb-font-body); }
-.pb-field__value { font: 700 14px var(--font-display); letter-spacing: 0.08em; color: var(--pb-text-dim); text-align: right; }
+.pb-field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 3.2em; gap: 14px; align-items: center; padding: 8px 0; color: var(--pb-text); font: 600 18px/1.2 var(--pb-font-body); }
+.pb-field__value { font: 700 18px var(--pb-font-body); color: var(--pb-text); text-align: right; }
 
 .pb-switch { position: relative; display: inline-block; width: 54px; height: 28px; justify-self: end; grid-column: 2; }
 .pb-switch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
@@ -66,7 +68,7 @@
 .pb-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--pb-cream); background: var(--pb-terra); }
 .pb-slider:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; border-radius: 6px; }
 
-.pb-select { box-sizing: border-box; width: 100%; padding: 6px 10px; border: 2px solid var(--pb-slate); border-radius: var(--pb-radius); background: var(--pb-ground-2) var(--pebble-ground) repeat; color: var(--pb-text); font: 700 14px var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.pb-select { box-sizing: border-box; width: 100%; padding: 6px 10px; border: 2px solid var(--pb-lead); border-radius: var(--pb-radius); background: var(--pb-plaque-2); color: var(--pb-text); font: 700 18px var(--pb-font-body); cursor: pointer; }
 .pb-select:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
 .pb-select option { background: var(--pb-ground); color: var(--pb-text); }
 
@@ -94,5 +96,5 @@
 .pb-key { display: inline-block; padding: 2px 9px; border: 2px solid var(--pb-cream); border-radius: 6px; background: #3a2d26; font: 700 14px var(--font-display); letter-spacing: 0.06em; color: var(--pb-text); }
 
 @media (prefers-reduced-motion: reduce) {
-  .pb-btn, .pb-btn__hover, .pb-switch__thumb, .pb-switch__track { transition: none; }
+  .pb-btn, .pb-switch__thumb, .pb-switch__track { transition: none; }
 }
