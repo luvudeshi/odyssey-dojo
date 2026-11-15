@@ -13,11 +13,22 @@ describe("checkPresence", () => {
   it("accepts a person standing arms down", () => {
     expect(checkPresence(frameAt(0))).toEqual({ ok: true });
   });
-  it.each([JOINT.leftShoulder, JOINT.rightHip, JOINT.leftWrist])("needs joint %i visible", (index) => {
+  it.each([JOINT.leftShoulder, JOINT.rightShoulder])("needs shoulder %i visible", (index) => {
     expect(checkPresence(hidden(index))).toEqual({ ok: false, reason: "I can't see you" });
   });
+  it("accepts a player seen from the waist up: hips and resting hands out of the picture", () => {
+    const waistUp = [JOINT.leftHip, JOINT.rightHip, JOINT.leftWrist, JOINT.rightWrist].reduce(
+      (frame, index) => ({ ...frame, image: frame.image.map((p, i) => (i === index ? { ...p, visibility: 0.05 } : p)) }),
+      frameAt(0),
+    );
+    expect(checkPresence(waistUp)).toEqual({ ok: true });
+  });
+  it("accepts shoulders that fill 0.6 of the picture, as at a table", () => {
+    const atTable = frameAt(0, { [JOINT.leftShoulder]: [0.2, 0.35], [JOINT.rightShoulder]: [0.8, 0.35] });
+    expect(checkPresence(atTable)).toEqual({ ok: true });
+  });
   it("says step back when too close", () => {
-    const close = frameAt(0, { [JOINT.leftShoulder]: [0.2, 0.35], [JOINT.rightShoulder]: [0.8, 0.35] });
+    const close = frameAt(0, { [JOINT.leftShoulder]: [0.1, 0.35], [JOINT.rightShoulder]: [0.9, 0.35] });
     expect(checkPresence(close)).toEqual({ ok: false, reason: "step back" });
   });
   it("says step closer when too far", () => {

@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
+import type { Assessment } from "../src/coach/contract";
 import type { EnemySpec } from "../src/core/types";
-import { flowReducer, playable, START, unlocked } from "../src/screens/flow";
+import { ENEMIES as REAL_ENEMIES } from "../src/enemies/registry";
+import { enemyFor, flowReducer, playable, START, unlocked } from "../src/screens/flow";
 import type { Flow, FlowAction } from "../src/screens/flow";
 import { routePoints } from "../src/screens/QuestMap";
 import { STYLES } from "../src/styles/registry";
@@ -75,4 +77,34 @@ test("route has a point for each stop plus Troy and Ithaca, inside the chart", (
     expect(y).toBeGreaterThan(0);
     expect(y).toBeLessThan(420);
   }
+});
+
+// The optional warm-up on the intro screen.
+const beginner: Assessment = { level: "beginner", focus: [], strong: [], habits: [], steps: [] };
+const firstReal = (): EnemySpec => {
+  const real = REAL_ENEMIES[0];
+  if (!real) throw new Error("no enemies");
+  return real;
+};
+
+test("the warm-up result is kept while on the intro and never changes the screen", () => {
+  const atIntro = run([{ type: "ready" }, { type: "pickStyle", style }, { type: "enter", index: 0 }]);
+  expect(atIntro.assessment).toBeNull();
+  const warmed = flowReducer(atIntro, { type: "warmed", assessment: beginner });
+  expect(warmed.screen).toBe("intro");
+  expect(warmed.assessment).toBe(beginner);
+  const fighting = flowReducer(warmed, { type: "begin", seed: 3 });
+  expect(fighting.screen).toBe("fight");
+  expect(run([{ type: "ended", enemyId: "a", won: true }, { type: "toMap" }], fighting).assessment).toBe(beginner);
+});
+
+test("a warm-up result outside the intro is ignored, and a quest without one is untouched", () => {
+  expect(flowReducer(START, { type: "warmed", assessment: beginner })).toBe(START);
+  expect(enemyFor(firstReal(), null)).toBe(firstReal());
+});
+
+test("a beginner's monster gives more warning; an average player gets the same one", () => {
+  const real = firstReal();
+  expect(enemyFor(real, beginner).attacks[0].telegraphMs).toBeGreaterThan(real.attacks[0].telegraphMs);
+  expect(enemyFor(real, { ...beginner, level: "average" })).toBe(real);
 });
