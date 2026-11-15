@@ -1,0 +1,20 @@
+/* The main menu's logo: a laurel crest on a golden sunburst, with the title big and bright across and under it. Main menu only. */
+:root:root {
+  .menu--title { padding-top: 1rem; }
+  .menu--title .crest { position: relative; display: grid; place-items: center; width: clamp(104px, 21vh, 210px); aspect-ratio: 1; margin-bottom: -1.2rem; z-index: 1; }
+  .crest__svg { position: relative; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.7)); }
+  .crest__rays { position: absolute; left: 50%; top: 50%; width: 330%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+    background: repeating-conic-gradient(from 0deg, rgba(255, 210, 120, 0.62) 0 4.5deg, transparent 4deg 15deg);
+    -webkit-mask: radial-gradient(circle, #000 12%, transparent 62%); mask: radial-gradient(circle, #000 12%, transparent 62%);
+    animation: crest-spin 140s linear infinite; }
+  .crest__halo { position: absolute; left: 50%; top: 50%; width: 230%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 196, 96, 0.55), rgba(255, 150, 50, 0.18) 38%, transparent 66%); }
+  .menu--title .set-title { z-index: 1; padding-bottom: 0.45em; margin-bottom: 0.3rem; font-size: clamp(52px, min(7vw, 11.5vh), 112px); letter-spacing: 0.05em;
+    background: linear-gradient(#fffbe6 0%, #ffe08a 38%, #f4b84a 70%, #d58d2c); -webkit-background-clip: text; background-clip: text;
+    filter: drop-shadow(0 3px 0 #1a0d06) drop-shadow(0 0 2px #1a0d06) drop-shadow(0 0 22px rgba(255, 176, 70, 0.6)); }
+  .menu--title .set-title::before { box-shadow: 0 0 0 2px #1a0d06, 0 0 14px rgba(255, 200, 100, 0.8); }
+  .menu--title .set-title::after { width: min(92%, 30em); }
+  .menu--title p.lead { margin-top: 0.1rem; }
+}
+@keyframes crest-spin { to { rotate: 1turn; } }
+@media (prefers-reduced-motion: reduce) { .crest__rays { animation: none; } }

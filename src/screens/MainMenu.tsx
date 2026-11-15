@@ -6,7 +6,9 @@ import { speakLine } from "../audio/voice";
 import { Button, Panel } from "../ui/pebble";
 import { SetTitle } from "../ui/set/Set";
 import { BronzeDefs, DEVICES, ShieldCard } from "./menuShields";
+import { MenuCrest } from "./MenuCrest";
 import { MenuScene } from "./MenuScene";
+import "./menuCrest.css";
 
 export function MainMenu(props: {
   /** The hero name from the Account, or "" when none was typed. */
@@ -27,6 +29,7 @@ export function MainMenu(props: {
     <Panel as="main" className="menu menu--title">
       <MenuScene />
       <h1 className="sr-only">Odyssey Dojo</h1>
+      <MenuCrest />
       <SetTitle as="p">Odyssey Dojo</SetTitle>
       <p className="lead">{props.name.trim() ? `Welcome back, ${props.name.trim()}. ` : ""}Learn real self-defense, one monster at a time.</p>
       <nav className="menu-cards" aria-label="Main menu">
