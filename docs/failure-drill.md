@@ -27,7 +27,7 @@ Test names are listed at the end of this page.
 | Spoken line (`/api/speech`) | 4.5 s | 9 s (`SPEECH_WAIT_MS`, `src/audio/narration.ts`) | 0.2 to 0.6 s |
 | Portrait (`/api/portrait/:id`) | 12 s after the scan answered | 13 s (`PORTRAIT_TIMEOUT_MS`, `src/ai/reveal.ts`) | not measured, see "What is not covered" |
 
-Before this issue the limits were 8 s for the scan (the page waited 6 s, so the server could still be working when the page had given up), 9 s for a fight and 8 s for speech. The fight's limit was 4.8 s until the fight was given a button on the quest map; it went to 8.5 s then, with the page's wait.
+Before this issue the limits were 8 s for the scan (the page waited 6 s, so the server could still be working when the page had given up), 9 s for a fight and 8 s for speech. The fight's limit was 4.8 s until the fight was made ready for a button on the quest map (the button itself is a patch for the lead to apply); it went to 8.5 s then, with the page's wait.
 
 ## The god scan's second attempt
 
@@ -141,7 +141,7 @@ Every error an AI route logs goes through `server/lib/redact.ts` first. It repla
 5. **A real stall was not reproduced against the real services.** The stalls and wrong answers in the tests come from made-up clients that ignore their abort signal. The real clients (`server/ai/gemini.ts`, `server/ai/elevenlabs.ts`) are not covered by any test, and the new `gemini_model_failed` log line in `gemini.ts` was only seen in the real run above.
 6. **A request body that is not JSON gets a `500` from an AI route**, at once (`server/tests/roomsRoute.test.ts` pins this). The page never sends one, and it falls back on any answer that is not `200`.
 7. **The page keeps a spoken line that came back `200` but is not audio**, and plays nothing for it. The server now refuses to send such a line (S8), so this needs something between the two to go wrong.
-8. **Only the generated fight was looked at on screen.** Its waiting screen, its card and the bundled-fight card with its line were seen in headless Chrome at 1440 by 900 when the fight was given a button on the quest map, once against the real service and once with `/api/level` blocked. The god scan's text in the tables was read from `src/ai/ui/RevealScreen.tsx`, not seen in a browser.
+8. **Only the generated fight was looked at on screen.** Its waiting screen, its card and the bundled-fight card with its line were seen in headless Chrome at 1440 by 900 with the quest-map button patched in on a test copy, once against the real service and once with `/api/level` blocked. The god scan's text in the tables was read from `src/ai/ui/RevealScreen.tsx`, not seen in a browser.
 
 ## The tests
 
