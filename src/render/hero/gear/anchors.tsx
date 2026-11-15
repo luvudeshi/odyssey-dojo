@@ -1,6 +1,6 @@
 // Which bone each piece of the spartan's gear hangs on.
 import type { ReactNode } from "react";
-import { BackShield, HandGear, SlungSpear, World } from "./carriedGear";
+import { BackShield, HandGear, World } from "./carriedGear";
 import { Cape, Chiton, Cuirass, Frame, Greave, Helmet } from "./spartanGear";
 
 export const SPARTAN_ANCHORS: Readonly<Record<string, ReactNode>> = {
@@ -10,7 +10,6 @@ export const SPARTAN_ANCHORS: Readonly<Record<string, ReactNode>> = {
       <Cuirass />
       <Cape />
       <BackShield />
-      <SlungSpear />
     </Frame>
   ),
   pelvis: <Frame bone="pelvis"><Chiton /></Frame>,
