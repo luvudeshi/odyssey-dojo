@@ -14,6 +14,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { HitEffects } from "./effects/HitEffects";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
+import { finisherSpot } from "./strikeReach";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { Hero } from "./hero/Hero";
 import { GhostFigure } from "./GhostFigure";
@@ -62,7 +63,8 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
     resetBattle();
     return () => { resetBattle(); };
   }, [enemy.id]);
-  useEffect(() => { syncBattle(battle, state, nowSeconds()); }, [state]);
+  const finishAt = finisherSpot(enemy);
+  useEffect(() => { syncBattle(battle, state, nowSeconds(), finishAt); }, [state, finishAt]);
   return (
     <ErrorBoundary label="canvas" fallback={<p style={{ color: "#fff", padding: "1rem" }}>The 3D view failed to start. Reload the page.</p>}>
       <Canvas
@@ -91,7 +93,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
               phaseIndex: state.phaseIndex,
               hitFlash: hitPulse(),
             })}
-            <HitEffects state={state} />
+            <HitEffects state={state} finishAt={finishAt} />
             {weakSpot && (
               <mesh position={[...weakSpot.position]}>
                 <torusGeometry args={[0.45, 0.06, 8, 32]} />

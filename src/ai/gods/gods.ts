@@ -145,7 +145,7 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
     power: {
       name: "MOON ARROW",
       moveId: "moon_arrow",
-      blurb: "Draw a bow back to your shoulder, then let go",
+      blurb: "Draw a bow to your shoulder, then drop it",
     },
     epithets: [
       "arrow-pouring",
@@ -169,7 +169,7 @@ export const GODS: Readonly<Record<GodId, GodDef>> = {
     power: {
       name: "SUN BURST",
       moveId: "sun_burst",
-      blurb: "Fling both arms out wide",
+      blurb: "Hands together, then fling both arms wide",
     },
     epithets: [
       "far-shooter",
