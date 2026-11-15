@@ -12,7 +12,7 @@ const SMALLEST = 0.75;
  */
 const HEAD = 0.5;
 /** The shift, in calibrated shoulder widths, that reads as a full dodge. The hold level (0.5) is half of it, about 10 cm. */
-const FULL = 0.5;
+const FULL = 0.45;
 
 /** How far the upper body has moved since calibration, in calibrated shoulder widths: negative to the player's left. */
 export function shiftOver(frames: readonly PoseFrame[], baseline: Baseline): number {

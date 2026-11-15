@@ -23,8 +23,8 @@ import { RAISED_MS } from "./defs/thunderbolt";
 import { SIDE, TRAVEL, hipsY } from "./defs/tridentSweep";
 import { HOOK_BENT, HOOK_FLAT, HOOK_HEIGHT, HOOK_LIFT, HOOK_STRAIGHT, SWEEP_FROM, SWEEP_SPAN } from "./defs/hook";
 import {
-  BENT, COVER_MS, ELBOW_LOW, FOLLOW_MS, LOW_START, RISE_BY, RISE_HIGH, RISE_LOW, RISE_MS as HAND_RISE_MS, RISING_PALM_BEND, SHOULDER_HEIGHT,
-  SIDEWAYS, SNAP_MS, STRAIGHT, THROW_DEGREES, THROW_MS, UPPERCUT_BEND, armOpening, armOut, bodyWidth, flungWide, heldReach,
+  COVER_MS, ELBOW_LOW, FOLLOW_MS, LOW_START, RISE_BY, RISE_HIGH, RISE_LOW, RISE_MS as HAND_RISE_MS, RISING_PALM_BEND, SHOULDER_HEIGHT,
+  ARM_MS, SIDEWAYS, THROW_DEGREES, THROW_MS, UPPERCUT_BEND, armOpening, armReach, bodyWidth, flungWide, folding, heldReach,
   otherSide, otherThrowing, overBand, punchedJustNow, risingHand, sidewaysTravel, sweptAcross, throwDegrees, torsoLength, travel,
   upperArmLift, wristGap, wristOut, wristRise,
 } from "./handSignals";
@@ -110,11 +110,6 @@ const ago = (ms: number, read: (frame: PoseFrame, earlier: PoseFrame, history: P
 
 /** The line a detector's confidence has to reach to count (ON in src/input/poseInput.ts). */
 const ON = 0.7;
-// Written out in handSignals.ts, in armOut, armThrust and flungWide.
-const ARM_STRAIGHT = 145;
-const THRUST_BENT = 115;
-const THRUST_MS = 450;
-const FLUNG = 1.2;
 
 const wristOf = (side: Side): number => (side === "left" ? JOINT.leftWrist : JOINT.rightWrist);
 const shoulderOf = (side: Side): number => (side === "left" ? JOINT.leftShoulder : JOINT.rightShoulder);
@@ -129,28 +124,12 @@ const below = (side: Side, under: number): FrameRead => (frame) =>
   (joint(frame.image, wristOf(side)).y - joint(frame.image, under).y) / shoulderWidth(frame);
 const overNose = (side: Side) => (frame: PoseFrame): boolean => below(side, JOINT.nose)(frame, null) < 0;
 
+// Written out in handSignals.ts, in armOut, armThrust and flungWide.
+const ARM_STRAIGHT = 145;
 /** `armOut`: straight, with the fist at shoulder height. */
 const out = (side: Side): Single[] => [
   over(`${side} elbow straight, degrees`, ARM_STRAIGHT, now(elbow(side))),
   under(`${side} fist off shoulder height, torso lengths`, SHOULDER_HEIGHT, now(offLevel(side))),
-];
-const notOutParts = (side: Side): Single[] => [
-  atMost("elbow, degrees", ARM_STRAIGHT, now(elbow(side))),
-  atLeast("fist off shoulder height, torso lengths", SHOULDER_HEIGHT, now(offLevel(side))),
-];
-const notOut = (side: Side): Measure => ({ name: `${side} arm not out`, anyOf: notOutParts(side) });
-const sinceBent = (side: Side, under: number): Read => since((frame) => elbowAngle(frame, side) < under);
-/** `armThrust`: out now, and bent within the last 450 ms. */
-const thrust = (side: Side): Single[] => [
-  ...out(side),
-  atMost(`ms since ${side} elbow was bent under ${String(THRUST_BENT)}`, THRUST_MS, sinceBent(side, THRUST_BENT)),
-];
-/** `punch` at full confidence: snapped straight at shoulder height, and not a chop. */
-const punch = (side: Side): Single[] => [
-  over(`${side} elbow straight, degrees`, STRAIGHT, now(elbow(side))),
-  under(`${side} fist off shoulder height, torso lengths`, SHOULDER_HEIGHT, now(offLevel(side))),
-  atMost(`ms since ${side} elbow was bent under ${String(BENT)}`, SNAP_MS, sinceBent(side, BENT)),
-  over(`ms since ${side} hand was over the nose`, 500, since(overNose(side))),
 ];
 /** A yes-or-no check the detector rules out, read as 1 for yes and 0 for no. */
 const not = (name: string, check: (history: PoseHistory) => boolean): Single =>
@@ -158,10 +137,11 @@ const not = (name: string, check: (history: PoseHistory) => boolean): Single =>
 /** `strike` at full confidence: out on two frames, thrown fast, not from over the head, not swept sideways. */
 const strike = (side: Side): Single[] => [
   atLeast(`${side} arm out on this frame and the one before, 0 to 1`, ON, (history) => heldReach(history, side)),
-  atLeast(`${side} elbow opened or upper arm rose in ${String(THROW_MS)} ms, degrees`, THROW_DEGREES, (history) => throwDegrees(history, side)),
+  atLeast(`${side} elbow opened or upper arm rose in ${String(ARM_MS)} ms, degrees`, THROW_DEGREES, (history) => throwDegrees(history, side)),
   over(`ms since ${side} hand was over the punching band`, 500, since((frame, baseline) => overBand(frame, side, baseline))),
   under(`${side} fist's sideways travel in ${String(THROW_MS)} ms, when not mostly up, shoulder widths`, SIDEWAYS,
     (history) => sidewaysTravel(history, side)),
+  not(`${side} arm folding up or dropping in the last 150 ms (a hand coming to the face)`, (history) => folding(history, side)),
 ];
 /** `straightPunch`: one fist punched, the other arm not on its way out, not a hook, not the rising strike on that side. */
 const oneHanded = (side: Side, bentBelow: number): Measure[] => [
@@ -235,9 +215,9 @@ const arrow = (bow: Side): Measure[] => [
   atLeast(`ms the draw was held (${bow} arm out, other hand at its shoulder)`, DRAW_MS, drawnFor(bow)),
 ];
 const chain = (side: Side): Measure[] => [
-  ...thrust(side),
-  notOut(otherSide(side)),
-  atMost(`ms since ${otherSide(side)} arm was out`, 700, since((frame, baseline) => armOut(frame, otherSide(side), baseline))),
+  ...strike(side),
+  atMost(`${otherSide(side)} arm reach now, 0 to 1`, 0.5, now((frame, baseline) => armReach(frame, otherSide(side), baseline, true)), 1),
+  atMost(`ms since ${otherSide(side)} arm was out`, 700, since((frame, baseline) => armReach(frame, otherSide(side), baseline, true) >= 0.5)),
 ];
 const dodge = (way: -1 | 1): Measure[] =>
   [atLeast("side step confidence (0.5 is 0.25 shoulder widths off the baseline, half the head's lean added)", DEFEND_ON, (history) => sideStep(history, way))];
@@ -266,23 +246,23 @@ const eitherSide = (build: (side: Side) => Measure[]): Measure[][] => SIDES.map(
  * the report shows the side that came closest.
  */
 export const MEASURES: Readonly<Record<string, readonly (readonly Measure[])[]>> = {
-  // Either hand, as `straightPunch` reads it: the left hand's rising strike is the rising palm, the right's the uppercut.
-  jab: eitherSide((side) => oneHanded(side, side === "left" ? RISING_PALM_BEND : UPPERCUT_BEND)),
-  cross: eitherSide((side) => oneHanded(side, side === "left" ? RISING_PALM_BEND : UPPERCUT_BEND)),
+  // The jab is the left hand and the cross the right, as `straightPunch` reads them.
+  jab: one(...oneHanded("left", RISING_PALM_BEND)),
+  cross: one(...oneHanded("right", UPPERCUT_BEND)),
   spear_thrust: one(
     not("both arms flung out to their sides (a sun burst)", (history) => {
       const frame = latest(history);
       return !!frame && flungWide(frame, "left") && flungWide(frame, "right");
     }),
-    ...punch("left"),
-    ...punch("right"),
+    ...strike("left"),
+    ...strike("right"),
   ),
-  double_palm: one(...thrust("left"), ...thrust("right"), under("gap between the wrists, shoulder widths", 0.8, now(wristGap))),
+  double_palm: one(...strike("left"), ...strike("right"), under("gap between the wrists, shoulder widths", 1.1, now(wristGap))),
   chain_punch: eitherSide(chain),
   reverse_punch: one(
-    ...thrust("right"),
-    under("left wrist above the shoulder line, shoulder widths", -0.9, now((frame) => wristRise(frame, "left"))),
-    under("left elbow bent, degrees", 130, now(elbow("left"))),
+    ...strike("right"),
+    under("left wrist above the shoulder line, shoulder widths", -0.75, now((frame) => wristRise(frame, "left"))),
+    under("left elbow bent, degrees", 135, now(elbow("left"))),
   ),
   hook: eitherSide((side) => [
     atLeast(`${side} elbow bend, degrees`, HOOK_BENT, now(elbow(side))),
@@ -301,25 +281,25 @@ export const MEASURES: Readonly<Record<string, readonly (readonly Measure[])[]>>
     not(`${side} punched straight in the last ${String(FOLLOW_MS)} ms (the fist carried on in after a punch)`, (history) => punchedJustNow(history, side)),
   ]),
   uppercut: one(...rising("right", UPPERCUT_BEND)),
-  rising_palm: one(...rising("left", 150)),
+  rising_palm: one(...rising("left", RISING_PALM_BEND)),
   hammer_fist: one(...chop(
     atMost("left wrist above the shoulder line, shoulder widths", 0, now((frame) => wristRise(frame, "left")), 1),
-    "left wrist was 1 above the shoulder line", 500, (frame) => wristRise(frame, "left") > 1,
+    "left wrist was 0.85 above the shoulder line", 700, (frame) => wristRise(frame, "left") > 0.85,
   )),
   overhead_strike: one(...chop(
     over("right wrist below its shoulder, shoulder widths", 0, now(below("right", JOINT.rightShoulder)), 1),
-    "right hand was over the nose", 200, overNose("right"),
+    "right hand was over the nose", 300, overNose("right"),
   )),
   thunderbolt: eitherSide((side) => chop(
     over(`${side} wrist below its shoulder, shoulder widths`, 0, now(below(side, shoulderOf(side))), 1),
     `${side} hand was over the nose`, RAISED_MS, overNose(side),
   )),
   knife_hand: one(
-    over("right wrist out to its side, shoulder widths", FLUNG, now((frame) => wristOut(frame, "right"))),
-    under("right wrist off the shoulder line, shoulder widths", 0.7, now((frame) => Math.abs(wristRise(frame, "right")))),
-    over("right elbow open, degrees", 125, now(elbow("right"))),
+    over("right wrist out to its side, shoulder widths", 0.8, now((frame) => wristOut(frame, "right"))),
+    under("right wrist off the shoulder line, shoulder widths", 0.9, now((frame) => Math.abs(wristRise(frame, "right")))),
+    over("right elbow open, degrees", 100, now(elbow("right"))),
     atMost("ms since right hand was across the body at chest height", 550,
-      since((frame) => wristOut(frame, "right") < 0.1 && wristRise(frame, "right") > -0.6)),
+      since((frame) => wristOut(frame, "right") < 0.4 && wristRise(frame, "right") > -0.9)),
   ),
   aegis_push: one(
     under("hand furthest off shoulder height, torso lengths", SHOULDER_HEIGHT, now(both(offLevel, Math.max))),
