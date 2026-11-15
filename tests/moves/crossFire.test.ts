@@ -23,7 +23,6 @@ const LEFT: Record<string, string> = {
   "overhead_strike>thunderbolt": "the same motion by design: the right-hand thunderbolt is the overhead strike",
   "hammer_fist>thunderbolt": "the same motion by design: the left-hand thunderbolt is the hammer fist",
   "double_palm>aegis_push": "the same motion by design: both palms pushed out from the chest",
-  "thunderbolt>uppercut": "raising the hand passes the chin with a bent elbow; telling it from an uppercut needs a real trace",
   "thunderbolt>overhead_strike": "the same motion by design",
   "aegis_push>spear_thrust": "a thrust with the hands close; the hand spacing that splits them needs a real trace",
   "aegis_push>double_palm": "the same motion by design",
@@ -32,15 +31,14 @@ const LEFT: Record<string, string> = {
 
 /** Pairs that fire but can never be asked of one player in one fight: two styles' strikes, or the finisher. */
 const OUTSIDE: readonly string[] = [
-  "hook>rising_palm", "overhead_strike>uppercut", "reverse_punch>cross", "knife_hand>cross", "knife_hand>uppercut",
-  "hammer_fist>rising_palm", "double_palm>spear_thrust", "chain_punch>jab", "chain_punch>cross",
+  "reverse_punch>cross", "knife_hand>cross", "double_palm>spear_thrust", "chain_punch>jab", "chain_punch>cross",
   "stake_thrust>aegis_push",
 ];
 
-/** In-scope pairs that fired before #191 and were separated in the detectors. */
+/** In-scope pairs that fired before #191 (or, for thunderbolt>uppercut, before the lenient-strikes PR) and were separated. */
 const FIXED: readonly string[] = [
   "cross>uppercut", "double_palm>rising_palm", "chain_punch>rising_palm", "block>uppercut", "block>rising_palm",
-  "moon_arrow>uppercut", "sun_burst>spear_thrust",
+  "moon_arrow>uppercut", "sun_burst>spear_thrust", "thunderbolt>uppercut",
 ];
 
 test("the table is 26 by 26: every move in the registry, once, with a performance", () => {
