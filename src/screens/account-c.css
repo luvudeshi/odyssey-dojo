@@ -1,0 +1,76 @@
+/* Draft look C, "Mosaic floor": the whole screen is a sea-blue pebble floor and everything on it is an inset of cream
+   stone ringed with terracotta pebbles. The hero stands on the right as a tall stele under a laurel crest; achievements
+   are square tiles laid straight on the floor. Scoped to html[data-look="c"]; delete this file and its import to drop it. */
+html[data-look="c"] .menu--account { background: #10181d var(--pebble-dusk) repeat; }
+html[data-look="c"] .menu--account::before { background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(8, 14, 18, 0.15), rgba(6, 10, 12, 0.55)); }
+
+/* Layout: tiles on the left, the hero stele on the right. */
+html[data-look="c"] .menu--account .account { grid-template-columns: minmax(0, 1fr) minmax(0, 20rem); gap: 22px; width: min(78rem, 100%); }
+html[data-look="c"] .menu--account .account__side { order: 2; gap: 18px; }
+html[data-look="c"] .menu--account .account__side > :first-child { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; text-align: center; }
+
+/* Insets: cream stone inside a ring of terracotta pebbles (a dotted mask on a pseudo frame). */
+html[data-look="c"] .menu--account .acc-card, html[data-look="c"] .menu--account .acc-feat {
+  --pb-focus: #2a1208; position: relative; color: #241a14; border: 0;
+  background: radial-gradient(ellipse 90% 70% at 30% 20%, #fbf4e4, #eadcbc 70%, #dccaa4);
+  box-shadow: 0 0 0 3px #10181d, 0 8px 18px rgba(0, 0, 0, 0.55);
+}
+html[data-look="c"] .menu--account .acc-card { padding: 16px 18px 18px; border-radius: 10px; }
+html[data-look="c"] .menu--account .acc-card::after, html[data-look="c"] .menu--account .acc-feat::after {
+  content: ""; position: absolute; inset: -11px; border-radius: 18px; pointer-events: none; padding: 8px;
+  background: radial-gradient(circle at 50% 50%, #c9684a 0 3px, #93402c 3.4px, transparent 4.2px) 0 0 / 9px 9px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+html[data-look="c"] .menu--account .acc-card h2 { justify-content: center; font: 700 20px var(--pb-font-body); letter-spacing: 0.16em; text-transform: uppercase; color: #8a3a26; }
+html[data-look="c"] .menu--account .acc-card h2 .acc-icon { stroke: #93402c; }
+html[data-look="c"] .menu--account .acc-card p, html[data-look="c"] .menu--account .acc-card small, html[data-look="c"] .menu--account .account__name { color: #3a2c22; }
+html[data-look="c"] .menu--account .account__name { flex-direction: column; align-self: stretch; gap: 4px; }
+html[data-look="c"] .menu--account .account__name > .acc-icon { display: none; }
+html[data-look="c"] .menu--account .account__name input { align-self: stretch; text-align: center; background: #fffaf0; border-color: #93402c; color: #241a14; font-size: 22px; }
+html[data-look="c"] .menu--account .account__name input::placeholder { color: #9a8a74; }
+html[data-look="c"] .menu--account .acc-stats { align-self: stretch; }
+
+/* The crest above the hero's name. */
+html[data-look="c"] .menu--account .acc-crest { position: relative; display: block; width: 132px; height: 132px; margin: -6px auto 2px; }
+html[data-look="c"] .menu--account .acc-crest canvas { display: block; }
+html[data-look="c"] .menu--account .acc-crest__icon { position: absolute; inset: 40px; width: 52px; height: 52px; stroke: #f1e6cf; stroke-width: 3.6; }
+html[data-look="c"] .menu--account .acc-crest { order: -1; }
+
+/* Stats: little sea-blue insets in the cream. */
+html[data-look="c"] .menu--account .acc-stat { border: 2px solid #2f4852; background: #223039; }
+html[data-look="c"] .menu--account .acc-stat .acc-icon { stroke: #e2b25d; }
+html[data-look="c"] .menu--account .acc-stat b { color: #f6eedc; font-size: 24px; }
+html[data-look="c"] .menu--account .acc-stat span { color: #cfe0e4; }
+
+/* Achievements: no box of their own, the tiles lie on the floor. The title sits on the pebbles in cream. */
+html[data-look="c"] .menu--account .account__feats { padding: 0; background: none; box-shadow: none; }
+html[data-look="c"] .menu--account .account__feats::after { display: none; }
+html[data-look="c"] .menu--account .account__feats > h2 { justify-content: flex-start; margin: 0 0 10px; color: #f6eedc; text-shadow: 0 2px 0 #0a1014, 0 0 8px #0a1014; }
+html[data-look="c"] .menu--account .account__feats > h2 .acc-icon { stroke: #e2b25d; }
+html[data-look="c"] .menu--account .account__feats .acc-card__extra { color: #f6eedc; }
+html[data-look="c"] .menu--account .account__feats ul { grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 24px 22px; padding: 14px 14px 16px; }
+html[data-look="c"] .menu--account .acc-feat { flex-direction: column; gap: 6px; padding: 12px 8px 10px; border-radius: 6px; text-align: center; }
+html[data-look="c"] .menu--account .acc-feat::after { inset: -9px; border-radius: 12px; padding: 7px; }
+html[data-look="c"] .menu--account .acc-feat.is-locked { background: linear-gradient(#cdc4b2, #b8af9c); }
+html[data-look="c"] .menu--account .acc-feat.is-locked::after { background: radial-gradient(circle at 50% 50%, #6f8791 0 3px, #52696f 3.4px, transparent 4.2px) 0 0 / 9px 9px; }
+html[data-look="c"] .menu--account .acc-feat__text { align-items: center; }
+html[data-look="c"] .menu--account .acc-feat__text b, html[data-look="c"] .menu--account .acc-feat.is-done .acc-feat__text b { color: #241a14; font-size: 16px; }
+html[data-look="c"] .menu--account .acc-feat.is-locked .acc-feat__text b { color: #2e2620; }
+html[data-look="c"] .menu--account .acc-feat__state { color: #93402c; }
+html[data-look="c"] .menu--account .acc-feat.is-locked .acc-feat__state { color: #3e4e54; }
+html[data-look="c"] .menu--account .acc-feat__text small, html[data-look="c"] .menu--account .acc-feat__progress { color: #3a2c22; }
+html[data-look="c"] .menu--account .acc-badge__lock { background: #e8dabb; border-color: #52696f; stroke: #2e3c42; }
+
+/* Buttons: settings in terracotta on the cream, the way back as a cream stone. */
+html[data-look="c"] .menu--account .acc-card .pb-btn { border-color: #6b2e1e; background: #b8553a; color: #fff6e6; }
+html[data-look="c"] .menu--account .acc-card .pb-btn:hover { background: #93402c; }
+html[data-look="c"] .menu--account > .pb-btn--primary { border: 3px solid #93402c; background: #f1e6cf; color: #241a14; box-shadow: 0 0 0 3px #10181d, 0 6px 14px rgba(0, 0, 0, 0.5); }
+html[data-look="c"] .menu--account > .pb-btn--primary:hover { background: #fff6e6; }
+
+/* A short window: a smaller crest and tighter stele so the hero column still fits. */
+@media (max-height: 780px) {
+  html[data-look="c"] .menu--account .acc-crest { zoom: 0.64; }
+  html[data-look="c"] .menu--account .account__side { gap: 14px; }
+  html[data-look="c"] .menu--account .account__side .acc-card { padding: 10px 14px 12px; }
+  html[data-look="c"] .menu--account .acc-card h2 { margin-bottom: 4px; }
+}

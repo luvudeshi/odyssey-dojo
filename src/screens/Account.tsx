@@ -8,7 +8,13 @@ import { Icon, type IconName } from "../account/ui/icons";
 import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
 import { Button, installGround, Panel, PebbleHeading } from "../ui/pebble";
+import { look } from "../ui/lookSwitch";
+import { AccountCrest } from "../account/ui/AccountCrest";
 import "./account.css";
+// Draft looks, one file each; keep the picked one and delete the others.
+import "./account-a.css";
+import "./account-b.css";
+import "./account-c.css";
 
 function Section(props: { icon: IconName; title: string; extra?: string; className?: string; children: React.ReactNode }) {
   return (
@@ -40,10 +46,11 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
   const feats = achievements(profile, props.enemies);
   return (
     <Panel as="main" ornament className="menu menu--account">
-      <PebbleHeading as="h1" text="Account" px={48} tone="ochre" />
+      <PebbleHeading as="h1" text="Account" px={48} tone={look === "b" ? "terra" : "ochre"} />
       <div className="account">
         <div className="account__side">
           <Section icon="helmet" title="Hero">
+            {look === "c" && <AccountCrest />}
             <label className="account__name">
               <Icon name="pen" className="acc-btn__icon" />
               <span>Your name</span>

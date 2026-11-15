@@ -1,0 +1,83 @@
+/* Draft look A, "Forge": the Account screen cast in bronze over forge light, the Forge Fire HUD's material.
+   Plates with a poured bronze lip, stats as molten numbers, achievements hung as round medallions: hot bronze when won,
+   cold iron with a padlock when not. Scoped to html[data-look="a"]; delete this file and its import to drop it. */
+html[data-look="a"] .menu--account {
+  background: radial-gradient(ellipse 80% 42% at 50% 112%, rgba(255, 112, 24, 0.5), rgba(160, 40, 8, 0.2) 55%, transparent 78%), var(--pb-ground-deep) var(--pebble-ground) repeat;
+}
+html[data-look="a"] .menu--account::before {
+  background:
+    radial-gradient(ellipse 60% 34% at 50% 104%, rgba(255, 120, 30, 0.34), transparent 72%),
+    radial-gradient(1.5px 1.5px at 12% 82%, #ffcf6a 60%, transparent), radial-gradient(2px 2px at 22% 90%, #ff9a2e 60%, transparent),
+    radial-gradient(1.5px 1.5px at 37% 76%, #ffd98a 60%, transparent), radial-gradient(2px 2px at 63% 86%, #ffb04a 60%, transparent),
+    radial-gradient(1.5px 1.5px at 78% 79%, #ffcf6a 60%, transparent), radial-gradient(2px 2px at 89% 92%, #ff8a2a 60%, transparent),
+    linear-gradient(#130c08, #0b0705 65%, #1c0b05);
+}
+
+/* Plates: dark slag inside a poured bronze lip. */
+html[data-look="a"] .menu--account .acc-card {
+  border: 4px solid transparent; border-radius: 16px; padding: 12px 16px 14px;
+  background: linear-gradient(#24170f, #130b07 45%, #0d0705) padding-box, linear-gradient(#ffe6b0, #d9a052 28%, #8e5522 62%, #3e2109) border-box;
+  box-shadow: 0 0 0 2px #0b0604, inset 0 -22px 34px -22px rgba(255, 110, 20, 0.45), 0 12px 26px rgba(0, 0, 0, 0.65);
+}
+html[data-look="a"] .menu--account .acc-card h2 {
+  padding-bottom: 8px; margin-bottom: 10px; font: 700 19px var(--pb-font-body); letter-spacing: 0.16em; text-transform: uppercase; color: #ffd27a;
+  text-shadow: 0 0 12px rgba(255, 140, 40, 0.55);
+  border-bottom: 2px solid transparent; border-image: linear-gradient(90deg, #ff8410, #ffcc3a 30%, rgba(255, 140, 40, 0) 92%) 1;
+}
+html[data-look="a"] .menu--account .acc-card__extra { letter-spacing: 0.04em; color: #ffe6b0; }
+html[data-look="a"] .menu--account .acc-card h2 .acc-icon { stroke: #ffcc3a; }
+html[data-look="a"] .menu--account .acc-card p, html[data-look="a"] .menu--account .acc-card small { color: #ead9bd; }
+
+html[data-look="a"] .menu--account .account__name input { background: #0b0604; border-color: #8e5522; color: #fff0d0; }
+html[data-look="a"] .menu--account .account__name input::placeholder { color: #8a7560; }
+
+/* Stats: cast bronze bosses with the number poured molten. */
+html[data-look="a"] .menu--account .acc-stat {
+  padding: 8px 4px 6px; border: 2px solid transparent; border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 0%, #3a2414, #120a06 70%) padding-box, linear-gradient(#d9a052, #5a3214) border-box;
+}
+html[data-look="a"] .menu--account .acc-stat .acc-icon { stroke: #e2b25d; }
+html[data-look="a"] .menu--account .acc-stat b {
+  font-size: 30px; background: linear-gradient(#fff3b8, #ffcc3a 40%, #ff8410 80%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 6px rgba(255, 130, 30, 0.6));
+}
+html[data-look="a"] .menu--account .acc-stat span { color: #e8d4b2; letter-spacing: 0.06em; }
+
+/* Achievements: a wall of medallions that wraps and scrolls. */
+html[data-look="a"] .menu--account .account__feats ul { grid-template-columns: repeat(auto-fill, minmax(9.4rem, 1fr)); gap: 12px; padding: 6px 8px 10px 4px; }
+html[data-look="a"] .menu--account .acc-feat {
+  flex-direction: column; justify-content: flex-start; gap: 8px; padding: 14px 8px 10px; text-align: center;
+  border: 0; border-radius: 12px; background: linear-gradient(#1a110c, #0c0705); box-shadow: inset 0 0 0 1px #4a2e18;
+}
+html[data-look="a"] .menu--account .acc-feat.is-done {
+  background: radial-gradient(ellipse 80% 55% at 50% 26%, rgba(255, 130, 30, 0.3), transparent 72%), linear-gradient(#2a160c, #120806);
+  box-shadow: inset 0 0 0 2px #d9a052, 0 0 16px rgba(255, 120, 20, 0.22);
+}
+html[data-look="a"] .menu--account .acc-feat__text { align-items: center; }
+html[data-look="a"] .menu--account .acc-feat__text b { font-size: 16px; }
+html[data-look="a"] .menu--account .acc-feat.is-done .acc-feat__text b { color: #ffd98a; }
+html[data-look="a"] .menu--account .acc-feat.is-locked .acc-feat__text b { color: #cbbba0; }
+html[data-look="a"] .menu--account .acc-feat__state { letter-spacing: 0.14em; color: #ffb347; }
+html[data-look="a"] .menu--account .acc-feat.is-locked .acc-feat__state { color: #a8988a; }
+html[data-look="a"] .menu--account .acc-feat__text small { color: #d8c6a8; }
+html[data-look="a"] .menu--account .acc-feat__progress { justify-content: center; }
+
+html[data-look="a"] .menu--account .acc-badge { border-radius: 50%; box-shadow: 0 0 0 4px #8e5522, 0 0 0 6px #0b0604; }
+html[data-look="a"] .menu--account .acc-badge canvas { display: none; }
+html[data-look="a"] .menu--account .acc-badge.is-done {
+  background: radial-gradient(circle at 38% 32%, #fff3b8, #ffcc3a 24%, #e08a2a 52%, #8a4410 82%, #4a1e06);
+  box-shadow: 0 0 0 4px #c98f37, 0 0 0 6px #0b0604, 0 0 22px 4px rgba(255, 130, 30, 0.55);
+}
+html[data-look="a"] .menu--account .acc-badge.is-done .acc-badge__icon { stroke: #2a1206; stroke-width: 4; }
+html[data-look="a"] .menu--account .acc-badge.is-locked { background: radial-gradient(circle at 38% 32%, #5e524a, #2c2420 58%, #141010); }
+html[data-look="a"] .menu--account .acc-badge.is-locked .acc-badge__icon { stroke: #9a8d80; opacity: 0.7; }
+html[data-look="a"] .menu--account .acc-badge__lock { background: #140c08; border-color: #8e5522; stroke: #e2b25d; }
+
+/* Buttons: settings in dark bronze, the way back poured hot. */
+html[data-look="a"] .menu--account .acc-card .pb-btn { border-color: #b97f2f; background: #1a0f09; color: #ffe6b0; }
+html[data-look="a"] .menu--account .acc-card .pb-btn:hover { background: #4a1e0a; border-color: #ffcc3a; }
+html[data-look="a"] .menu--account > .pb-btn--primary {
+  border-color: #fff0c0; color: #1b0c04; background: linear-gradient(#ffe08a, #ffb238 42%, #e06a10);
+  box-shadow: 0 0 0 2px #0b0604, 0 0 22px rgba(255, 120, 20, 0.55);
+}
+html[data-look="a"] .menu--account > .pb-btn--primary:hover { background: linear-gradient(#fff0b8, #ffc858 42%, #f07a18); }
