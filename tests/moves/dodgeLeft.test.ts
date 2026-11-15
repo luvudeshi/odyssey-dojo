@@ -6,8 +6,11 @@ import { READY, longestHold, others, play, pose, recording } from "../poseFixtur
 const STEPPED = pose({ step: -0.2, lean: -0.1 }, READY);
 const LEANED = pose({ lean: -0.2 }, READY);
 
-/** Hands up, across in 200 ms, half a second there, back to the middle. */
-const dodge = play(recording([[READY, 300], [STEPPED, 200], [STEPPED, 500], [READY, 300], [READY, 300]]));
+/**
+ * Hands up, across in 200 ms, half a second there, back to the middle, and long enough there for the 350 ms a
+ * defend stays held after it is let go (RELEASE_MS in src/input/poseInput.ts).
+ */
+const dodge = play(recording([[READY, 300], [STEPPED, 200], [STEPPED, 500], [READY, 300], [READY, 700]]));
 
 test("a step to the left is a dodge left for as long as the player stays there", () => {
   expect(longestHold(dodge, "dodge_left")).toBeGreaterThanOrEqual(500);
@@ -25,11 +28,12 @@ test("an 8 cm sway to the left, a shift of weight, is not a dodge", () => {
   expect(longestHold(sway, "dodge_left")).toBe(0);
 });
 
-// The dodge starts counting at a 17 cm shift of the shoulders; this pins that line from below.
-test("a 15 cm lean to the left held for half a second is still not a dodge", () => {
-  const short = pose({ lean: -0.15 }, READY);
-  const nearly = play(recording([[READY, 300], [short, 200], [short, 500], [READY, 200]]));
-  expect(longestHold(nearly, "dodge_left")).toBe(0);
+// A rough attempt counts: the dodge is held from a shift of about 9 cm (it was 17 cm until the owner asked for
+// rougher attempts to read), so 60% of the 20 cm lean is a dodge.
+test("a 12 cm lean to the left, 60% of the full one, is a dodge too", () => {
+  const short = pose({ lean: -0.12 }, READY);
+  const rough = play(recording([[READY, 300], [short, 200], [short, 500], [READY, 200]]));
+  expect(longestHold(rough, "dodge_left")).toBeGreaterThanOrEqual(500);
 });
 
 test("no other base move fires while dodging left and coming back", () => {
