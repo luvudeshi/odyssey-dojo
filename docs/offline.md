@@ -6,7 +6,7 @@ Issue #156. The judging room's Wi-Fi may fail, so the judged path must need noth
 
 ## Result
 
-Run on 14 November 2026 on `main` at `2cd0666`. Apple M4, macOS 15.6, Chrome 157.0.8103.51 headless on the GPU (ANGLE metal). Playwright-core 1.64.1 from another project on this machine, through `FPS_PLAYWRIGHT`.
+Run on 14 November 2026 on `main` at `7557bdf`. Apple M4, macOS 15.6, Chrome 157.0.8103.51 headless on the GPU (ANGLE metal). Playwright-core 1.64.1 from another project on this machine, through `FPS_PLAYWRIGHT`.
 
 | Path | Result |
 | --- | --- |
@@ -15,17 +15,17 @@ Run on 14 November 2026 on `main` at `2cd0666`. Apple M4, macOS 15.6, Chrome 157
 
 The one request is `POST https://odml.pa.googleapis.com/v1/log`. It is a usage log sent by `@mediapipe/tasks-vision` 1.2.3, 60 seconds after the pose tracker starts. See "The pose library's log" below.
 
-Four full runs and two keyboard-only runs gave the same result each time. `main` moved while this was written: one full run was at `532abb2` (before the god scan and the music were wired in), two at `130acfc` and one at `2cd0666`. The numbers below are from the last one.
+`main` moved while this was written. The full check was run at `532abb2` (before the god scan and the music were wired in), `130acfc`, `2cd0666` and `7557bdf`, six times in all and twice at the last, and the keyboard-only check four more times. The result was the same each time. The numbers below are from `7557bdf`.
 
 ## The keyboard fight
 
-Every run won the fight in about 24 seconds: 9 defends held, 9 strikes landed, the stake thrust finisher landed, no hits taken, score 2190.
+Every normal run won the fight: 9 defends held, 9 strikes landed, the stake thrust finisher landed, no hits taken, score 2190. It took about 24 seconds up to `2cd0666` and about 29 seconds at `7557bdf`, where the game pauses three seconds after a phase change.
 
 The script holds the key on a defend card until the card changes, and taps the key on a strike card. It does not read game state. It counts what the game accepted from the HUD: a defend that held adds exactly 50 to the score and costs no health, and a strike that landed raises the score and shortens the enemy's bar. At the end it checks its count against the "Moves learned" list on the end screen. They matched in every run.
 
 ## What the keyboard path asked for
 
-117 requests, 90 different files, all from localhost, all answered 200 or 206.
+About 118 requests for 90 different files, all from localhost, all answered 200 or 206. The total moves by a few from run to run, because a voice clip is asked for again each time it plays.
 
 | What | When | Files |
 | --- | --- | --- |
@@ -39,7 +39,8 @@ The script holds the key on a defend card until the card changes, and taps the k
 | Picture | end screen | `/ui/laurel.svg` |
 
 - **Fonts:** none are downloaded. The page declares no web font (`document.fonts` is empty). Chrome reports the headings and buttons drawn with Optima, a font installed on this Mac. The stack in `src/theme.css` is `Optima, "Gill Sans", "Trebuchet MS", sans-serif`, so a laptop without Optima shows a different installed font, not a missing one.
-- **Fetched late:** the only file first asked for after the first prompt card is `/ui/laurel.svg`, on the win screen. The loss screen was not reached, so its pictures were not seen. Voice clips are asked for again each time they play (206). The check turns the browser cache off, so a normal browser may not ask again.
+- **Fetched late:** two files are first asked for after "Face Polyphemus" is pressed: `/hdri/qwantani_dusk_2_puresky_1k.hdr` as the fight screen opens, about 1.5 seconds before the first prompt card, and `/ui/laurel.svg` on the win screen. The script prints this list. About 25 more requests in the fight ask again for a voice, sound or music clip that was already fetched on the title screen (206). The check turns the browser cache off, so a normal browser may not ask again.
+- **The loss screen** asks for `/ui/owl.svg` from localhost and nothing else new. The normal run never loses, so this was seen in one run by hand with a throwaway copy of the script that presses the wrong key on every defend card: 0 defends, 23 hits taken, "You are struck down" after 68 seconds, the "Map" button led back to the quest map, and the copy exited 2.
 - **The Draco decoder** (`/draco/`) and **the textures** (`/textures/`) were not asked for in this fight. `/hdri/small_cave_1k.hdr` was not asked for either.
 - **The pose files** (`/mediapipe/`) are not asked for on the keyboard path.
 - **The AI server:** the keyboard path made no `/api` call. The build names three: `/api/reveal` and `/api/portrait` in the god scan, which only the webcam path shows, and `/api/rooms` behind "Fight together", which the check does not press.
@@ -78,7 +79,7 @@ Found by searching `dist/assets` for `http`. None was requested in any run.
 
 - A real camera, the camera permission prompt, or a person being tracked. The fake camera only shows that the pose runtime and model load from localhost and start.
 - The game with the AI server running but the internet down. The check never starts the server. The server's own calls to Gemini and ElevenLabs are not covered.
-- The five later stops, the loss screen, the pause menu, the settings panel, "Fight together", and the other four styles.
+- The five later stops, the pause menu, the settings panel, "Fight together", and the other four styles. The loss screen is not part of the normal run; it was seen once by hand (see "Fetched late").
 - More than 75 seconds on the webcam path.
 - Windows or Linux, and any browser other than Chrome.
 - `make dev`. The check uses the built game.
@@ -94,6 +95,8 @@ node scripts/offline-check.mjs --camera-seconds=120 --json=run.json
 
 It needs Chrome and Playwright. Playwright is not a dependency of this repo. The script finds it the way `scripts/fps.mjs` does and reads the same `FPS_PLAYWRIGHT`, `FPS_CHANNEL` and `FPS_GL`. A full run takes about two minutes.
 
-Exit codes: 0 pass. 1 a request tried to leave localhost, or the page threw. 2 the check could not do its job (no accepted defend or strike, the pose tracker did not start, no pose files in the build, a screen was missing). 3 Playwright was not found.
+Exit codes: 0 pass. 1 a request tried to leave localhost, or the page threw. 2 the check could not do its job (no accepted defend or strike, the fight did not end, the pose tracker did not start, no pose files in the build, a screen was missing). 3 Playwright was not found.
+
+A run that stops part way still prints what it recorded: the requests, the page errors and the screen it stopped on. It exits 1 when a request tried to leave localhost or the page threw, else 2. Tried twice by hand. With a script tag for another host added to the built `index.html`, and the page emptied when that script did not load, the check listed the blocked request, said it stopped on the title screen and exited 1. With `--max-seconds=10` the fight was not over, and the check printed the tally so far and the requests and exited 2.
 
 `vite preview` takes the `/api` proxy from `vite.config.ts`. The script points that proxy at a closed port, so an AI server that happens to be running on the machine cannot answer. A second lock sits behind the request filter: Chrome is started with a rule that resolves no name but `localhost`.
