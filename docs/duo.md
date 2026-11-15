@@ -30,7 +30,7 @@ How it is counted. The fight keeps one score, and the tally splits it without ch
 
 - a landed strike is a hit for whoever threw it, and they get its points; thrown by both ("Together!"), it is a hit for each and each gets half;
 - the 50 points of a defend are shared when both had to make it; with player two out they are player one's;
-- the god's power is player one's.
+- the god's power goes to whoever made its gesture: player two alone, both (half each), otherwise player one.
 
 The fight's own events do not say who threw a strike (`enemyHit` has no player), so the link counts: it knows which player's strikes it handed to the fight on that frame. P1 and P2 are the seats, not the people: after a take-over the one who stayed is P1 and scores as P1 from then on.
 

@@ -35,7 +35,7 @@ test("with player two not in the fight every hit is player one's", () => {
   expect(shape(alone)).toEqual([1, 150, 0, 0, 0]);
 });
 
-test("a defend both had to make is shared; a defend player one made alone is theirs; the god's power is player one's", () => {
+test("a defend both had to make is shared; a defend player one made alone is theirs; the god's power with nobody's gesture in the frame is player one's", () => {
   const both = tallyAfter(NO_TALLY, { events: [defended], gained: 50, struck: [], bothDefend: true });
   expect(shape(both)).toEqual([0, 25, 0, 25, 0]);
   const alone = tallyAfter(both, { events: [defended], gained: 50, struck: null, bothDefend: false });
@@ -75,4 +75,17 @@ test("the store tells its listeners of a change, and only of a change", () => {
   stop();
   store.set(NO_TALLY);
   expect(calls).toBe(1);
+});
+
+test("the god's power goes to whoever made its gesture: player two alone, both for half each, player one alone", () => {
+  const power: CombatEvent = { type: "powerUnleashed", damage: 36 };
+  const second = tallyAfter(NO_TALLY, { events: [power], gained: 360, struck: by("swift_dash", 1), bothDefend: false });
+  expect(shape(second)).toEqual([0, 0, 0, 360, 0]);
+  const both = tallyAfter(NO_TALLY, { events: [power], gained: 360, struck: by("swift_dash", 0, 1), bothDefend: false });
+  expect(shape(both)).toEqual([0, 180, 0, 180, 0]);
+  const first = tallyAfter(NO_TALLY, { events: [power], gained: 360, struck: by("thunderbolt", 0), bothDefend: false });
+  expect(shape(first)).toEqual([0, 360, 0, 0, 0]);
+  // A plain strike of player two's on the frame the power lands does not make the power theirs.
+  const other = tallyAfter(NO_TALLY, { events: [power], gained: 360, struck: [...by("thunderbolt", 0), ...by("jab", 1)], bothDefend: false });
+  expect(shape(other)).toEqual([0, 360, 0, 0, 0]);
 });
