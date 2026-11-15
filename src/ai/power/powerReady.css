@@ -9,9 +9,13 @@
   position: absolute; left: var(--power-ready-left, 0px); right: var(--power-ready-right, 0px); bottom: var(--power-ready-bottom, clamp(10px, 1.6vh, 18px)); z-index: 6;
   display: flex; justify-content: center; margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: center; line-height: 1;
-  color: var(--white, #f2e4c8);
+  color: var(--white, #f2e4c8); transition: opacity 0.15s ease-out;
 }
 .power-ready.power-ready--live * { box-sizing: border-box; pointer-events: none; }
+/* The HUD's defend word (DODGED!, src/hud/DefendFlash.tsx) pops up on this same strip for a second, and a defend is
+   what fills the meter: the banner steps aside while the word is up, then shows. The one rule here that reads a class
+   from outside the banner. */
+.fight:has(.hb-defend__word) .power-ready.power-ready--live { opacity: 0; }
 
 /* The glow is one fixed shadow; the pulse scales the whole plate a little. */
 .power-ready .power-ready__frame {
