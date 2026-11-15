@@ -1,5 +1,6 @@
 // What the friend's picture says at this moment of the fight, as plain data: the compositor only draws it.
 // In a two-player fight only the host defends (src/net/guest.ts), so on a defend the friend is told to wait.
+import { fallsLine } from "../enemies/wording";
 import type { CombatEvent, CombatState, EnemySpec, MoveDef, MoveDiagram } from "../core/types";
 
 /** Health the heroes start with; the same number as PLAYER_HP in the combat engine (tests/facetimeFrame.test.ts holds them together). */
@@ -52,7 +53,7 @@ export function frameHud(input: FrameHudInput): FrameHud {
   const phase = state.phase;
   switch (phase.kind) {
     case "won":
-      return { ...base, tone: "won", tag: "VICTORY", word: `${enemy.name.toUpperCase()} FALLS`, line: "Well fought. Stay on the call for the next fight.", timer: null, diagram: null };
+      return { ...base, tone: "won", tag: "VICTORY", word: fallsLine(enemy.id, enemy.name).toUpperCase(), line: "Well fought. Stay on the call for the next fight.", timer: null, diagram: null };
     case "lost":
       return { ...base, tone: "lost", tag: "DEFEATED", word: "STRUCK DOWN", line: "Stay on the call. Your friend can start again.", timer: null, diagram: null };
     case "intro":

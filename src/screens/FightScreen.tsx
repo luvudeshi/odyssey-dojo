@@ -13,6 +13,7 @@ import { powerUsable } from "../ai/power/powerPrompt";
 import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
+import { createFeedbackWatch } from "../coach/extra/fightFlash";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, CombatEvent, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
@@ -21,13 +22,14 @@ import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
-import { noteMiss } from "../hud/MissFlash";
+import { noteFeedback, noteMiss } from "../hud/MissFlash";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
+import { legsInView } from "../moves/waistUp";
 import { keyboardTakesOver } from "../pose/escape";
 import { sentence } from "../pose/cameraError";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
@@ -53,6 +55,8 @@ export function FightScreen(props: {
   baseline?: Baseline | null;
   /** A god for the divine power effect; null for none. The game passes none, so Athena lends her aegis. */
   god?: GodId | null;
+  /** The picked hero's name, for the power banner. Left out, the banner names the god. */
+  hero?: string;
   /** Buttons shown once the fight is over. */
   /** Pause menu: start this fight again, or leave it for the quest map. */
   onRestart?: () => void;
@@ -61,7 +65,7 @@ export function FightScreen(props: {
   link?: HostLink | null;
   renderEnd: (won: boolean, score: number, mastery: Readonly<Record<string, number>>, tally: Readonly<FightTally>, events: readonly CombatEvent[]) => ReactNode;
 }) {
-  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, link = null } = props;
+  const { enemy, style, tracker, seed, renderEnd, onRestart, onQuit, baseline = null, god = null, hero, link = null } = props;
   const [powerCount, setPowerCount] = useState(0);
   const [view, setView] = useState<PauseView>("off");
   const pausedRef = useRef(false);
@@ -87,12 +91,15 @@ export function FightScreen(props: {
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     const watchMiss = createMissWatch();
+    const watchFeedback = createFeedbackWatch();
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
     fightEvents.current = [];
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
+    // Whether the camera sees the legs (#239). Fed back each frame so it does not flip; the keyboard has every move.
+    let legs = false;
     let last = performance.now();
     let handle = 0;
 
@@ -102,6 +109,7 @@ export function FightScreen(props: {
         poseRef.current = frame;
         history = pushFrame(history, frame);
         historyRef.current = history;
+        legs = legsInView(history, legs);
       }
       const dt = Math.min(now - last, 100);
       const keys = keyboard.read();
@@ -126,10 +134,19 @@ export function FightScreen(props: {
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
       const from = current;
-      const result = step(current, enemy, style, input, dt);
+      const result = step(current, enemy, style, input, dt, !tracker || keyboardMode || legs);
       last = now;
       current = result.state;
-      if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
+      const missed = watchPhase(watchMiss, from.phase, input, result.events, now);
+      // An attempt that needs work gets a line on what to do in the MISS flash: shown only, never spoken, and the
+      // score is not touched. Strong strikes get nothing extra. The body is read only when the camera is playing
+      // and no guest is in the fight (a move may be theirs).
+      const body = tracker && !keyboardMode && !link?.guestHere() ? history : null;
+      const feedback = watchFeedback(from.phase, current.phase, keys, result.events, body, now, missed);
+      // A host on the camera with a guest in the fight has no body to read and no keys in play: the plain MISS, not a key tip.
+      const shown = tracker && !keyboardMode && link?.guestHere() ? null : feedback;
+      if (shown) noteFeedback(shown);
+      else if (missed) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       fightEvents.current.push(...result.events);
@@ -195,7 +212,7 @@ export function FightScreen(props: {
       <SkyHud enemy={enemy} state={state} history={readHistory} />
       <PowerEffect god={patron} powerName={GODS[patron].power.name} accent={GODS[patron].accent} trigger={powerCount} nameOnly />
       {!over && <PowerCircle power={state.power} lifted={powerUsable(state.power, state.phase.kind)} accent={GODS[patron].accent} />}
-      <PowerReady god={god} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
+      <PowerReady god={god} hero={hero} power={state.power} phase={state.phase.kind} keyboard={!tracker} paused={view !== "off"} />
       {/* The keyboard plaque has nothing to say once the fight is over; the camera picture stays. */}
       {!(over && !tracker) && <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />}
       {lost && !over && <div className="overlay"><h1>{lostWhy}</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}

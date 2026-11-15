@@ -6,10 +6,11 @@ import { CameraPanelContext } from "../hud/cameraPanel";
 import { Calibration } from "./Calibration";
 import { FightScreen } from "./FightScreen";
 
-export function WebcamGate(props: ComponentProps<typeof FightScreen>) {
+/** `onKeyboard`: "Use keyboard instead" was pressed, so the owner of the tracker can keep the next fights on the keys too. */
+export function WebcamGate({ onKeyboard, ...props }: ComponentProps<typeof FightScreen> & { onKeyboard?: () => void }) {
   const [baseline, setBaseline] = useState<Baseline | null>(null);
   const [skipped, setSkipped] = useState(false);
-  const skip = useCallback(() => { setSkipped(true); }, []);
+  const skip = useCallback(() => { setSkipped(true); onKeyboard?.(); }, [onKeyboard]);
   const panel = useContext(CameraPanelContext);
   const outer = panel.onCamera;
   // "Use camera" on the panel of a skipped fight goes back through calibration with the running camera.

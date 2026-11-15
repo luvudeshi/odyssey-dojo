@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { PLAYER_HP, startFight } from "../src/combat/engine";
 import type { CombatState, MoveDef } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
+import { fallsLine } from "../src/enemies/wording";
 import { wrapLines } from "../src/facetime/frameDraw";
 import { HERO_HP, frameHud, gradeWord } from "../src/facetime/frameHud";
 import { CUT_MARGIN, SAFE_MARGIN, barFill, containFit, coverCrop, figurePoint, fitFont, frameLayout, inside, overlaps, safeMargins } from "../src/facetime/frameLayout";
@@ -164,7 +165,7 @@ describe("what the frame says", () => {
   test("the rest of a fight: waiting, won, lost", () => {
     expect(frameHud({ ...base, state: at({ kind: "recover", msLeft: 400 }) })).toMatchObject({ tone: "calm", tag: "GET READY", timer: null });
     expect(frameHud({ ...base, state: at({ kind: "intro", msLeft: 400 }) }).tag).toBe("GET READY");
-    expect(frameHud({ ...base, state: at({ kind: "won" }, { enemyHp: 0 }) })).toMatchObject({ tone: "won", tag: "VICTORY", enemyShare: 0, word: `${enemy.name.toUpperCase()} FALLS` });
+    expect(frameHud({ ...base, state: at({ kind: "won" }, { enemyHp: 0 }) })).toMatchObject({ tone: "won", tag: "VICTORY", enemyShare: 0, word: fallsLine(enemy.id, enemy.name).toUpperCase() });
     expect(frameHud({ ...base, state: at({ kind: "lost" }, { playerHp: 0 }) })).toMatchObject({ tone: "lost", word: "STRUCK DOWN", heroShare: 0 });
   });
 

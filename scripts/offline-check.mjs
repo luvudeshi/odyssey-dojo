@@ -154,6 +154,7 @@ function readHud() {
   const ended = document.querySelector(".fight .overlay button") !== null;
   return {
     kind: card ? (card.matches(".pb-card--defend, .sky-card--defend") ? "defend" : "strike") : null,
+    finish: card?.matches(".sky-card--finish") ?? false,
     key: card?.querySelector("kbd")?.textContent ?? null,
     word: card?.querySelector(".pb-move, .sky-card__word")?.textContent ?? "",
     target: card?.querySelector(".pb-target, .sky-card__target")?.textContent ?? "",
@@ -170,6 +171,11 @@ function readHud() {
 /** The arrow keys are shown as glyphs on the cards (ARROWS in src/hud/sky/SkyPromptCard.tsx and src/coach/ui/keyName.ts). */
 const ARROW_KEYS = { "←": "ArrowLeft", "→": "ArrowRight", "↓": "ArrowDown", "↑": "ArrowUp" };
 const keyFor = (label) => ARROW_KEYS[label] ?? (label === "Space" ? " " : label.length === 1 ? label.toLowerCase() : label);
+
+/** A win's headline: "Polyphemus falls", or for a stop the ship gets past, "Past the Sirens" (src/enemies/wording.ts). */
+function wonHeading(heading) {
+  return heading !== "" && heading !== "You are struck down";
+}
 
 /**
  * Plays by the prompt card: holds the key of a defend until the card changes, taps the key of a strike.
@@ -205,7 +211,7 @@ async function playFight(page, log, maxMs) {
         if (hud.score === card.score + DEFEND_SCORE && hud.you === card.you) tally.defends += 1;
         else if (hud.you < card.you) tally.hitsTaken += 1;
         else tally.unclear += 1;
-      } else if (card.target === "Finish it") {
+      } else if (card.finish || card.target === "Finish it") {
         // The win panel waits for the last blow to be seen (FightScreen), so it is not up yet when this card goes:
         // the finisher counts as landed when the fight then ends in a win.
         finishing = true;
@@ -217,7 +223,7 @@ async function playFight(page, log, maxMs) {
     if (hud.ended || Date.now() - started > maxMs) {
       if (held !== null) await page.keyboard.up(held);
       if (flying) tally.strikesMissed += 1;
-      const won = / falls?$/.test(hud.heading);
+      const won = wonHeading(hud.heading);
       return { ...tally, finisher: finishing && hud.ended && won, keys: [...tally.keys], ended: hud.ended, won, heading: hud.heading, score: hud.score, learned: hud.learned, seconds: (Date.now() - started) / 1000 };
     }
     if (!card && id) {
@@ -225,7 +231,7 @@ async function playFight(page, log, maxMs) {
       log.firstPromptAt ??= Date.now() - log.t0;
       const key = keyFor(hud.key);
       tally.keys.add(hud.key);
-      card = { id, kind: hud.kind, target: hud.target, key, score: hud.score, you: hud.you, enemy: hud.enemy, tappedAt: Date.now() };
+      card = { id, kind: hud.kind, finish: hud.finish, target: hud.target, key, score: hud.score, you: hud.you, enemy: hud.enemy, tappedAt: Date.now() };
       if (hud.kind === "defend") {
         await page.keyboard.down(key);
         held = key;

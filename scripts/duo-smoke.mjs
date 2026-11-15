@@ -110,7 +110,7 @@ function browserArgs() {
   const backend = process.env.FPS_GL ?? { win32: "d3d11", darwin: "metal" }[process.platform] ?? "";
   const list = ["--use-gl=angle", "--enable-gpu", "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", "--autoplay-policy=no-user-gesture-required",
     // A camera that needs no person and no permission prompt. It shows no body: the bodies are made up in the page.
-    "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"];
+    "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--mute-audio"];
   if (backend) list.push(`--use-angle=${backend}`);
   return list;
 }
@@ -189,6 +189,7 @@ async function installStage(places) {
       phase: battle.state?.phase.kind ?? null, enemyHp: battle.state?.enemyHp ?? null, playerHp: battle.state?.playerHp ?? null,
       twoInState: battle.state?.players ?? null, log: stage.log,
       tag: [...document.querySelectorAll(".fight .hb-duo")].map((one) => one.textContent ?? ""),
+      panelTag: document.querySelector(".fight .camera-tag")?.textContent ?? "",
     }),
   };
   const idOf = (phase) => (phase.kind === "defend" ? phase.attack.counter : phase.kind === "strike" || phase.kind === "finisher" ? phase.move : "");
@@ -417,6 +418,8 @@ async function main() {
     const afterSolo = await read();
     check(gone.players === 1 && gone.figureMsAgo > 500 && afterSolo.stall < 500 && soloHit !== null && soloHit.enemyHpEnd < soloHit.enemyHp, "the second body leaves: one hero, no pause",
       `players ${String(gone.players)}, second figure last moved ${String(Math.round(gone.figureMsAgo))} ms ago, ${stood(afterSolo)}, the first body's next strike took ${soloHit ? String(soloHit.enemyHp - soloHit.enemyHpEnd) : "nothing"}`);
+    if (panelAsksDuo()) check(two.panelTag === "Both seen" && gone.panelTag === "One seen", "the camera panel's tag says whether the second player is in",
+      `with two bodies it reads "${two.panelTag}", after the second left "${gone.panelTag}"`);
     if (gone.tag.length > 0) say(`NOTE: the "${gone.tag[0]}" tag is still up with one player left. It is drawn by the HUD from the fight's own state (players ${String(gone.twoInState)}), which src/duo cannot change.`);
 
     // 8. The second body comes back, then the first leaves: the one who stayed is the hero, and the fight does not stop.
