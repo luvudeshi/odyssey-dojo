@@ -1,0 +1,43 @@
+/* Shared reset for the draft looks: undoes the forge hall's lava titles, glass chips and clipped shapes, then reads
+   the colours each look sets as --l-* on .dojo. Only applies with ?look (html[data-look]). */
+html[data-look] .dojo { background: var(--l-bg); color: var(--dj-ink); font-family: var(--l-body); }
+html[data-look] :is(.dojo-title, .dojo-end-title) {
+  font-family: var(--dj-font); color: var(--l-title); background: none; -webkit-background-clip: border-box; background-clip: border-box; filter: none;
+  text-shadow: var(--l-title-shadow, none); text-transform: var(--l-caps, none);
+}
+html[data-look] .dojo-title span { color: var(--l-accent); }
+html[data-look] .dojo-progress { font-family: var(--dj-font); color: var(--l-sub); letter-spacing: 0.1em; text-transform: var(--l-caps, none); }
+html[data-look] .dojo-points { background: var(--l-chip); clip-path: none; color: var(--l-chip-ink); border-radius: var(--l-r, 0); box-shadow: var(--l-chip-shadow, none); }
+html[data-look] .dojo-points span { letter-spacing: 0.12em; }
+html[data-look] .dojo-points b { color: var(--l-points); text-shadow: none; }
+html[data-look] .dojo-button { font-family: var(--dj-font); letter-spacing: 0.05em; color: var(--l-btn-ink); background: var(--l-btn); border: 2px solid var(--l-btn-edge); border-radius: var(--l-r, 0); box-shadow: none; }
+html[data-look] .dojo-button:hover { border-color: var(--l-accent); }
+html[data-look] .dojo-button.primary { color: var(--l-primary-ink); background: var(--l-primary); border-color: var(--l-primary-edge, var(--l-btn-edge)); }
+html[data-look] .dojo-button:focus-visible, html[data-look] .dojo-style:focus-visible { outline: 3px solid var(--l-focus); outline-offset: 5px; }
+html[data-look] .dojo-cue { padding: 0.15rem 0; font-family: var(--dj-font); letter-spacing: 0.16em; color: var(--l-sub); background: none; clip-path: none; box-shadow: none; }
+html[data-look] .dojo[data-phase="go"] .dojo-cue { color: var(--l-go-ink); background: var(--l-go); padding: 0.15rem 1.1rem; border-radius: var(--l-r, 0); }
+html[data-look] .dojo-side { background: none; }
+html[data-look] .dojo-name { font-family: var(--dj-font); color: var(--l-name); text-shadow: var(--l-name-shadow, none); }
+html[data-look] .dojo-how { color: var(--dj-ink); text-shadow: none; }
+html[data-look] .dojo-key, html[data-look] .dojo-closing, html[data-look] .dojo-tuned, html[data-look] .dojo-total { color: var(--dj-ink); text-shadow: none; }
+html[data-look] .dojo-key kbd { color: var(--l-kbd-ink); background: var(--l-kbd); border: 2px solid var(--l-accent); border-radius: 4px; box-shadow: none; }
+html[data-look] .dojo-time { clip-path: none; background: var(--l-time); box-shadow: inset 0 0 0 2px var(--l-time-edge); border-radius: var(--l-r-time, 0); }
+html[data-look] .dojo-time-fill { background: var(--l-time-fill); }
+html[data-look] .dojo[data-phase="go"] .dojo-time-fill { background: var(--l-time-go); }
+html[data-look] .dojo-grade, html[data-look] .dojo-gain { font-family: var(--dj-font); text-shadow: none; }
+html[data-look] .dojo-dots li { color: var(--dj-dim); }
+html[data-look] .dojo-dot { clip-path: none; border-radius: 50%; }
+html[data-look] .dojo-total b { font-family: var(--dj-font); color: var(--l-points); text-shadow: none; }
+html[data-look] .dojo-total span { color: var(--dj-dim); }
+html[data-look] .dojo-card { clip-path: none; background: var(--l-card); border: 3px solid var(--l-card-edge); border-radius: var(--l-r-card, 0); box-shadow: var(--l-card-shadow, none); }
+html[data-look] .dojo-card:first-child, html[data-look] .dojo-card:last-child { background: var(--l-card); }
+html[data-look] .dojo-card h2 { font-family: var(--dj-font); color: var(--l-sub); text-transform: var(--l-caps, none); }
+html[data-look] .dojo-card:last-child h2 { color: var(--l-accent); }
+html[data-look] .dojo-card li span { color: var(--dj-dim); }
+html[data-look] .dojo-pick > .dojo-key { padding: 0.35rem 1.4rem; clip-path: none; background: var(--l-chip); color: var(--l-chip-ink); border-radius: var(--l-r, 0); }
+/* The practice frame: the forge's lava octagon is replaced by each look's own frame. */
+html[data-look] .dojo-outline .move-guide { clip-path: none; box-shadow: none; border: 0; }
+html[data-look] .dojo-outline::before, html[data-look] .dojo-outline::after { clip-path: none; }
+html[data-look] .dojo-outline .mg-kind { clip-path: none; box-shadow: none; padding: 0 0 0.2rem; background: none; font-family: var(--dj-font); letter-spacing: 0.18em; }
+html[data-look] .dojo-outline .mg-match { font-family: var(--dj-font); }
+html[data-look] .dojo-camera video { border-color: var(--l-accent); box-shadow: 0 0 0 4px var(--l-frame); }

@@ -14,9 +14,15 @@ import type { DojoConfig, DojoRep, DojoState, DojoSummary } from "../dojo";
 import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
+import { look } from "../../ui/lookSwitch";
 import { ForgeScene } from "./ForgeScene";
+import { LookScene } from "./looks/LookScenes";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
+import "./looks/lookBase.css";
+import "./looks/lookA.css";
+import "./looks/lookB.css";
+import "./looks/lookC.css";
 
 /** What the dojo needs of the camera. The game's `PoseTracker` fits; so does anything that hands out frames. */
 export interface DojoTracker {
@@ -158,7 +164,7 @@ export function Dojo(props: DojoProps) {
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      <ForgeScene />
+      {look ? <LookScene look={look} /> : <ForgeScene />}
       <header className="dojo-top">
         <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}

@@ -1,0 +1,78 @@
+/* Look A, the training scroll: a drill manual unrolled on a walnut table. Ink on papyrus, vermilion for what to fix,
+   a blue-ink diagram plate for the figure, a rubber stamp for the grade, wax seals for the repetitions. Font: Trattatello. */
+html[data-look="a"] .dojo {
+  --l-bg: #3a2515; --l-body: "Hoefler Text", Baskerville, Palatino, Georgia, serif;
+  --dj-font: Trattatello, Luminari, "Hoefler Text", Baskerville, Georgia, serif;
+  --dj-ink: #2b1a0d; --dj-dim: #5a4128; --dj-plate: #e6d09a; --dj-line: #7a5a34;
+  --dj-excellent: #1d6a35; --dj-good: #8a5200; --dj-needs: #a8231a; --dj-ice: #1f4a6b; --dj-ember: #a8231a; --dj-hot: #a8231a;
+  --l-title: #2b1a0d; --l-accent: #a8231a; --l-sub: #1f4a6b; --l-chip: transparent; --l-chip-ink: #2b1a0d; --l-points: #a8231a;
+  --l-btn: #f3e4b8; --l-btn-ink: #2b1a0d; --l-btn-edge: #4a2e14; --l-primary: #a8231a; --l-primary-ink: #fff4dc; --l-primary-edge: #5a1008;
+  --l-focus: #1f4a6b; --l-go: #a8231a; --l-go-ink: #fff4dc; --l-name: #2b1a0d; --l-kbd: #fff4dc; --l-kbd-ink: #2b1a0d;
+  --l-time: #e3cf98; --l-time-edge: #4a2e14; --l-time-fill: #1f4a6b; --l-time-go: #a8231a; --l-r: 3px; --l-frame: #3a2515;
+  --l-card: #f6ead0cc; --l-card-edge: #4a2e14; --l-card-shadow: inset 0 0 0 5px #f6ead0, inset 0 0 0 6px #4a2e1488;
+  padding: 4.3rem 4rem 3.6rem;
+}
+html[data-look="a"] .dojo-title { font-size: 2.1rem; letter-spacing: 0.06em; }
+html[data-look="a"] .dojo-end-title { font-size: 3.4rem; letter-spacing: 0.04em; }
+html[data-look="a"] .dojo-progress { font-size: 1.5rem; }
+html[data-look="a"] .dojo-points { padding: 0 0.4rem; }
+html[data-look="a"] .dojo-points span { font-size: 1.4rem; }
+html[data-look="a"] .dojo-points b { font-size: 2.6rem; }
+html[data-look="a"] .dojo-button { font-size: 1.4rem; }
+html[data-look="a"] .dojo-top { padding-bottom: 0.5rem; border-bottom: 3px double #4a2e14aa; }
+
+/* Pick: the title and its note on the left, the five styles as ruled lines of a ledger on the right, each with a numeral and a wax seal. */
+html[data-look="a"] .dojo-pick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); grid-template-rows: auto auto auto 1fr; column-gap: 4rem; align-content: center; align-items: start; text-align: left; justify-items: start; }
+html[data-look="a"] .dojo-pick .dojo-end-title { grid-column: 1; grid-row: 1; margin-top: auto; font-size: 4rem; line-height: 1; text-wrap: balance; }
+html[data-look="a"] .dojo-pick .dojo-closing { grid-column: 1; grid-row: 2; color: var(--dj-ink); font-size: 1.6rem; margin-top: 1rem; }
+html[data-look="a"] .dojo-pick > .dojo-key { grid-column: 1; grid-row: 3; margin-top: 1.4rem; border: 2px dashed #4a2e14; background: none; font-size: 1.3rem; }
+html[data-look="a"] .dojo-styles { grid-column: 2; grid-row: 1 / 5; flex-direction: column; flex-wrap: nowrap; justify-content: center; gap: 0; width: 100%; margin: 0; counter-reset: row; align-self: center; border-top: 3px double #4a2e14; }
+html[data-look="a"] .dojo-style { counter-increment: row; display: flex; align-items: baseline; gap: 1.4rem; width: 100%; min-height: 0; padding: 0.85rem 4.2rem 0.85rem 4.2rem; text-align: left; border-bottom: 2px solid #4a2e1488; }
+html[data-look="a"] .dojo-style::before { inset: auto; left: 0.6rem; top: 50%; width: 2.6rem; height: 2.6rem; margin-top: -1.3rem; clip-path: none; border-radius: 50%; border: 2px solid #4a2e14; background: none; z-index: 0;
+  content: counter(row, upper-roman); display: grid; place-items: center; font-family: var(--dj-font); font-size: 1.2rem; font-weight: 700; color: #4a2e14; }
+html[data-look="a"] .dojo-style::after { inset: auto; right: 0.8rem; top: 50%; width: 2.2rem; height: 2.2rem; margin-top: -1.1rem; clip-path: none; border-radius: 50%; z-index: 0; opacity: 0;
+  background: radial-gradient(circle at 35% 30%, #e0584a, #a8231a 55%, #5a1008); box-shadow: 0 0 0 3px #7a1a10; }
+html[data-look="a"] .dojo-style b { flex: none; min-width: 9.5rem; font-family: var(--dj-font); font-size: 2.1rem; letter-spacing: 0.03em; text-transform: none; color: #2b1a0d; text-shadow: none; }
+html[data-look="a"] .dojo-style span { font-family: var(--l-body); font-size: 1.3rem; font-style: italic; color: #4a3320; text-shadow: none; }
+html[data-look="a"] .dojo-style:hover, html[data-look="a"] .dojo-style:focus-visible { transform: none; background: #f9edc8; box-shadow: inset 6px 0 0 #a8231a; }
+html[data-look="a"] .dojo-style:hover::after, html[data-look="a"] .dojo-style:focus-visible::after { opacity: 1; }
+html[data-look="a"] .dojo-style:hover::before { background: none; }
+html[data-look="a"] .dojo-style:focus-visible { outline-offset: -3px; }
+html[data-look="a"] .dojo-style:focus-visible::before { background: none; }
+
+/* Practice: the figure on a blue-ink diagram plate with a ruled grid; the move's name inked large beside it. */
+html[data-look="a"] .dojo-outline::before { inset: 0; background: none; border: 3px double #4a2e14; }
+html[data-look="a"] .dojo-outline::after { inset: 0; background: repeating-linear-gradient(0deg, #1f4a6b26 0 1px, transparent 1px 28px), repeating-linear-gradient(90deg, #1f4a6b26 0 1px, transparent 1px 28px), #f8edcdb0; }
+html[data-look="a"] .dojo-outline .move-guide { --mg-ink: #2b1a0d; --mg-accent: #a8231a; --mg-good: #1d6a35; --mg-bg: #f4e7c2; background: none; margin: 6px; }
+html[data-look="a"] .dojo-outline .move-guide.defend { --mg-accent: #1f4a6b; background: none; }
+html[data-look="a"] .dojo-outline .mg-kind { color: var(--mg-accent); border-bottom: 3px solid var(--mg-accent); font-size: 1.3rem; }
+html[data-look="a"] .dojo-outline .mg-depth { font-style: italic; color: #4a3320; }
+html[data-look="a"] .dojo-outline .mg-match-bar { background: #e3cf98; border-color: #4a2e14; }
+html[data-look="a"] .dojo-outline .mg-label { color: #2b1a0d; }
+html[data-look="a"] .dojo-outline .mg-svg .mg-floor { stroke: #4a2e14; opacity: 0.6; }
+html[data-look="a"] .dojo-cue { margin-bottom: 0.7rem; font-size: 1.5rem; font-style: italic; text-transform: none; letter-spacing: 0.04em; }
+html[data-look="a"] .dojo[data-phase="go"] .dojo-cue { font-style: normal; font-size: 1.6rem; box-shadow: 3px 3px 0 #4a2e14; transform: rotate(-2deg); }
+html[data-look="a"] .dojo-name { font-size: 4.6rem; text-transform: none; line-height: 0.95; letter-spacing: 0.01em; border-bottom: 4px solid #2b1a0d; padding-bottom: 0.3rem; }
+html[data-look="a"] .dojo-how { font-size: 1.8rem; font-style: italic; }
+html[data-look="a"] .dojo-key { font-size: 1.3rem; }
+
+/* The grade is a rubber stamp pressed on the sheet; the tip is a note in the margin. */
+html[data-look="a"] .dojo-result { min-height: 12rem; }
+html[data-look="a"] .dojo-grade { width: fit-content; padding: 0.1rem 1.1rem 0; font-size: 3.4rem; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.06em; border: 5px double currentColor; border-radius: 6px; transform: rotate(-3deg); margin: 0.3rem 0 1.1rem; mix-blend-mode: multiply; }
+html[data-look="a"] .dojo[data-tier="needs_work"] .dojo-grade { font-size: 2.3rem; }
+html[data-look="a"] .dojo-gain { font-size: 3rem; }
+html[data-look="a"] .dojo-tip { margin-top: 0.4rem; padding: 0.4rem 0 0.4rem 1rem; font-size: 1.6rem; font-style: italic; color: #2b1a0d; background: none; box-shadow: none; border-left: 4px solid #a8231a; }
+html[data-look="a"] .dojo-dots li { font-size: 1.25rem; }
+html[data-look="a"] .dojo-dot { width: 2.2rem; height: 2.2rem; background: none; border: 2px dashed #4a2e14; }
+html[data-look="a"] .dojo-dots li[data-now] .dojo-dot { background: none; border: 3px double #a8231a; }
+html[data-look="a"] .dojo-dots li[data-tier] .dojo-dot { border: 0; box-shadow: 0 0 0 3px #00000033; }
+html[data-look="a"] .dojo-dots li[data-tier="excellent"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #5ab070, #1d6a35 60%, #0a3a18); }
+html[data-look="a"] .dojo-dots li[data-tier="good"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #e0a040, #8a5200 60%, #4a2a00); }
+html[data-look="a"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #e0584a, #a8231a 55%, #5a1008); }
+html[data-look="a"] .dojo-end-title { text-align: center; }
+html[data-look="a"] .dojo-total { font-size: 2rem; }
+html[data-look="a"] .dojo-card h2 { font-size: 1.7rem; letter-spacing: 0.06em; }
+html[data-look="a"] .dojo-card li, html[data-look="a"] .dojo-card p { font-size: 1.4rem; }
+html[data-look="a"] .dojo-card li[data-tier="needs_work"] b { color: #a8231a; }
+html[data-look="a"] .dojo-card:last-child { border-color: #a8231a; }
+html[data-look="a"] .dojo-card:first-child { border-color: #1f4a6b; }

@@ -1,0 +1,71 @@
+/* Look B, Athena's armoury: a moonlit stone hall. The five styles hang as arms from a beam, each with a bronze nameplate;
+   the move stands in an arched niche; the grade is struck on a bronze hoplite shield. Font: Herculanum. */
+html[data-look="b"] .dojo {
+  --l-bg: #141b2b; --l-body: Optima, "Gill Sans", Palatino, "Trebuchet MS", sans-serif;
+  --dj-font: Herculanum, "Big Caslon", Copperplate, Georgia, serif;
+  --dj-ink: #f2ede0; --dj-dim: #c9d3e6; --dj-plate: #0e1424; --dj-line: #4a5675;
+  --dj-excellent: #86e898; --dj-good: #ffc84a; --dj-needs: #ff9070; --dj-ice: #9fc4ff; --dj-ember: #f0c070; --dj-hot: #f0c070;
+  --l-title: #e4ecfb; --l-title-shadow: 0 3px 0 #05080f, 0 0 26px #8fb4ff55; --l-caps: uppercase; --l-accent: #f0c070; --l-sub: #9fc4ff;
+  --l-chip: #0e1424; --l-chip-ink: #c9d3e6; --l-points: #ffc84a; --l-btn: #1c2538; --l-btn-ink: #f2ede0; --l-btn-edge: #c98a3a;
+  --l-primary: linear-gradient(#f0c070, #b9772a); --l-primary-ink: #2a1204; --l-primary-edge: #f6d890; --l-focus: #e4ecfb;
+  --l-go: linear-gradient(#f6d890, #d79a45); --l-go-ink: #2a1204; --l-name: #e8eefc; --l-name-shadow: 0 3px 0 #05080f, 0 0 22px #8fb4ff44;
+  --l-kbd: #0e1424; --l-kbd-ink: #fff6ea; --l-time: #0e1424; --l-time-edge: #c98a3a; --l-time-fill: linear-gradient(#cfe0ff, #5f7fb8); --l-time-go: linear-gradient(#f6d890, #b9772a);
+  --l-r: 2px; padding: 4.4rem 5.4rem 1.5rem; --l-frame: #0e1424; --l-card: linear-gradient(#27324c, #161d30); --l-card-edge: #c98a3a; --l-card-shadow: inset 0 0 0 2px #0e1424;
+}
+html[data-look="b"] .dojo-title { font-size: 1.5rem; letter-spacing: 0.22em; }
+html[data-look="b"] .dojo-end-title { font-size: 2.8rem; letter-spacing: 0.14em; }
+html[data-look="b"] .dojo-progress { font-size: 1.2rem; letter-spacing: 0.2em; }
+html[data-look="b"] .dojo-points { padding: 0.15rem 1.4rem; border: 2px solid #c98a3a; }
+html[data-look="b"] .dojo-points span { font-family: var(--dj-font); font-size: 1rem; }
+html[data-look="b"] .dojo-points b { font-size: 2.2rem; }
+
+/* Pick: a wooden beam across the wall with five arms on ropes, each over a bronze plate with the style's name. */
+html[data-look="b"] .dojo-pick .dojo-end-title { font-size: 3rem; letter-spacing: 0.12em; }
+html[data-look="b"] .dojo-pick .dojo-closing { color: #dfe8f7; text-shadow: 0 2px 4px #000; font-size: 1.55rem; }
+html[data-look="b"] .dojo-styles { position: relative; align-items: flex-start; gap: 1.5rem; margin: 1.2rem 0 0.8rem; padding-top: 2.4rem; }
+html[data-look="b"] .dojo-styles::before { content: ""; position: absolute; top: 0; left: -1.5rem; right: -1.5rem; height: 1.5rem; border-radius: 4px; background: linear-gradient(#8a5c2e, #4a2c12 70%, #2a1608); box-shadow: 0 6px 12px #000a; }
+html[data-look="b"] .dojo-style {
+  --arm: none; width: 13.5rem; min-height: 20rem; align-content: end; padding: 0 0.8rem 1.1rem; gap: 0.3rem; text-align: center;
+}
+html[data-look="b"] .dojo-style::before { inset: 0 0 auto 0; height: 11rem; clip-path: none; z-index: 0; background: var(--arm) center / contain no-repeat; filter: drop-shadow(0 6px 6px #000a); }
+html[data-look="b"] .dojo-style::after { inset: 11.2rem 0 0 0; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px)); z-index: -1; background: linear-gradient(#e6b060, #c98a3a 40%, #8a5420); }
+html[data-look="b"] .dojo-style b { font-family: var(--dj-font); font-size: 1.5rem; letter-spacing: 0.08em; color: #2a1204; text-shadow: 0 1px 0 #f6d89088; }
+html[data-look="b"] .dojo-style span { font-size: 1.125rem; font-weight: 600; line-height: 1.25; color: #2a1204; text-shadow: none; }
+html[data-look="b"] .dojo-style:hover { transform: translateY(-4px); }
+html[data-look="b"] .dojo-style:hover::before, html[data-look="b"] .dojo-style:focus-visible::before { background: var(--arm) center / contain no-repeat; filter: drop-shadow(0 0 14px #f0c070) drop-shadow(0 6px 6px #000a); }
+html[data-look="b"] .dojo-style:hover::after, html[data-look="b"] .dojo-style:focus-visible::after { background: linear-gradient(#fbe2a0, #e6b060 40%, #b9772a); }
+html[data-look="b"] .dojo-style:nth-child(1) { --arm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cpath d='M30 0 L50 40 M70 0 L50 40' stroke='%23caa66a' stroke-width='2' fill='none'/%3E%3Ccircle cx='50' cy='62' r='44' fill='%23b9772a' stroke='%23f6d890' stroke-width='4'/%3E%3Ccircle cx='50' cy='62' r='32' fill='none' stroke='%236a3d12' stroke-width='3'/%3E%3Cpath d='M50 36 L56 56 L76 62 L56 68 L50 88 L44 68 L24 62 L44 56Z' fill='%23f6d890' stroke='%236a3d12' stroke-width='2'/%3E%3C/svg%3E"); }
+html[data-look="b"] .dojo-style:nth-child(2) { --arm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cpath d='M50 0 V100' stroke='%238a5c2e' stroke-width='5'/%3E%3Cpath d='M50 6 C34 28 38 44 50 52 C62 44 66 28 50 6Z' fill='%23f0c070' stroke='%236a3d12' stroke-width='2'/%3E%3Crect x='44' y='54' width='12' height='7' fill='%23b9772a'/%3E%3Cpath d='M50 100 L44 110 H56Z' fill='%23b9772a'/%3E%3Cpath d='M20 70 Q50 50 80 70' stroke='%23caa66a' stroke-width='2' fill='none'/%3E%3C/svg%3E"); }
+html[data-look="b"] .dojo-style:nth-child(3) { --arm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cpath d='M20 0 L50 20 M80 0 L50 20' stroke='%23caa66a' stroke-width='2' fill='none'/%3E%3Cpath d='M50 18 C66 40 64 70 50 98 C36 70 34 40 50 18Z' fill='%23d8e2f4' stroke='%2306080e' stroke-width='3'/%3E%3Cpath d='M50 24 V92' stroke='%237a8aa8' stroke-width='2'/%3E%3Crect x='30' y='14' width='40' height='8' rx='3' fill='%23c98a3a' stroke='%236a3d12' stroke-width='2'/%3E%3C/svg%3E"); }
+html[data-look="b"] .dojo-style:nth-child(4) { --arm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cpath d='M50 0 V104' stroke='%238a5c2e' stroke-width='5'/%3E%3Cpath d='M50 12 C16 8 8 40 30 58 C40 50 46 36 50 28 C54 36 60 50 70 58 C92 40 84 8 50 12Z' fill='%23d79a45' stroke='%236a3d12' stroke-width='3'/%3E%3C/svg%3E"); }
+html[data-look="b"] .dojo-style:nth-child(5) { --arm: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cpath d='M32 0 L50 14 M68 0 L50 14' stroke='%23caa66a' stroke-width='2' fill='none'/%3E%3Cpath d='M18 14 C30 -2 70 -2 82 14 L82 24 L18 24Z' fill='%23c8302a' stroke='%236a1008' stroke-width='2'/%3E%3Cpath d='M20 62 C20 26 80 26 80 62 L80 104 L64 104 L60 82 L40 82 L36 104 L20 104Z' fill='%23d79a45' stroke='%236a3d12' stroke-width='3'/%3E%3Cpath d='M32 58 H68 L62 74 H38Z' fill='%23141b2b'/%3E%3C/svg%3E"); }
+
+/* Practice: the figure in an arched niche lit from above. */
+html[data-look="b"] .dojo-outline::before { inset: 0; border-radius: 12rem 12rem 0.4rem 0.4rem / 9rem 9rem 0.4rem 0.4rem; background: linear-gradient(180deg, #f6d890, #c98a3a 35%, #6a3d12); }
+html[data-look="b"] .dojo-outline::after { inset: -30px; background: radial-gradient(closest-side, #8fb4ff33 70%, transparent); }
+html[data-look="b"] .dojo-outline .move-guide { --mg-ink: #f2ede0; --mg-accent: #f0c070; --mg-good: #86e898; --mg-bg: #0e1424; margin: 6px; padding-top: 2.6rem; border-radius: 12rem 12rem 0.3rem 0.3rem / 9rem 9rem 0.3rem 0.3rem; background: radial-gradient(ellipse at 50% 0, #4a5f8a, #1c2538 55%, #0e1424); }
+html[data-look="b"] .dojo-outline .move-guide.defend { --mg-accent: #9fc4ff; }
+html[data-look="b"] .dojo-outline .mg-kind { color: var(--mg-accent); border-bottom: 2px solid var(--mg-accent); font-size: 1.15rem; }
+html[data-look="b"] .dojo-outline .mg-match-bar { background: #0e1424; border-color: #c98a3a; }
+html[data-look="b"] .dojo-cue { font-size: 1.15rem; text-transform: uppercase; }
+html[data-look="b"] .dojo[data-phase="go"] .dojo-cue { box-shadow: 0 0 18px #f0c07088; }
+html[data-look="b"] .dojo-name { font-size: 3.4rem; text-transform: uppercase; line-height: 1.02; letter-spacing: 0.04em; }
+html[data-look="b"] .dojo-how { font-size: 1.7rem; color: #e4ecfb; text-shadow: 0 2px 4px #000; }
+html[data-look="b"] .dojo-time { height: 1.1rem; }
+
+/* The grade is struck on a bronze shield, the points beside it, the tip on a stone slab. */
+html[data-look="b"] .dojo-result { display: grid; grid-template-columns: 14rem 1fr; grid-template-areas: "g n" "t t"; align-items: center; column-gap: 1.2rem; min-height: 0; }
+html[data-look="b"] .dojo-grade { grid-area: g; display: grid; place-items: center; width: 14rem; height: 14rem; padding: 1rem; box-sizing: border-box; text-align: center; border-radius: 50%; font-size: 2.1rem; line-height: 1.05; text-transform: uppercase; color: #2a1204 !important;
+  background: radial-gradient(circle at 50% 50%, transparent 0 56%, #6a3d12 57% 60%, transparent 61%), radial-gradient(circle at 35% 28%, #f8dc98, #d79a45 45%, #8a5420); box-shadow: 0 0 0 5px #f6d890, 0 0 0 9px #6a3d12, 0 10px 20px #000a; }
+html[data-look="b"] .dojo[data-tier="needs_work"] .dojo-grade { font-size: 1.3rem; padding: 1.4rem; }
+html[data-look="b"] .dojo-gain { grid-area: n; font-size: 3.4rem; text-shadow: 0 3px 0 #05080f; }
+html[data-look="b"] .dojo-tip { grid-area: t; margin-top: 1.1rem; font-size: 1.5rem; background: linear-gradient(#2d3a55, #1c2538); box-shadow: inset 4px 0 0 #c98a3a, inset 0 0 0 1px #4a5675; }
+html[data-look="b"] .dojo-dots li { font-size: 1.25rem; }
+html[data-look="b"] .dojo-dot { width: 2.2rem; height: 2.2rem; background: radial-gradient(circle at 35% 30%, #4a5675, #141b2b); box-shadow: 0 0 0 3px #6a3d12; }
+html[data-look="b"] .dojo-dots li[data-now] .dojo-dot { background: radial-gradient(circle at 35% 30%, #f8dc98, #b9772a); }
+html[data-look="b"] .dojo-dots li[data-tier="excellent"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #d0ffd8, #3aa860); box-shadow: 0 0 0 3px #c98a3a; }
+html[data-look="b"] .dojo-dots li[data-tier="good"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #fff0c8, #e09a20); box-shadow: 0 0 0 3px #c98a3a; }
+html[data-look="b"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #ffc0a0, #c8340a); box-shadow: 0 0 0 3px #c98a3a; }
+html[data-look="b"] .dojo-total b { font-size: 4.5rem; text-shadow: 0 3px 0 #05080f; }
+html[data-look="b"] .dojo-card h2 { font-size: 1.4rem; letter-spacing: 0.14em; text-transform: uppercase; }
+html[data-look="b"] .dojo-card:first-child { border-color: #9fc4ff; }

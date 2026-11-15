@@ -1,0 +1,67 @@
+/* Look C, Poseidon's drowned hall: a sunlit sea with light rays, sunken columns and bubbles. The styles are glass
+   bubbles drifting at different depths; the move stands in a verdigris diving-bell window; the grade surfaces as pearl-light.
+   Font: Avenir Next Condensed. */
+html[data-look="c"] .dojo {
+  --l-bg: #06405c; --l-body: "Avenir Next", Avenir, "Gill Sans", "Trebuchet MS", sans-serif;
+  --dj-font: "Avenir Next Condensed", "Futura Condensed ExtraBold", "DIN Condensed", Impact, sans-serif;
+  --dj-ink: #effcff; --dj-dim: #c4eef7; --dj-plate: #04283c; --dj-line: #2a8aa8;
+  --dj-excellent: #80f2b4; --dj-good: #ffd76a; --dj-needs: #ff8f7e; --dj-ice: #6ee8ff; --dj-ember: #6ee8ff; --dj-hot: #e8fbff;
+  --l-title: #f4feff; --l-title-shadow: 0 2px 0 #03283c, 0 0 20px #36d8ff88; --l-caps: uppercase; --l-accent: #7af0ff; --l-sub: #aef4ff;
+  --l-chip: #04283ccc; --l-chip-ink: #c4eef7; --l-points: #ffe08a; --l-btn: #0a5a78; --l-btn-ink: #effcff; --l-btn-edge: #7af0ff;
+  --l-primary: linear-gradient(#ffe8a8, #ff9a6a); --l-primary-ink: #3a0e04; --l-primary-edge: #fff4d8; --l-focus: #ffffff;
+  --l-go: linear-gradient(#e8fbff, #6ee8ff); --l-go-ink: #03283c; --l-name: #f6feff; --l-name-shadow: 0 3px 0 #03283c, 0 0 26px #36d8ff;
+  --l-kbd: #04283c; --l-kbd-ink: #effcff; --l-time: #04283c; --l-time-edge: #7af0ff; --l-time-fill: linear-gradient(90deg, #2bc6d6, #9ff6ff); --l-time-go: linear-gradient(90deg, #ff9a6a, #ffe08a);
+  --l-r: 1.4rem; --l-r-time: 1rem; --l-r-card: 2rem; --l-frame: #04283c;
+  --l-card: linear-gradient(160deg, #0f6a88e6, #05324ae6); --l-card-edge: #7af0ff88; --l-card-shadow: inset 0 0 2.4rem #6ee8ff33;
+}
+html[data-look="c"] .dojo-title { font-size: 1.8rem; font-weight: 800; font-style: italic; letter-spacing: 0.16em; }
+html[data-look="c"] .dojo-end-title { font-size: 3.2rem; font-weight: 800; font-style: italic; letter-spacing: 0.1em; }
+html[data-look="c"] .dojo-progress { font-size: 1.4rem; font-weight: 700; letter-spacing: 0.16em; }
+html[data-look="c"] .dojo-points { padding: 0.15rem 1.5rem; border: 2px solid #7af0ff88; border-radius: 2rem; }
+html[data-look="c"] .dojo-points span { font-size: 1.1rem; font-weight: 700; }
+html[data-look="c"] .dojo-points b { font-size: 2.4rem; font-weight: 800; }
+html[data-look="c"] .dojo-button { font-size: 1.4rem; font-weight: 800; border-radius: 2rem; padding: 0.5rem 1.8rem; }
+
+/* Pick: five glass bubbles at five depths. */
+html[data-look="c"] .dojo-pick .dojo-closing { font-size: 1.55rem; color: #e4fbff; text-shadow: 0 2px 6px #03283c; }
+html[data-look="c"] .dojo-styles { align-items: flex-start; flex-wrap: nowrap; gap: 0.7rem; margin: 0.4rem 0 1.4rem; max-width: none; }
+html[data-look="c"] .dojo-style { flex: none; box-sizing: border-box; width: 14.4rem; height: 14.4rem; min-height: 0; padding: 1.6rem 1.7rem; align-content: center; justify-items: center; gap: 0.25rem; border-radius: 50%; transition: none;
+  background: radial-gradient(circle at 50% 50%, #0f8aa855 0, #0a5a789a 62%, #6ee8ff66 100%); box-shadow: inset 0 0 2.6rem #8defff55, 0 0 2.2rem #2bc6d644, inset 0 0 0 3px #aef4ffcc; }
+html[data-look="c"] .dojo-style:nth-child(2n) { margin-top: 3rem; }
+html[data-look="c"] .dojo-style:nth-child(3) { margin-top: 1.2rem; }
+html[data-look="c"] .dojo-style::before { inset: 0.5rem 24% auto 16%; height: 22%; z-index: 0; clip-path: none; border-radius: 50%; background: radial-gradient(ellipse at 30% 25%, #ffffffaa, #ffffff00 70%); transform: rotate(-24deg); }
+html[data-look="c"] .dojo-style::after { content: none; }
+html[data-look="c"] .dojo-style b { font-size: 1.75rem; font-weight: 800; font-style: italic; letter-spacing: 0.08em; color: #f6feff; text-shadow: 0 2px 0 #03283c, 0 0 14px #36d8ff; }
+html[data-look="c"] .dojo-style span { font-size: 1.125rem; font-weight: 600; line-height: 1.2; color: #dff8ff; text-shadow: 0 1px 3px #03283c; }
+html[data-look="c"] .dojo-style:hover, html[data-look="c"] .dojo-style:focus-visible { transform: scale(1.06); box-shadow: inset 0 0 2.6rem #c8f8ff88, 0 0 3rem #7af0ffaa, inset 0 0 0 4px #ffffff; }
+html[data-look="c"] .dojo-style:hover::before, html[data-look="c"] .dojo-style:focus-visible::before { background: radial-gradient(ellipse at 30% 25%, #ffffffcc, #ffffff00 70%); }
+html[data-look="c"] .dojo-pick > .dojo-key { border: 2px solid #7af0ff88; border-radius: 2rem; font-size: 1.25rem; }
+
+/* Practice: a diving-bell window with a verdigris rim. */
+html[data-look="c"] .dojo-outline::before { inset: 0; border-radius: 5rem; background: linear-gradient(160deg, #c8fff0, #3fb7a5 35%, #145a52 70%, #7ff0d0); box-shadow: 0 0 0 4px #04283c, 0 0 44px #36d8ff66; }
+html[data-look="c"] .dojo-outline::after { inset: -30px; background: radial-gradient(closest-side, #6ee8ff33 70%, transparent); }
+html[data-look="c"] .dojo-outline .move-guide { --mg-ink: #effcff; --mg-accent: #ffd76a; --mg-good: #80f2b4; --mg-bg: #04283c; margin: 12px; border-radius: 4rem; background: radial-gradient(ellipse at 30% 10%, #1b97b4, #0a5472 50%, #04283c); }
+html[data-look="c"] .dojo-outline .move-guide.defend { --mg-accent: #7af0ff; }
+html[data-look="c"] .dojo-outline .mg-kind { color: var(--mg-accent); font-size: 1.2rem; font-weight: 800; border-bottom: 3px solid var(--mg-accent); }
+html[data-look="c"] .dojo-outline .mg-match-bar { background: #04283c; border-color: #7af0ff; border-radius: 1rem; overflow: hidden; }
+html[data-look="c"] .dojo-outline .mg-label { font-weight: 600; }
+html[data-look="c"] .dojo-cue { font-size: 1.3rem; font-weight: 800; }
+html[data-look="c"] .dojo[data-phase="go"] .dojo-cue { box-shadow: 0 0 20px #6ee8ffaa; }
+html[data-look="c"] .dojo-name { font-size: 4.6rem; font-weight: 800; font-style: italic; text-transform: uppercase; line-height: 0.98; letter-spacing: 0.02em; }
+html[data-look="c"] .dojo-how { font-size: 1.75rem; font-weight: 500; text-shadow: 0 2px 6px #03283c; }
+html[data-look="c"] .dojo-time { height: 1.3rem; }
+
+/* The grade surfaces as bright coloured light; the tip is a bubble. */
+html[data-look="c"] .dojo-grade { font-size: 3.9rem; font-weight: 800; font-style: italic; text-transform: uppercase; text-shadow: 0 3px 0 #03283c, 0 0 28px currentColor; }
+html[data-look="c"] .dojo[data-tier="needs_work"] .dojo-grade { font-size: 3.2rem; }
+html[data-look="c"] .dojo-gain { width: fit-content; padding: 0 1.2rem; font-size: 3rem; font-weight: 800; border-radius: 2rem; background: #04283ccc; box-shadow: inset 0 0 0 2px currentColor; }
+html[data-look="c"] .dojo-tip { margin-top: 0.7rem; padding: 0.9rem 1.4rem; font-size: 1.5rem; border-radius: 1.8rem 1.8rem 1.8rem 0.3rem; background: linear-gradient(160deg, #0f6a88f0, #05324af0); box-shadow: inset 0 0 0 2px #7af0ff88; }
+html[data-look="c"] .dojo-dots li { font-size: 1.25rem; font-weight: 700; }
+html[data-look="c"] .dojo-dot { width: 2.2rem; height: 2.2rem; background: radial-gradient(circle at 35% 30%, #2a8aa8, #04283c); box-shadow: 0 0 0 2px #7af0ff66; }
+html[data-look="c"] .dojo-dots li[data-now] .dojo-dot { background: radial-gradient(circle at 35% 30%, #ffffff, #6ee8ff); }
+html[data-look="c"] .dojo-dots li[data-tier="excellent"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #f0fff6, #40c880); }
+html[data-look="c"] .dojo-dots li[data-tier="good"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #fffbe0, #f0b030); }
+html[data-look="c"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #ffe0d8, #e8503a); }
+html[data-look="c"] .dojo-total b { font-size: 4.6rem; font-weight: 800; font-style: italic; text-shadow: 0 3px 0 #03283c, 0 0 24px #ffd76a88; }
+html[data-look="c"] .dojo-card h2 { font-size: 1.5rem; font-weight: 800; font-style: italic; letter-spacing: 0.12em; text-transform: uppercase; }
+html[data-look="c"] .dojo-card li, html[data-look="c"] .dojo-card p { font-weight: 500; }
