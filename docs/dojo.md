@@ -5,9 +5,8 @@ plays, the player copies it, and every try gets a grade, points and one tip. At 
 moves to work on and how.
 
 The whole screen is one component, `src/coach/ui/Dojo.tsx`, with its rules in `src/coach/dojo.ts` (pure, tested
-in `tests/coachDojo.test.ts`) and the grade in `src/coach/grade.ts`. It is not mounted in the game yet: that
-needs two lead-only files, and the exact lines are at the end of this page. Until then it runs on a page of its
-own (below).
+in `tests/coachDojo.test.ts`) and the grade in `src/coach/grade.ts`. In the game it is the Training Dojo card on
+the main menu. It also runs on a page of its own (below).
 
 Every number here that is not a detector's own is a first guess. Nothing has been tried on a real body yet.
 
@@ -63,6 +62,36 @@ sharpen, when one was weak. `docs/practice.md` lists every tip.
 - If every try counted, the one weakest move is listed as **to sharpen**, with the tip for its weak part or,
   with none, the move's own how-to line. If every try was Excellent the list is empty and says so.
 - **Your level**: beginner, average or good, from the skill number below.
+- **One line on what the session changes in the fights**, above the buttons. See the next section.
+
+## What a session changes in the fights
+
+Pressing **Done** hands the summary to the game. `src/App.tsx` keeps `assessmentFrom(summary)` (the `warmed`
+action in `src/screens/flow.ts`), and from then on every fight uses `enemyFor(enemy, assessment)`, which is
+`tuneFor` (`src/coach/warmup.ts`). It stays until another session is finished or the page is loaded again.
+
+`tuneFor` changes two things and nothing else:
+
+- **The warning before every attack**, by the level: a beginner gets 1.25 times as long, an average player the
+  same, a good player 0.85 times (`TELEGRAPH_SCALE`).
+- **How often an attack comes up.** Attacks stopped by a defend on the work-on list (the first two moves on it)
+  get a heavier weight, at most 2.5 times (`MAX_LEAN`). A punch on the list changes no weights.
+
+Damage, health, phases, weak spots and attack ids stay as they are. A session where every try was Good and none
+was missed changes nothing at all.
+
+The end screen says this in one line, `tuningLine(assessment, enemies)` in `src/coach/dojo.ts`. It runs `tuneFor`
+on every monster and reads the answer off the result (`tuningOf`): all the tuned warning times over all the plain
+ones, and which defends had an attack get heavier. So the line cannot say something the tuning did not do.
+
+| Session | The line |
+| --- | --- |
+| Beginner, block and duck missed | Monsters will swing slower for you: 25% more warning before every attack. Expect more attacks you have to block or duck. |
+| Average, nothing missed | Monsters will fight at the usual pace. |
+| Good | Monsters will swing faster for you: 15% less warning before every attack. |
+
+`tests/coachDojoTuning.test.ts` steps the real combat engine to the first attack for each of the three and pins
+the lines. Leaving the end screen with Escape is quitting: the game is not told, so nothing is tuned.
 
 ## For the game: skill from a training session
 
@@ -81,6 +110,8 @@ try copied from the outline, one sloppy, one missed, so every grade and the work
 
 - `?quick=1`: five moves (two strikes, block, duck, one dodge), under a minute and a half.
 - `?style=karate`: another style. `?style=ask`: no style given, as from the title screen.
+- `?player=strong`: every try done well. `?player=weak`: sloppy punches and no defend seen. For the two ends of
+  the line on what the session changes in the fights.
 - `?camera=1`: the real camera. `?keyboard=1`: nobody plays; press the key shown.
 - `?reps=2`, and `?slow=1` for the game's own timings (the page's are a little shorter).
 
@@ -102,52 +133,8 @@ It fills the window, brings its own stylesheet (`dojo.css`, theme variables with
 running when it goes away. If the tracker arrives while a session is running, the session starts again from the
 first move.
 
-## NEEDS: the mount (lead-only files)
-
-The title screen offers two choices: **Play the Odyssey** (the quest, as today) and **Training Dojo**. These
-lines were tried against `main` in a local build (title screen, Training Dojo, pick a style, a key press graded,
-Escape back to the title) and then taken out again; they are not in the PR.
-
-`src/screens/TitleScreen.tsx`:
-
-1. Add `onTraining?: () => void` to the props.
-2. In the first `menu__row`, rename the primary button and add the second one beside it:
-
-```tsx
-<Button primary onClick={() => { speakLine("homer_title"); props.onCamera(); }}>Play the Odyssey (webcam)</Button>
-{props.onTraining && <Button onClick={props.onTraining}>Training Dojo</Button>}
-```
-
-`src/App.tsx`:
-
-1. With the imports: `import { Dojo } from "./coach/ui/Dojo";`
-2. With the other `useState` lines: `const [training, setTraining] = useState(false);`
-3. Just above `if (flow.screen === "title") {`:
-
-```tsx
-// The training dojo, from the title. The camera is asked for while the player picks a style; refused, it is keyboard training.
-const openTraining = (): void => {
-  setCameraProblem("");
-  setTraining(true);
-  if (!tracker) camera.start().then(setTracker, (error: unknown) => { log("warn", "tracker_failed", error); });
-};
-
-if (training) {
-  return <Dojo tracker={tracker} style={flow.style} onDone={() => { setTraining(false); }} onQuit={() => { setTraining(false); }} />;
-}
-```
-
-4. On `<TitleScreen ... />` add `onTraining={openTraining}`.
-
-Nothing in `src/screens/flow.ts` changes: training is not a stop on the quest, so it is a flag beside the flow
-and both ways out of it land back on the title. To tune the monsters from training, the `onDone` above can
-become `onDone={(summary) => { setTraining(false); /* keep assessmentFrom(summary) for enemyFor */ }}`; today
-`flow.assessment` is only set by the `warmed` action on the intro screen, so that needs one more action in
-`flow.ts`.
-
 ## Not tested
 
 - No real body and no real camera: every frame in the tests and on the demo page is made up.
-- The camera being granted from the title screen (the trial build ran in a browser with no camera, so it
-  trained on the keyboard).
+- The line on what the session changes was looked at on the demo page only, not inside the game.
 - The thresholds above (0.6, 0.58, 0.82) and the timings are first guesses.
