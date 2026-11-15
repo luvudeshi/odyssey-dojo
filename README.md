@@ -68,6 +68,16 @@ Two laptops can share a fight through the server. It only passes JSON messages b
 
 Codes are matched without regard to case. These routes answer any device on your network, like the replay pages. To play, the host runs `npm start` and the guest opens `http://<host laptop address>:8787`. The game screens that use the relay are not built yet (issue #29).
 
+Limits, for when a tunnel puts the relay on the internet. Past any of the counted ones the answer is 429 `too_many_requests` with a `Retry-After` header in seconds.
+
+- **Body size.** 1 KB for create and join; for send, the 16 KB message plus 512 bytes for the token. A larger body gets 413 and is never held in memory.
+- **Creating rooms.** 6 a minute for each caller, and 3 live rooms at once. The laptop that runs the server is not limited, only bounded by the 50.
+- **Wrong codes and tokens.** 20 a minute for each caller on join, and 20 more on send and the event stream together. After that every such call gets 429, right code or wrong. There are 23^4 = 279,841 codes, so one caller needs about 58 hours on average to find one open room.
+- **Sends.** 120 a second for each member. The host sends about 15 a second.
+- **Streams.** One for each member: a newer one closes the older. 8 for each caller.
+- **Who a caller is.** The address of the connection. A tunnel runs on this laptop, so for a connection from this laptop the caller is the address in `Cf-Connecting-Ip`, `X-Real-Ip` or the last entry of `X-Forwarded-For`. The header is only used for counting.
+- **Idle rooms.** A room is removed, and its streams closed, 30 minutes after its last create, join, stream opening or send. An open stream alone does not keep it: a tab left open would hold a room for ever. Two players between fights have those 30 minutes.
+
 ## Before you open a PR
 
 ```bash
