@@ -6,11 +6,13 @@
 // A new move needs an entry here: tests/moves/report.test.ts fails without one.
 import type { Baseline, PoseFrame, PoseHistory } from "../core/types";
 import {
-  JOINT, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth,
+  JOINT, bothNewest, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth,
 } from "../pose/signals";
 import { FULL_REACH, MAX_GAP, atChest, reach } from "./defs/aegisPush";
+import { DEFEND_ON } from "../input/poseInput";
 import { STEADY_MS, guard } from "./defs/block";
 import { sideStep } from "./defs/dodgeLeft";
+import { move as duck } from "./defs/duck";
 import { CHAMBER_MS, KICK_LIFT, KICK_STRAIGHT, chambered } from "./defs/frontKick";
 import { move as jump } from "./defs/jump";
 import { HOLD_MS, KNEE_BEND, KNEE_LIFT, RISE_MS, grounded, raised } from "./defs/knee";
@@ -209,7 +211,7 @@ const chain = (side: Side): Measure[] => [
   atMost(`ms since ${otherSide(side)} arm was out`, 700, since((frame, baseline) => armOut(frame, otherSide(side), baseline))),
 ];
 const dodge = (way: -1 | 1): Measure[] =>
-  [atLeast("side step confidence (0.7 is 0.42 shoulder widths off the baseline)", ON, (history) => sideStep(history, way))];
+  [atLeast("side step confidence (0.5 is 0.25 shoulder widths off the baseline, half the head's lean added)", DEFEND_ON, (history) => sideStep(history, way))];
 
 // Trident sweep: its two helpers are private to the detector, so they are repeated here.
 const offset = (frame: PoseFrame, wrist: number): number => joint(frame.image, wrist).x - shoulderCenter(frame).x;
@@ -318,22 +320,11 @@ export const MEASURES: Readonly<Record<string, readonly (readonly Measure[])[]>>
   front_kick: eitherSide(kick),
   knee: eitherSide(knee),
   block: one(
-    ...SIDES.map((side): Measure => ({
-      name: `${side} arm not punching`,
-      anyOf: [...notOutParts(side),
-        over(`ms since elbow was bent under ${String(THRUST_BENT)}`, THRUST_MS, sinceBent(side, THRUST_BENT))],
-    })),
-    atLeast("guard confidence (1 is both fists within 0.8 shoulder widths of the nose, 0 from 1.3)", ON, (history) => {
-      const frame = latest(history);
-      return frame ? Math.max(guard([frame]), guard(recent(history, STEADY_MS))) : NaN;
-    }),
+    atLeast("guard confidence (1 is both fists within 1 shoulder width of the nose, 0.2 below the shoulder line or higher, forearms standing)", DEFEND_ON, (history) =>
+      latest(history) ? Math.max(bothNewest(history, guard), guard(recent(history, STEADY_MS))) : NaN),
   ),
-  duck: one(atLeast("shoulders below the baseline, baseline shoulder widths", ON * 0.6, (history) => {
-    const frame = latest(history);
-    const standing = history.baseline;
-    return frame && standing ? (shoulderCenter(frame).y - standing.shoulderY) / standing.shoulderWidth : NaN;
-  })),
+  duck: one(atLeast("crouch confidence (0.5 is shoulders 0.3 baseline shoulder widths down, or the nose 0.2 above the shoulder line)", DEFEND_ON, (history) => duck.detect(history))),
   dodge_left: one(...dodge(-1)),
   dodge_right: one(...dodge(1)),
-  jump: one(atLeast("hop confidence (0.7 is shoulders and head up 0.18 shoulder widths)", ON, (history) => jump.detect(history))),
+  jump: one(atLeast("hop confidence (0.5 is shoulders and head up 0.18 shoulder widths)", DEFEND_ON, (history) => jump.detect(history))),
 };
