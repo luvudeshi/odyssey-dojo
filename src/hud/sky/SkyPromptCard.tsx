@@ -63,15 +63,12 @@ export function SkyPromptCard(props: { move: MoveDef; target: string; successes:
       <Shape kind={kind} w={box.w || FALLBACK.w} h={box.h || FALLBACK.h} left={left} label={`${move.kind === "defend" ? "Defend" : "Strike"} time left`} />
       <div className="sky-card__tag">{tag}</div>
       <div className="sky-card__in">
-        {full && <MoveGuide key={move.id} move={move} history={history} />}
+        <MoveGuide key={move.id} move={move} history={history} />
         <div className="sky-card__word">{move.prompt}</div>
         {level !== "mini" && <div className="sky-card__target">{target}</div>}
         {full && situation && <div className="sky-card__situation">{situation}</div>}
         {/* No HOLD tag: a defend made once while the attack is coming counts. */}
-        <div className="sky-card__hint">
-          {full && <span className="sky-card__how">{move.hint}</span>}
-          {key}
-        </div>
+        <div className="sky-card__hint">{key}</div>
       </div>
     </div>
   );
