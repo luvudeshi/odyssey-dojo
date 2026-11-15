@@ -12,9 +12,13 @@ import { useQualityLevel } from "../../quality";
 import { IDLE, PHASES, lookFor } from "./look";
 import type { Look } from "./look";
 import { MOUTH_RX, MOUTH_RY, MOUTH_Z, THROAT_Y, columnGeometry, eyeGeometry, fangGeometry, funnelGeometry, waveGeometry } from "./shapes";
+import { LookParts } from "./lookParts";
 import { makeWaterMaterial, updateWater } from "./waterMaterial";
 
 const RINGS = 3;
+// ?look=a or ?look=b swaps in downloaded pieces for the owner to compare; no flag is today's look.
+const LOOK = new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("look");
+const ALT = LOOK === "a" || LOOK === "b" ? LOOK : null;
 const WALL_X = 3.4;
 const eyeColor = new Color();
 const eyeFrom = new Color();
@@ -124,7 +128,7 @@ export function Body(props: MonsterProps) {
             <meshStandardMaterial color="#cfeff0" emissive="#3c9aa8" emissiveIntensity={0.55} flatShading roughness={0.35} />
           </mesh>
         </group>
-        <group ref={eye} position={[0, THROAT_Y, -2.15]}>
+        <group ref={eye} position={[0, THROAT_Y, -2.15]} visible={LOOK !== "a"}>
           <mesh geometry={parts.eye}>
             <meshBasicMaterial ref={eyeMaterial} color="#ffc24a" toneMapped={false} />
           </mesh>
@@ -134,6 +138,7 @@ export function Body(props: MonsterProps) {
           </mesh>
         </group>
       </group>
+      {ALT && <LookParts look={ALT} live={latest} />}
       <group ref={crest}>
         <mesh geometry={parts.wave} material={parts.sheet} frustumCulled={false} />
       </group>
