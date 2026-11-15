@@ -6,6 +6,9 @@ import type { PoseFrame } from "../core/types";
 import { LEAVE_MS, createSeating } from "./assign";
 import type { Body } from "./split";
 
+/** Player two's skeleton is drawn from a frame no older than this: the limit player one's has (src/pose/presence.ts). */
+export const DRAWN_MS = 300;
+
 export interface DuoCamera {
   /** Turned on by the "Two players, one camera" choice, and off again when that way of playing is left. */
   setOn(on: boolean): void;
@@ -21,6 +24,12 @@ export interface DuoCamera {
   seen(frame: PoseFrame): PoseFrame;
   /** Player two's newest frame, or null when there is none or it is older than a moment. */
   second(now: number): PoseFrame | null;
+  /**
+   * Player two's body to draw over the camera's picture, as soon as it is seen (also before they have joined), so
+   * the second person can tell the camera has them. Null when off or when the newest is older than a few pictures:
+   * a body that is gone must not leave its skeleton standing.
+   */
+  secondSeen(now: number): PoseFrame | null;
   /** 2 while a second player has joined and is still there. */
   players(now: number): 1 | 2;
 }
@@ -48,6 +57,7 @@ export function createDuoCamera(): DuoCamera {
     },
     seen: (frame) => (on && firstSeen && firstSeen.t === frame.t ? firstSeen : frame),
     second: (now) => (on && second && now - second.t < LEAVE_MS ? second : null),
+    secondSeen: (now) => (on && second && now - second.t <= DRAWN_MS ? second : null),
     players: (now) => (on ? seating.players(now) : 1),
   };
 }
