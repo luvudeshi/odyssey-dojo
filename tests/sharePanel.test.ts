@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { GODS } from "../src/ai/gods/gods";
 import { MAX_CARD_BYTES, MAX_VIDEO_BYTES, ReplayMetaSchema } from "../src/replay/contracts";
-import { IDLE, canShare, cardFileName, cardWords, replayMeta, runShare, shareStep, statusLine } from "../src/replay/ui/shareFlow";
+import { IDLE, PORTRAIT_WAIT_MS, PREPARING, canShare, cardFileName, cardFinished, cardWords, heldUntilReady, portraitWithin, replayMeta, runShare, shareStep, statusLine } from "../src/replay/ui/shareFlow";
 import type { ShareEvent, ShareFight, ShareState } from "../src/replay/ui/shareFlow";
 import { SharePanel } from "../src/replay/ui/SharePanel";
 import type { ReplayLinks, uploadReplay } from "../src/replay/upload";
@@ -26,7 +26,10 @@ const uploading: ShareState = { kind: "uploading", stage: "card" };
 const sendingVideo: ShareState = { kind: "uploading", stage: "video" };
 const shared: ShareState = { kind: "shared", links, videoFailed: false };
 
-afterEach(() => { vi.restoreAllMocks(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 /** Runs a share and returns every state the panel would have shown, in order. */
 async function states(run: (send: (event: ShareEvent) => void) => Promise<void>): Promise<ShareState[]> {
@@ -71,8 +74,70 @@ test("before the press the line says what will be uploaded, and afterwards how i
   expect(statusLine(uploading, null, video)).toBe("Making the replay page...");
   expect(statusLine(sendingVideo, png, video)).toBe("Sending the fight video...");
   expect(statusLine({ kind: "failed" }, png, video)).toContain("Sharing is unavailable");
-  expect(statusLine(shared, png, video)).toContain("Scan the code");
+  expect(statusLine(shared, png, video, true)).toBe("Scan the code, or open the link, to see it on a phone.");
   expect(statusLine({ ...shared, videoFailed: true }, png, video)).toBe("The fight video did not upload. The link opens the page without it.");
+});
+
+test("when the QR code did not load, the line offers the link and no code to scan", () => {
+  expect(statusLine(shared, png, video, false)).toBe("Open the link to see it on a phone.");
+  // Unless it is told the code is on the page, the line never promises one.
+  expect(statusLine(shared, png, video)).not.toContain("Scan");
+  expect(statusLine({ ...shared, videoFailed: true }, png, video, false)).not.toContain("Scan");
+});
+
+test("Share is held until the card on screen is the finished one, so the placeholder card is never uploaded", () => {
+  const words = cardWords(fight);
+  const portrait = { picture: "of Athena" };
+  // The card painted on mount, before the portrait came, carries the placeholder emblem.
+  const placeholder = { words, portrait: null, settled: false };
+  const now = { words, portrait, settled: true };
+  expect(cardFinished(null, placeholder)).toBe(false);
+  expect(cardFinished(placeholder, placeholder)).toBe(false);
+  // The portrait has arrived but the card on screen is still the one painted without it.
+  expect(cardFinished(placeholder, now)).toBe(false);
+  expect(cardFinished({ words, portrait: null, settled: true }, now)).toBe(false);
+  expect(cardFinished(now, now)).toBe(true);
+  // A god with no portrait at all: the card is finished once that is known.
+  expect(cardFinished({ words, portrait: null, settled: true }, { words, portrait: null, settled: true })).toBe(true);
+  // New words (another result) need a new paint first.
+  expect(cardFinished(now, { ...now, words: cardWords({ ...fight, won: false }) })).toBe(false);
+
+  expect(heldUntilReady(IDLE, false)).toEqual(PREPARING);
+  expect(heldUntilReady({ kind: "failed" }, false)).toEqual(PREPARING);
+  expect(heldUntilReady(IDLE, true)).toBe(IDLE);
+  // A share that is running or done is shown as it is.
+  expect(heldUntilReady(uploading, false)).toBe(uploading);
+  expect(heldUntilReady(shared, false)).toBe(shared);
+  expect(canShare(PREPARING)).toBe(false);
+  expect(shareStep(PREPARING, { type: "start" })).toBe(PREPARING);
+  expect(statusLine(PREPARING, png, video)).toBe("Painting your card. You can share it once it is finished.");
+});
+
+test("Share waits for the god's portrait, but not for ever", async () => {
+  vi.useFakeTimers();
+  const load = (url: string | null): Promise<string | null> => Promise.resolve(url === null ? null : `loaded ${url}`);
+  const outcome = (waited: Promise<string | null>): { value: string | null | undefined } => {
+    const box: { value: string | null | undefined } = { value: undefined };
+    void waited.then((value) => { box.value = value; });
+    return box;
+  };
+  let arrive: (url: string) => void = () => undefined;
+  const late = outcome(portraitWithin(new Promise<string | null>((resolve) => { arrive = resolve; }), load));
+  const never = outcome(portraitWithin(new Promise<string | null>(() => undefined), load));
+  await vi.advanceTimersByTimeAsync(PORTRAIT_WAIT_MS - 1);
+  expect(late.value).toBeUndefined();
+  expect(never.value).toBeUndefined();
+  arrive("blob:portrait");
+  await vi.advanceTimersByTimeAsync(0);
+  expect(late.value).toBe("loaded blob:portrait");
+  // A portrait that never comes stops holding Share when the limit is up.
+  await vi.advanceTimersByTimeAsync(1);
+  expect(never.value).toBeNull();
+  // No god, a portrait that fails and a picture that cannot be loaded all settle at once, with no portrait.
+  expect(await portraitWithin(undefined, load)).toBeNull();
+  expect(await portraitWithin(Promise.reject(new Error("no portrait")), load)).toBeNull();
+  expect(await portraitWithin(Promise.resolve("blob:broken"), () => Promise.reject(new Error("broken")))).toBeNull();
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 test("a share cannot start twice, can be tried again after a failure, and ignores events it is not waiting for", () => {
@@ -131,16 +196,78 @@ test("a server that is off, an upload that throws and a listener that throws all
   await expect(runShare(job, thrower, { upload: () => Promise.resolve(links) })).resolves.toBeUndefined();
 });
 
-// A server render runs no effects, so this covers the first markup only. That nothing is fetched on mount is not tested here.
-test("before the card is painted the panel offers only what it could send", () => {
+/** A request that never answers: it ends only when its signal is aborted, as fetch does. */
+function hangs(init: RequestInit | undefined): Promise<Response> {
+  return new Promise((_resolve, reject) => {
+    const signal = init?.signal;
+    signal?.addEventListener("abort", () => { reject(signal.reason instanceof Error ? signal.reason : new Error("aborted")); });
+  });
+}
+
+test("closing the panel while the page is being made cancels that request, and no video is sent", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const stop = new AbortController();
+  const sent: { method: string; signal: AbortSignal | null }[] = [];
+  const fetcher: typeof fetch = (_input, init) => {
+    sent.push({ method: init?.method ?? "GET", signal: init?.signal ?? null });
+    return hangs(init);
+  };
+  const run = states((send) => runShare(job, send, { fetcher, signal: stop.signal }));
+  await vi.waitFor(() => { expect(sent).toHaveLength(1); });
+  expect(sent[0]?.signal?.aborted).toBe(false);
+  stop.abort();
+  expect(sent[0]?.signal?.aborted).toBe(true);
+  expect(await run).toEqual([uploading, { kind: "failed" }]);
+  expect(sent.map((request) => request.method)).toEqual(["POST"]);
+});
+
+test("closing the panel while the video is going up cancels the video", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const stop = new AbortController();
+  let videoSignal: AbortSignal | null = null;
+  const fetcher: typeof fetch = (_input, init) => {
+    if (init?.method !== "PUT") return Promise.resolve(Response.json(created));
+    videoSignal = init.signal ?? null;
+    return hangs(init);
+  };
+  const run = states((send) => runShare(job, send, { fetcher, signal: stop.signal }));
+  await vi.waitFor(() => { expect(videoSignal).not.toBeNull(); });
+  stop.abort();
+  expect((videoSignal as AbortSignal | null)?.aborted).toBe(true);
+  expect(await run).toEqual([uploading, sendingVideo, { ...shared, videoFailed: true }]);
+});
+
+test("a share stopped just as the page is made does not go on to send the video", async () => {
+  const stop = new AbortController();
+  const calls: string[] = [];
+  const fetcher: typeof fetch = (_input, init) => {
+    calls.push(init?.method ?? "GET");
+    stop.abort();
+    return Promise.resolve(Response.json(created));
+  };
+  await runShare(job, () => undefined, { fetcher, signal: stop.signal });
+  expect(calls).toEqual(["POST"]);
+});
+
+// A server render runs no effects, so these cover the first markup only: no portrait has settled and no card is painted.
+// That the button opens once the finished card is painted, and that nothing is fetched on mount, was checked in a browser, not here.
+test("on its first markup Share is there but held, and nothing is promised until the card is finished", () => {
   const props = { god: null, won: true, enemyName: "Polyphemus", fightTitle: "The Cyclops of the Cave", score: 10, style: "Boxer" };
-  const withVideo = renderToStaticMarkup(createElement(SharePanel, { ...props, video, onClose: () => undefined }));
-  expect(withVideo).toContain("Painting your card...");
-  expect(withVideo).toContain(">Share</button>");
-  expect(withVideo).toContain("Share uploads the video of your fight (2.5 MB) to");
-  expect(withVideo).toContain(">Close</button>");
-  // With no card yet and no video there is nothing to share, so no button.
-  const bare = renderToStaticMarkup(createElement(SharePanel, props));
-  expect(bare).not.toContain("<button");
-  expect(bare).toContain("There is nothing to share yet.");
+  for (const markup of [
+    renderToStaticMarkup(createElement(SharePanel, { ...props, video, onClose: () => undefined })),
+    renderToStaticMarkup(createElement(SharePanel, props)),
+  ]) {
+    expect(markup).toContain("Painting your card...");
+    expect(markup).toMatch(/<button class="share-action" disabled="">Share<\/button>/);
+    expect(markup).toContain("Painting your card. You can share it once it is finished.");
+    expect(markup).not.toContain("Share uploads");
+    // There is no card to save yet.
+    expect(markup).not.toContain("Save card");
+  }
+  expect(renderToStaticMarkup(createElement(SharePanel, { ...props, onClose: () => undefined }))).toContain(">Close</button>");
+});
+
+test("once the card is finished the line names only what would be sent", () => {
+  expect(statusLine(heldUntilReady(IDLE, true), null, video)).toContain("uploads the video of your fight (2.5 MB) to");
+  expect(statusLine(heldUntilReady(IDLE, true), null, null)).toBe("There is nothing to share yet.");
 });

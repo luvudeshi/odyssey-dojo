@@ -1,5 +1,6 @@
 // What the share panel does, with no React and no DOM: the words on the card, the line that says what will be
 // uploaded, and the share itself as a small state machine (idle -> uploading -> shared | failed).
+// Share is held ("preparing") until the card on screen is the finished one, so the card uploaded is the card the player sees.
 import { GODS } from "../../ai/gods/gods";
 import type { GodReveal } from "../../ai/revealGod";
 import { log } from "../../core/log";
@@ -69,7 +70,44 @@ export function sendsVideo(video: Blob | null): video is Blob {
   return video !== null && video.size > 0 && video.size <= MAX_VIDEO_BYTES;
 }
 
+/** The longest Share is held for the god's portrait. The scan gives up on the AI's painting after 13 seconds, so only a picture that never loads gets this far. */
+export const PORTRAIT_WAIT_MS = 15_000;
+
+/**
+ * The god's portrait, loaded by `load`. Null when there is none, when it is broken, or when it takes longer than `waitMs`.
+ * Never rejects. A portrait that comes later than the limit is left off: the card that was shared stays the card on screen.
+ */
+export function portraitWithin<T>(
+  portrait: Promise<string | null> | undefined,
+  load: (url: string | null) => Promise<T | null>,
+  waitMs = PORTRAIT_WAIT_MS,
+): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => { resolve(null); }, waitMs);
+    const settle = (value: T | null): void => {
+      clearTimeout(timer);
+      resolve(value);
+    };
+    (portrait ?? Promise.resolve(null)).then(load).then(settle, () => { settle(null); });
+  });
+}
+
+/** What a paint of the card was made from. */
+export interface PaintedFrom<P> {
+  readonly words: CardWords;
+  readonly portrait: P | null;
+  /** False while the god's portrait is still on its way: a card painted then carries the placeholder emblem. */
+  readonly settled: boolean;
+}
+
+/** True when the last paint that finished is the card for what the panel holds now: the same words, the same portrait, and the portrait settled. */
+export function cardFinished<P>(painted: PaintedFrom<P> | null, now: PaintedFrom<P>): boolean {
+  return painted !== null && painted.settled && now.settled && painted.words === now.words && painted.portrait === now.portrait;
+}
+
 export type ShareState =
+  // The card on screen is not the finished one yet (the god's portrait is still coming, or it is being repainted).
+  | { readonly kind: "preparing" }
   | { readonly kind: "idle" }
   | { readonly kind: "uploading"; readonly stage: "card" | "video" }
   // videoFailed: the video was sent and the server did not take it, so the phone page has no video.
@@ -82,10 +120,19 @@ export type ShareEvent =
   | { readonly type: "done"; readonly links: ReplayLinks | null; readonly videoFailed: boolean };
 
 export const IDLE: ShareState = { kind: "idle" };
+export const PREPARING: ShareState = { kind: "preparing" };
 
 /** A share can start from rest, or again after a failure. Never while one is running or once it has worked. */
 export function canShare(state: ShareState): boolean {
   return state.kind === "idle" || state.kind === "failed";
+}
+
+/**
+ * What the panel shows and acts on. A share that could start is held while the card on screen is not the finished one:
+ * a share sends the card as it is at the press and is never sent again, so an early press would upload the placeholder for good.
+ */
+export function heldUntilReady(state: ShareState, cardReady: boolean): ShareState {
+  return canShare(state) && !cardReady ? PREPARING : state;
 }
 
 function isWebLink(url: string): boolean {
@@ -105,12 +152,16 @@ export function shareStep(state: ShareState, event: ShareEvent): ShareState {
   return { kind: "shared", links: event.links, videoFailed: event.videoFailed };
 }
 
-/** The one line under the Share button. Before the press it says exactly what will be uploaded: `card` and `video` as they stand. */
-export function statusLine(state: ShareState, card: Blob | null, video: Blob | null): string {
+/**
+ * The one line under the Share button. Before the press it says exactly what will be uploaded: `card` and `video` as they stand.
+ * `qrShown` is whether the QR code is on the page: a code that did not load is not offered for scanning.
+ */
+export function statusLine(state: ShareState, card: Blob | null, video: Blob | null, qrShown = false): string {
+  if (state.kind === "preparing") return "Painting your card. You can share it once it is finished.";
   if (state.kind === "uploading" && state.stage === "video") return "Sending the fight video...";
   if (state.kind === "uploading") return sendsCard(card) ? "Sending the card..." : "Making the replay page...";
   if (state.kind === "shared" && state.videoFailed) return "The fight video did not upload. The link opens the page without it.";
-  if (state.kind === "shared") return "Scan the code, or open the link, to see it on a phone.";
+  if (state.kind === "shared") return qrShown ? "Scan the code, or open the link, to see it on a phone." : "Open the link to see it on a phone.";
   if (state.kind === "failed") return "Sharing is unavailable right now. You can still save the card.";
   const parts: string[] = sendsCard(card) ? ["this card"] : [];
   if (sendsVideo(video)) parts.push(`the video of your fight (${(video.size / 1e6).toFixed(1)} MB)`);
@@ -127,9 +178,11 @@ export interface ShareJob {
 export interface ShareDeps {
   readonly upload?: typeof uploadReplay;
   readonly fetcher?: typeof fetch;
+  /** Aborting this stops the share: the request on its way is cancelled and a video not yet started is not sent. */
+  readonly signal?: AbortSignal;
 }
 
-/** Uploads once and reports each step to `send`. Never rejects: whatever goes wrong ends as "done" with no links. */
+/** Uploads once and reports each step to `send`. Never rejects: whatever goes wrong, or a share that is stopped, ends as "done". */
 export async function runShare(job: ShareJob, send: (event: ShareEvent) => void, deps: ShareDeps = {}): Promise<void> {
   const tell = (event: ShareEvent): void => {
     try {
@@ -153,7 +206,7 @@ export async function runShare(job: ShareJob, send: (event: ShareEvent) => void,
       void sent.then((response) => { videoFailed = !response.ok; }, () => undefined);
       return sent;
     };
-    links = await (deps.upload ?? uploadReplay)(job, { fetcher: staged });
+    links = await (deps.upload ?? uploadReplay)(job, { fetcher: staged, ...(deps.signal ? { signal: deps.signal } : {}) });
   } catch (error) {
     log("warn", "share_failed", error);
   }
