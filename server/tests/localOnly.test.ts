@@ -1,5 +1,6 @@
 // Routes that spend API credits answer only this machine; replays and health stay open to the network.
-// A request that came through a tunnel or a proxy arrives from loopback, and is still not this machine.
+// A request that came through a tunnel or a proxy arrives from loopback, and is still not this machine:
+// it gets the room paths a guest needs and the pages, nothing else, and its join attempts are counted.
 import { once } from "node:events";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { connect } from "node:net";
@@ -10,7 +11,7 @@ import { afterAll, afterEach, expect, test } from "vitest";
 import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Config } from "../env";
-import { isLoopback, mayAnswer, wasRelayed } from "../lib/localOnly";
+import { JOIN_LIMIT, JOIN_WINDOW_MS, createJoinLimit, isLoopback, isTunnelPath, mayAnswer, wasRelayed } from "../lib/localOnly";
 
 // A built game with one page, so static paths have something to answer with.
 const dist = mkdtempSync(join(tmpdir(), "odyssey-dist-"));
@@ -143,15 +144,108 @@ test("one such header is enough, in odd case or with an empty value", async () =
   }
 });
 
-test("through the tunnel the rooms, replays, health and the game itself still answer", async () => {
+/** The tunnel's headers for a visitor at `address`. */
+function tunnelFrom(address: string): readonly string[] {
+  return [`Cf-Connecting-Ip: ${address}`, "Cf-Ray: 8f1c2d3e4f5a6b7c-DFW", `X-Forwarded-For: ${address}`, "X-Forwarded-Proto: https", "Cdn-Loop: cloudflare"];
+}
+
+test("a request that was passed on gets the room paths a guest needs and no other API path, from any address", () => {
+  const relayed = { "cf-ray": "8f1c2d3e4f5a6b7c-DFW" };
+  for (const address of ["127.0.0.1", "::1", LAN, undefined]) {
+    for (const path of ["/api/rooms/KXTR/join", "/api/rooms/kxtr/events", "/API/Rooms/KXTR/send", "/api/rooms/address", "/", "/index.html", "/replays/abc", "/replays/abc/video", "/assets/app.js"]) {
+      expect(mayAnswer(path, address, relayed), `${path} from ${String(address)}`).toBe(true);
+    }
+    const closed = [
+      "/api/rooms", "/api/rooms/", "/API/Rooms", "/api/rooms//", "/api/rooms//join", "/api/replays/abc", "/api/replays/abc/video", "/api/replays/abc/qr.svg",
+      "/api/health", "/api/health/", "/API/Health", "/api/level", "/api/roomsx/KXTR/join", "/api/nope",
+    ];
+    for (const path of closed) expect(mayAnswer(path, address, relayed), `${path} from ${String(address)}`).toBe(false);
+  }
+  expect(isTunnelPath("/api/rooms/kxtr/join")).toBe(true);
+  expect(isTunnelPath("/api/rooms")).toBe(false);
+  expect(isTunnelPath("/api/rooms/")).toBe(false);
+});
+
+test("through the tunnel a guest can join a room, follow it and send, and the pages answer", async () => {
   const port = await listen();
-  expect(await send(port, "GET", "/api/health", TUNNEL)).toBe(200);
-  expect(await send(port, "POST", "/api/rooms", TUNNEL)).toBe(200);
-  // These 404s come from the room and replay routes themselves: the guard let the request through.
+  // These 404s and the 400 come from the room routes themselves: the guard let the request through.
   expect(await send(port, "POST", "/api/rooms/ZZZZ/join", TUNNEL)).toBe(404);
   expect(await send(port, "GET", "/api/rooms/ZZZZ/events?token=x", TUNNEL)).toBe(404);
-  expect(await send(port, "GET", "/api/replays/nope/qr.svg", TUNNEL)).toBe(404);
+  expect(await send(port, "POST", "/api/rooms/ZZZZ/send", TUNNEL, "{}")).toBe(400);
+  expect(await send(port, "GET", "/api/rooms/address", TUNNEL)).toBe(200);
+  // The replay page and its files are not under /api/. This 404 is the replay page's own "no such replay".
   expect(await send(port, "GET", "/replays/nope", TUNNEL)).toBe(404);
+  expect(await send(port, "GET", "/replays/nope/video", TUNNEL)).toBe(404);
   expect(await send(port, "GET", "/", TUNNEL)).toBe(200);
   expect(await send(port, "GET", "/index.html", TUNNEL)).toBe(200);
+});
+
+test("through the tunnel nobody can make a room, upload a replay video, or ask for health or a replay QR code", async () => {
+  const port = await listen();
+  const closed = [
+    ["POST", "/api/rooms"], ["POST", "/api/rooms/"], ["POST", "/API/Rooms"], ["POST", "/api/rooms?x=/join"], ["POST", "/api/rooms//"],
+    ["PUT", "/api/replays/abcdefghij/video"], ["GET", "/api/replays/abcdefghij/qr.svg"], ["GET", "/API/Replays/abcdefghij/qr.svg"],
+    ["GET", "/api/health"], ["GET", "/api/health/"], ["POST", "/api/replays"],
+  ] as const;
+  for (const [method, path] of closed) expect(await send(port, method, path, TUNNEL), `${method} ${path}`).toBe(403);
+  // One header is enough for these too.
+  expect(await send(port, "POST", "/api/rooms", ["x-forwarded-for:"])).toBe(403);
+  expect(await send(port, "GET", "/api/health", ["cF-rAy: 1"])).toBe(403);
+});
+
+test("this machine still makes rooms and reads health, and a room made here can be joined through the tunnel", async () => {
+  const port = await listen();
+  expect(await send(port, "GET", "/api/health", [])).toBe(200);
+  expect(await send(port, "GET", "/api/replays/nope/qr.svg", [])).toBe(404);
+  const made = await fetch(`http://127.0.0.1:${String(port)}/api/rooms`, { method: "POST" });
+  expect(made.status).toBe(200);
+  const { code } = (await made.json()) as { code: string };
+  // Spellings the join count does not see do not reach the join route: the seat is still free after them.
+  for (const path of [`/api/rooms/${code}/%6aoin`, `/api/rooms/${code}//join`, `/api/rooms/${code}/join/x`, `/api/rooms//${code}/join`]) {
+    expect(await send(port, "POST", path, TUNNEL), path).not.toBe(200);
+  }
+  expect(await send(port, "POST", `/api/rooms/${code}/join`, TUNNEL)).toBe(200);
+  // The seat is taken now, which the room route says itself.
+  expect(await send(port, "POST", `/api/rooms/${code.toLowerCase()}/join`, TUNNEL)).toBe(409);
+});
+
+test("the join limit allows a fixed number of attempts per caller in each window", () => {
+  const allowed = createJoinLimit(3, 1000, 2);
+  expect([allowed("a", 0), allowed("a", 10), allowed("a", 20)]).toEqual([true, true, true]);
+  expect(allowed("a", 30)).toBe(false);
+  expect(allowed("a", 999)).toBe(false);
+  // Another caller has a count of their own.
+  expect(allowed("b", 30)).toBe(true);
+  // The table is full and both windows are still running: a third caller waits.
+  expect(allowed("c", 500)).toBe(false);
+  // A new window starts when the old one has run out, and makes room for others.
+  expect(allowed("a", 1000)).toBe(true);
+  expect(allowed("c", 1040)).toBe(true);
+  expect(allowed("b", 1050)).toBe(false);
+  expect(JOIN_LIMIT).toBeGreaterThan(0);
+  // At this rate every one of the 279,841 codes takes one address more than a week.
+  expect((23 ** 4 / JOIN_LIMIT) * JOIN_WINDOW_MS).toBeGreaterThan(7 * 24 * 60 * 60 * 1000);
+});
+
+test("through the tunnel one address gets a limited number of join attempts, however the path is spelled", async () => {
+  const port = await listen();
+  const walker = tunnelFrom("198.51.100.23");
+  const spellings = ["/api/rooms/ZZZZ/join", "/API/Rooms/zzzy/JOIN", "/api/rooms/ZZZX/join/", "/api/rooms/ZZZW/join?x=1"];
+  for (let attempt = 0; attempt < JOIN_LIMIT; attempt += 1) {
+    const path = spellings[attempt % spellings.length] ?? "";
+    expect(await send(port, "POST", path, walker), `attempt ${String(attempt + 1)} ${path}`).toBe(404);
+  }
+  for (const path of spellings) expect(await send(port, "POST", path, walker), path).toBe(429);
+  // The other room paths are not counted, and another visitor is not held back.
+  expect(await send(port, "GET", "/api/rooms/ZZZZ/events?token=x", walker)).toBe(404);
+  expect(await send(port, "GET", "/api/rooms/address", walker)).toBe(200);
+  expect(await send(port, "POST", "/api/rooms/ZZZZ/join", tunnelFrom("198.51.100.24"))).toBe(404);
+  // A relayed request that names no visitor is counted against the socket it came from, so it cannot dodge the count by leaving the name out.
+  for (let attempt = 0; attempt < JOIN_LIMIT; attempt += 1) expect(await send(port, "POST", "/api/rooms/ZZZZ/join", ["X-Forwarded-For:"])).toBe(404);
+  expect(await send(port, "POST", "/api/rooms/ZZZZ/join", ["Cf-Ray: 1", "Cf-Connecting-Ip:"])).toBe(429);
+});
+
+test("a browser on this machine is not counted", async () => {
+  const port = await listen();
+  for (let attempt = 0; attempt < JOIN_LIMIT + 5; attempt += 1) expect(await send(port, "POST", "/api/rooms/ZZZZ/join", [])).toBe(404);
 });
