@@ -159,9 +159,9 @@ test("playback gain follows the audio code: voice as it is, effects through thei
   expect(playbackDb("stops/circe/wand.mp3", 0.06, 0.3)).toBeCloseTo(20 * Math.log10(2 * 0.5));
   expect(playbackDb("stops/circe/wand.mp3", 0.06, 0.9)).toBeCloseTo(20 * Math.log10(0.5));
   expect(playbackDb("stops/circe/ambience.mp3", 0.08, 0.5)).toBeCloseTo(20 * Math.log10(0.16 * 0.7));
-  expect(playbackDb("music/fight.mp3", 0.16, 0.9)).toBeCloseTo(20 * Math.log10(0.16 * 0.7));
+  expect(playbackDb("music/fight.mp3", 0.16, 0.9)).toBeCloseTo(20 * Math.log10(0.3 * 0.7));
   // A near-silent music clip is raised twelve times at most.
-  expect(playbackDb("music/menu.mp3", 0.001, 0.01)).toBeCloseTo(20 * Math.log10(12 * 0.16 * 0.7));
+  expect(playbackDb("music/menu.mp3", 0.001, 0.01)).toBeCloseTo(20 * Math.log10(12 * 0.3 * 0.7));
 });
 
 test("the median, the groups and the out-of-line list", () => {
