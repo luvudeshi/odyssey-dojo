@@ -21,7 +21,7 @@ const TOKEN = "t".repeat(43);
 const SIGNED_IN = { [SESSION_KEY]: JSON.stringify({ token: TOKEN, name: "Luv", merged: true, unsent: false, fresh: false }) };
 const HALL: Hall = {
   at: "2026-11-15T06:00:00.000Z",
-  tonight: [{ hero: "Penelope", score: 6840, stop: "scylla", style: "hoplite", god: "athena", you: false }, { hero: "Luv", score: 4105, stop: "polyphemus", style: "boxer", god: null, you: true }],
+  tonight: [{ hero: "Penelope", score: 6840, stop: "scylla", style: "jiu_jitsu", god: "athena", you: false }, { hero: "Luv", score: 4105, stop: "polyphemus", style: "boxer", god: null, you: true }],
   allTime: [{ hero: "Luv", score: 8150, stop: "suitors", style: "boxer", god: "zeus", you: true }],
   lastHour: 3,
   fightsEver: 41,

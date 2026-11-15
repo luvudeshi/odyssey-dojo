@@ -211,7 +211,7 @@ const OTHER_ID = "0d15ea5e-0000-4000-8000-000000000001";
 const HALL: Hall = {
   at: "2026-11-15T06:00:00.000Z",
   tonight: [
-    { accountId: OTHER_ID, hero: "Penelope", score: 6840, stop: "scylla", style: "hoplite", god: "athena" },
+    { accountId: OTHER_ID, hero: "Penelope", score: 6840, stop: "scylla", style: "jiu_jitsu", god: "athena" },
     { accountId: ACCOUNT_ID, hero: "Odysseus", score: 4105, stop: "polyphemus", style: "boxer", god: null },
   ],
   allTime: [{ accountId: ACCOUNT_ID, hero: "Odysseus", score: 8150, stop: "suitors", style: "boxer", god: "zeus" }],
@@ -336,7 +336,7 @@ test("the hall is given to anybody, with hero names and scores and no id of any 
   expect(JSON.parse(open.text)).toEqual({
     at: HALL.at,
     tonight: [
-      { hero: "Penelope", score: 6840, stop: "scylla", style: "hoplite", god: "athena", you: false },
+      { hero: "Penelope", score: 6840, stop: "scylla", style: "jiu_jitsu", god: "athena", you: false },
       { hero: "Odysseus", score: 4105, stop: "polyphemus", style: "boxer", god: null, you: false },
     ],
     allTime: [{ hero: "Odysseus", score: 8150, stop: "suitors", style: "boxer", god: "zeus", you: false }],
