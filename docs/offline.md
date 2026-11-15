@@ -59,7 +59,7 @@ Chrome's fake camera is a moving test pattern with nobody in it. No real camera 
 
 Offline it does no harm that the check could see: the request fails, the page does not throw, and the game carried on for the 15 seconds the check kept watching. As read in the library's code, the logger turns itself off after the first failed send. `docs/webcam-smoke.md` already notes this request.
 
-It still makes the check exit 1, because the issue asks for that. A fix that was tried on the built page only (not in the source, at `532abb2` and `130acfc`): add this line to the `<head>` of `index.html`.
+It still makes the check exit 1, because the issue asks for that. A fix that was tried on the built page only (not in the source, at `532abb2`, `130acfc` and `7c2c1f3`): add this line to the `<head>` of `index.html`.
 
 ```html
 <meta http-equiv="Content-Security-Policy" content="connect-src 'self' blob: data:" />
