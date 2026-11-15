@@ -33,7 +33,16 @@ export interface NetDeps {
   readonly streamProofMs?: number;
   /** How long a stream that has sent a beat may then say nothing before the link polls instead. Default STREAM_QUIET_MS. */
   readonly streamQuietMs?: number;
+  /** Never open the event stream: long polling from the start. Default: the build's VITE_ROOMS_POLL setting. */
+  readonly pollOnly?: boolean;
 }
+
+/**
+ * Set to "1" in a build whose page reaches the relay through a proxy that keeps a stream open on the relay's side
+ * after the browser has gone (Vercel's rewrite does). The relay then never sees a member leave: a guest who dropped
+ * is refused its seat and a guest is not told the host left. Polls end on their own, so the relay's 20 s rule works.
+ */
+const BUILD_POLL_ONLY = (import.meta as { env?: Record<string, unknown> }).env?.VITE_ROOMS_POLL === "1";
 
 /** The relay writes a line the moment a stream opens, so a stream that has said nothing after this long is not getting through. */
 export const STREAM_PROOF_MS = 3_000;
@@ -267,7 +276,8 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     }
   };
 
-  const stream = deps.openStream(`${path}/events?${query()}`);
+  const pollOnly = deps.pollOnly ?? BUILD_POLL_ONLY;
+  const stream: EventStream = pollOnly ? { onmessage: null, onerror: null, close() { /* never opened */ } } : deps.openStream(`${path}/events?${query()}`);
   /** Set once the relay has sent a beat on this stream; from then on a long silence means the stream is dead. */
   let beating = false;
   let quiet: ReturnType<typeof setTimeout> | undefined;
@@ -282,7 +292,11 @@ export function openRoom(deps: NetDeps, room: { code: string; token: string }, b
     void pollLoop();
     stream.close();
   };
-  const proof = setTimeout(usePolling, deps.streamProofMs ?? STREAM_PROOF_MS);
+  const proof = pollOnly ? undefined : setTimeout(usePolling, deps.streamProofMs ?? STREAM_PROOF_MS);
+  if (pollOnly) {
+    state.polling = true;
+    void pollLoop();
+  }
   stream.onerror = usePolling;
   stream.onmessage = (event) => {
     clearTimeout(proof);
