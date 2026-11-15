@@ -75,5 +75,5 @@
 /* Keyboard play has no picture to show: the panel shrinks to a chip that says so and offers the camera. */
 .fight .camera-view--keys { width: auto; max-width: 15rem; padding: 6px; }
 .fight .camera-view--keys .camera-frame, .fight .camera-view--keys .camera-tag, .fight .camera-view--keys .camera-dot { display: none; }
-.fight .camera-view--keys figcaption { position: static; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 12px; }
+.fight .camera-view--keys figcaption { position: relative; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 12px; }
 .fight .camera-view--keys .camera-state { padding: 0; background: none; }
