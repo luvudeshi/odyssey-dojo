@@ -16,22 +16,28 @@ services:
       PUBLIC_BASE_URL: https://${DOMAIN:?Set DOMAIN in the .env beside docker-compose.yml}
     volumes:
       - game-data:/app/server/data
-    # Only the instance itself can reach the server directly; the internet goes through Caddy.
-    # This is for the optional "host a room" step in docs/deploy-vultr.md (an SSH tunnel).
+      # Optional: the database's CA certificate for accounts (DATABASE_CA_FILE=/app/certs/tiger-ca.pem in .env).
+      # The folder may be empty. See docs/deploy-vultr.md, "Accounts".
+      - ./certs:/app/certs:ro
+    # Caddy shares this container's network (see below), so the ports of both are listed here.
+    # 8787 is open to the instance itself only: the optional "host a room" step in docs/deploy-vultr.md (an SSH tunnel).
     ports:
       - "127.0.0.1:8787:8787"
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
 
   caddy:
     image: caddy:2
     restart: unless-stopped
     depends_on:
       - game
+    # Caddy runs inside the game's network, so it reaches the game at 127.0.0.1. The game answers the account paths
+    # and the hall of heroes only to a caller on its own machine (a tunnel that runs there), and this makes Caddy one.
+    # Every request still carries X-Forwarded-For, so everything else stays closed to visitors as before.
+    network_mode: "service:game"
     environment:
       DOMAIN: ${DOMAIN:?Set DOMAIN in the .env beside docker-compose.yml}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # The certificates. Keep this volume: asking for new ones too often gets the domain rate limited.
