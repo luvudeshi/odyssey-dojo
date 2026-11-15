@@ -1,11 +1,17 @@
-/* The account line and button on the Account screen, and the sign-in dialog. All text here is 18 px or more.
-   The button is one more in the row it is put in (.acc-actions on the Account screen); the words sit above that row,
-   against its right end. Outside such a row the two simply follow each other. */
-.acc-signin { display: contents; }
-.acc-signin__where { margin: 0; font: 600 18px/1.2 var(--pb-font-body); color: #f1e6cf; text-shadow: 0 1px 2px #000000aa; overflow-wrap: anywhere; }
-.acc-signin.is-quiet .acc-signin__where { color: #d9c9ad; }
-.acc-signin__where b { color: #ffd27a; }
-.acc-actions > .acc-signin > .acc-signin__where { position: absolute; right: 0; bottom: calc(100% + 8px); width: max-content; max-width: 600px; text-align: right; }
+/* The account block on the Account screen, and the sign-in dialog. All text here is 18 px or more.
+   The block is in the Storm and bronze look (the tokens and the bronze buttons are the kit's, src/ui/set/set.css): it sits
+   on the painting in the middle column, under the name and the coins and above the panel of the next deed, in the screen's
+   own 1440 px stage. The words "Your account" are lettered like "Your name" above them. Outside that screen the block
+   simply follows what is before it. */
+.acc-signin { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.acc-hall__core > .acc-signin { left: 484px; top: 364px; width: 472px; }
+.acc-signin__title { margin: 0; font: 700 18px var(--st-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--st-bronze); text-shadow: 0 2px 8px #000; }
+.acc-signin__where { margin: 0; font: 600 20px/1.3 var(--st-body); color: var(--st-ink); text-shadow: 0 2px 8px #000, 0 0 3px #000; overflow-wrap: anywhere; }
+.acc-signin__where > span { display: block; }
+.acc-signin__where b { font-weight: 700; color: var(--st-gold); }
+.acc-signin__row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 8px; }
+/* The kit's button rule is under :root:root, so these are too. */
+:root:root .acc-signin__row .pb-btn { min-width: 0; margin: 0; padding: 8px 20px; font-size: 19px; }
 
 .acc-signin__form { display: flex; flex-direction: column; gap: 12px; width: min(84vw, 26rem); margin: 0 auto 14px; text-align: left; font: 600 20px/1.25 var(--pb-font-body); color: var(--pb-text); }
 .acc-signin__form label { display: flex; flex-direction: column; gap: 4px; }
