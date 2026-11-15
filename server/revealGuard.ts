@@ -22,23 +22,26 @@ export const speaksOfThePlayer = (text: string): boolean => FORBIDDEN.test(text)
 const TO_THE_PLAYER = /\byou(?:rs?|rself)?\b/i;
 // The model saying that it found nobody in the picture. The scan always answers, and never says so.
 const SEES_NOBODY =
-  /\b(?:no (?:person|player|people|human|figure)|(?:no one|nobody) (?:is|was|can be)|(?:cannot|can't|could not|couldn't|unable to|do not|don't|did not|didn't) (?:see|find|make out|detect)|not (?:visible|present|in (?:the |this )?(?:frame|photo|picture|image)))\b/i;
+  /\b(?:no (?:[a-z]+ ){0,2}(?:person|player|people|human|figure)|(?:no one|nobody|anyone|anybody) (?:is|was|can be|appears?|in|here|there|visible)|(?:cannot|can't|could not|couldn't|unable to|do not|don't|did not|didn't) (?:see|find|make out|detect)|not (?:visible|present|in (?:the |this )?(?:frame|photo|picture|image))|absent from|without (?:a|any) (?:person|player|figure)|(?:frame|photo|picture|image|scene) (?:is|was|stands?) empty|empty (?:frame|photo|picture|image|scene|room)|test pattern)\b/i;
 
-/** The epithet as shown under the god's name: one line, no closing full stop, lower case as the prompt asks. */
+/** The epithet as shown under the god's name: one line, no closing stop, comma or dash, lower case as the prompt asks. */
 export function asEpithet(text: string, max: number): string {
-  const line = oneLine(text).replace(/[\s.,;:!]+$/, "").slice(0, max).trim();
-  // "Storm-Hearted, Unyielding" is lowered whole. "Slayer of Argus" keeps its name and loses only the first capital.
-  const titleCase = !/(?:^|[\s-])[a-z]/.test(line);
-  return titleCase ? line.toLowerCase() : `${line.charAt(0).toLowerCase()}${line.slice(1)}`;
+  // Cut first, so that the cut cannot leave a comma, a dash or half an emoji at the end.
+  const line = oneLine(text).slice(0, max).replace(/[\ud800-\udbff]$/, "").replace(/[\s.,;:!\-–—]+$/, "");
+  // "Storm-Hearted, Unyielding" and "Slayer Of Argus" are lowered whole.
+  if (!/(?:^|[\s-])[a-z]/.test(line)) return line.toLowerCase();
+  // Otherwise a capital is kept only on a name after "of": "Quick-witted and Laughing" is lowered, "Slayer of Argus" keeps Argus.
+  return line.replace(/(^|[\s-])(\p{Lu})/gu, (whole: string, gap: string, letter: string, at: number) =>
+    /\bof $/i.test(line.slice(0, at + gap.length)) ? whole : gap + letter.toLowerCase());
 }
 
 /**
- * True when a tidied line cannot be shown. Either line: it speaks of the player's body, age, looks or gender. The
+ * True when a tidied line cannot be shown. Either line: it is empty or speaks of the player's body, age, looks or gender. The
  * epithet: it names the god, whose name is already printed above it. The reason: it names the god twice, is not
  * written to the player as "you", or says that nobody is in the picture.
  */
 export function unfit(god: GodId, field: "epithet" | "reason", text: string): boolean {
-  if (speaksOfThePlayer(text)) return true;
+  if (text === "" || speaksOfThePlayer(text)) return true;
   const named = text.toLowerCase().split(god).length - 1;
   if (field === "epithet") return named > 0;
   return named > 1 || !TO_THE_PLAYER.test(text) || SEES_NOBODY.test(text);

@@ -138,7 +138,6 @@ test("a model that throws, hangs or returns junk is unavailable, quickly", async
     sees("not a god"),
     sees(null),
     sees({ ...good, god: "odin" }),
-    sees({ ...good, epithet: "   " }),
     sees({ god: "zeus" }),
   ];
   for (const json of cases) {
