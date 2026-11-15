@@ -28,13 +28,22 @@ Open http://localhost:5173. Choose "Fight with your body" and allow the camera, 
 
 ## Keyboard controls
 
-| Move | Key |
-|---|---|
-| Block | Space (hold) |
-| Dodge left / right | Left / Right arrow (hold) |
-| Duck | Down arrow (hold) |
-| Jab, Cross, Left hook | J, K, L |
-| Spear thrust, Overhead strike | U, I |
+| Category | Move | Key |
+|---|---|---|
+| **Defenses** | Block | Space (hold) |
+| | Dodge left / right | Left / Right arrow (hold) |
+| | Duck | Down arrow (hold) |
+| | Jump | Up arrow (hold) |
+| **Strikes** | Jab, Cross, Hook | J, K, L |
+| | Uppercut | B |
+| | Spear thrust, Overhead strike | U, I |
+| | Front kick, Knee | F, N |
+| | Reverse punch, Hammer fist | R, M |
+| | Knife hand, Rising palm | H, G |
+| | Double palm, Chain punch | P, C |
+| **Finisher** | Stake thrust (Polyphemus) | O |
+| **God Powers** (full meter) | Thunderbolt, Trident sweep, Aegis push | 1, 2, 3 |
+| | Swift dash, Moon arrow, Sun burst | 4, 5, 6 |
 
 ## AI server (optional)
 
