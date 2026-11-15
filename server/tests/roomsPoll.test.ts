@@ -228,6 +228,10 @@ test("a poll with nothing to say answers with an empty list when POLL_HOLD_MS ha
 });
 
 test("a poll refuses a wrong token, an unknown room and a junk position like the stream does, and polls past the limit get 429", async () => {
+  // The poll limit counts a second on Date.now. The date stands still here, from before the app and its limits are made,
+  // so how many polls fit in "one second" does not depend on how fast this machine answers them.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const startedMs = Date.now();
   const call = await serve();
   const { code, host, guest } = await room(call);
   await call(`/api/rooms/${code}/send`, { token: host, message: { type: "end", won: true } });
@@ -235,11 +239,26 @@ test("a poll refuses a wrong token, an unknown room and a junk position like the
   expect((await call(`/api/rooms/${code}/poll`)).status).toBe(401);
   expect((await call(`/api/rooms/QQQQ/poll?token=${guest}`)).status).toBe(404);
   for (const after of ["-1", "x", "1.5", "9999999999999999"]) expect((await call(`/api/rooms/${code}/poll?token=${guest}&after=${after}`)).status, after).toBe(400);
-  // A message is waiting, so every poll answers at once; far more than a second's budget arrives together.
-  const answers = await Promise.all(Array.from({ length: 4 * POLLS_PER_SECOND }, async () => {
-    const answer = await call(`/api/rooms/${code}/poll?token=${guest}&after=0`, undefined, AbortSignal.timeout(12_000)).catch(() => null);
-    return answer?.status;
-  }));
-  expect(answers.filter((status) => status === 200).length).toBeGreaterThan(0);
-  expect(answers.filter((status) => status === 429).length).toBeGreaterThan(0);
-}, 15_000);
+  // A message is waiting, so every poll answers at once. One at a time, more than a second's budget is asked for.
+  const next = (): Promise<Response> => call(`/api/rooms/${code}/poll?token=${guest}&after=0`);
+  const asked = POLLS_PER_SECOND + 40;
+  const answers: number[] = [];
+  for (let n = 0; n < asked; n += 1) answers.push((await next()).status);
+  expect(Date.now()).toBe(startedMs);
+  // Polls are let through up to the limit and every one after that is refused: no more than the limit got an answer.
+  const firstRefused = answers.indexOf(429);
+  expect(firstRefused).toBeGreaterThan(0);
+  expect(firstRefused).toBeLessThanOrEqual(POLLS_PER_SECOND);
+  expect(answers.slice(0, firstRefused).every((status) => status === 200)).toBe(true);
+  expect(answers.slice(firstRefused).every((status) => status === 429)).toBe(true);
+  expect(answers.length - firstRefused).toBeGreaterThanOrEqual(asked - POLLS_PER_SECOND);
+  // The refusal says when to come back, and lasts until the second is over and no longer.
+  const refused = await next();
+  expect(refused.status).toBe(429);
+  expect(refused.headers.get("retry-after")).toBe("1");
+  expect(await refused.json()).toEqual({ error: "too_many_requests" });
+  vi.setSystemTime(startedMs + 999);
+  expect((await next()).status).toBe(429);
+  vi.setSystemTime(startedMs + 1_000);
+  expect((await next()).status).toBe(200);
+});
