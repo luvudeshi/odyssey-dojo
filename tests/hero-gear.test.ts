@@ -51,5 +51,5 @@ test("the spear is slung on the back for a Hoplite only, and only while it is no
   expect(spearSlung("hoplite", "none")).toBe(true);
   expect(spearSlung("hoplite", "stake")).toBe(true);
   expect(spearSlung("hoplite", "spear")).toBe(false);
-  for (const id of ["boxer", "karate", "kung_fu", "pankration", ""]) expect(spearSlung(id, "none"), id).toBe(false);
+  for (const id of ["boxer", "jiu_jitsu", "karate", "kung_fu", "taekwondo", ""]) expect(spearSlung(id, "none"), id).toBe(false);
 });

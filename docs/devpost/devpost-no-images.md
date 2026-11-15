@@ -68,7 +68,7 @@ The Dojo is practice with no monster. An outline figure does one move on a loop 
 
 - **Alone:** Story mode is six stops in Homer's order: Polyphemus, Circe, the Sirens, Scylla, Charybdis and the Suitors. Each has its own monster, arena and attacks to read.
 - **With a friend:** host a room and a friend joins with a four-letter code or a QR code, from a laptop or a phone. You fight one monster together. Throw the same strike at the same moment and it does double damage.
-- **Five fighting styles:** Boxer, Hoplite, Karate, Kung Fu and Pankration, each with its own strikes.
+- **Five fighting styles:** Boxer, Jiu-jitsu, Karate, Kung Fu and Taekwondo, each with its own strikes.
 - **No camera needed:** every move has a key, so anyone can play.
 
 When a strike counts, your hero leaps to the weak spot, so a good jab looks like one. After a fight, the end screen lists the moves you practised and what each one is for.

@@ -24,7 +24,7 @@ Issue #163. Every feature, one line each, with its status on `main` as of Saturd
 ## Moves and styles
 
 - **in the game** 26 moves, one file each: block, duck, two dodges, punches and palm strikes, spear and overhead strikes, front kick and knee, jump, six god gestures, the stake thrust.
-- **in the game** Five fighting styles to pick from: Boxer, Hoplite, Karate, Kung Fu, Pankration.
+- **in the game** Five fighting styles to pick from: Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo.
 - **in the game** One prompt card that names the move and its key, and shrinks as you learn the move.
 - **in the game** Each move says what it is for in real self-defense.
 - **in the game** Gold ghost figure of the move to make, off by default (the lead chose off). `?ghost=1` turns it on.

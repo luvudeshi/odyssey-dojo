@@ -14,7 +14,7 @@ The fight lengths quoted here come from the pacing test's own simulated player (
 |---|---|---|
 | Webcam play | MediaPipe pose tracking in the browser, one detector per move, a bronze figure that mirrors the player in 3D. Detectors are tested on made-up pose sequences | Proven on a real body `[pending #7]`, tuned on all three of us `[pending #17]` |
 | Keyboard fallback | A key for every move. Keys and camera are merged every frame. If the camera cannot start, the game says so and carries on with keys. With Caps Lock on the letter keys do nothing (bug 2 in [playtest.md](playtest.md)) | Nothing |
-| Styles | Boxer (jab, cross, hook, uppercut), Hoplite (spear thrust, overhead strike), Karate (reverse punch, knife hand, hammer fist), Kung Fu (double palm, chain punch, rising palm). Polyphemus's weak spots name only Boxer and Hoplite strikes: he never asks a Boxer for the uppercut, and he asks Karate and Kung Fu for any of their strikes | Pankration and kicks `[pending #25]` |
+| Styles | Boxer (jab, cross, hook, uppercut), Jiu-jitsu (double palm, rising palm, knife hand), Karate (reverse punch, knife hand, hammer fist), Kung Fu (double palm, chain punch, rising palm). Polyphemus's weak spots name only Boxer and Hoplite strikes: he never asks a Boxer for the uppercut, and he asks Karate and Kung Fu for any of their strikes | Taekwondo and kicks `[pending #25]` |
 | The two-beat fight | Defend, then strike. Combo, score, a card that shrinks as a move is learned | Ghost outline `[pending #24]`; "what this move is for" shown on screen `[pending #36]` |
 | Polyphemus | 3D model built in code, 400 health, four attacks, two weak spots. Three phases run in the engine: The Cave, The Club from two thirds health, Blinded from 30 percent. Each changes which attacks he uses and how long the warning is, and a sound marks the change | A look that changes per phase and a tell of its own for each attack `[pending #11]`. The phase name is not shown on screen (no issue yet). His four taunts are recorded as voice clips but nothing plays them `[if wired]` |
 | The stake | At zero health he stays standing and the card reads DRIVE THE STAKE. Only that move ends the fight, the player cannot lose there, and the card comes back every six seconds until it lands | Nothing in the engine. Thrown by a real body: `[pending #7]` |
@@ -143,7 +143,7 @@ Plan for both. Without cover, the second is the likely one.
 
 - **It is 2:45 and he is still standing.** Do not cut a judge off mid-swing. Let them keep fighting into the questions and say (30 words): "That is our three minutes. Keep going if you like. It ends with the olive stake in his eye, and all of it runs in this tab with no network."
 - **The judge loses** ("You are struck down"). Say (11 words): "Odysseus lost six men in that cave before he got out." With 40 seconds or more left, tell the judge to stand still, click "Try again" and cover the defense from the first card. With less, say (20 words): "The fight ends with the olive stake in his eye. All of it ran in this tab with no network."
-- **The judge wins with time left.** Tell them to stand still, click "Change style" and let them try Hoplite: both hands thrust forward together, or the right hand raised and chopped down.
+- **The judge wins with time left.** Tell them to stand still, click "Change style" and let them try Jiu-jitsu: both open palms pushed forward together, or the left palm driven up to chin height.
 
 ## Covering from the keys
 
@@ -182,7 +182,7 @@ After five clean reps of a move its card is a thin timer bar with no word and no
 | Dodge left, dodge right | Left arrow, Right arrow (hold) |
 | Duck | Down arrow (hold) |
 | Boxer: jab, cross, left hook, uppercut | J, K, L, B |
-| Hoplite: spear thrust, overhead strike | U, I |
+| Jiu-jitsu: double palm, rising palm, knife hand | P, G, H |
 | Karate: reverse punch, knife hand, hammer fist | R, H, M |
 | Kung Fu: double palm, chain punch, rising palm | P, C, G |
 | Stake thrust | T (only when the card reads DRIVE THE STAKE) |
@@ -205,7 +205,7 @@ After five clean reps of a move its card is a thin timer bar with no word and no
 - **Polyphemus and the stake.** His weak spot is "his one eye". He swings a club, grabs, and throws boulders, as he throws them at the ship in the poem. His fight has three phases and cannot end until the sharpened olive stake is driven in. It lands at the stake card. His taunts ("Nobody? I will eat Nobody last!") are recorded as voice clips, but nothing shows or plays them yet `[if wired]`.
 - **Athena as coach.** Athena is Odysseus's patron. She is not with him in the cave: in Book 13 he tells her he did not see her from the fall of Troy until Scheria. She plans the fight in his hall with him and stands beside him in it as Mentor (Book 22). In the game she coaches you from the first stop: she calls each move as it is needed. Her clips are made ahead of time, so she speaks with no network. It lands the first time she speaks. Her lines and clips are on `main` and the fight screen plays them.
 - **The gods in disguise.** In the poem the gods rarely arrive as themselves: Athena comes as Mentor, as a girl, as a shepherd. We turn that around. The camera looks at the player and names the Olympian they take after, and that god grants one power for the fight. It lands before the style choice. The god scan is on `main` but the game does not open it `[if wired]`, so today nothing names the player's god.
-- **The styles.** Boxer is Odysseus against Irus (Book 18). Hoplite is spear and shield, the way the Greeks fought at Troy. Karate and Kung Fu are not Greek; their one-line descriptions tie them to the bow he strings in Book 21 and to his wits. If a judge asks, say that plainly: they are there so the player can choose how to fight.
+- **The styles.** Boxer is Odysseus against Irus (Book 18). Jiu-jitsu, Taekwondo, Karate and Kung Fu are not Greek; their one-line descriptions tie them to the bow he strings in Book 21 and to his wits. If a judge asks, say that plainly: they are there so the player can choose how to fight.
 
 ## If you only get three sentences in
 
@@ -246,7 +246,7 @@ If the judge asks how the scan treats a picture, these describe the code on `mai
 `[if wired]` Gemini also writes a fight from a sentence you type. **Today:** only the test page asks for it. `[if built]` Playing that fight is PRs `#78` and `#92`, not merged.
 
 **10. What would you build next?**
-The rest of the route: Circe, the Sirens, Scylla, Charybdis and the suitors, each with its own finishing move. Then kicks and a Pankration style, two players on one camera who strike together for double damage, and rooms so a friend can join from another laptop. After that, difficulty that adapts to the player.
+The rest of the route: Circe, the Sirens, Scylla, Charybdis and the suitors, each with its own finishing move. Then kicks and a Taekwondo style, two players on one camera who strike together for double damage, and rooms so a friend can join from another laptop. After that, difficulty that adapts to the player.
 
 **Spare: how did three people build this in a weekend?**
 Each of us ran a coding agent, and we treated the three agents like three more teammates: one issue per task, each issue listing the files it may touch, one shared contracts file agreed first, and every change through a branch and a pull request. Moves, monsters and styles are one file each and register themselves, so two people rarely edit the same file. No code is copied from earlier projects.

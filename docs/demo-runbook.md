@@ -63,7 +63,7 @@ Nobody has logged listening to the sound in the game ([audio-levels.md](audio-le
 
 ## 4. Where the judge stands, and what you say
 
-1. Put a tape mark where the camera shows the judge from **head to hips**, about 2 to 3 m back ([webcam-smoke.md](webcam-smoke.md); not confirmed with a real body in any doc). The game itself only needs both shoulders in the picture, between a tenth and seven tenths of its width and near the middle (`src/pose/presence.ts`). Only Pankration has a kick and a knee, which need the legs in view: use Boxer.
+1. Put a tape mark where the camera shows the judge from **head to hips**, about 2 to 3 m back ([webcam-smoke.md](webcam-smoke.md); not confirmed with a real body in any doc). The game itself only needs both shoulders in the picture, between a tenth and seven tenths of its width and near the middle (`src/pose/presence.ts`). Only Taekwondo has a kick and a knee, which need the legs in view: use Boxer.
 2. Light the judge from the front. No window or bright screen behind them.
 3. One body only: the tracker follows one person. You stand beside the laptop, out of the picture, and reach in to click. Nobody walks behind the judge.
 4. **You click everything. The judge stays on the tape.** Wait on the main menu until the judge is on the mark, then click **Story mode**.

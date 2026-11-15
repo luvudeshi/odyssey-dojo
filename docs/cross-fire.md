@@ -19,9 +19,10 @@ Nothing here has been done by a real body. The table says what the detectors do 
 ## The table
 
 Rows are the move done, columns the move read, numbered like the rows. A cell holds the sizes it fired at:
-`c` child, `a` adult, `t` tall; a dot is none. The diagonal is the move itself. Rows 1 to 14 are the styles'
-strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankration 13 and 14 with 9 and 4),
-15 to 18 the four defends, 19 to 24 the six god gestures, then the jump and the Polyphemus finisher.
+`c` child, `a` adult, `t` tall; a dot is none. The diagonal is the move itself. Rows 1 to 12 are the styles'
+strikes (Boxer 1 to 4, Jiu-jitsu 5 to 7, Karate 8 and 9 with 7, Kung Fu 10 with 5 and 6, Taekwondo 11 and 12
+with 9 and 4), 13 to 16 the four defends, 17 to 22 the six god gestures, then the jump and the three strikes
+that are only finishers (overhead strike, spear thrust, stake thrust).
 
 | done \ read | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21 | 22 | 23 | 24 | 25 | 26 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -29,28 +30,28 @@ strikes (Boxer 1 to 4, Hoplite 5 and 6, Karate 7 to 9, Kung Fu 10 to 12, Pankrat
 | 2 cross | cat | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 3 hook | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
 | 4 uppercut | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 5 spear_thrust | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 6 overhead_strike | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
-| 7 reverse_punch | cat | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 8 knife_hand | cat | cat | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
-| 10 double_palm | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
-| 11 chain_punch | cat | cat | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 12 rising_palm | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 13 front_kick | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . |
-| 14 knee | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . |
-| 15 block | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . |
-| 16 duck | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . |
-| 17 dodge_left | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . |
-| 18 dodge_right | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . |
-| 19 thunderbolt | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . |
-| 20 trident_sweep | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . |
-| 21 aegis_push | . | . | . | . | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
-| 22 swift_dash | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | cat | . | . | . | . |
-| 23 moon_arrow | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . |
-| 24 sun_burst | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . |
-| 25 jump | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . |
-| 26 stake_thrust | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | cat |
+| 5 double_palm | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | cat | . |
+| 6 rising_palm | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 7 knife_hand | cat | cat | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 8 reverse_punch | cat | cat | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 9 hammer_fist | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . |
+| 10 chain_punch | cat | cat | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 11 front_kick | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 12 knee | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 13 block | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . |
+| 14 duck | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . |
+| 15 dodge_left | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . |
+| 16 dodge_right | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . |
+| 17 thunderbolt | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | cat | . | . |
+| 18 trident_sweep | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | . | . |
+| 19 aegis_push | . | . | . | . | cat | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | cat | . |
+| 20 swift_dash | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | cat | . | . | . | . | . | . |
+| 21 moon_arrow | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . |
+| 22 sun_burst | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . |
+| 23 jump | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . |
+| 24 overhead_strike | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | cat | . | . |
+| 25 spear_thrust | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . |
+| 26 stake_thrust | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | cat | . | . | . | . | . | . | cat |
 
 Every cell is the same at all three sizes: the detectors measure in shoulder widths and torso lengths, and
 body size does not move any of these pairs.
@@ -63,7 +64,9 @@ styles (a karate reverse punch reading as a boxer's cross) are never asked of th
 fight, and the fight only counts the strike it asked for.
 
 Before this issue 15 such pairs fired. Seven were fixed then, and an eighth (thunderbolt read as uppercut) by the
-lenient-strikes PR; seven are left and pinned.
+lenient-strikes PR; seven were left and pinned. Three of those seven, and one of the fixed ones, had the overhead
+strike or the spear thrust in them. Those two were Hoplite's strikes. Since Jiu-jitsu took Hoplite's place no
+style has them, a fight asks for them only as a finisher, and their pairs are listed under Pairs across styles.
 
 Jab and cross are a ninth and tenth pair left on purpose. By the owner's ruling a reasonable attempt must count
 every time, so both read a straight punch on either hand: a player told to jab often throws the strong hand. A
@@ -78,12 +81,12 @@ never asked of one player.
 |---|---|---|---|
 | cross | uppercut | Boxer | `risingHand`: a hand whose elbow is snapping open is a punch, not a rising hand |
 | chain punch | rising palm | Kung Fu | the same |
-| block | uppercut | Boxer, Pankration | `risingHand`: both hands coming up together are not a one-handed rising strike |
-| block | rising palm | Kung Fu | the same |
-| double palm | rising palm | Kung Fu | the same |
-| moon arrow | uppercut | Boxer, Pankration | the same: the bow arm and the string hand come up together |
-| sun burst | spear thrust | Hoplite | `spear_thrust`: both wrists flung out past their own sides are not a thrust at the camera |
-| thunderbolt | uppercut | Boxer, Pankration | lenient-strikes PR: `risingHand` reads the elbow's height, and the hand must end at chin height or above (0.2 shoulder widths over the shoulder line) |
+| block | uppercut | Boxer, Taekwondo | `risingHand`: both hands coming up together are not a one-handed rising strike |
+| block | rising palm | Jiu-jitsu, Kung Fu | the same |
+| double palm | rising palm | Jiu-jitsu, Kung Fu | the same |
+| moon arrow | uppercut | Boxer, Taekwondo | the same: the bow arm and the string hand come up together |
+| sun burst | spear thrust | none now (a finisher) | `spear_thrust`: both wrists flung out past their own sides are not a thrust at the camera |
+| thunderbolt | uppercut | Boxer, Taekwondo | lenient-strikes PR: `risingHand` reads the elbow's height, and the hand must end at chin height or above (0.2 shoulder widths over the shoulder line) |
 
 The two `risingHand` rules (`src/moves/handSignals.ts`) are shared by the uppercut and the rising palm:
 
@@ -119,17 +122,14 @@ stops. That is good news when it happens: take the pair out of `LEFT` and out of
 
 | Done | Also read as | Styles | Why it is left |
 |---|---|---|---|
-| overhead strike | thunderbolt | Hoplite | The same motion by design. The thunderbolt is "raise either hand over your head, then throw it down"; with the right hand that is the overhead strike. |
-| thunderbolt | overhead strike | Hoplite | The same. |
-| hammer fist | thunderbolt | Karate, Pankration | The same with the left hand. |
-| double palm | aegis push | Kung Fu | The same motion by design: both palms pushed straight out from the chest. |
-| aegis push | double palm | Kung Fu | The same. |
-| aegis push | spear thrust | Hoplite | A thrust is both arms snapped straight at shoulder height, and so is a push. Only the hand spacing could split them, and the existing spear thrust tests thrust with the wrists 0.72 shoulder widths apart, inside the push's 0.9. Where a real player's hands end up in the picture needs a real trace. |
+| hammer fist | thunderbolt | Karate, Taekwondo | The same motion by design. The thunderbolt is "raise either hand over your head, then throw it down"; with the left hand that is the hammer fist. |
+| double palm | aegis push | Jiu-jitsu, Kung Fu | The same motion by design: both palms pushed straight out from the chest. |
+| aegis push | double palm | Jiu-jitsu, Kung Fu | The same. |
 | swift dash | dodge right | every style | By design: a dash is one fast step to the side, and a step to the side is a dodge. A dodge is held, not thrown, and does nothing while the fight waits for a strike. |
 | jab | cross | Boxer | By the owner's ruling: both read a straight punch on either hand, so a reasonable attempt counts every time. |
 | cross | jab | Boxer | The same. |
 
-The first five and the dash need a design change, not a threshold: one of each pair would have to become a
+The first three and the dash need a design change, not a threshold: one of each pair would have to become a
 different gesture. The fight counts only the move it asked for, so the cost today is that either gesture
 answers either prompt.
 
@@ -142,7 +142,10 @@ pinned in the same test (`OUTSIDE`) so a change shows up.
 |---|---|---|
 | reverse punch, knife hand | jab, cross | The right arm is punched out fast. The cross does not look at the left hand's hip, or at where the right hand started, and the jab reads either hand too. |
 | chain punch | jab, cross | A chain punch is a jab and then a cross. |
-| double palm | spear thrust | Both arms snapped straight; see aegis push above. |
+| double palm | spear thrust | Both arms snapped straight; see aegis push below. |
+| overhead strike | thunderbolt | The same motion by design: with the right hand the thunderbolt is the overhead strike. The overhead strike is only asked for as Circe's finisher. |
+| thunderbolt | overhead strike | The same. |
+| aegis push | spear thrust | A thrust is both arms snapped straight at shoulder height, and so is a push. Only the hand spacing could split them, and the existing spear thrust tests thrust with the wrists 0.72 shoulder widths apart, inside the push's 0.9. Where a real player's hands end up in the picture needs a real trace. The spear thrust is only asked for as the suitors' finisher. |
 | stake thrust | aegis push | The stake's grip at the chest is the push's start, and the arms end straight. The stake is only asked for as the Polyphemus finisher. |
 
 Since the lenient-strikes PR, hook, hammer fist, overhead strike and knife hand no longer also read as the rising

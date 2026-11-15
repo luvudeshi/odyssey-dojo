@@ -183,20 +183,21 @@ describe("swapFor", () => {
   );
 
   test("the nearest hand strike is chosen: a straight one for the front kick, a rising one for the knee", () => {
-    expect(swapFor("front_kick", styleCalled("pankration"))).toBe("uppercut");
-    expect(swapFor("knee", styleCalled("pankration"))).toBe("uppercut");
+    expect(swapFor("front_kick", styleCalled("taekwondo"))).toBe("uppercut");
+    expect(swapFor("knee", styleCalled("taekwondo"))).toBe("uppercut");
     expect(swapFor("front_kick", styleCalled("boxer"))).toBe("cross");
     expect(swapFor("knee", styleCalled("boxer"))).toBe("uppercut");
-    expect(swapFor("front_kick", styleCalled("hoplite"))).toBe("spear_thrust");
+    expect(swapFor("front_kick", styleCalled("jiu_jitsu"))).toBe("double_palm");
+    expect(swapFor("knee", styleCalled("jiu_jitsu"))).toBe("rising_palm");
     expect(swapFor("front_kick", styleCalled("karate"))).toBe("reverse_punch");
     expect(swapFor("knee", styleCalled("karate"))).toBe("hammer_fist");
   });
 
   test("given the weak spot's strikes, the swap fits the spot when the style has a hand strike that does", () => {
-    const hoplite = styleCalled("hoplite");
-    expect(swapFor("front_kick", hoplite, ["overhead_strike", "cross", "front_kick"])).toBe("overhead_strike");
+    const jiuJitsu = styleCalled("jiu_jitsu");
+    expect(swapFor("front_kick", jiuJitsu, ["knife_hand", "cross", "front_kick"])).toBe("knife_hand");
     // Nothing on the spot is in the style: the nearest hand strike of the style.
-    expect(swapFor("front_kick", hoplite, ["hook", "front_kick"])).toBe("spear_thrust");
+    expect(swapFor("front_kick", jiuJitsu, ["hook", "front_kick"])).toBe("double_palm");
   });
 
   test("a style of only kicks has nothing to swap to, and the move comes back unchanged", () => {
