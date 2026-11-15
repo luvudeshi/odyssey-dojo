@@ -1,6 +1,8 @@
 /* The scene behind the main menu (MenuScene.tsx). Only transforms and opacity move, so it costs almost nothing.
-   The menu sits in the top three quarters, so the pictures keep their subjects in the corners, the sides and the band below. */
-.menu--title { background: #05090c; justify-content: flex-start; padding-top: 3.4rem; }
+   The menu is centred in the space above a band kept for the ship: the band is thin on a short window and grows with the
+   height, so the menu neither hugs the top nor leaves a blank gap below. The picture keeps its subjects in the corners,
+   the sides and that band. */
+.menu--title { background: #05090c; justify-content: safe center; padding-top: 2.8rem; padding-bottom: clamp(1.4rem, calc(36vh - 200px), 20rem); }
 .menu--title > .pb-panel__wave { z-index: 1; }
 .menu > .menu-scene { position: absolute; inset: 0; overflow: hidden; pointer-events: none; --mx: 0; --my: 0; }
 .menu-scene > * { position: absolute; inset: 0; }

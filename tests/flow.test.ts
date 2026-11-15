@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import type { Assessment } from "../src/coach/contract";
 import type { EnemySpec } from "../src/core/types";
 import { ENEMIES as REAL_ENEMIES } from "../src/enemies/registry";
-import { enemyFor, flowReducer, playable, START, unlocked } from "../src/screens/flow";
+import { enemyFor, flowReducer, playable, START } from "../src/screens/flow";
 import type { Flow, FlowAction } from "../src/screens/flow";
 import { routePoints } from "../src/screens/QuestMap";
 import { STYLES } from "../src/styles/registry";
@@ -58,12 +58,8 @@ test("change style goes back to the style screen and the map keeps progress", ()
   expect(flow.screen).toBe("style");
 });
 
-test("only playable stops open, in order; unbuilt ones stay locked", () => {
-  const canPlay = playable(ENEMIES, new Map([["a", 1], ["b", 1]]));
-  expect(canPlay).toEqual([true, true, false, false]);
-  expect([0, 1, 2, 3].map((i) => unlocked(ENEMIES, canPlay, [], i))).toEqual([true, false, false, false]);
-  expect([0, 1, 2, 3].map((i) => unlocked(ENEMIES, canPlay, ["a"], i))).toEqual([true, true, false, false]);
-  expect(unlocked(ENEMIES, canPlay, ["a", "b"], 2)).toBe(false);
+test("every stop with a model is playable from the start; unbuilt ones are not", () => {
+  expect(playable(ENEMIES, new Map([["a", 1], ["b", 1]]))).toEqual([true, true, false, false]);
 });
 
 test("route has a point for each stop plus Troy and Ithaca, inside the chart", () => {
@@ -92,6 +88,9 @@ test("the main menu is reachable from the style screen and the map, and Story mo
 test("rooms are hosted and joined from the title: there is no room menu in between", () => {
   expect(flowReducer(START, { type: "hostRoom" }).screen).toBe("host");
   expect(flowReducer(START, { type: "joinRoom" }).screen).toBe("join");
+  // The Multiplayer screen holds both: a host can join someone else's room instead, and the other way round.
+  expect(run([{ type: "hostRoom" }, { type: "joinRoom" }]).screen).toBe("join");
+  expect(run([{ type: "joinRoom" }, { type: "hostRoom" }]).screen).toBe("host");
   expect(run([{ type: "hostRoom" }, { type: "toTitle" }]).screen).toBe("title");
   const atMap = run([{ type: "ready" }, { type: "pickStyle", style }]);
   expect(flowReducer(atMap, { type: "hostRoom" })).toBe(atMap);

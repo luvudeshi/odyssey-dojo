@@ -1,5 +1,5 @@
-// The Account screen: a hero name (the only "login"), achievements as badges, friends (fight together in a room) and settings.
-// Everything is kept in this browser (src/account/store.ts); rooms need the game's own server.
+// The Account screen: a hero name (the only "login"), achievements as badges, and settings.
+// Everything is kept in this browser (src/account/store.ts). Rooms are on the Multiplayer screen.
 import { useEffect, useState } from "react";
 import { achievements } from "../account/achievements";
 import { NAME_MAX, renameProfile, useProfile } from "../account/store";
@@ -33,7 +33,7 @@ function WithIcon(props: { icon: IconName; children: string }) {
   return <><Icon name={props.icon} className="acc-btn__icon" />{props.children}</>;
 }
 
-export function Account(props: { enemies: readonly EnemySpec[]; onHost: () => void; onJoin: () => void; onBack: () => void }) {
+export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => void }) {
   const profile = useProfile();
   const [settingsOpen, setSettingsOpen] = useState(false);
   useEffect(() => { installGround(); }, []);
@@ -55,13 +55,6 @@ export function Account(props: { enemies: readonly EnemySpec[]; onHost: () => vo
               <Stat icon="star" value={profile.bestScore} label="Best score" />
             </div>
             <small>Saved in this browser only. No password.</small>
-          </Section>
-          <Section icon="friends" title="Friends">
-            <p>Two fighters, one monster. Strike the same move together to hit twice as hard.</p>
-            <div className="menu__row">
-              <Button onClick={props.onHost}><WithIcon icon="host">Host a room</WithIcon></Button>
-              <Button onClick={props.onJoin}><WithIcon icon="join">Join a room</WithIcon></Button>
-            </div>
           </Section>
           <Section icon="sliders" title="Settings">
             <p>Graphics, volume, mirror and key hints.</p>
