@@ -72,7 +72,7 @@ function seen(frame: PoseFrame, ...indices: number[]): boolean {
 }
 
 /** The least the detectors need: both shoulders, apart. */
-function usable(frame: PoseFrame): boolean {
+export function usable(frame: PoseFrame): boolean {
   return seen(frame, JOINT.leftShoulder, JOINT.rightShoulder) && shoulderWidth(frame) > 0;
 }
 
@@ -102,7 +102,7 @@ function readings(
 }
 
 /** The furthest any seen point of the upper body got from where it was on the first frame, in shoulder widths. */
-function moved(frames: readonly PoseFrame[]): number {
+export function moved(frames: readonly PoseFrame[]): number {
   const first = frames[0];
   if (!first) return 0;
   const width = shoulderWidth(first);

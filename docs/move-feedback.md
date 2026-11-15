@@ -120,8 +120,71 @@ against the line between the shoulders.
 the hips, because a desk camera often cannot see the hips. The speed tips come from the strike's quality score,
 so they are only given when the fight passes that score in.
 
+## Defends that failed, and late ones
+
+A defend is settled when the attack lands. The body rules above only grade a defend that counted, from its
+shape. `src/coach/extra/defendMissFeedback.ts` adds what the timing tells. It calls `strikeFeedback` for the
+body tips (no second set of pose rules), returns the same `{ grade, points, tip }`, is pure and never throws.
+
+```ts
+defendMissFeedback(defendId, history, windowStartMs, windowEndMs): StrikeFeedback   // after `playerHit`
+defendTimingFeedback(defendId, history, windowStartMs, windowEndMs): StrikeFeedback // after `defended`
+// defendId: the attack's `counter`. history: PoseHistory, or null on the keyboard.
+// windowStartMs: when `telegraph` came; windowEndMs: when the attack landed. Both on the PoseFrame.t clock.
+```
+
+The fight's pose history keeps one second and a warning can be longer, so the caller keeps the frames from the
+telegraph on (and a moment after the hit, for "A beat sooner") and passes `{ frames, baseline }`. Which defend
+was made is read by running the game's own detectors over the frames, one after another, at the level a defend
+comes on in the fight (0.5), with the loose reading for the asked defend as the fight does.
+
+A defend that failed is always NEEDS IMPROVEMENT. The tip, first that applies:
+
+| What the frames show | Tip |
+| --- | --- |
+| the asked defend was on in the warning but let go more than 350 ms before the hit | "Hold it till it lands" |
+| the asked defend was on in the warning, close to the hit | "A beat sooner" |
+| another defend was made | "Duck, don't block" and so on (table below) |
+| the asked defend was made only after the hit | "A beat sooner" |
+| no point of the upper body moved 0.12 shoulder widths | "React sooner" |
+| it moved, short of the defend | the body tip above for that defend; if none, "Hands too low", "Bend your knees deeper", "Step further left/right" or "Jump higher" |
+
+| Asked for | Made in its place | Tip |
+| --- | --- | --- |
+| Block (`block`) | duck / dodge / jump | "Block, don't duck" / "Block, don't dodge" / "Block, don't jump" |
+| Duck (`duck`) | block / dodge / jump | "Duck, don't block" / "Duck, don't dodge" / "Duck, don't jump" |
+| Dodge left (`dodge_left`) | dodge right | "Other way: dodge left" |
+| Dodge right (`dodge_right`) | dodge left | "Other way: dodge right" |
+| Dodge left or right | block / duck / jump | "Dodge, don't block" / "Dodge, don't duck" / "Dodge, don't jump" |
+| Jump (`jump`) | block / duck / dodge | "Jump, don't block" / "Jump, don't duck" / "Jump, don't dodge" |
+
+A defend that counted gets strikeFeedback's grade and tip, read on its frames up to 300 ms after it was first
+made. When that has no tip and the defend was first made in the last quarter of the warning, the grade is one
+step lower and the tip is "React sooner".
+
+A player whose legs are out of the picture (knees and a foot seen on half the frames or fewer) is never given a
+leg tip: "Step further left/right" becomes "Lean further left/right", "Bend your knees deeper" becomes "Duck
+lower", and "Bend knees, not waist" and "Step, don't just lean" are dropped. With no body to read (keyboard,
+shoulders not seen, a window that ends before it starts) there is the grade and no tip.
+
+## A strike that never came
+
+`strikeMissTip(moveId, history)` in `src/coach/extra/strikeMissTip.ts` is for a strike prompt that ran out with
+no strike counted. `history` is the fight's pose history as the prompt ends. It returns a tip of at most 24
+characters, or null with no body to read (keyboard, shoulders not seen, a move with no checks, a kick with the
+legs out of view). First that applies:
+
+| What the frames show | Tip |
+| --- | --- |
+| no point of the upper body moved 0.12 shoulder widths | "Strike when it flashes" |
+| the same strike with the other hand (jab and cross, hammer fist and overhead strike, uppercut and rising palm) | "Other hand: left jab", "Other hand: right cross"; "Use your right hand" when that is too long |
+| another strike reached the fight's level (0.7) | "Jab, not hook" and so on, when it fits |
+| anything else | the body tip above for that strike, or its first tip ("Extend your arm fully") |
+
 ## Not yet done
 
 - The thresholds are set from the detectors' own numbers and from made-up bodies in `tests/strikeFeedback.test.ts`.
   They have not been tuned on a real camera.
+- `defendMissFeedback`, `defendTimingFeedback` and `strikeMissTip` are checked on made-up bodies in
+  `tests/defendMissFeedback.test.ts` and `tests/strikeMissTip.test.ts`, not on a real camera.
 - Showing the pop-up in the fight is a change to the fight screen and the HUD, which the lead owns.
