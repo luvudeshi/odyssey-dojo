@@ -11,14 +11,14 @@ node scripts/check-dist.mjs --dist=<folder> # scan this folder as it is, build n
 
 A worktree has no `.env`, so from a worktree pass the main checkout's: `--env=/path/to/main/checkout/.env`. With no `.env` the check still runs and still looks for key shapes and key names; it says that no values from a file were looked for.
 
-Exit codes: **0** nothing found. **1** a leak. **2** the check could not do its job (no `dist`, an empty `dist`, no file at `--env`, a failed build, an unknown option).
+Exit codes: **0** nothing found. **1** a leak, and nothing else. **2** the check could not do its job (no `dist`, an empty `dist`, no file at `--env` or a folder there, a file that cannot be read, a failed build, an unknown option). A mistyped path gives 2, so exit 1 always means: start the steps under "If it finds a leak".
 
 ## What it looks for
 
-Every file in `dist` is read as bytes, so models, sounds, the pose model and wasm are scanned the same way as scripts, and a source map is scanned like any other file. A `.gz` or `.br` file is also unpacked and scanned.
+Every file in `dist` is read as bytes, so models, sounds, the pose model and wasm are scanned the same way as scripts, and a source map is scanned like any other file. A `.gz` or `.br` file is also unpacked and scanned. A link in `dist` is followed, to a file or to a folder, because a static server follows it too.
 
 1. **The value of each secret variable** in the `.env` and in the files Vite reads from the same folder (`.env.local`, `.env.production`, `.env.production.local`). When the script builds, it tells Vite to read those same files, so a build from a worktree is checked as a build in the main checkout would be.
-2. **Key-shaped strings**, whatever any `.env` says: a Google key (`AIza` and 35 more letters, digits, `_` or `-`) and an ElevenLabs key (`sk_` and 32 or more letters or digits). The string has to stand alone, so the same letters in the middle of a long base64 blob are not a hit.
+2. **Key-shaped strings**, whatever any `.env` says: a Google key (`AIza` and 35 more letters, digits, `_` or `-`) and an ElevenLabs key (`sk_` and 32 or more letters or digits). The string must not start in the middle of a longer run of the same characters, so the same letters in the middle of a long base64 blob are not a hit. It may start right after an escape (`\n`, `\t`, `\u000a`), as when a bundler writes a line break into a string, and anything may follow it.
 3. **The names of the server's key variables**: `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, and any name in `.env.example` that says secret. A name in the bundle means server code or a message about server setup was bundled into the page.
 
 ### Which variables are secrets
@@ -37,12 +37,15 @@ As written; JSON-escaped (how Vite writes a value into a script, and how a sourc
 
 ### What is printed
 
-On a leak: the file, the variable's **name**, the form, and the byte it starts at. Never the value, any part of it, or its length. Everything the script prints, error messages included, first has every secret value taken out.
+On a leak: the file, the variable's **name**, the form, and the byte it starts at. Never the value, any part of it, or its length. Everything the script prints, error messages included, first has every secret value taken out and `[hidden]` put in its place. The one exception is the file's path in a `LEAK` line, which is printed as it is: it is in `dist`, so it is public already.
+
+A secret that is an ordinary word (a room password such as a monster's name) can be guessed from where `[hidden]` stands in a line, or from a file name that holds the same word. A real API key is never an ordinary word, so this only matters for word-like passwords: do not use one.
 
 ## Not covered
 
 - A value split across two strings and joined at run time, written as a list of character codes, reversed, encrypted, or packed inside a format other than gzip or brotli (a zip, a compressed mesh).
 - JavaScript escapes other than JSON's, for example `\x41`.
+- With no `.env` (so in every worktree), a key glued straight onto a word, a digit or an underscore in front of it, for example `apikeyAIza...` or `key_AIza...`. The shape check skips these to stay quiet on base64 blobs. They are found when the `.env` is given, because the value is then looked for wherever it stands.
 - Key shapes other than the two above. A key from another service is found only through its value in `.env`.
 - Values shorter than 8 characters.
 - Anything the page fetches at run time. What the server answers is not checked here.
@@ -65,5 +68,7 @@ Not wired in yet: the Makefile is the lead's. `make check` already builds, so th
 test:
 	npm test && npm run build && node scripts/check-dist.mjs --no-build
 ```
+
+In a worktree this run checks key shapes and names only; in a checkout that has a `.env` it also checks every secret value. Before the demo, run `make check` once in the main checkout, the one the demo is built from.
 
 The test is `tests/checkDist.test.ts`. It builds nothing and never reads the real `.env`.
