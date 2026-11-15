@@ -1,6 +1,7 @@
 // The rules hearClips.ts works by: how a transcript is compared with the line a clip is meant to say, and what in the
 // word timings says a clip may be cut off. Pure: no files, no network and no ffmpeg, so the tests run it.
 // docs/audio-heard.md explains what the verdicts mean.
+import { z } from "zod";
 import { ATHENA_LINES } from "../../src/audio/athenaLines";
 import { ALL_STORY_LINES, storyClipUrl } from "../../src/audio/narrationLines";
 
@@ -9,6 +10,8 @@ export interface HeardWord {
   readonly text: string;
   readonly startMs: number;
   readonly endMs: number;
+  /** How sure speech to text was of this word, as a log probability (0 is certain), or null when it did not say. */
+  readonly logprob: number | null;
 }
 
 /** What speech to text made of one clip. */
@@ -21,8 +24,11 @@ export interface Heard {
   readonly endDb: number | null;
 }
 
-/** "cut?" means the words are right but the timings say the clip may start or end inside a word. */
-export type Verdict = "same" | "differs" | "cut?";
+/**
+ * "cut?" means the words are right but the timings say the clip may start or end inside a word.
+ * "unsure?" means the words are right and nothing looks cut, but speech to text was not sure of one of them.
+ */
+export type Verdict = "same" | "differs" | "cut?" | "unsure?";
 
 export interface Report {
   readonly verdict: Verdict;
@@ -32,6 +38,8 @@ export interface Report {
   readonly extra: readonly string[];
   /** Why the clip may be cut off. Empty when the timings are fine. */
   readonly timing: readonly string[];
+  /** The words speech to text was not sure of, each with its probability, such as "Knee (0.91)". */
+  readonly unsure: readonly string[];
 }
 
 /** A last word that ends this close to the end of the file may have been cut. */
@@ -43,15 +51,92 @@ export const END_WINDOW_MS = 30;
  * than this there stops while something is still sounding: the tail of a word, a breath or a click.
  */
 export const END_LOUD_DBFS = -45;
+/**
+ * A word speech to text gives less than this probability is one it half guessed. The first take of Athena's knee call
+ * came back as "Me", and the second as "Knee" at 0.91 while another engine still heard "Me".
+ */
+export const UNSURE_PROBABILITY = 0.95;
+
+/** What is asked of speech to text for every clip. Sound tagging is on so a laugh or a sigh comes back as an extra word. */
+export const REQUEST = { model_id: "scribe_v2", language_code: "en", tag_audio_events: "true", timestamps_granularity: "word" } as const;
+
+/** The name a clip's transcript is kept under: what was asked, and the hash of the clip. A changed setting is a new name, so old answers are not reused. */
+export function transcriptId(settings: Readonly<Record<string, string>>, hash: string): string {
+  const asked = Object.entries(settings).map(([name, value]) => `${name}=${value}`).sort().join("&");
+  return `${asked}:${hash}`;
+}
+
+/** The part of the API's answer this tool reads. Spaces between words come back as items of their own. */
+const Answer = z.object({
+  text: z.string(),
+  words: z.array(z.object({ text: z.string(), type: z.string(), start: z.number().nullish(), end: z.number().nullish(), logprob: z.number().nullish() })),
+  audio_duration_secs: z.number().nullish(),
+});
 
 /**
- * Names and words from the Odyssey that speech to text spells in more than one way ("Kirke", "Molly", "Achaians").
- * Only these are matched loosely. Every other word must come back letter for letter.
+ * Reads the body of a 200 answer. The errors name what is wrong and never quote the body, so nothing an upstream
+ * sends back (a key echoed in an error page, say) reaches the terminal.
  */
-export const GREEK_NAMES: ReadonlySet<string> = new Set([
-  "achaeans", "aegis", "charybdis", "circe", "cyclopes", "cyclops", "hermes", "ithaca", "moly", "muse",
-  "odysseus", "penelope", "polyphemus", "poseidon", "scylla", "sirens", "troy",
-]);
+export function readAnswer(body: string): Pick<Heard, "text" | "words" | "durationMs"> {
+  let json: unknown;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    throw new Error("the answer was not JSON");
+  }
+  const parsed = Answer.safeParse(json);
+  if (!parsed.success) {
+    const fields = [...new Set(parsed.error.issues.map((issue) => issue.path.map(String).join(".") || "the answer"))];
+    throw new Error(`the answer does not have the shape the API reference gives (${fields.slice(0, 5).join(", ")})`);
+  }
+  const answer = parsed.data;
+  const words = answer.words.flatMap((word) =>
+    word.type === "word" && typeof word.start === "number" && typeof word.end === "number"
+      ? [{ text: word.text, startMs: Math.round(word.start * 1000), endMs: Math.round(word.end * 1000), logprob: word.logprob ?? null }]
+      : [],
+  );
+  const seconds = answer.audio_duration_secs;
+  return { text: answer.text, words, durationMs: typeof seconds === "number" ? Math.round(seconds * 1000) : null };
+}
+
+/** How many failed requests in a row end the run. */
+export const FAILURES_TO_STOP = 3;
+
+/**
+ * Why the run should send nothing more after a failed request, or null to go on to the next clip. A refused key, a
+ * rate limit and a stalled upstream fail the same way for every clip, so the first one stops the run; anything else
+ * stops it after FAILURES_TO_STOP in a row.
+ */
+export function stopReason(failure: { readonly httpStatus: number | null; readonly timedOut: boolean }, failuresInARow: number): string | null {
+  const { httpStatus, timedOut } = failure;
+  if (httpStatus === 401 || httpStatus === 402 || httpStatus === 403) return `the key or plan was refused (HTTP ${String(httpStatus)})`;
+  if (httpStatus === 429) return "speech to text said too many requests (HTTP 429)";
+  if (timedOut) return "speech to text did not answer in time";
+  if (failuresInARow >= FAILURES_TO_STOP) return `${String(failuresInARow)} requests in a row failed`;
+  return null;
+}
+
+/** The count of requests in the last line of a run. A failed request is counted as made, not as "read from the cache". */
+export function requestTally(made: number, answered: number): string {
+  if (made === 0) return "no request made";
+  return `${String(made)} ${made === 1 ? "request" : "requests"} made, ${String(answered)} answered`;
+}
+
+/**
+ * Names and words from the Odyssey, each with the other spellings speech to text may give it. Only these spellings
+ * count as the name. Anything else, however close ("circle" for Circe, "holy" for moly), differs, so a person looks.
+ * Every other word must come back letter for letter.
+ */
+export const GREEK_SPELLINGS: Readonly<Record<string, readonly string[]>> = {
+  achaeans: ["achaians", "acheans", "akhaians"],
+  aegis: ["egis"],
+  charybdis: ["caribdis", "charibdis", "karybdis"],
+  circe: ["cersei", "kirke"],
+  ithaca: ["ithaka"],
+  moly: ["molly"],
+  polyphemus: ["polyphemos", "polifemus"],
+  scylla: ["scilla", "skylla"],
+};
 
 /** Every voice line and the clip that should say it, as a path under public/audio such as "athena/call_jab.mp3". */
 export function voiceScript(): ReadonlyMap<string, string> {
@@ -69,34 +154,9 @@ export function normalise(text: string): readonly string[] {
   return plain.split(/[^a-z0-9]+/).filter(Boolean).map((word) => (/^\d+$/.test(word) ? (NUMBERS[Number(word)] ?? word) : word));
 }
 
-/** How many single-letter changes turn one word into the other. */
-export function editDistance(a: string, b: string): number {
-  let row = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i++) {
-    const next = [i];
-    for (let j = 1; j <= b.length; j++) {
-      const change = (row[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1);
-      next.push(Math.min(change, (row[j] ?? 0) + 1, (next[j - 1] ?? 0) + 1));
-    }
-    row = next;
-  }
-  return row[b.length] ?? 0;
-}
-
-/** A rough "how it sounds": the consonants, with ph as f, a soft c as s, a hard c and ch as k, and no doubled letters. */
-function skeleton(word: string): string {
-  const sounds = word.replace(/ph/g, "f").replace(/ch/g, "k").replace(/c(?=[eiy])/g, "s").replace(/c/g, "k");
-  return sounds.replace(/[aeiouyh]/g, "").replace(/(.)\1+/g, "$1");
-}
-
-/** Whether a heard word counts as the expected one. A Greek name may be spelled another way; any other word may not. */
+/** Whether a heard word counts as the expected one: the same letters, or a listed spelling of a Greek name. */
 export function sameWord(expected: string, heard: string): boolean {
-  if (expected === heard) return true;
-  if (!GREEK_NAMES.has(expected)) return false;
-  // Two consonants are too few to go by: "troy" and "tree" share them.
-  const sound = skeleton(expected);
-  if (sound.length >= 3 && sound === skeleton(heard)) return true;
-  return editDistance(expected, heard) <= (Math.max(expected.length, heard.length) >= 8 ? 2 : 1);
+  return expected === heard || (GREEK_SPELLINGS[expected]?.includes(heard) ?? false);
 }
 
 /** The words of the line the transcript lacks, and the words of the transcript the line lacks. Both empty when they agree. */
@@ -164,10 +224,20 @@ export function timingFaults(heard: Heard): readonly string[] {
   return found;
 }
 
-/** The verdict on one clip: wrong words come first, then a possible cut. */
+/** The words speech to text gave less than UNSURE_PROBABILITY, each with its probability. Empty when it was sure, or did not say. */
+export function unsureWords(heard: Heard): readonly string[] {
+  return heard.words.flatMap((word) => {
+    if (word.logprob === null) return [];
+    const probability = Math.exp(word.logprob);
+    return probability < UNSURE_PROBABILITY ? [`${word.text} (${probability.toFixed(2)})`] : [];
+  });
+}
+
+/** The verdict on one clip: wrong words come first, then a possible cut, then a word speech to text was not sure of. */
 export function judge(expected: string, heard: Heard): Report {
   const { notHeard, extra } = compare(expected, heard.text);
   const timing = timingFaults(heard);
-  const verdict = notHeard.length > 0 || extra.length > 0 ? "differs" : timing.length > 0 ? "cut?" : "same";
-  return { verdict, notHeard, extra, timing };
+  const unsure = unsureWords(heard);
+  const verdict = notHeard.length > 0 || extra.length > 0 ? "differs" : timing.length > 0 ? "cut?" : unsure.length > 0 ? "unsure?" : "same";
+  return { verdict, notHeard, extra, timing, unsure };
 }
