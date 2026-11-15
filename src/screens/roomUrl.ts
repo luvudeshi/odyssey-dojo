@@ -40,12 +40,10 @@ export const ROOM_MESSAGES: Readonly<Record<string, string>> = {
   room_full: "That room already has two fighters.",
   too_many_rooms: "The server has too many rooms open. Try again in a minute.",
   slow_down: "Too many tries from this network. Wait a minute and try again.",
-  unreachable: "Cannot reach the game server. Is it running?",
+  unreachable: "Rooms are not open right now. Play alone.",
 };
 
-const NOT_OPEN = "Rooms are not open on this site yet. Play alone, or run the game on your own computer to host a room.";
-
-/** The line for a failed room call. "Is it running?" is for developers, so a hosted copy says rooms are closed instead (the hosted server also answers 403, which lands on unreachable). */
-export function roomMessage(error: string, hostname: string): string {
-  return error === "unreachable" && !isLocalHost(hostname) ? NOT_OPEN : (ROOM_MESSAGES[error] ?? "");
+/** The line for a failed room call; a failure shows a player line on every host. */
+export function roomMessage(error: string): string {
+  return ROOM_MESSAGES[error] ?? "";
 }
