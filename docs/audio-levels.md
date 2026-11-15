@@ -277,7 +277,7 @@ Everything from here to the end marker is written by the tool. Do not edit it by
 | group | clips | quietest | median | loudest | spread LU | at the listener, median (range) |
 |---|---|---|---|---|---|---|
 | athena | 50 | -16.8 | -15.6 | -14.0 | 2.8 | -15.6 (-16.8 to -14.0) |
-| athena (Homer) | 4 | -19.0 | -19.0 | -19.0 | 0.0 | -19.0 (-19.0 to -19.0) |
+| athena (Homer) | 10 | -20.0 | -19.1 | -19.0 | 1.0 | -19.1 (-20.0 to -19.0) |
 | athena (Polyphemus) | 4 | -20.4 | -19.0 | -19.0 | 1.4 | -22.1 (-23.5 to -22.1) |
 | music | 5 | -16.4 | -11.0 | -9.8 | 6.6 | -26.8 (-30.5 to -23.1) |
 | narration | 12 | -20.1 | -19.0 | -19.0 | 1.1 | -19.0 (-20.1 to -19.0) |
@@ -377,6 +377,12 @@ None.
 | `athena/homer_intro_polyphemus.mp3` | 9.20 | -19.0 | -1.5 | 27 | 154 | 0.0 | -19.0 |
 | `athena/homer_loss.mp3` | 5.84 | -19.0 | -1.6 | 57 | 160 | 0.0 | -19.0 |
 | `athena/homer_title.mp3` | 4.40 | -19.0 | -1.5 | 29 | 265 | 0.0 | -19.0 |
+| `athena/homer_title_2.mp3` | 5.92 | -19.7 | -1.6 | 52 | 153 | 0.0 | -19.7 |
+| `athena/homer_title_3.mp3` | 5.36 | -19.1 | -1.5 | 35 | 113 | 0.0 | -19.1 |
+| `athena/homer_title_4.mp3` | 6.08 | -20.0 | -1.5 | 36 | 160 | 0.0 | -20.0 |
+| `athena/homer_title_5.mp3` | 5.36 | -19.6 | -1.5 | 60 | 180 | 0.0 | -19.6 |
+| `athena/homer_title_6.mp3` | 4.96 | -19.1 | -1.5 | 21 | 104 | 0.0 | -19.1 |
+| `athena/homer_title_7.mp3` | 5.68 | -19.3 | -1.6 | 29 | 166 | 0.0 | -19.3 |
 | `athena/homer_win.mp3` | 4.64 | -19.0 | -1.6 | 21 | 118 | 0.0 | -19.0 |
 
 ### athena (Polyphemus)
