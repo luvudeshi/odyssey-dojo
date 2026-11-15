@@ -8,7 +8,7 @@
 }
 
 /* The two-player tag: a small glass chip under the score. */
-.sky-hud .hb-duo { position: absolute; right: 30px; top: 94px; left: auto; margin: 0; padding: 8px 18px 10px; font-size: 16px; letter-spacing: 0.14em; color: #ece4ff; -webkit-text-stroke: 0; }
+.sky-hud .hb-duo { position: absolute; right: 30px; top: 112px; left: auto; margin: 0; padding: 8px 18px 10px; font-size: 16px; letter-spacing: 0.14em; color: #ece4ff; -webkit-text-stroke: 0; }
 
 /* The new phase: a glass slab with blades, like the boss bar it sits under. */
 .sky-hud .sk-phase { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); padding: 10px 34px 13px; font-size: 28px; line-height: 1.1; letter-spacing: 0.14em; color: #ece4ff; animation: sk-in 0.4s ease-out; }

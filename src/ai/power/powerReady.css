@@ -30,7 +30,7 @@
 }
 
 .power-ready .power-ready__title {
-  grid-area: title; font-size: clamp(11px, 0.95vw, 16px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+  grid-area: title; font-size: clamp(18px, 1.3vw, 21px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0);
 }
 .power-ready .power-ready__move {
@@ -42,7 +42,7 @@
   font-size: clamp(18px, min(1.5vw, 3.3cqi), 24px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
   color: var(--white, #f2e4c8);
 }
-.power-ready .power-ready__or { font-size: 0.85em; opacity: 0.9; white-space: nowrap; }
+.power-ready .power-ready__or { opacity: 0.9; white-space: nowrap; }
 .power-ready .power-ready__key {
   all: unset; display: inline-block; min-width: 1.5em; padding: 0.1em 0.4em; margin: 0 0.1em; vertical-align: 0.06em;
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
@@ -84,11 +84,11 @@
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
 }
 .power-ready .power-ready__of {
-  font-size: clamp(10px, 0.86vw, 13px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  font-size: 18px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8);
 }
 .power-ready .power-ready__god {
-  margin-top: 4px; font-size: clamp(17px, 1.6vw, 25px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  margin-top: 4px; font-size: clamp(18px, 1.6vw, 25px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0);
 }
 
