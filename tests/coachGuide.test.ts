@@ -3,13 +3,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { LABELS, guideFor, liveChecks, poseAt, poseOf, startPose, toScreen, towardOf } from "../src/coach/guide";
+import { LABELS, conditionKey, guideFor, labelOf, liveChecks, plainLabel, poseAt, poseOf, startPose, toScreen, towardOf } from "../src/coach/guide";
 import type { GuideJoint } from "../src/coach/guide";
 import { MoveGuide } from "../src/coach/ui/MoveGuide";
 import type { MoveDef, PoseFrame } from "../src/core/types";
 import { createPoseInput } from "../src/input/poseInput";
-import { SIDES } from "../src/moves/legSignals";
 import { MEASURES } from "../src/moves/measures";
+import type { Measure } from "../src/moves/measures";
 import { MOVES } from "../src/moves/registry";
 import { EMPTY_HISTORY, pushFrame } from "../src/pose/signals";
 import { following } from "../tools/guide/body";
@@ -38,7 +38,12 @@ function countedOn(move: MoveDef, frames: readonly PoseFrame[]): number[] {
   });
 }
 
-test("every move in the registry has a guide, a short instruction, and a label for each condition", () => {
+const JARGON = /degrees|shoulder widths|ms|torso lengths|confidence|\d/;
+const sidesIn = (text: string): string[] => ["left", "right"].filter((side) => new RegExp(`\b${side}\b`, "i").test(text));
+/** A condition no label was written for, as the next tuning change might add one. */
+const madeUp = (name: string, value: number): Measure => ({ name, need: "min", threshold: 1, read: () => value });
+
+test("every move in the registry has a guide and a short instruction, and every condition a short plain label that is about it", () => {
   expect(ALL.length).toBe(26);
   for (const move of ALL) {
     const { title, how } = guide(move);
@@ -47,15 +52,82 @@ test("every move in the registry has a guide, a short instruction, and a label f
     expect(words, `${move.id}: "${how}"`).toBeGreaterThanOrEqual(3);
     expect(words, `${move.id}: "${how}"`).toBeLessThanOrEqual(6);
     const options = MEASURES[move.id] ?? [];
-    options.forEach((measures, index) => {
-      const labels = LABELS[move.id]?.(SIDES[index] ?? "left") ?? [];
-      expect(labels.length, `${move.id}: one label per condition`).toBe(measures.length);
-      expect(labels.some(([, rank]) => rank > 0), `${move.id}: something to show`).toBe(true);
-      for (const [label] of labels) {
-        expect(label.length, `${move.id}: "${label}"`).toBeLessThanOrEqual(28);
-        expect(label, move.id).not.toMatch(/degrees|shoulder widths|\bms\b|torso lengths|confidence/);
-      }
-    });
+    expect(options.length, `${move.id} has conditions`).toBeGreaterThan(0);
+    for (const measures of options) {
+      const labels = measures.map((measure) => labelOf(move.id, measure, measures));
+      // No two written rows of one checklist read the same.
+      const said = labels.filter(({ written }) => written).map(({ label }) => label);
+      expect(new Set(said).size, `${move.id}: ${said.join(" | ")}`).toBe(said.length);
+      measures.forEach((measure, index) => {
+        const { label, rank, written } = labels[index] ?? { label: "", rank: 0, written: false };
+        const about = `${move.id}: "${label}" for "${measure.name}"`;
+        expect(label.length, about).toBeGreaterThan(0);
+        expect(label.length, about).toBeLessThanOrEqual(28);
+        expect(label, about).not.toMatch(JARGON);
+        // A written label is one written for this very condition: its name, compared the same way. No other
+        // condition of the move has it. One made from the condition is shown only while it fails.
+        const kind = "anyOf" in measure ? "anyOf" : measure.need;
+        const key = conditionKey(measure.name);
+        const entries = (LABELS[move.id] ?? []).filter((each) => each.kind === kind && each.label === label && (key === each.key || key.startsWith(`${each.key},`)));
+        if (written) expect(entries.length, about).toBeGreaterThan(0);
+        else expect({ label, rank }, about).toEqual({ label: plainLabel(measure), rank: 0 });
+        // A condition on one arm or leg is never labelled with the other.
+        const named = sidesIn(measure.name);
+        if (named.length === 1) expect(sidesIn(label).filter((side) => side !== named[0]), about).toEqual([]);
+      });
+    }
+  }
+});
+
+test("a label goes with its condition, wherever the table puts it, and a condition nobody labelled gets one made from itself", () => {
+  // The same condition under other numbers and units is still that condition; turned round, it is another one.
+  expect(conditionKey("ms since left elbow was bent under 115")).toBe(conditionKey("ms since left elbow was bent under 90"));
+  expect(conditionKey("left wrist's rise in 300 ms from under -1 (both rising is a guard), shoulder widths")).toBe("left wrist's rise in # ms from under #, shoulder widths");
+  // Any condition with a written label will do: the label holds under a new threshold and unit, and not turned round.
+  const [id, single] = ALL.flatMap((move) => (MEASURES[move.id] ?? []).flat().map((measure) => [move.id, measure] as const))
+    .find(([moveId, measure]) => !("anyOf" in measure) && labelOf(moveId, measure).written) ?? [];
+  if (!id || !single || "anyOf" in single) throw new Error("no condition of any move has a written label: LABELS in src/coach/guide.ts is out of date");
+  const written = labelOf(id, single);
+  const head = single.name.split(",")[0] ?? single.name;
+  expect(labelOf(id, { ...single, threshold: single.threshold + 7, name: `${head}, furlongs` })).toEqual(written);
+  const turned = { ...single, need: single.need === "min" ? "max" as const : "min" as const };
+  expect(labelOf(id, turned).label === written.label && labelOf(id, turned).rank === written.rank, single.name).toBe(false);
+  expect(labelOf("no_such_move", single)).toEqual({ label: plainLabel(single), rank: 0, written: false });
+  // Two conditions one label would fit (the same thing measured two ways, say): neither is given it.
+  const twin = { ...single, name: `${head}, measured another way` };
+  expect(labelOf(id, twin).written).toBe(true);
+  expect([labelOf(id, single, [single, twin]).written, labelOf(id, twin, [single, twin]).written]).toEqual([false, false]);
+  expect(plainLabel({ ...madeUp("ms since right hand was across the body at chest height", 0), need: "max" })).toBe("First: right hand across");
+  expect(labelOf("jab", madeUp("hips turned to the camera in 200 ms, 3D degrees", 0))).toEqual({ label: "Hips turned to the camera", rank: 0, written: false });
+  expect(labelOf("no_such_move", madeUp("ms since left foot was on the floor (0.1 off it)", 0)).label).toBe("Not: left foot on the floor");
+
+  for (const move of ALL) {
+    const frames = sequence(PERFORMANCES[move.id] ?? []);
+    const history = histories(frames)[countedOn(move, frames)[0] ?? -1] ?? null;
+    const real = MEASURES[move.id] ?? [];
+    const labelled = new Set(real.flat().map((measure) => labelOf(move.id, measure).label));
+    const fired = liveChecks(move, history);
+    for (const check of fired.checks) expect(labelled.has(check.label), `${move.id}: "${check.label}"`).toBe(true);
+    // The table in another order: the same rows with the same ticks.
+    const reversed = liveChecks(move, history, undefined, 99, { [move.id]: real.map((measures) => [...measures].reverse()) });
+    const inOrder = liveChecks(move, history, undefined, 99);
+    const byLabel = (checks: typeof inOrder.checks) => [...checks].sort((a, b) => a.label.localeCompare(b.label));
+    expect(byLabel(reversed.checks), move.id).toEqual(byLabel(inOrder.checks));
+    // A new condition that fails: it is on the card under its own name, and the match is off. Nothing else is renamed.
+    const grown = { [move.id]: real.map((measures) => [madeUp("made-up thing, degrees", 0), ...measures]) };
+    for (const rows of [3, 4]) {
+      const added = liveChecks(move, history, undefined, rows, grown);
+      expect(added.matched, move.id).toBe(false);
+      expect(added.checks.length, move.id).toBeLessThanOrEqual(rows);
+      expect(added.checks.filter((check) => check.label === "Made-up thing"), move.id).toEqual([{ label: "Made-up thing", met: false, progress: 0 }]);
+      for (const check of added.checks) expect(check.label === "Made-up thing" || labelled.has(check.label), `${move.id}: "${check.label}"`).toBe(true);
+    }
+    // Every condition replaced: still a list, each row under its own name, met or not as it reads.
+    const replaced = liveChecks(move, history, undefined, 3, { [move.id]: [[madeUp("first new thing", 2), madeUp("second new thing", 0)]] });
+    expect(replaced.checks, move.id).toEqual([
+      { label: "First new thing", met: true, progress: 1 }, { label: "Second new thing", met: false, progress: 0 },
+    ]);
+    expect(liveChecks(move, history, undefined, 3, {}), move.id).toEqual({ checks: [], overall: 0, matched: false });
   }
 });
 
