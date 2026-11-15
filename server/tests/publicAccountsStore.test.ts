@@ -307,6 +307,8 @@ test("a password hash holds no place at the strangers' gate: only the statements
   const stand = scripted((text) => {
     if (text.includes("count(*)")) return [{ n: 0, hour: 0, day: 0 }];
     if (text.startsWith("select id::text")) return [row];
+    // The sign-in's session is written only for the hash it checked, and the row still holds it.
+    if (text.startsWith("insert into sessions")) return [{ made: 1 }];
     return text.startsWith("with made") ? [{ id: row.id }] : [];
   });
   // The strangers' gate as the routes hand it over, and the hash gate, both watched. The hashes wait until the test lets them go.

@@ -59,14 +59,15 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
         poseRef.current = frame;
         history = pushFrame(history, frame);
       }
-      const phase = link.view()?.state.phase;
+      // One read per frame: view() hands the events over once, so a second read would leave the effects with none.
+      const view = link.view();
+      const phase = view?.state.phase;
       const asked = askedMove(phase);
       const taps = touched.current.map((move) => ({ move, quality: 0.7, player: 1 as const }));
       touched.current = [];
       const input = mergeInputs(mergeInputs(keyboard.read(), tracker ? readPose(history, asked) : { held: new Set(), struck: [] }), { held: new Set(), struck: taps });
       noteInput(input, now / 1000);
       link.sendInput(input);
-      const view = link.view();
       // The guest sends strikes only, so its held defends are not tries.
       if (view && watchPhase(watchMiss, view.state.phase, { ...input, held: new Set() }, view.events, now)) noteMiss();
       if (view) {

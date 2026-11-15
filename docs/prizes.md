@@ -39,7 +39,7 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 **Proof in the repo.**
 
 - `deploy/vultr/Dockerfile`, `deploy/vultr/docker-compose.yml`, `deploy/vultr/Caddyfile`, `deploy/vultr/setup.sh`, `deploy/vultr/.env.example`.
-- [deploy-vultr.md](deploy-vultr.md): the steps, and "Run for real, once": a 1 vCPU / 2 GB instance in Dallas on Ubuntu 24.04, where Caddy got its own certificate and `https://odysseydojo.club` served the game from the instance. That doc is older than the move of the page to Vercel and than rooms being opened to visitors; PR #386, not merged, brings it up to date.
+- [deploy-vultr.md](deploy-vultr.md): the steps, and "Run for real, once": a 1 vCPU / 2 GB instance in Dallas on Ubuntu 24.04, where Caddy got its own certificate and `https://odysseydojo.club` served the game from the instance. PR #386 (merged) brought it up to date for public rooms and accounts on the hosted copy.
 - The room relay: `server/routes/rooms.ts`, `server/lib/rooms.ts`. What a hosted visitor may reach: `server/lib/localOnly.ts`.
 - Rooms for visitors: `PUBLIC_ROOMS=1` on the instance (PR #373; `server/lib/localOnly.ts`, `server/lib/roomLimits.ts`, `server/tests/publicRooms.test.ts`, and "The hosted copy" in [rooms-tunnel.md](rooms-tunnel.md)).
 - Rooms behind Vercel: the page's build long-polls for rooms (`VITE_ROOMS_POLL=1`, read in `src/net/transport.ts`, PR #382), because Vercel's proxy does not tell the server when a browser has gone.
@@ -50,10 +50,10 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 **Limits.**
 
 - Checked on the live site on 15 November with the smoke script above: a fight plays to the same result on both pages, a guest who dropped is let back in after about 18 seconds, and a guest hears that the host left after about 38 seconds. Both pages were headless Chrome on one machine. Not checked: two real devices, a real phone, a camera on either side. Try the two-device room yourself before you show it to a judge.
-- The waits are long because a page that only closes is noticed late behind Vercel. A leave call fixes that: the server side is on `main` (`POST /api/rooms/:code/leave`, PR #388); the page does not send it yet (PR #390, not merged).
+- The waits are long because a page that only closes is noticed late behind Vercel. A leave call fixes that: the page now sends `POST /api/rooms/:code/leave` when a tab is shut (PRs #388, #390, #398). The waits above were not measured again with it.
 - Everybody who comes through the same Vercel address counts as one caller for the room limits ([rooms-tunnel.md](rooms-tunnel.md)). A full hall may share one budget of rooms.
 - The god scan, speech made on demand, replays and FaceTime answer 403 on the hosted copy. It is the offline game plus rooms.
-- The Vercel config (`vercel.json`, `docs/deploy-vercel.md`) is in PR #351, which is not merged into `main`; the live page is deployed from that branch on top of `main`. So `main` alone does not show how the page is hosted.
+- The Vercel config is on `main`: [`vercel.json`](../vercel.json) and [deploy-vercel.md](deploy-vercel.md).
 
 ## 3. GoDaddy Registry (MLH): the domain
 
@@ -70,7 +70,7 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 - `www.odysseydojo.club` answered with the game page on 15 November. Nothing in the repo sets it up, so give out the bare name.
 - The worked example in the guide is `odysseydojo.us`; the real name is `odysseydojo.club`.
-- `api.odysseydojo.club` is live, but nothing on `main` names it: the file that sends the page's `/api/` calls there (`vercel.json`) is in open PR #351.
+- `api.odysseydojo.club` is live, and `vercel.json` on `main` sends the page's `/api/` calls there.
 - **To confirm with MLH that a `.club` name qualifies**, and that it was registered through the MLH GoDaddy Registry offer. The repo has no rule text and no receipt.
 
 ## 4. Gemini, ElevenLabs and Tiger Data
@@ -79,7 +79,7 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 **What we do with it.** No menu button opens this: the main menu's "Ask the Muse" button was taken out on 15 November, so it is reached only at `?ai=1`. That page opens "How do you fight?": the player types or says a sentence, our own server sends it to Gemini (`gemini-3.5-flash-lite`), and Gemini writes a fight: a title, what it heard, a named monster with its taunts, the place, the phases, and Homer's lines before and after. The page turns that into a fight on the normal fight screen. It is one call, text in and text out, made before the fight; the fight never waits on the network. The key stays on the server. With no key, or a slow or bad answer, the player gets one of five bundled fights ("A fight from the old songs").
 
-**Proof.** `server/ai/gemini.ts` (the calls and the model names), `server/routes/level.ts` (`POST /api/level`), `src/ai/ui/museDoor.tsx` (the `?ai=1` door, drawn by `src/App.tsx`), `src/ai/ui/MuseRoute.tsx`, `src/ai/ui/StyleScreen.tsx`, `src/ai/fallbacks.ts` (the bundled fights), `tests/ai/museDoor.test.ts`, `server/tests/app.test.ts`. Pictures in `docs/screenshots/muse/`: `menu-ask-the-muse-1280x720.png`, `card-gemini-fight.png`, `fight-gemini-monster.png`. [FEATURES.md](FEATURES.md) lists it as in the game.
+**Proof.** `server/ai/gemini.ts` (the calls and the model names), `server/routes/level.ts` (`POST /api/level`), `src/ai/ui/museDoor.tsx` (the `?ai=1` door, drawn by `src/App.tsx`), `src/ai/ui/MuseRoute.tsx`, `src/ai/ui/StyleScreen.tsx`, `src/ai/fallbacks.ts` (the bundled fights), `tests/ai/museDoor.test.ts`, `server/tests/app.test.ts`. No pictures of it are on `main` (`docs/screenshots/muse/` is not there). [FEATURES.md](FEATURES.md) lists it as built, not on the menu.
 
 **Show it.** On the demo laptop with the server and a key: open `http://localhost:5173/?ai=1`, type a sentence, press "Build my fight", and the card names the monster; then "Fight". `npm run preflight` prints a `gemini` line with the model that answered. Tried on 15 November: "like a Texas thunderstorm" came back from Gemini in 3.8 s as "The Wrath of Thrinacia", with the monster "Brontes the Squall".
 
@@ -103,7 +103,7 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 **Show it.** Open [accounts.md](accounts.md) at "What Tiger Data does for the game" and `server/lib/heroes.ts` for the SQL. On a laptop with the database set: `/api/account/status` answers `{"available":true}`. The hosted copy has the database connected too: `https://odysseydojo.club/api/account/status` gave the same answer on 15 November, and the Hall of heroes route answered with an empty list.
 
-**Limits.** **A player cannot see it on `main`, or on the hosted copy.** Nothing outside `src/account/` imports the sign-in dialog or the hall board, so the Account page shows neither. Nobody has tried to sign up on the live site. `PUBLIC_ACCOUNTS=1`, the setting meant to open accounts to visitors there, is in PR #384, not merged. Accounts are off unless the server has `DATABASE_URL`. To confirm whether the team enters this track at all with the feature not on a screen.
+**Limits.** The sign-in and the Hall of heroes are on the Account page (`src/screens/Account.tsx`). `PUBLIC_ACCOUNTS=1`, the setting that opens accounts to visitors on the hosted copy, is merged (PR #384). This page has no record of a sign-up on the live site: try one before you show it. Accounts are off unless the server has `DATABASE_URL`.
 
 ## 5. Cursor / SpaceXSI
 

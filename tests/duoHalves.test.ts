@@ -3,7 +3,7 @@
 import { expect, test } from "vitest";
 import type { Landmark } from "../src/core/types";
 import { createSeating } from "../src/duo/assign";
-import { createPairFinder, fromHalf, GIVE_UP, HALF_SHARE, halfStart, LOOK_BACK_EVERY, LOOK_BACK_TIMES, pairOf, PROBE_EVERY, sameBody } from "../src/duo/halves";
+import { GIVE_UP, HALF_SHARE, LOOK_BACK_EVERY, LOOK_BACK_TIMES, PROBE_EVERY, createPairFinder, createSlowWatch, fromHalf, halfStart, pairOf, sameBody } from "../src/duo/halves";
 import type { PairFinder, Side } from "../src/duo/halves";
 import { homeOf } from "../src/duo/split";
 import type { Body } from "../src/duo/split";
@@ -258,4 +258,19 @@ test("reset starts again from the whole picture", () => {
   scene.play(1);
   expect(scene.wholeReads).toBe(1);
   expect(scene.halfReads).toBe(0);
+});
+
+test("slow frames give the halves up only after three seconds in a row", () => {
+  const slow = createSlowWatch(40, 3000);
+  expect(slow(60, 1000)).toBe(false);
+  expect(slow(60, 3900)).toBe(false);
+  // One quick frame starts the count again.
+  expect(slow(15, 3950)).toBe(false);
+  expect(slow(60, 4000)).toBe(false);
+  expect(slow(60, 6900)).toBe(false);
+  expect(slow(60, 7001)).toBe(true);
+  // A frame at time zero still counts as the start.
+  const fromZero = createSlowWatch(40, 3000);
+  expect(fromZero(60, 0)).toBe(false);
+  expect(fromZero(60, 3001)).toBe(true);
 });
