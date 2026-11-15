@@ -121,6 +121,8 @@ export function App() {
         setNotice("");
         // Stay put: the player chooses the keyboard, never the failure.
         setCameraProblem(cameraErrorMessage(error));
+        // The camera problem card is on the main menu only: a start from the Multiplayer screen must not land back there with nothing said.
+        setPanel(null);
         dispatch({ type: "toTitle" });
       },
     );
