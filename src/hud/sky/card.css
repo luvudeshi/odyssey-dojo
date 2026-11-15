@@ -64,6 +64,18 @@
 @keyframes sky-pulse { from { stroke-opacity: 0.25; } to { stroke-opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .sky-card__pulse { animation: none; } }
 
+/* A short screen (1280 x 720 and the like): the card hangs from a fixed line under the boss bar instead of centring, so it
+   clears the bar above and the power banner below. Its figure and padding shrink; the real-life line (defend cards) waits. */
+@media (max-height: 780px) and (min-width: 761px) {
+  .sky-card { top: 136px; transform: none; }
+  .sky-card .move-guide, .sky-card:not(.sky-card--full) .move-guide { --mg-figure: 124px; }
+  .sky-card .mg-figure { padding: 6px 8px 4px; }
+  .sky-card__situation { display: none; }
+  .sky-card .sky-card__in { padding: 46px 22px 22px; gap: 6px; }
+  .sky-card--strike .sky-card__in, .sky-card--finish .sky-card__in { padding: 50px 22px 40px; }
+  .sky-card__word, .sky-card--mini .sky-card__word { font-size: min(40px, calc(100cqi / (var(--chars, 6) * 0.8))); }
+}
+
 /* A phone (the touch guest): a narrow card under the monster's bar, above the touch strip. Word, target, key. */
 @media (max-height: 520px), (max-width: 760px) {
   .sky-card { top: 106px; right: 10px; width: 210px; transform: none; }
