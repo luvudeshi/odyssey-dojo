@@ -24,6 +24,8 @@ const dataDir = process.env.TUNNEL_DATA_DIR ?? fileURLToPath(new URL("../server/
 const waitMs = Number(process.env.TUNNEL_WAIT_MS ?? 30_000);
 const beatMs = Number(process.env.TUNNEL_BEAT_MS ?? 5_000);
 const checkMs = Number(process.env.TUNNEL_CHECK_MS ?? 3_000);
+/** How long cloudflared gets to stop when asked, before it is killed. */
+const killMs = Number(process.env.TUNNEL_KILL_MS ?? 5_000);
 /** Where the guard is checked from outside. The tunnel's own address, except in tests, which have no tunnel. */
 const checkOrigin = process.env.TUNNEL_CHECK_ORIGIN ?? null;
 const CHECK_TRIES = 10;
@@ -98,12 +100,15 @@ function forget() {
   }
 }
 
-/** @param {number} port @returns {Promise<"game" | "no_game" | "unguarded" | "down">} */
+/** @param {number} port @returns {Promise<"game" | "no_game" | "vite" | "unguarded" | "down">} */
 async function probe(port) {
   const base = `http://127.0.0.1:${String(port)}`;
   try {
     const page = await fetch(`${base}/`, { signal: AbortSignal.timeout(3000) });
     if (!page.ok || !(page.headers.get("content-type") ?? "").includes("text/html")) return "no_game";
+    // Only a Vite dev server has this file. Vite answers a tunnel's host name with "Blocked request", so a guest would get an error page.
+    const devClient = await fetch(`${base}/@vite/client`, { signal: AbortSignal.timeout(3000) });
+    if (devClient.ok) return "vite";
     // A request marked the way cloudflared marks one must be refused on a route that spends a key (server/lib/localOnly.ts).
     // A server started before that guard existed lets it in. A GET spends nothing even there: the route only takes POST.
     const marked = await fetch(`${base}/api/level`, { headers: { "Cf-Ray": "tunnel-check" }, signal: AbortSignal.timeout(3000) });
@@ -161,6 +166,7 @@ async function main() {
   const game = await probe(port);
   if (game === "down") return giveUp(`Nothing answers on http://127.0.0.1:${String(port)}. Start the game first (npm start), then run this again.`);
   if (game === "no_game") return giveUp(`The server on port ${String(port)} is up but does not serve the game. Run npm run build, restart the server, then run this again.`);
+  if (game === "vite") return giveUp(`Port ${String(port)} is the Vite dev server. Point the tunnel at the game server (port 8787 unless you changed it).`);
   if (game === "unguarded") return giveUp(`The server on port ${String(port)} does not refuse the AI routes to a request from a tunnel, so no tunnel was opened. It runs old code: restart it, then run this again.`);
 
   // Exactly the command on Cloudflare's quick tunnel page. 127.0.0.1 rather than localhost: that is the address just probed.
@@ -176,9 +182,12 @@ async function main() {
   /** @param {NodeJS.Signals} signal */
   const stop = (signal) => {
     stopping = true;
+    // The address is taken back first: the server must not hand it out while cloudflared takes its time to stop.
+    clearInterval(beat);
+    forget();
     child.kill(signal);
     // A cloudflared that does not stop when asked is killed.
-    setTimeout(() => child.kill("SIGKILL"), 5000).unref();
+    setTimeout(() => child.kill("SIGKILL"), killMs).unref();
   };
   const waiting = setTimeout(() => {
     giveUp(`cloudflared gave no address in ${String(Math.round(waitMs / 1000))} seconds. Is there internet? ${FALLBACK}`);
@@ -202,7 +211,7 @@ async function main() {
     if (base === found) console.log("The server hands out this address: the room QR code uses it now. It can take a few seconds before it answers.");
     else if (base === null) console.log("The server reads this address on its next request. It can take a few seconds before it answers.");
     else console.log(`Warning: the server still hands out ${base}. Start it from this folder, without PUBLIC_BASE_URL or PUBLIC_URL, to use the tunnel.`);
-    console.log("Anyone who has the address can reach the rooms and the replay pages. Press Ctrl+C here when the demo is over.");
+    console.log("Anyone who has the address can join a room and open the replay pages. Press Ctrl+C here when the demo is over.");
 
     // The guard relies on cloudflared marking what it passes on. This looks from outside whether it does.
     for (let tries = 0; tries < CHECK_TRIES; tries += 1) {
