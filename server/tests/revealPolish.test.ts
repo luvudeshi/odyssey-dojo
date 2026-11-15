@@ -115,12 +115,27 @@ test("the reason is made into one sentence: a capital, single spaces, one full s
     // What the real model wrote for a gold picture: the god's name in lower case.
     ["You shine with the radiant and warm clothing colours of apollo.", "You shine with the radiant and warm clothing colours of Apollo."],
     [" \n ", ""],
+    // Marks around the whole line, in the shapes a model wraps an answer in.
+    ["'you stand tall.'", "You stand tall."],
+    ["\"you stand tall\".", "You stand tall."],
+    ["You stand tall.”", "You stand tall."],
+    ["**You stand tall.**", "You stand tall."],
+    ["Your stance is Poseidon's own", "Your stance is Poseidon's own."],
+    ["🔥 you burn bright", "🔥 You burn bright."],
+    ["- you stand", "- You stand."],
+    ["123 strikes of your fist.", "123 strikes of your fist."],
+    ["You stand tall. you never yield.", "You stand tall. You never yield."],
   ];
   for (const [raw, wanted] of cases) expect(asSentence(raw), raw).toBe(wanted);
   const long = asSentence(`you ${"stand firm ".repeat(60)}`);
   expect(long.length).toBeLessThanOrEqual(REASON_MAX);
   expect(long.endsWith(" firm.") || long.endsWith(" stand.")).toBe(true);
   expect(asSentence(`you ${"x".repeat(900)}`)).toHaveLength(REASON_MAX);
+  // A cut that lands inside an emoji does not leave half of it.
+  const fire = asSentence(`you ${"🔥".repeat(200)}`);
+  expect(fire.length).toBeLessThanOrEqual(REASON_MAX);
+  expect(fire.endsWith("🔥.")).toBe(true);
+  expect(fire).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
   // Every line we wrote ourselves already obeys the rule and speaks to the player. The browser's scan gives them unchanged.
   const offline = [...GOD_IDS.map(lotReason), ...[...Object.values(STANCES), ...Object.values(TINTS)].map(({ reason }) => reason)];
   for (const reason of offline) {
@@ -150,7 +165,17 @@ test("the server tidies the lines it shows, swaps one it cannot show for the god
   expect(await seen("earth-shaking, restless", tide.toLowerCase())).toEqual({ epithet: "earth-shaking, restless", reason: tide });
   expect((await seen(" \"Storm-Hearted, Unyielding.\" ", tide)).epithet).toBe("storm-hearted, unyielding");
   expect((await seen("Breaker of Troy's walls.", tide)).epithet).toBe("breaker of Troy's walls");
+  expect((await seen("Quick-witted and Laughing", tide)).epithet).toBe("quick-witted and laughing");
+  expect((await seen("'tide-turning'", tide)).epithet).toBe("tide-turning");
+  expect((await seen("tide-turning — ", tide)).epithet).toBe("tide-turning");
+  // An epithet over the limit is cut, and the cut leaves no comma, dash or stop at the end.
+  expect((await seen(`${"a".repeat(79)}, more`, tide)).epithet).toBe("a".repeat(79));
+  expect((await seen(`${"ab ".repeat(26)}c. d`, tide)).epithet).toBe(`${"ab ".repeat(26)}c`);
+  expect((await seen(`${"a".repeat(79)}🔥`, tide)).epithet).toBe("a".repeat(79));
   expect((await seen("Poseidon, earth-shaker", tide)).epithet).toBe(fixed.epithet);
+  // An empty epithet gets the fixed one. The god and a good reason are kept.
+  for (const empty of ["", "   ", ".", " \"\" "]) expect(await seen(empty, tide), empty).toEqual({ epithet: fixed.epithet, reason: tide });
+  expect((await seen("tide-turning", " ")).reason).toBe(fixed.reason);
   expect((await seen("tide-turning", "You carry a calm that storms cannot shake")).reason).toBe("You carry a calm that storms cannot shake.");
   expect((await seen("tide-turning", "Your wide stance is Poseidon's own.")).reason).toBe("Your wide stance is Poseidon's own.");
   const swapped = [
@@ -160,8 +185,16 @@ test("the server tidies the lines it shows, swaps one it cannot show for the god
     "There is no person in the photo, but your colours are as stormy as the sea.",
     "Nobody is visible, yet your scene has a restless energy.",
     "You are not in the frame, so your colours decided it.",
+    "No clear player is in view, yet your scene has the deep green of the sea.",
+    "Although no one appears in the frame, your colours speak of the tide.",
+    "The frame is empty, yet your colours are stormy.",
+    "Without a person to read, your colours decided it.",
+    "The picture shows only a test pattern, but your colours are bold.",
+    "There isn't anyone here, but your colours are stormy.",
   ];
   for (const reason of swapped) expect((await seen("tide-turning", reason)).reason, reason).toBe(fixed.reason);
+  // Flattering lines with "no" or "nothing" in them are not mistaken for it.
+  for (const reason of ["You yield to no one.", "Nothing can hold you back."]) expect((await seen("tide-turning", reason)).reason).toBe(reason);
   // When the model names no god at all the server says unavailable, and the browser then runs its own scan.
   for (const god of ["none", "no person", null]) {
     answer.value = { god, epithet: "unseen", reason: "No player is visible.", rival_god: "athena" };
