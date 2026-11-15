@@ -45,6 +45,15 @@ to hurt; "If rooms get busy" at the end says when.
   CDN waits up to 120 seconds for the backend to start sending, and that after the first byte the backend can run
   longer than two minutes as long as it keeps sending data at least once every 120 seconds.
   https://vercel.com/changelog/cdn-origin-timeout-increased-to-two-minutes
+- **Vercel does not tell the room server that a browser has gone (measured 15 Nov, not from the docs).** When a
+  page closes, the passed-on request stays open on the Vultr side. With the event stream that meant the relay never
+  saw a member leave: a guest who dropped was still refused after 45 s ("That room already has two fighters"), and
+  a guest was never told the host left. Straight to the Vultr server both worked. So this build sets
+  `VITE_ROOMS_POLL=1` (`build.env` in `vercel.json`): the room link uses long polling only (`src/net/transport.ts`),
+  polls end on their own, and the relay's 20 s rule works. Checked on the live site with
+  `node scripts/rooms-smoke.mjs --url=https://odysseydojo.club`: the fight plays, the guest is let back in 18 s
+  after it asks, and it is told the host left after 38 s (a held poll of up to 20 s, then the 20 s rule; 0.1 s
+  when not behind Vercel).
 - **Headers the room server receives.** Vercel forwards `x-real-ip`, `x-forwarded-for` (both the visitor's public
   address), `x-forwarded-host` and `x-forwarded-proto` to an external origin. It overwrites a visitor's own
   `X-Forwarded-For`. It also sends `x-vercel-id`.
