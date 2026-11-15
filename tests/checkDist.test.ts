@@ -2,7 +2,7 @@
 // passes, and nothing the script prints holds a value. No build is run here and the real .env is never read:
 // every run of the script is given a made-up .env in a temporary folder.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { brotliCompressSync, gzipSync } from "node:zlib";
@@ -109,7 +109,8 @@ describe("which variables are secrets", () => {
     const example = [`${GEMINI_NAME}=`, "# NEW_VOICE_TOKEN=", "# AI_SERVER_PORT=8787", "export STORE_SECRET=x", "# A note with KEY = in it"].join("\n");
     expect(serverKeyNames(example)).toEqual([...SERVER_KEY_NAMES, "NEW_VOICE_TOKEN", "STORE_SECRET"]);
     expect(serverKeyNames("")).toEqual(SERVER_KEY_NAMES);
-    expect(serverKeyNames(readFileSync(".env.example", "utf8"))).toEqual(SERVER_KEY_NAMES);
+    // The repo's own example may gain names later; the server's two must always be among them.
+    expect(serverKeyNames(readFileSync(".env.example", "utf8"))).toEqual(expect.arrayContaining(SERVER_KEY_NAMES));
   });
 });
 
@@ -188,6 +189,18 @@ describe("key shapes and key names, with no .env at all", () => {
     expect(kinds(`headers:{"xi-api-key":"${ELEVEN_KEY}"}`)).toEqual([`shape: ${KEY_SHAPES[1]?.label ?? ""}`]);
   });
 
+  it("finds a key right after an escape such as a line break, and one with more text glued on behind", () => {
+    const google = `shape: ${KEY_SHAPES[0]?.label ?? ""}`;
+    const eleven = `shape: ${KEY_SHAPES[1]?.label ?? ""}`;
+    // As a bundler writes a string: the two characters \ and n, not a real line break.
+    for (const escape of ["\\n", "\\t", "\\r", "\\u000a"]) {
+      expect(kinds(`const env="PORT=8787${escape}${GOOGLE_KEY}"`), `a Google key after ${escape}`).toEqual([google]);
+      expect(kinds(`const env="PORT=8787${escape}${ELEVEN_KEY}"`), `an ElevenLabs key after ${escape}`).toEqual([eleven]);
+    }
+    expect(kinds(`const k="${GOOGLE_KEY}_v2"`)).toEqual([google]);
+    expect(kinds(`const k="${GOOGLE_KEY}-old"`)).toEqual([google]);
+  });
+
   it("does not take a near miss for a key", () => {
     const short = GOOGLE_KEY.slice(0, 30);
     const insideBlob = `Zm9v${GOOGLE_KEY}YmFy`;
@@ -216,6 +229,16 @@ describe("what is printed", () => {
       `LEAK assets/app.js: a string shaped like a Google API key, at byte 19, and 1 more in this file`,
     ]);
     expectNothingOf(GOOGLE_KEY, lines.join("\n"));
+  });
+
+  it("follows a linked folder, and stops at a link that leads back into the folder", () => {
+    const outside = folder("linked-outside", { "deep/keys.js": `const k="${GOOGLE_KEY}"` });
+    const dist = folder("linked-dist", { "index.html": "<!doctype html>" });
+    symlinkSync(outside, join(dist, "extra"), "dir");
+    symlinkSync(dist, join(dist, "loop"), "dir");
+    const { files, found } = scanFolder(dist, secretsOf({ [GEMINI_NAME]: GOOGLE_KEY }), []);
+    expect(files).toBe(2);
+    expect(found.map(({ file, hit }) => `${file}: ${hit.kind}`)).toEqual(["extra/deep/keys.js: value", "extra/deep/keys.js: shape"]);
   });
 
   it("takes a value out of any text before it is printed", () => {
@@ -274,6 +297,24 @@ describe("the script, run from the command line", () => {
     expect(output).toContain(`LEAK assets/app.js: the value of DEPLOY_TOKEN (from ${SHELL}), as written`);
     expect(output).toContain(`LEAK assets/app.js: the variable name ${GEMINI_NAME}`);
     expectNothingOf(shellKey, output);
+  });
+
+  it("names the file as it is, even when a secret that is an ordinary word is part of the file's name", () => {
+    const word = ["Poly", "phemus"].join("");
+    const wordEnv = join(folder("word-env", { ".env": `ROOM_PASSWORD=${word}\n` }), ".env");
+    const dist = folder("word", { ...clean, [`assets/classic${word}-DyOO2vWK.js`]: `const boss="${word}"` });
+    const { code, output } = run([`--dist=${dist}`, `--env=${wordEnv}`]);
+    expect(code).toBe(1);
+    expect(output).toContain(`LEAK assets/classic${word}-DyOO2vWK.js: the value of ROOM_PASSWORD (from .env), as written, at byte`);
+  });
+
+  it("exits 2, not 1, when --env is a folder or empty, and prints no stack trace", () => {
+    const dist = folder("clean", clean);
+    for (const env of [scratch, "", join(envFile, "..")]) {
+      const { code, output } = run([`--dist=${dist}`, `--env=${env}`]);
+      expect(output, `--env=${env === "" ? "(empty)" : "a folder"}`).toMatch(/^check-dist: .* is not a file\n$/);
+      expect(code).toBe(2);
+    }
   });
 
   it("exits 2 when it cannot do its job", () => {

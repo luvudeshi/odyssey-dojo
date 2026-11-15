@@ -11,7 +11,8 @@
 //   --env=<file>    the .env to take values from (default: .env at the repo root, when there is one)
 //
 // Exit codes: 0 nothing found. 1 a leak: the file and the variable NAME are printed, never the value, any part
-// of it, or its length. 2 the check could not do its job (no dist, an empty dist, no file at --env, a failed build).
+// of it, or its length. 2 the check could not do its job (no dist, an empty dist, no file at --env or a folder
+// there, a failed build). A wrong path is never reported as 1: 1 means a leak and nothing else.
 // Which variables count as secrets, which forms of a value are looked for, and what is not covered: docs/check-dist.md
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
@@ -43,13 +44,19 @@ const SECRET_WORDS = new Set(["KEY", "KEYS", "APIKEY", "TOKEN", "TOKENS", "SECRE
 const COUNT_CAP = 99;
 
 /**
- * Key shapes. Each must stand alone (not in the middle of a longer run of the same characters), so a long
- * base64 blob that happens to hold the first letters is not a hit.
+ * What may come right before a key-shaped string: nothing a key could be made of (so the same letters in the
+ * middle of a long base64 blob are not a hit), or an escape as a bundler writes one into a string (\n, \t,
+ * \u000a), whose last character would otherwise read as part of a longer word.
+ */
+const AFTER_AN_ESCAPE = String.raw`(?<=\\[nrtbfv])|(?<=\\u[0-9a-fA-F]{4})`;
+
+/**
+ * Key shapes. What comes after the key does not matter: a key with more text glued on behind is still a key.
  * @type {KeyShape[]}
  */
 export const KEY_SHAPES = [
-  { label: "a Google API key", pattern: /(?<![\w-])AIza[\w-]{35}(?![\w-])/g },
-  { label: "an ElevenLabs API key", pattern: /(?<![A-Za-z0-9])sk_[A-Za-z0-9]{32,}/g },
+  { label: "a Google API key", pattern: new RegExp(String.raw`(?:(?<![\w-])|${AFTER_AN_ESCAPE})AIza[\w-]{35}`, "g") },
+  { label: "an ElevenLabs API key", pattern: new RegExp(`(?:(?<![A-Za-z0-9])|${AFTER_AN_ESCAPE})sk_[A-Za-z0-9]{32,}`, "g") },
 ];
 
 /**
@@ -275,19 +282,25 @@ export function layers(path, bytes) {
 }
 
 /**
- * Every file under a folder, as paths relative to it with forward slashes, sorted. A link to a file is read
- * as that file; a link to a folder is not followed.
+ * Every file under a folder, as paths relative to it with forward slashes, sorted. A link is followed, to a
+ * file or to a folder, because a static server follows it too. Each real folder is read once, so a link that
+ * leads back into the folder ends there.
  * @param {string} folder
  * @param {string} [inside]
+ * @param {Set<string>} [seen] the real paths of the folders already read
  * @returns {string[]}
  */
-export function walk(folder, inside = "") {
+export function walk(folder, inside = "", seen = new Set()) {
+  const real = realpathSync(join(folder, inside));
+  if (seen.has(real)) return [];
+  seen.add(real);
   /** @type {string[]} */
   const files = [];
   for (const entry of readdirSync(join(folder, inside), { withFileTypes: true })) {
     const path = inside === "" ? entry.name : `${inside}/${entry.name}`;
-    if (entry.isDirectory()) files.push(...walk(folder, path));
-    else if (entry.isFile() || (entry.isSymbolicLink() && statSync(join(folder, path), { throwIfNoEntry: false })?.isFile() === true)) files.push(path);
+    const target = entry.isSymbolicLink() ? statSync(join(folder, path), { throwIfNoEntry: false }) : entry;
+    if (target?.isDirectory() === true) files.push(...walk(folder, path, seen));
+    else if (target?.isFile() === true) files.push(path);
   }
   return files.sort();
 }
@@ -323,7 +336,17 @@ export function hitLine(file, hit) {
   const what =
     hit.kind === "value" ? `the value of ${hit.name} (from ${hit.source}), ${hit.form}` : hit.kind === "shape" ? `a string shaped like ${hit.name}` : `the variable name ${hit.name}`;
   const more = hit.count > 1 ? `, and ${hit.count >= COUNT_CAP ? "many" : String(hit.count - 1)} more in this file` : "";
-  return `LEAK ${file}: ${what}, at byte ${String(hit.at)}${more}`;
+  return `${hitStart(file)}${what}, at byte ${String(hit.at)}${more}`;
+}
+
+/**
+ * How a report line begins. The file's path is printed as it is, never with a part taken out: it is in dist,
+ * so it is public already, and a gap in it would show where a value sits and hide which file to open.
+ * @param {string} file
+ * @returns {string}
+ */
+function hitStart(file) {
+  return `LEAK ${file}: `;
 }
 
 /**
@@ -385,18 +408,20 @@ async function main(args, env) {
   const envOption = option("env");
   const dist = resolve(distOption ?? join(ROOT, "dist"));
   const envFile = resolve(envOption ?? join(ROOT, ".env"));
-  if (!existsSync(envFile) && envOption !== null) {
-    say(`no file at ${envFile}`);
-    return 2;
-  }
 
-  const variables = existsSync(envFile) ? envFiles(envFile).flatMap((file) => readVariables(decodeEnvFile(readFileSync(file)), basename(file))) : [];
-  const picked = pickSecrets([...variables, ...shellVariables(env)]);
-  secrets = picked.secrets;
-  const example = join(ROOT, ".env.example");
-  const names = serverKeyNames(existsSync(example) ? readFileSync(example, "utf8") : "");
-
+  // Everything from here on is inside the try: a path that cannot be read must end in 2, never in a crash
+  // with exit code 1, which would read as a leak.
   try {
+    if (envOption !== null && statSync(envFile, { throwIfNoEntry: false })?.isFile() !== true) {
+      say(existsSync(envFile) ? `${envFile} is not a file` : `no file at ${envFile}`);
+      return 2;
+    }
+    const variables = existsSync(envFile) ? envFiles(envFile).flatMap((file) => readVariables(decodeEnvFile(readFileSync(file)), basename(file))) : [];
+    const picked = pickSecrets([...variables, ...shellVariables(env)]);
+    secrets = picked.secrets;
+    const example = join(ROOT, ".env.example");
+    const names = serverKeyNames(existsSync(example) ? readFileSync(example, "utf8") : "");
+
     if (distOption === null && !args.includes("--no-build")) {
       const { build } = await import("vite");
       // Build with the env files next to the one being checked, as a build in that folder would read them.
@@ -428,7 +453,10 @@ async function main(args, env) {
       say("clean. Nothing found in the built game.");
       return 0;
     }
-    for (const { file, hit } of result.found) process.stdout.write(`${redact(hitLine(file, hit), secrets)}\n`);
+    for (const { file, hit } of result.found) {
+      const start = hitStart(file);
+      process.stdout.write(`${start}${redact(hitLine(file, hit).slice(start.length), secrets)}\n`);
+    }
     const leaking = new Set(result.found.map(({ file }) => file)).size;
     say(`${plural(result.found.length, "finding")} in ${plural(leaking, "file")}. Values are never printed here: do not paste one anywhere either.`);
     say("If a real key is in a built file, treat it as public: make a new key and retire the old one. See docs/check-dist.md.");
@@ -454,5 +482,10 @@ function startedDirectly() {
 }
 
 if (startedDirectly()) {
-  process.exitCode = await main(process.argv.slice(2), process.env);
+  // The last net: whatever main did not catch still ends in 2, with the kind of error and none of its text.
+  process.exitCode = await main(process.argv.slice(2), process.env).catch((/** @type {unknown} */ error) => {
+    const kind = error instanceof Error && "code" in error && typeof error.code === "string" ? error.code : "an error";
+    process.stdout.write(`check-dist: could not finish: ${kind}\n`);
+    return 2;
+  });
 }
