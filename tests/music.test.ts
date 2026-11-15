@@ -60,6 +60,8 @@ class FakeSource {
   to: FakeGain | null = null;
   started: { readonly when: number; readonly offset: number } | null = null;
   stopped: number | null = null;
+  /** What the music asked to be told when the clip stops. The test calls it to say the clip played to its end. */
+  onended: (() => void) | null = null;
   readonly playbackRate = new FakeParam(1);
 
   connect(node: FakeGain): FakeGain {
@@ -763,4 +765,97 @@ test("a scene asked for during a pause starts on resume, and music first asked f
   context().currentTime = 9;
   music.resumeMusic();
   expect(must(context().music[1]).started).toEqual({ when: 9, offset: 0 });
+});
+
+// Measured on the result screen: the sting ended 6 to 7.5 s after the fight and nothing played after Homer's line, so the
+// screen sat in silence until a button was pressed.
+test.each(["win", "loss"] as const)("a %s sting that plays to its end is followed by the menu loop, faded in slowly, and asking for the menu later changes nothing", async (scene) => {
+  const { music } = await inBrowser(["menu", "fight", "win", "loss"]);
+  music.startMusic("menu");
+  await loaded();
+  const menuLevel = must(fader(must(context().music[0])).events[1]).value;
+  music.startMusic("fight");
+  context().currentTime = 40;
+  music.startMusic(scene);
+  const sting = must(context().music.at(-1));
+  expect(context().music.length).toBe(3);
+
+  context().currentTime = 46;
+  sting.onended?.();
+  expect(context().music.length).toBe(4);
+  const menu = must(context().music[3]);
+  expect(menu.loop).toBe(true);
+  expect(menu.started?.when).toBe(46);
+  // As loud as the menu loop always is, reached over three seconds, not one. It goes through the dip, so it stays under Homer.
+  expect(fader(menu).events).toEqual([{ kind: "set", value: 0, time: 46 }, { kind: "ramp", value: menuLevel, time: 49 }]);
+  expect(dip(menu)).toBe(dip(must(context().music[0])));
+
+  // The map asks for the menu when the result screen is left, and a screen may ask for the sting again: nothing restarts.
+  context().currentTime = 60;
+  for (let i = 0; i < 5; i++) music.startMusic("menu");
+  for (let i = 0; i < 5; i++) music.startMusic(scene);
+  sting.onended?.();
+  expect(context().music.length).toBe(4);
+  expect(fader(menu).events.length).toBe(2);
+  expect(menu.stopped).toBeNull();
+
+  // "Fight again": the loop fades out like any other scene, and the next sting plays.
+  music.startMusic("fight");
+  expect(fader(menu).events.at(-1)).toEqual({ kind: "ramp", value: 0, time: 61 });
+  expect(menu.stopped).toBeGreaterThanOrEqual(61);
+  context().currentTime = 90;
+  music.startMusic(scene);
+  expect(context().music.length).toBe(6);
+  expect(must(context().music[5]).loop).toBe(false);
+});
+
+test("a sting cut short by the next scene, or by stopping the music, is not followed by the menu loop", async () => {
+  const { music } = await inBrowser(["menu", "fight", "win", "loss"]);
+  music.startMusic("fight");
+  await loaded();
+  context().currentTime = 10;
+  music.startMusic("loss");
+  const loss = must(context().music[1]);
+  // "Fight again" two seconds into the sting: it is faded out and stopped, and says so a second later.
+  context().currentTime = 12;
+  music.startMusic("fight");
+  context().currentTime = 13.1;
+  loss.onended?.();
+  expect(context().music.length).toBe(3);
+  expect(must(context().music[2]).stopped).toBeNull();
+
+  music.startMusic("win");
+  const win = must(context().music[3]);
+  music.stopMusic();
+  win.onended?.();
+  expect(context().music.length).toBe(4);
+  // And a loop is never followed by anything.
+  expect(must(context().music[0]).onended).toBeNull();
+});
+
+test("a sting that ends during a pause is followed by the menu loop on resume, and with no menu clip it is followed by silence", async () => {
+  const { music } = await inBrowser(["menu", "fight", "win"]);
+  music.startMusic("fight");
+  await loaded();
+  music.startMusic("win");
+  const sting = must(context().music[1]);
+  context().currentTime = 5.9;
+  music.pauseMusic();
+  sting.onended?.();
+  expect(context().music.length).toBe(2);
+  context().currentTime = 20;
+  music.resumeMusic();
+  expect(context().music.length).toBe(3);
+  expect(must(context().music[2]).loop).toBe(true);
+  expect(must(context().music[2]).started?.when).toBe(20);
+
+  const bare = await inBrowser(["fight", "win"]);
+  bare.music.startMusic("fight");
+  await loaded();
+  bare.music.startMusic("win");
+  must(context().music[1]).onended?.();
+  bare.music.startMusic("menu");
+  expect(context().music.length).toBe(2);
+  bare.music.startMusic("fight");
+  expect(context().music.length).toBe(3);
 });
