@@ -37,9 +37,9 @@ export interface Config {
  * the server is never still working when the page has given up. docs/failure-drill.md has the table, and
  * server/tests/failureDrill.test.ts holds both rules.
  *
- * - levelMs: the page waits LEVEL_TIMEOUT_MS (src/ai/client.ts). A real level took 2.9 to 3.6 s.
- * - revealMs and revealHedgeMs: the page waits REVEAL_BUDGET_MS (src/ai/revealGod.ts). A real scan took 1.0 to 2.3 s,
- *   so a second attempt started at 2.5 s still has time to answer before revealMs.
+ * - levelMs: the page waits LEVEL_TIMEOUT_MS (src/ai/client.ts). A real level took 2.9 to 3.6 s, and 1 in 11 was not back by 4.8 s.
+ * - revealMs and revealHedgeMs: the page waits REVEAL_BUDGET_MS (src/ai/revealGod.ts). A real scan took 0.85 to 2.3 s,
+ *   so a second attempt started at 2.5 s is not started for nothing and still has time to answer before revealMs.
  * - portraitMs: the one limit over five seconds, because a painting takes that long. Nothing waits on it: the god is
  *   shown first and the picture is filled in when it comes (PORTRAIT_TIMEOUT_MS in src/ai/reveal.ts).
  * - speechMs: the page waits SPEECH_WAIT_MS (src/audio/narration.ts). A real line took 0.2 to 0.6 s.
