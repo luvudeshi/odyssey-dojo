@@ -3,9 +3,10 @@
    images the browser rasterises once; nothing runs an SVG filter per frame. Health changes move only clip-path and
    transform; the flame strip and the sparks loop on transform and opacity. Reduced motion gets a still version. */
 .sky-hud {
-  --fg-cam-w: clamp(10rem, 16.7vw, 15rem); /* the camera panel's width (cameraView.css) */
-  --fg-lintel-h: 64px;
-  --fg-lintel-bottom: calc(20px + var(--fg-cam-w) * 0.75 + 18px); /* just above the panel's pearl rim */
+  /* The player's crescent: anchored like the power ring (bottom, offset from the centre), under the hero's feet.
+     The x offset is to the crescent's middle; the bottom is to the foot of its 240 x 60 box. Both zoom with the HUD. */
+  --fg-cres-x: -180px;
+  --fg-cres-bottom: 44px;
   --fg-lava: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='24'%3E%3Cfilter id='a' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025 0.3' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .93 0 0 0 0 .55 4 0 0 0 -2.15'/%3E%3C/filter%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.025 0.3' numOctaves='2' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .55 0 0 0 0 .08 0 0 0 0 0 0 -3.2 0 0 1.25'/%3E%3C/filter%3E%3Crect width='240' height='24' filter='url(%23b)'/%3E%3Crect width='240' height='24' filter='url(%23a)'/%3E%3C/svg%3E");
   --fg-slag: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='16'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.25' numOctaves='3' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .24 0 0 0 0 .2 0 0 0 .9 -.4'/%3E%3C/filter%3E%3Crect width='160' height='16' filter='url(%23n)'/%3E%3Cpath d='M0 8 L9 6 L17 10 L28 7 L36 9 L47 5 L58 9 L66 8 L79 11 L88 7 L99 9 L111 6 L120 10 L133 8 L142 6 L151 9 L160 8 M47 5 L52 1 M99 9 L104 14 M133 8 L137 13' stroke='%23e0501e' stroke-opacity='.8' stroke-width='1.1' fill='none'/%3E%3C/svg%3E");
   --fg-fire: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='28'%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ff7a1e' stop-opacity='0'/%3E%3Cstop offset='.55' stop-color='%23ff9a2e' stop-opacity='.75'/%3E%3Cstop offset='1' stop-color='%23ffe08a'/%3E%3C/linearGradient%3E%3Cfilter id='f' x='0' y='-50%25' width='1' height='2'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.045 0.16' numOctaves='3' seed='4' stitchTiles='stitch'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='20' xChannelSelector='R' yChannelSelector='G'/%3E%3C/filter%3E%3Crect x='-8' y='10' width='272' height='22' fill='url(%23g)' filter='url(%23f)'/%3E%3C/svg%3E");
@@ -76,23 +77,40 @@
 .sky-hud .fg-scroll { fill: none; stroke: #d9a052; stroke-width: 4; stroke-linecap: round; }
 .sky-hud .fg-stud { fill: #fff0c0; }
 
-/* ---- the player's lintel, resting on the camera panel at the bottom left ---- */
-.sky-hud .fg-lintel {
-  position: absolute; left: 12px; bottom: var(--fg-lintel-bottom); width: calc(var(--fg-cam-w) + 16px); height: var(--fg-lintel-h); box-sizing: border-box;
-  display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 4px; background: #160b05;
-  box-shadow: 0 0 0 3px #b77a36, 0 0 0 5px #3e2109, inset 0 0 0 1px #000, 0 6px 14px rgba(0, 0, 0, 0.6);
-}
-.sky-hud .fg-medal { flex: none; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(#160b05 0 58%, transparent 60%), radial-gradient(circle at 35% 28%, #f3c887, #a8681f 50%, #4f2b0b); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
-.sky-hud .fg-helmet { width: 34px; height: 36px; }
+/* ---- the player's crescent on the floor, left of the power ring ---- */
+.sky-hud .fg-crescent { position: absolute; left: calc(50% + var(--fg-cres-x)); bottom: var(--fg-cres-bottom); width: 240px; height: 60px; transform: translateX(-50%); }
+.sky-hud .fg-crescent__arc { position: absolute; inset: 0; width: 240px; height: 60px; overflow: visible; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6)); }
+.sky-hud .fg-arc { fill: none; stroke-linecap: round; }
+.sky-hud .fg-arc--rim { stroke: #2a1406; stroke-width: 21; }
+.sky-hud .fg-arc--lip { stroke: #c28640; stroke-width: 18; }
+.sky-hud .fg-arc--bed { stroke: #0b0604; stroke-width: 13; }
+.sky-hud .fg-arc--slag { stroke: #1c130e; stroke-width: 11; }
+.sky-hud .fg-arc--crack { stroke: #e0501e; stroke-width: 1; stroke-opacity: 0.7; stroke-dasharray: 2 1.2 0.8 2.4; }
+.sky-hud .fg-arc--hot { stroke: #e8260c; stroke-width: 11; }
+/* The masks cut the strokes to length; pathLength is 100, so the offset is the share lost. */
+.sky-hud .fg-arc--hotmask, .sky-hud .fg-arc--keptmask { stroke: #fff; stroke-width: 34; stroke-linecap: butt; stroke-dasharray: 100 200; stroke-dashoffset: calc((1 - var(--kept)) * 100); }
+.sky-hud .fg-arc--hotmask { transition: stroke-dashoffset 0.55s ease-in 0.7s; }
+.sky-hud .fg-arc--keptmask { transition: stroke-dashoffset 0.18s ease-out; }
+.sky-hud .fg-arc--glow { stroke: #ff7a1a; stroke-width: 26; stroke-opacity: 0.28; }
+.sky-hud .fg-arc--outer { stroke: #b8340a; stroke-width: 11; }
+.sky-hud .fg-arc--mid { stroke: #ff8410; stroke-width: 7.5; }
+.sky-hud .fg-arc--core { stroke: #ffcc3a; stroke-width: 3.5; }
+.sky-hud .fg-arc--streak { stroke: #fff2a0; stroke-width: 1.6; stroke-opacity: 0.8; stroke-dasharray: 3 2 1 4 6 3; }
+.sky-hud .fg-arc--shine { stroke: #fff; stroke-width: 1.5; stroke-opacity: 0.6; transform: translateY(-3px); }
+.sky-hud .fg-arc--fire { stroke: #ff9a2e; stroke-width: 6; stroke-opacity: 0.55; transform: translateY(-7px); animation: fg-flicker 0.45s ease-in-out infinite alternate; }
+@keyframes fg-flicker { from { opacity: 1; } to { opacity: 0.45; } }
+.sky-hud .fg-spot { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: transform 0.18s ease-out; }
+.sky-hud .fg-spot .fg-glow { right: -4px; top: -9px; width: 8px; height: 18px; }
+/* Helmet, YOU and the number stacked over the crescent's left tip; the medal is centred on the tip. */
+.sky-hud .fg-tag { position: absolute; right: calc(100% - 42px); bottom: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; white-space: nowrap; text-shadow: 0 2px 3px #000, 0 0 6px #000; }
+.sky-hud .fg-tag__name { font: 700 15px/1 var(--sky-label); letter-spacing: 0.22em; margin-right: -0.22em; text-transform: uppercase; color: #f6e4c2; }
+.sky-hud .fg-tag__num { margin-bottom: 4px; font: 700 26px/1 var(--sky-display); color: #ffd27a; font-variant-numeric: tabular-nums; }
+.sky-hud .fg-tag__num small { margin-left: 2px; font-size: 14px; color: #e8cfa0; }
+.sky-hud .fg-medal { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(#160b05 0 58%, transparent 60%), radial-gradient(circle at 35% 28%, #f3c887, #a8681f 50%, #4f2b0b); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7); }
+.sky-hud .fg-helmet { width: 30px; height: 32px; }
 .sky-hud .fg-helmet__crest { fill: none; stroke: #c3301a; stroke-width: 9; stroke-linecap: round; }
 .sky-hud .fg-helmet__shell { fill: #f2c072; }
 .sky-hud .fg-helmet__slit { fill: none; stroke: #160b05; stroke-width: 3; }
-.sky-hud .fg-lintel__body { flex: 1; min-width: 0; }
-.sky-hud .fg-lintel__row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; white-space: nowrap; }
-.sky-hud .fg-lintel__name { font: 700 15px/1 var(--sky-label); letter-spacing: 0.22em; text-transform: uppercase; color: #f6e4c2; }
-.sky-hud .fg-lintel__num { font: 700 24px/1 var(--sky-display); color: #ffd27a; font-variant-numeric: tabular-nums; }
-.sky-hud .fg-lintel__num small { margin-left: 2px; font-size: 13px; color: #e8cfa0; }
-.sky-hud .fg-lintel .fg-channel { --h: 13px; margin-right: 2px; }
 
 /* ---- score and combo: top right, smaller than the boss ---- */
 .sky-hud .fg-score { position: absolute; top: 10px; right: 20px; display: flex; align-items: center; gap: 12px; }
@@ -112,13 +130,15 @@
 .sky-hud .fg-coin small { font: 700 9px/1.2 var(--sky-label); letter-spacing: 0.2em; text-transform: uppercase; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sky-hud .fg-flame { animation: none; }
+  .sky-hud .fg-flame, .sky-hud .fg-arc--fire { animation: none; }
   .sky-hud .fg-spark { display: none; }
-  .sky-hud .fg-hot, .sky-hud .fg-metal, .sky-hud .fg-front { transition: none; }
+  .sky-hud .fg-hot, .sky-hud .fg-metal, .sky-hud .fg-front, .sky-hud .fg-spot, .sky-hud .fg-arc--hotmask, .sky-hud .fg-arc--keptmask { transition: none; }
 }
 
-/* A phone held upright: the boss bar runs edge to edge and the score drops under it on the right. */
+/* A phone held upright: the boss bar runs edge to edge and the score drops under it on the right. The crescent moves to
+   the middle, above the camera panel and the power ring. */
 @media (max-width: 760px) {
+  .sky-hud { --fg-cres-x: 0px; --fg-cres-bottom: 170px; }
   .sky-hud .fg-boss { top: 6px; width: calc(100% - 16px); min-width: 0; }
   .sky-hud .fg-boss__row { padding: 0 30px; gap: 6px; }
   .sky-hud .fg-boss__name { font-size: 22px; letter-spacing: 0.1em; margin-right: -0.1em; }
@@ -129,8 +149,4 @@
   .sky-hud .fg-score__num { font-size: 26px; }
   .sky-hud .fg-coin { width: 44px; height: 44px; }
   .sky-hud .fg-coin b { font-size: 18px; }
-}
-/* Big screens zoom the whole HUD (top.css), but the camera panel does not grow: undo the zoom on what sits on it. */
-@media (min-width: 1700px) and (min-height: 950px) {
-  .fight > .sky-hud .fg-lintel, .fight > .sky-hud .hb-defend__word { zoom: 0.7407; }
 }

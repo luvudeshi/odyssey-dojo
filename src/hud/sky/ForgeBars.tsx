@@ -1,6 +1,6 @@
 // The Forge Fire health bars: health is molten bronze in a carved channel. What was just lost stays red-hot for a moment
 // (the hot layer follows the metal down after a delay, see forge.css), and older losses have cooled to dark slag.
-// The monster owns the top of the screen; the player's bar is the lintel over the camera panel at the bottom left.
+// The monster owns the top of the screen; the player's bar is a crescent on the floor under the hero, left of the power ring.
 // Every word and number is HTML text, so it stays sharp at any size. Only clip-path, transform and opacity move.
 import type { CSSProperties, ReactNode } from "react";
 import type { EnemySpec } from "../../core/types";
@@ -80,18 +80,59 @@ function Helmet(): ReactNode {
   );
 }
 
-/** The player's bar: a bronze lintel resting on the camera panel, portrait at its left. */
-export function PlayerLintel({ hp, maxHp }: { hp: number; maxHp: number }): ReactNode {
+// The crescent's geometry, in the 240 x 60 box it is drawn in: the front half of an ellipse lying on the floor.
+const CX = 120, CY = 20, RX = 100, RY = 26;
+const ARC = `M${String(CX - RX)} ${String(CY)} A${String(RX)} ${String(RY)} 0 0 0 ${String(CX + RX)} ${String(CY)}`;
+const SAMPLES: readonly (readonly [number, number])[] = Array.from({ length: 65 }, (_, i): readonly [number, number] => [CX - RX * Math.cos((Math.PI * i) / 64), CY + RY * Math.sin((Math.PI * i) / 64)]);
+const RUN: readonly number[] = SAMPLES.reduce<number[]>((acc, p, i) => {
+  const q = SAMPLES[i - 1];
+  acc.push(q === undefined ? 0 : (acc[i - 1] ?? 0) + Math.hypot(p[0] - q[0], p[1] - q[1]));
+  return acc;
+}, []);
+
+/** The point `share` (0 to 1) of the way along the crescent by length, from its left tip. */
+export function crescentPoint(share: number): [number, number] {
+  const want = clamp01(share) * (RUN[RUN.length - 1] ?? 0);
+  for (let i = 1; i < SAMPLES.length; i++) {
+    const a = SAMPLES[i - 1], b = SAMPLES[i], da = RUN[i - 1], db = RUN[i];
+    if (a === undefined || b === undefined || da === undefined || db === undefined) break;
+    if (db >= want) {
+      const u = db > da ? (want - da) / (db - da) : 0;
+      return [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+    }
+  }
+  return [CX + RX, CY];
+}
+
+/** One stroke of the crescent. Masked strokes are cut to the kept or hot length by the masks below. */
+const Arc = ({ k }: { k: string }): ReactNode => <path d={ARC} pathLength={100} className={`fg-arc fg-arc--${k}`} />;
+
+/**
+ * The player's bar: a molten crescent on the floor under the hero's feet, with the helmet, YOU and the number at its
+ * left tip. Like the boss bar, the hot layer follows the metal down after a pause, so a fresh loss lingers red-hot.
+ */
+export function PlayerCrescent({ hp, maxHp }: { hp: number; maxHp: number }): ReactNode {
   const v = clamp01(hp / maxHp);
+  const [fx, fy] = crescentPoint(v);
   return (
-    <div className="fg-lintel" role="meter" aria-label="You health" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)}>
-      <div className="fg-medal"><Helmet /></div>
-      <div className="fg-lintel__body">
-        <div className="fg-lintel__row">
-          <span className="fg-lintel__name">You</span>
-          <span className="fg-lintel__num">{Math.round(hp)}<small>/{maxHp}</small></span>
-        </div>
-        <Molten value={v} />
+    <div className="fg-crescent" style={{ "--kept": String(v) } as CSSProperties} role="meter" aria-label="You health" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v * 100)}>
+      <svg className="fg-crescent__arc" viewBox="0 0 240 60" aria-hidden="true">
+        <mask id="fg-cres-hot" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="60"><Arc k="hotmask" /></mask>
+        <mask id="fg-cres-kept" maskUnits="userSpaceOnUse" x="0" y="0" width="240" height="60"><Arc k="keptmask" /></mask>
+        <Arc k="rim" /><Arc k="lip" /><Arc k="bed" /><Arc k="slag" /><Arc k="crack" />
+        <g mask="url(#fg-cres-hot)"><Arc k="hot" /></g>
+        <g mask="url(#fg-cres-kept)">
+          <Arc k="glow" /><Arc k="outer" /><Arc k="mid" /><Arc k="core" /><Arc k="streak" /><Arc k="shine" /><Arc k="fire" />
+        </g>
+      </svg>
+      <div className="fg-spot" style={{ transform: `translate(${String(fx)}px, ${String(fy)}px)` }}>
+        <i className="fg-glow" />
+        {Array.from({ length: SPARKS }, (_, i) => <i key={i} className="fg-spark" />)}
+      </div>
+      <div className="fg-tag">
+        <span className="fg-tag__name">You</span>
+        <span className="fg-tag__num">{Math.round(hp)}<small>/{maxHp}</small></span>
+        <div className="fg-medal"><Helmet /></div>
       </div>
     </div>
   );
