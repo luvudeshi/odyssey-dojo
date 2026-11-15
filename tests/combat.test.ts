@@ -90,3 +90,21 @@ test("a missed opening resets the combo", () => {
 test("prompts fade as a move is mastered", () => {
   expect([0, 2, 5].map(promptLevel)).toEqual(["full", "word", "mini"]);
 });
+
+test("wrong or weak tries never end the prompt or cost anything; the right move still counts later", () => {
+  const defending = toDefend();
+  const wrongTries = { held: new Set(["duck"]), struck: [{ move: "cross", quality: 0.7, player: 0 }], tried: new Set(["block"]) };
+  const tried = run(defending, wrongTries, 400);
+  expect(tried.events).toEqual([]);
+  expect(tried.state.phase.kind).toBe("defend");
+  expect(tried.state.playerHp).toBe(PLAYER_HP);
+  expect(run(run(tried.state, idle, 100).state, blocking, 100).state.playerHp).toBe(PLAYER_HP);
+
+  const striking = run(run(toDefend(), blocking, 1000).state, idle, 16).state;
+  expect(striking.phase.kind).toBe("strike");
+  const wrongStrikes = run(striking, { held: new Set(), struck: [{ move: "cross", quality: 0.9, player: 0 }], tried: new Set(["jab"]) }, 300);
+  expect(wrongStrikes.events).toEqual([]);
+  expect(wrongStrikes.state.phase.kind).toBe("strike");
+  expect({ score: wrongStrikes.state.score, combo: wrongStrikes.state.combo, hp: wrongStrikes.state.playerHp }).toEqual({ score: striking.score, combo: striking.combo, hp: PLAYER_HP });
+  expect(run(wrongStrikes.state, jabbing, 16).events).toContain("enemyHit");
+});
