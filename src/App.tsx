@@ -5,6 +5,7 @@ import { getProfile, recordFight, useProfile } from "./account/store";
 import { newlyUnlocked } from "./account/unlocks";
 import { UnlockNotice } from "./account/ui/UnlockNotice";
 import "./screens/menus.css";
+import "./screens/cursor.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
 import type { GodReveal } from "./ai/revealGod";

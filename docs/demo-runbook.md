@@ -121,7 +121,7 @@ Most likely first. Each has one action.
 2. A reload clears the god, the style, the beaten stops, the dojo result and the score on screen. It keeps what the browser saved: the settings (graphics quality, three volumes, mirror, key hints), the Account (hero name, fight counts, achievements), and whatever is in the address bar.
 3. If the judge typed a hero name or you want the achievements empty again, type this in the DevTools console, then reload:
    ```js
-   localStorage.removeItem("odyssey-fighter.profile")
+   localStorage.removeItem("odyssey-dojo.profile")
    ```
 4. If anybody pressed Q or opened the settings, check them (**Account**, **Open settings**): graphics High, voice and effects full.
 5. Chrome should not ask for the camera again on `localhost` (not checked on the demo laptop; step 3 shows you).
