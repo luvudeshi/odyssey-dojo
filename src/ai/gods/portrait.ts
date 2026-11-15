@@ -29,8 +29,8 @@ const SMALLEST_SIZE = 32;
 const LARGEST_SIZE = 2048;
 
 /** Sizes as fractions of the portrait's width. */
-const RING_RADIUS = 0.478;
-const RING_WIDTH = 0.011;
+export const RING_RADIUS = 0.478;
+export const RING_WIDTH = 0.011;
 
 function mix(from: Rgb, to: Rgb, amount: number): Rgb {
   return [from[0] + (to[0] - from[0]) * amount, from[1] + (to[1] - from[1]) * amount, from[2] + (to[2] - from[2]) * amount];
@@ -86,13 +86,18 @@ function drawLeaf(
   context.restore();
 }
 
-/** A thin ring, then two laurel branches that meet at the bottom: open above the head when crowned, else only the lower half. */
-function drawWreath(context: CanvasRenderingContext2D, size: number, gilt: Rgb, crowned: boolean): void {
-  const colours = {
+/** The wreath and ring's three colours for a gilding; the emblem (emblem.ts) uses the same ones. */
+export function wreathColours(gilt: Rgb): { readonly body: string; readonly lit: string; readonly dark: string } {
+  return {
     body: css(mix(gilt, [70, 40, 10], 0.18)),
     lit: css(mix(gilt, [255, 250, 225], 0.55), 0.85),
     dark: css(mix(gilt, [45, 22, 8], 0.7), 0.7),
   };
+}
+
+/** A thin ring, then two laurel branches that meet at the bottom: open above the head when crowned, else only the lower half. */
+function drawWreath(context: CanvasRenderingContext2D, size: number, gilt: Rgb, crowned: boolean): void {
+  const colours = wreathColours(gilt);
   const branch = laurelBranch(crowned);
   const radius = size * branch.radius;
   context.save();
