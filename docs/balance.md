@@ -29,12 +29,12 @@ Each cell: fights won / mean length of all 200 fights / mean length of the fight
 <!-- table:now -->
 | Stop | beginner | average | good |
 | --- | --- | --- | --- |
-| Polyphemus | 88% / 91 s / 89 s when won | 100% / 53 s / 53 s when won | 100% / 30 s / 30 s when won |
-| Circe | 1% / 77 s / 113 s when won | 78% / 98 s / 99 s when won | 100% / 56 s / 56 s when won |
-| The Sirens | 1% / 70 s / 116 s when won | 64% / 97 s / 100 s when won | 100% / 58 s / 58 s when won |
-| Scylla | 1% / 55 s / 102 s when won | 45% / 78 s / 82 s when won | 100% / 49 s / 49 s when won |
-| Charybdis | 0% / 63 s / none won | 41% / 96 s / 102 s when won | 100% / 61 s / 61 s when won |
-| The Suitors | 0% / 65 s / none won | 22% / 99 s / 114 s when won | 100% / 70 s / 70 s when won |
+| Polyphemus | 88% / 95 s / 93 s when won | 100% / 58 s / 58 s when won | 100% / 35 s / 35 s when won |
+| Circe | 1% / 79 s / 118 s when won | 78% / 103 s / 104 s when won | 100% / 61 s / 61 s when won |
+| The Sirens | 1% / 71 s / 120 s when won | 64% / 101 s / 105 s when won | 100% / 62 s / 62 s when won |
+| Scylla | 1% / 56 s / 107 s when won | 45% / 82 s / 86 s when won | 100% / 54 s / 54 s when won |
+| Charybdis | 0% / 63 s / none won | 41% / 100 s / 107 s when won | 100% / 66 s / 66 s when won |
+| The Suitors | 0% / 65 s / none won | 22% / 103 s / 119 s when won | 100% / 75 s / 75 s when won |
 <!-- /table:now -->
 
 ## Polyphemus, the first stop (issue #127)
@@ -44,7 +44,7 @@ A judge is a first-time player with three minutes, and losing the only fight the
 | Target | Measured | Holds? |
 | --- | --- | --- |
 | The beginner wins at least 85% of fights | 88% (175 of 200) | Yes |
-| Those wins take 90 s or less | 88.6 s | Yes |
+| Those wins take 95 s or less (90 s before the 3 s pause after a phase change) | 93.2 s | Yes |
 | The average player wins every fight | 100% (200 of 200) | Yes |
 | The good player's fight lasts at least 30 s | 30.4 s | Yes |
 | Every fight a beginner wins goes through all three phases | 3 of 3 in every won fight, for all three players | Yes |
