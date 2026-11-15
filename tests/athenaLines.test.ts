@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import doc from "../docs/athena-lines.md?raw";
-import { ATHENA_LINES, clipUrl } from "../src/audio/athenaLines";
+import { ATHENA_LINES, clipUrl, isPhaseLine } from "../src/audio/athenaLines";
 import { startFight } from "../src/combat/engine";
 import { enemy as polyphemus } from "../src/enemies/defs/polyphemus";
 
@@ -103,6 +103,11 @@ test("the opening line's clip is over before the first attack is called", () => 
   // The same count gives the lengths written in tests/voicePriorities.test.ts, for this clip and for one that was not changed.
   expect(Math.round(ms / 10) * 10).toBe(1280);
   expect(Math.round(clipMs(`public${clipUrl("call_cross")}`) / 10) * 10).toBe(2040);
+});
+
+test("a phase line is known by its id, and nothing else is one", () => {
+  for (const line of ATHENA_LINES) expect(isPhaseLine(line.id), line.id).toBe(MOMENTS.includes(line.id) && line.id.startsWith("phase_"));
+  for (const id of [null, "", "win", "homer_title", "taunt_circe_1", "call_block"]) expect(isPhaseLine(id), String(id)).toBe(false);
 });
 
 test("docs/athena-lines.md lists the same ids, moments and texts as the script", () => {
