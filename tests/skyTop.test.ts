@@ -5,7 +5,7 @@ import { PLAYER_HP, startFight } from "../src/combat/engine";
 import type { CombatState, EnemySpec } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import { PhaseLine, SkyPhase, phaseShown, roman } from "../src/hud/sky/SkyBanners";
-import { phaseMarks } from "../src/hud/sky/ForgeBars";
+import { crescentPoint, phaseMarks } from "../src/hud/sky/ForgeBars";
 import { SkyTop } from "../src/hud/sky/SkyTop";
 
 const enemy: EnemySpec = ENEMIES[0] ?? (() => { throw new Error("no enemies"); })();
@@ -31,11 +31,22 @@ describe("SkyTop", () => {
     expect(kept(render({ ...base, playerHp: -5, enemyHp: enemy.hp * 2 }))).toEqual(["1", "0"]);
   });
 
-  it("puts the boss alone at the top and the player's bar on the camera panel", () => {
+  it("puts the boss alone at the top and the player's bar on the floor as a crescent", () => {
     const html = render(base);
     expect(html.match(/class="fg-boss"/g)?.length).toBe(1);
-    expect(html.match(/class="fg-lintel"/g)?.length).toBe(1);
+    expect(html.match(/class="fg-crescent"/g)?.length).toBe(1);
     expect(html).not.toContain("sk-bar");
+  });
+
+  it("puts the crescent's sparks at the front of the kept metal, measured along the curve", () => {
+    const at = (share: number): number[] => crescentPoint(share).map((n) => Math.round(n));
+    expect(at(0)).toEqual([20, 20]);
+    expect(at(0.5)).toEqual([120, 46]);
+    expect(at(1)).toEqual([220, 20]);
+    expect(at(-1)).toEqual([20, 20]);
+    expect(at(2)).toEqual([220, 20]);
+    const [x, y] = crescentPoint(0.72);
+    expect(render({ ...base, playerHp: PLAYER_HP * 0.72 })).toContain(`translate(${String(x)}px, ${String(y)}px)`);
   });
 
   it("shows the combo coin only above one", () => {
