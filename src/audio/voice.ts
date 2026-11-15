@@ -14,8 +14,13 @@ const INDEX_URL = "/audio/athena/index.json";
 const MAX_CLIP_MS = 15000;
 /** How loud a monster's taunt is next to Athena: a little under her, so her call stays clear on top of it. */
 export const TAUNT_VOLUME = 0.7;
-/** A call that waited this long behind a warning is not spoken: its beat is nearly over, and the prompt card showed the move. */
-export const HELD_CALL_MS = 800;
+/**
+ * A call that waited this long behind a warning is not spoken: its beat is nearly over, and the prompt card showed the move.
+ * The longest warning (1.4 s) makes a call wait about 0.75 s, so this leaves a quarter of a second for a busy frame.
+ */
+export const HELD_CALL_MS = 1000;
+/** No warning is this long. One that still holds the voice after it has stalled, and a call cuts it instead of waiting. */
+export const WARNING_MAX_MS = 2500;
 
 function pick(ids: readonly [string, ...string[]], random: () => number): string {
   return ids[Math.floor(random() * ids.length)] ?? ids[0];
@@ -137,7 +142,7 @@ export function watchVoice(listener: (speaking: boolean, who?: string) => void):
 }
 
 export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voice {
-  let current: { readonly id: string; stop: () => void } | null = null;
+  let current: { readonly id: string; readonly since: number; stop: () => void } | null = null;
   let disposed = false;
   let finishing = false;
   /** The newest call asked for while a warning was being spoken. It is said when the warning ends, if it is still worth saying. */
@@ -151,7 +156,8 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
     if (current && !interrupts(id, current.id)) return false;
     // A warning is a second long and a call always lands inside it. Cut there, it is half a word ("Stay sha-"), so the
     // warning is heard out and the call follows it. Only calls wait: every other line that may cut a warning still does.
-    if (current && WARNINGS.some((warning) => warning === current?.id) && urgency(id) === CALL) {
+    const warning = current !== null && WARNINGS.some((each) => each === current?.id) && Date.now() - current.since < WARNING_MAX_MS;
+    if (warning && urgency(id) === CALL) {
       waiting = { id, since: Date.now() };
       return false;
     }
@@ -159,7 +165,7 @@ export function createVoice(deps: VoiceDeps = browserDeps(), who?: string): Voic
     waiting = null;
     // Stop before starting, so two lines are never heard together.
     current?.stop();
-    const line = { id, stop: (): void => undefined };
+    const line = { id, since: Date.now(), stop: (): void => undefined };
     const free = (): void => {
       if (current !== line) return;
       current = null;
@@ -391,8 +397,8 @@ export function stopLine(id: string): void {
 
 /**
  * Silences the fight's voices at once: the monster's taunt and whatever Athena is saying. A call waiting behind a
- * warning is dropped with it, so nothing comes back afterwards. With `keepEnding`, the result line and Homer's lines play on. The fight calls this through
- * useStopAudio when it is left.
+ * warning is dropped with it, so nothing comes back afterwards. With `keepEnding`, the result line and Homer's lines
+ * play on. The fight calls this through useStopAudio when it is left.
  */
 export function stopFightVoice(keepEnding = false): void {
   const taunt = monsters.playing();
