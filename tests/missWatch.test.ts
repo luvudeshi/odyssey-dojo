@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { MISS_GAP_MS, createMissWatch, watchPhase } from "../src/input/missWatch";
+import { MISS_GAP_MS, askedMove, createMissWatch, watchPhase } from "../src/input/missWatch";
 import type { CombatInput, CombatPhase } from "../src/core/types";
 import { createPoseInput } from "../src/input/poseInput";
 import { MOVES } from "../src/moves/registry";
@@ -158,4 +158,13 @@ test("a fresh near miss after a landed move still counts as a try", () => {
   watch("spear_thrust", false, idle, false, T + 33);
   expect(watch("spear_thrust", false, ramp, false, T + 66)).toBe(false);
   expect(watch("spear_thrust", false, idle, false, T + 99)).toBe(true);
+});
+
+test("askedMove is the strike, the finisher or the counter, and null for nothing", () => {
+  const defend = { kind: "defend", attack: { counter: "duck" }, msLeft: 1, totalMs: 2 } as unknown as CombatPhase;
+  expect(askedMove(strikePhase("hook"))).toBe("hook");
+  expect(askedMove({ kind: "finisher", move: "stake", msLeft: 1, totalMs: 2 })).toBe("stake");
+  expect(askedMove(defend)).toBe("duck");
+  expect(askedMove({ kind: "intro", msLeft: 1 })).toBeNull();
+  expect(askedMove(null)).toBeNull();
 });

@@ -6,6 +6,7 @@ import type { MoveDef } from "../../../core/types";
 import { wristOut, wristRise } from "../../../moves/handSignals";
 import { elbowAngle } from "../../../pose/signals";
 import { atLeast, atMost, eitherSide, now, since } from "../signals";
+import { armWent, legRose } from "../../../moves/looseSignals";
 
 /** The hand ends at least this far under the shoulder line, in shoulder widths (so the threshold is negative). */
 export const LOW = -0.9;
@@ -34,5 +35,8 @@ export const move: MoveDef = {
   teaches: "An arm swept down and out moves a low kick aside before it reaches you.",
   detect(history) {
     return block.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(armWent(history, "left", "down"), armWent(history, "right", "down"));
   },
 };

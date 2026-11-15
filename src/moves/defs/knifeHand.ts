@@ -3,6 +3,7 @@ import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { elbowAngle, latest, recent } from "../../pose/signals";
 import { wristOut, wristRise } from "../handSignals";
+import { armWent } from "../looseSignals";
 
 export const move: MoveDef = {
   id: "knife_hand",
@@ -24,6 +25,10 @@ export const move: MoveDef = {
       (old) => wristOut(old, "right") < 0.4 && wristRise(old, "right") > -0.9,
     );
     return chambered ? 1 : 0;
+  },
+  // Asked for a knife hand, the right hand travelling out away from the body counts, from wherever it started.
+  detectAsked(history) {
+    return Math.max(move.detect(history), armWent(history, "right", "out"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["right"], rise: 0, tolerance: 0.9 });

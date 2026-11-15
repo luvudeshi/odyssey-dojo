@@ -3,6 +3,7 @@ import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { elbowAngle, latest } from "../../pose/signals";
 import { strike, wristRise } from "../handSignals";
+import { armWentForward } from "./cross";
 
 export const move: MoveDef = {
   id: "reverse_punch",
@@ -18,6 +19,10 @@ export const move: MoveDef = {
     if (!frame || strike(history, "right") < 0.7) return 0;
     // The pulling hand: low at the hip, with the elbow bent behind it (a hanging arm is straight).
     return wristRise(frame, "left") < -0.75 && elbowAngle(frame, "left") < 135 ? 1 : 0;
+  },
+  // Asked for a reverse punch, the right arm going out toward the camera counts, whatever the left hand does.
+  detectAsked(history) {
+    return Math.max(move.detect(history), armWentForward(history, "right"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["right"] });

@@ -1,5 +1,6 @@
 import type { Baseline, MoveDef, PoseFrame } from "../../core/types";
 import { bothNewest, clamp01, headHeight, headOffset, latest, meanOf, recent, shoulderCenter } from "../../pose/signals";
+import { bodyWent } from "../looseSignals";
 
 /** The head's sideways offset is read from this many milliseconds of frames: one frame of it shakes by 0.08 widths. */
 const STEADY_MS = 200;
@@ -41,5 +42,8 @@ export const move: MoveDef = {
     // Two frames, so one bad frame cannot duck on its own. Needs only the head and shoulders: no hips or knees.
     const sideways = clamp01((Math.abs(meanOf(recent(history, STEADY_MS), headOffset)) - SIDEWAYS) / SIDEWAYS_RANGE);
     return bothNewest(history, (frames) => crouch(frames, baseline)) * (1 - sideways);
+  },
+  detectAsked(history) {
+    return Math.max(move.detect(history), bodyWent(history, "down"));
   },
 };
