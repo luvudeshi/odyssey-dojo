@@ -11,7 +11,7 @@
 import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
-import { Busy, createAccountLimits } from "../lib/accountLimits";
+import { Busy } from "../lib/accountLimits";
 import { Unavailable, bearerToken, statementsOf } from "../lib/accounts";
 import { sharedAccounts } from "../lib/accountsShared";
 import type { SharedAccounts } from "../lib/accountsShared";
@@ -40,7 +40,6 @@ function invalid(response: Response, field: string): void {
 }
 
 export const register: Register = (router, deps) => {
-  const tokens = createAccountLimits();
   const limits = createHeroLimits();
 
   /** The accounts of this app and the hall on top of them, or null when there are none to use. Looked up at each request, made once. */
@@ -86,17 +85,17 @@ export const register: Register = (router, deps) => {
   const accountOf = async (shared: SharedAccounts, who: string, token: string): Promise<{ readonly id: string | null; readonly wait: number }> => {
     const seen = shared.accounts.remembered(token);
     if (seen !== null) return { id: seen, wait: 0 };
-    const wait = tokens.lookup(who);
+    const wait = shared.limits.lookup(who);
     if (wait > 0) return { id: null, wait };
     let found: string | null = null;
     try {
       found = await (who === THIS_MACHINE ? shared.accounts.accountOf(token) : shared.strangers(() => shared.accounts.accountOf(token)));
     } catch (error) {
       // No answer says nothing about the token, so it is not held against the address.
-      tokens.tokenKnown(who);
+      shared.limits.tokenKnown(who);
       throw error;
     }
-    if (found !== null) tokens.tokenKnown(who);
+    if (found !== null) shared.limits.tokenKnown(who);
     return { id: found, wait: 0 };
   };
 
