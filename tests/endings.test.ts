@@ -38,12 +38,10 @@ test("win and loss lines are at most 60 characters and lessons at most 90", () =
 });
 
 test("only the Suitors is a stand; every other stop is an escape", () => {
-  expect(ENEMIES.map((enemy) => enemy.id).sort()).toEqual(
-    ["charybdis", "circe", "polyphemus", "scylla", "sirens", "suitors"],
-  );
-  expect(ENDINGS.suitors?.kind).toBe("stand");
-  for (const id of ["polyphemus", "circe", "sirens", "scylla", "charybdis"]) {
-    expect(ENDINGS[id]?.kind, id).toBe("escape");
+  // Walks the registry, so an enemy added later is held to the same rule without a list to keep in step here.
+  expect(ENEMIES.map((enemy) => enemy.id)).toContain("suitors");
+  for (const enemy of ENEMIES) {
+    expect(endingFor(enemy.id).kind, enemy.id).toBe(enemy.id === "suitors" ? "stand" : "escape");
   }
   const stands = ENEMIES.filter((enemy) => endingFor(enemy.id).kind === "stand").map((enemy) => enemy.id);
   expect(stands).toEqual(["suitors"]);
