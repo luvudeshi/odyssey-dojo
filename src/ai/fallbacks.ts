@@ -1,5 +1,6 @@
 // Five handcrafted levels used whenever the model is slow, wrong or unreachable. Bundled with the game, so they work offline.
 import type { GodId, LevelAttack, LevelRequest, LevelSpec } from "./contracts";
+import { rivalFor } from "./rivals";
 
 interface Template {
   /** Words in the player's phrase that point at this level. */
@@ -264,7 +265,8 @@ export function fallbackLevel(request: LevelRequest): LevelSpec {
   const fill = (line: string, max: number): string =>
     fillIn(line, {
       god: GOD_NAMES[request.god],
-      rival: GOD_NAMES[request.rival_god],
+      // A request may still carry Athena, or the god itself, as the rival: the schema allows any god.
+      rival: GOD_NAMES[rivalFor(request.god, request.rival_god)],
       epithet: request.epithet === undefined || request.epithet === "" ? DEFAULT_EPITHETS[request.god] : request.epithet,
       phrase: phrase.length > 60 ? `${phrase.slice(0, 57)}...` : phrase,
     }).slice(0, max);
