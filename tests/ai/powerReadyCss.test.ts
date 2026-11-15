@@ -68,15 +68,78 @@ test("the banner and everything in it lets clicks through", () => {
   for (const rule of RULES) expect(rule.declarations.get("pointer-events") ?? "none", rule.selector).toBe("none");
 });
 
-test("it is centred on the lower edge of the fight, and is wide, not tall: the name on the left, the gesture on the right", () => {
+test("it sits on the lower edge between the player's crescent and the prompt card, and runs under neither", () => {
+  // Both neighbours are read from the Forge HUD's own sheets: a crescent or a card that moves must fail here, not slide under the plate.
+  const forge = readFileSync("src/hud/sky/forge.css", "utf8");
+  const card = readFileSync("src/hud/sky/card.css", "utf8");
+  const middle = Number(/--fg-cres-x: (-?\d+)px;/.exec(forge)?.[1]);
+  const width = Number(/\.sky-hud \.fg-crescent \{[^}]*width: (\d+)px;/.exec(forge)?.[1]);
+  // How far left of the middle of the screen the crescent ends.
+  const crescentEnd = -(middle + width / 2);
+  expect(crescentEnd).toBeGreaterThan(0);
+  const [, cardRight = "?", cardWidth = "?"] = /\.sky-card \{[^}]*right: (\d+)px;[^}]*width: (\d+)px;/.exec(card) ?? [];
+  const cardSpan = Number(cardRight) + Number(cardWidth);
   const root = RULES.find((rule) => rule.selector === ".power-ready.power-ready--live")?.declarations;
-  expect(root?.get("left")).toBe("var(--power-ready-left, 0px)");
-  expect(root?.get("right")).toBe("var(--power-ready-right, 0px)");
-  expect(root?.get("justify-content")).toBe("center");
+  expect(root?.get("left")).toBe(`var(--power-ready-left, calc(50% - ${String(crescentEnd)}px + 14px))`);
+  expect(root?.get("right")).toBe(`var(--power-ready-right, calc(${String(cardSpan)}px + 10px))`);
+  expect(root?.get("justify-content")).toBe("flex-start");
   expect(root?.get("bottom")).toMatch(/^var\(--power-ready-bottom, clamp\(\d+px, [\d.]+vh, \d+px\)\)$/);
   expect(root?.has("top")).toBe(false);
+  // The plate grows from the crescent's side and stops at the card's: it never spills out of the strip.
+  expect(RULES.find((rule) => rule.selector === ".power-ready .power-ready__frame")?.declarations.get("max-width")).toBe("100%");
+  // Two rows, the name over how to throw it: short enough to stay under the lifted ring.
   const plate = RULES.find((rule) => rule.selector === ".power-ready .power-ready__plate")?.declarations;
-  expect(plate?.get("grid-template-areas")).toBe('"title how" "move how"');
+  expect(plate?.get("grid-template-areas")).toBe('"move" "how"');
+  // On a big screen the HUD is drawn larger, the card with it: the strip ends sooner by the same factor.
+  const [, big = "?", zoom = "?"] = /@media (\(min-width: \d+px\) and \(min-height: \d+px\)) \{\s*\.fight > \.sky-hud \{ zoom: ([\d.]+); \}/.exec(readFileSync("src/hud/sky/top.css", "utf8")) ?? [];
+  expect(SHEET).toContain(`@media ${big} {\n  .power-ready.power-ready--live { right: var(--power-ready-right, calc(${String(cardSpan)}px * ${zoom} + 10px)); }`);
+  // Upright on a phone the crescent is not at the foot of the screen: there the banner is centred, the title on top.
+  expect(SHEET).toMatch(/@media \(max-width: 760px\) \{[^@]*\.power-ready\.power-ready--live \{ left: var\(--power-ready-left, 0px\); right: var\(--power-ready-right, 0px\); flex-direction: column; align-items: center; \}/);
+  expect(SHEET).toMatch(/@media \(max-width: 760px\) \{[^@]*\.power-ready \.power-ready__beside \{ position: static;/);
+});
+
+test("whose power it is stands just right of the lifted ring, level with it, on two lines", () => {
+  const ring = readFileSync("src/hud/powerCircle.css", "utf8");
+  const size = /--pc-size: (clamp\([^;]+\));/.exec(ring)?.[1] ?? "?";
+  // The ring's bottom offset while the banner is up, as the HUD's sheet writes it.
+  const lifted = /\.power-circle\.is-lifted \{ bottom: calc\(([^;]+)\); \}/.exec(ring)?.[1] ?? "?";
+  const root = RULES.find((rule) => rule.selector === ".power-ready.power-ready--live")?.declarations;
+  const beside = RULES.find((rule) => rule.selector === ".power-ready .power-ready__beside")?.declarations;
+  expect(beside?.get("position")).toBe("absolute");
+  // From the strip's left edge: back to the middle of the screen, half the ring, and the gap the champion plate keeps.
+  const [, crescentEnd = "?", gap = "?"] = /calc\(50% - (\d+px) \+ (\d+px)\)/.exec(root?.get("left") ?? "") ?? [];
+  expect(beside?.get("left")).toBe(`calc(${crescentEnd} - ${gap} + ${size} / 2 + clamp(8px, 0.9vw, 14px))`);
+  // From the strip's foot: the lifted ring's offset, less the strip's own.
+  expect(beside?.get("bottom")).toBe(`calc(${lifted} - ${root?.get("bottom") ?? "?"})`);
+  expect(beside?.get("height")).toBe(size);
+  expect(beside?.get("align-items")).toBe("center");
+  // Each line is as wide as its words and no wider, so the plate ends well short of the card.
+  const title = RULES.find((rule) => rule.selector === ".power-ready .power-ready__title")?.declarations;
+  expect(title?.get("white-space")).toBe("nowrap");
+  expect(title?.has("max-width")).toBe(false);
+  expect(RULES.find((rule) => rule.selector === ".power-ready .power-ready__tail")?.declarations.get("display")).toBe("block");
+  expect(BANNER).toContain('<span className="power-ready__tail">{tail}</span>');
+});
+
+test("no text is under 18px on any screen", () => {
+  let sized = 0;
+  for (const rule of RULES) {
+    const size = rule.declarations.get("font-size");
+    if (size === undefined) continue;
+    sized += 1;
+    // Either a fixed size or a clamp, whose first number is the smallest it gets.
+    const least = /^clamp\((\d+(?:\.\d+)?)px, [\d.]+vw, \d+(?:\.\d+)?px\)$/.exec(size)?.[1] ?? /^(\d+(?:\.\d+)?)px$/.exec(size)?.[1];
+    expect(Number(least), `${rule.selector}: ${size}`).toBeGreaterThanOrEqual(18);
+  }
+  // Every element that holds words sets its own size; the key cap, the "or press" and the title's second line inherit it.
+  for (const part of ["title", "move", "how", "wait", "of", "god"]) {
+    expect(RULES.find((rule) => rule.selector === `.power-ready .power-ready__${part}`)?.declarations.has("font-size"), part).toBe(true);
+  }
+  expect(sized).toBeGreaterThanOrEqual(8);
+  for (const rule of RULES) {
+    const font = rule.declarations.get("font");
+    if (font !== undefined) expect(font, rule.selector).toBe("inherit");
+  }
 });
 
 test("the champion plate sits just right of the power ring, level with it, still, and leaves a narrow screen", () => {
@@ -154,9 +217,9 @@ test("every class the banner uses has a rule, and every rule is for a class the 
   const styled = new Set(RULES.flatMap((rule) => rule.selector.match(/power-ready(?:__|--)[a-z]+/g) ?? []));
   // The per-god class (power-ready--zeus) is a hook for later; it is built from the god's id and has no rule yet.
   expect([...used].sort()).toEqual([
-    "power-ready--champion", "power-ready--keys", "power-ready--live", "power-ready--queued", "power-ready--waiting", "power-ready__edge",
-    "power-ready__frame", "power-ready__god", "power-ready__how", "power-ready__key", "power-ready__move", "power-ready__of",
-    "power-ready__patron", "power-ready__plate", "power-ready__or", "power-ready__title", "power-ready__wait",
+    "power-ready--champion", "power-ready--keys", "power-ready--live", "power-ready--queued", "power-ready--waiting", "power-ready__beside",
+    "power-ready__edge", "power-ready__frame", "power-ready__god", "power-ready__how", "power-ready__key", "power-ready__move", "power-ready__of",
+    "power-ready__patron", "power-ready__plate", "power-ready__or", "power-ready__tail", "power-ready__title", "power-ready__wait",
   ].sort());
   expect([...styled].sort()).toEqual([...used].sort());
 });

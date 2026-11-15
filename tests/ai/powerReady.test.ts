@@ -181,6 +181,8 @@ describe("trackReady", () => {
 
 describe("the PowerReady banner", () => {
   const html = (props: Parameters<typeof PowerReady>[0]): string => renderToStaticMarkup(createElement(PowerReady, props));
+  /** The words on screen: the markup with its tags taken out. */
+  const words = (markup: string): string => markup.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/\s+/g, " ");
 
   test("with no god it draws nothing until the meter is full", () => {
     for (const power of [0, 0.4, 0.99, Number.NaN]) expect(html({ god: null, power, keyboard: true, phase: "defend" })).toBe("");
@@ -217,12 +219,25 @@ describe("the PowerReady banner", () => {
   test.each(WHO)("%s: shows the title, the move, the gesture and the key, in the god's colour", (god) => {
     const prompt = powerPrompt(god, false);
     const out = html({ god, power: 1, keyboard: false });
-    expect(out).toContain(prompt.title.replace("'", "&#x27;"));
+    expect(words(out)).toContain(prompt.title);
     expect(out).toContain(prompt.move);
     expect(out).toContain(prompt.how);
     expect(out).toContain(`--power-ready-accent:${prompt.accent}`);
     expect(out).toMatch(new RegExp(`<kbd[^>]*>${prompt.key ?? "?"}</kbd>`));
     expect(out).toMatch(/^<div class="power-ready power-ready--live /);
+  });
+
+  test("the title is on two lines beside the ring, outside the plate, and is read as one sentence", () => {
+    const god = html({ god: "poseidon", power: 1, keyboard: false });
+    expect(god).toContain('<div class="power-ready__title">POSEIDON&#x27;S POWER <span class="power-ready__tail">IS READY</span></div>');
+    const none = html({ god: null, power: 1, keyboard: true });
+    expect(none).toContain('<div class="power-ready__title">ATHENA LENDS YOU <span class="power-ready__tail">HER AEGIS</span></div>');
+    for (const out of [god, none]) {
+      // It comes first, so a screen reader hears whose power it is before the move; and it is not inside the plate.
+      expect(out).toMatch(/^<div class="power-ready power-ready--live [^>]*><div class="power-ready__beside"><div class="power-ready__title">/);
+      expect(out.indexOf("power-ready__title")).toBeLessThan(out.indexOf("power-ready__frame"));
+      expect(out.slice(out.indexOf("power-ready__frame"))).not.toContain("power-ready__title");
+    }
   });
 
   test("on the keyboard the instruction is the key alone", () => {

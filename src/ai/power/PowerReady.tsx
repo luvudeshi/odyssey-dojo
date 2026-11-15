@@ -1,5 +1,6 @@
-// The "your god's power is ready" banner: bottom centre of the fight, while the power meter is full.
-// It names the god, the move and how to throw it, and has Athena call the move aloud when the meter fills.
+// The "your god's power is ready" banner, while the power meter is full: a plate on the lower edge of the fight, between
+// the player's health crescent and the prompt card, with the move and how to throw it; and beside the lifted power ring,
+// whose power it is. Athena calls the move aloud when the meter fills.
 // While the meter is filling it is a small still plate beside the power ring, "Champion of Poseidon", so the god the
 // scan found stays on screen through the fight. Mount it once inside the fight screen's root; it never takes a click.
 // Between cards the engine drops a power move, so there the banner dims and says "On the next card", and a press of the
@@ -36,6 +37,12 @@ function safePrompt(god: GodId | null, keyboard: boolean): PowerPrompt | null {
     log("warn", "power_ready.prompt", error);
     return null;
   }
+}
+
+/** The title on two lines, so its plate is no wider than its words: the last two words ("IS READY", "HER AEGIS") go under the rest. */
+function titleLines(title: string): readonly [string, string] {
+  const words = title.split(" ");
+  return words.length < 4 ? [title, ""] : [words.slice(0, -2).join(" "), words.slice(-2).join(" ")];
 }
 
 export function PowerReady(props: PowerReadyProps) {
@@ -119,14 +126,17 @@ export function PowerReady(props: PowerReadyProps) {
     );
   }
   const keys = keyboard && prompt.key !== null;
+  const [head, tail] = titleLines(prompt.title);
   const style = { "--power-ready-accent": prompt.accent } as CSSProperties;
   const look = waiting ? (queued ? " power-ready--waiting power-ready--queued" : " power-ready--waiting") : "";
   return (
     <div className={`power-ready power-ready--live power-ready--${prompt.god}${keys ? " power-ready--keys" : ""}${look}`} style={style} role="status" aria-live="polite">
+      <div className="power-ready__beside">
+        <div className="power-ready__title">{head}{tail !== "" && <> <span className="power-ready__tail">{tail}</span></>}</div>
+      </div>
       <div className="power-ready__frame">
         <div className="power-ready__edge">
           <div className="power-ready__plate">
-            <div className="power-ready__title">{prompt.title}</div>
             <div className="power-ready__move">{prompt.move}</div>
             <div className="power-ready__how">
               {keys ? (

@@ -1,21 +1,39 @@
 /* The "power is ready" banner (PowerReady.tsx). Every rule sits under the .power-ready root with two classes, so the
    theme's own rules cannot reach in and nothing here leaks out. Colours: the god's accent (--power-ready-accent, set
-   inline) and the theme's --ink and --white, each with a fallback. Only transform and opacity are animated. */
+   inline) and the theme's --ink and --white, each with a fallback. Only transform and opacity are animated.
+   No text is under 18px at any screen size. */
 .power-ready.power-ready--live {
-  /* Bottom centre, on the lower edge of the fight: a wide plate two lines tall, so it stays under the hero's feet (he
-     stands just left of the middle, feet at about 86% of the height) and far below the prompt card. The camera panel
-     (bottom left) ends before it starts. --power-ready-bottom lifts it over a power chip at the bottom centre (the
-     pebble HUD's .hb-power needs 62px); --power-ready-left and -right narrow the strip it is centred in. */
-  position: absolute; left: var(--power-ready-left, 0px); right: var(--power-ready-right, 0px); bottom: var(--power-ready-bottom, clamp(10px, 1.6vh, 18px)); z-index: 6;
-  display: flex; justify-content: center; margin: 0; padding: 0; pointer-events: none;
+  /* On the lower edge of the fight, in the one gap the Forge HUD leaves there: it starts 14px right of the player's
+     health crescent (src/hud/sky/forge.css: its right edge is 60px left of the middle) and ends 10px short of the prompt
+     card (src/hud/sky/card.css: 24px from the right edge, 300px wide). The card can reach the foot of a 720px screen, so
+     the plate never runs under it. The power ring lifts while the meter is full (src/hud/powerCircle.css, .is-lifted)
+     and sits on the plate's left end. --power-ready-bottom, -left and -right move the strip (the lab page uses them). */
+  position: absolute; left: var(--power-ready-left, calc(50% - 60px + 14px)); right: var(--power-ready-right, calc(324px + 10px)); bottom: var(--power-ready-bottom, clamp(8px, 1.4vh, 14px)); z-index: 6;
+  display: flex; justify-content: flex-start; margin: 0; padding: 0; pointer-events: none;
   font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; text-align: center; line-height: 1;
   color: var(--white, #f2e4c8); transition: opacity 0.15s ease-out;
 }
 .power-ready.power-ready--live * { box-sizing: border-box; pointer-events: none; }
 
-/* The glow is one fixed shadow; the pulse scales the whole plate a little. */
+/* Whose power it is: two short lines just right of the lifted ring and level with it, where the champion plate stood
+   beside the resting ring. The sum is the ring's lifted bottom offset, less this strip's own. */
+.power-ready .power-ready__beside {
+  position: absolute; left: calc(60px - 14px + clamp(76px, 6.6vw, 108px) / 2 + clamp(8px, 0.9vw, 14px));
+  bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 52px - var(--power-ready-bottom, clamp(8px, 1.4vh, 14px)));
+  display: flex; align-items: center; height: clamp(76px, 6.6vw, 108px);
+}
+.power-ready .power-ready__title {
+  padding: 6px 13px 7px 11px; background: var(--ink, #17110d); border: 1px solid var(--power-ready-accent, #ffd9a0); border-left-width: 4px;
+  font-size: clamp(18px, 1.3vw, 21px); font-weight: 700; line-height: 1.15; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; white-space: nowrap;
+  color: var(--power-ready-accent, #ffd9a0); filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
+  animation: power-ready-in 0.35s ease-out both;
+}
+/* The title's second line: its plate is then no wider than its words. */
+.power-ready .power-ready__tail { display: block; }
+
+/* The glow is one fixed shadow; the pulse scales the whole plate a little (5px a side at its widest, inside the gaps). */
 .power-ready .power-ready__frame {
-  position: relative; max-width: min(calc(100% - 16px), 900px);
+  position: relative; max-width: 100%;
   filter: drop-shadow(0 0 12px var(--power-ready-accent, #ffd9a0)) drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
   animation: power-ready-in 0.35s ease-out both, power-ready-pulse 1.3s ease-in-out 0.35s infinite;
   will-change: transform, opacity;
@@ -23,33 +41,29 @@
 /* A six-sided plate with pointed ends, as the star-chart HUD's plates are: an accent rim around a dark ground. */
 .power-ready .power-ready__edge {
   padding: 3px; background: var(--power-ready-accent, #ffd9a0);
-  clip-path: polygon(26px 0, calc(100% - 26px) 0, 100% 50%, calc(100% - 26px) 100%, 26px 100%, 0 50%);
+  clip-path: polygon(22px 0, calc(100% - 22px) 0, 100% 50%, calc(100% - 22px) 100%, 22px 100%, 0 50%);
 }
-/* Wide, not tall: whose power and the move's name on the left, how to throw it on the right. */
+/* Two rows: the move's name, and under it how to throw it. Short enough to stay under the lifted ring. */
 .power-ready .power-ready__plate {
-  display: grid; grid-template-columns: auto auto; grid-template-areas: "title how" "move how"; align-items: center; column-gap: clamp(14px, 1.4vw, 22px);
-  padding: 8px clamp(32px, 2.8vw, 46px) 9px; background: var(--ink, #17110d);
-  clip-path: polygon(25px 0, calc(100% - 25px) 0, 100% 50%, calc(100% - 25px) 100%, 25px 100%, 0 50%);
-}
-
-.power-ready .power-ready__title {
-  grid-area: title; font-size: clamp(13px, 1.2vw, 19px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; white-space: nowrap;
-  color: var(--power-ready-accent, #ffd9a0);
+  display: grid; grid-template-columns: auto; grid-template-areas: "move" "how"; justify-items: center; align-items: center; row-gap: 2px;
+  padding: 5px 30px 6px; background: var(--ink, #17110d);
+  clip-path: polygon(21px 0, calc(100% - 21px) 0, 100% 50%, calc(100% - 21px) 100%, 21px 100%, 0 50%);
 }
 .power-ready .power-ready__move {
-  grid-area: move; margin-top: 3px; font-size: clamp(30px, 2.9vw, 48px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  grid-area: move; font-size: clamp(28px, 2.1vw, 34px); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8); text-shadow: 0 2px 0 var(--ink, #17110d);
 }
+/* The gesture, on two lines at most at 1280px and wider. */
 .power-ready .power-ready__how {
-  grid-area: how; max-width: 14.5em; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(18px, 1.72vw, 27px); font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; text-wrap: balance;
+  grid-area: how; max-width: 15.5em;
+  font-size: clamp(18px, 1.3vw, 21px); font-weight: 600; line-height: 1.15; letter-spacing: 0.02em; text-wrap: balance;
   color: var(--white, #f2e4c8);
 }
-.power-ready .power-ready__or { font-size: 0.85em; opacity: 0.9; white-space: nowrap; }
+.power-ready .power-ready__or { white-space: nowrap; }
 .power-ready .power-ready__key {
-  all: unset; display: inline-block; min-width: 1.5em; padding: 0.1em 0.4em; margin: 0 0.1em; vertical-align: 0.06em;
+  all: unset; display: inline-block; min-width: 1.2em; padding: 0 0.35em; margin: 0 0.1em;
   border: 2px solid var(--power-ready-accent, #ffd9a0); border-radius: 5px;
-  font: inherit; font-weight: 700; line-height: 1.1; text-align: center; color: var(--power-ready-accent, #ffd9a0);
+  font: inherit; font-weight: 700; line-height: 1.05; text-align: center; color: var(--power-ready-accent, #ffd9a0);
 }
 /* Between cards (--waiting) the engine drops a power move, so the plate stops asking: it dims, the pulse holds still,
    and "On the next card" stands where the key or the gesture was. The dim and the words come 0.8 s late, so the short
@@ -58,8 +72,8 @@
    shorter delay would not move one that is already counting down. */
 .power-ready .power-ready__edge { transition: opacity 0.12s ease-out; }
 .power-ready .power-ready__wait {
-  grid-area: how; visibility: hidden; padding-left: clamp(14px, 1.4vw, 22px); border-left: 2px solid var(--power-ready-accent, #ffd9a0);
-  font-size: clamp(18px, 1.72vw, 27px); font-weight: 700; line-height: 1.2; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  grid-area: how; visibility: hidden;
+  font-size: clamp(18px, 1.4vw, 22px); font-weight: 700; line-height: 1.15; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8);
 }
 .power-ready.power-ready--waiting .power-ready__frame { animation-play-state: running, paused; }
@@ -69,8 +83,10 @@
 .power-ready.power-ready--queued .power-ready__edge { transition: none; }
 .power-ready.power-ready--queued .power-ready__how { transition: none; }
 .power-ready.power-ready--queued .power-ready__wait { transition: none; }
-/* Keyboard play: the key is the instruction, so it is nearly as large as the move's name. */
-.power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2.6vw, 40px); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+/* Keyboard play: one short line under the name, so both are larger; the key is the instruction and nearly as large as the name. */
+.power-ready.power-ready--keys .power-ready__move { font-size: clamp(32px, 2.5vw, 40px); }
+.power-ready.power-ready--keys .power-ready__how { font-size: clamp(26px, 2vw, 32px); line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.power-ready.power-ready--keys .power-ready__key { padding: 0.05em 0.4em; }
 
 /* The champion plate, while the meter is filling: two short lines just right of the power ring (src/hud/powerCircle.css:
    centred, clamp(76px, 6.6vw, 108px) wide, on the same bottom offset), as tall as the ring so it sits level with it.
@@ -87,11 +103,11 @@
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
 }
 .power-ready .power-ready__of {
-  font-size: clamp(10px, 0.86vw, 13px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap;
+  font-size: clamp(18px, 1.3vw, 21px); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap;
   color: var(--white, #f2e4c8);
 }
 .power-ready .power-ready__god {
-  margin-top: 4px; font-size: clamp(17px, 1.6vw, 25px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+  margin-top: 3px; font-size: clamp(20px, 1.7vw, 27px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
   color: var(--power-ready-accent, #ffd9a0);
 }
 
@@ -99,12 +115,24 @@
 @keyframes power-ready-pulse { 50% { transform: scale(1.03); } }
 @media (prefers-reduced-motion: reduce) {
   .power-ready .power-ready__frame { animation: none; }
+  .power-ready .power-ready__title { animation: none; }
 }
-/* Narrow screens (a phone held upright): the three lines stack, as there is no room for two columns, and there is no
-   room beside the ring for the champion plate. */
+/* Big screens: the Forge HUD is drawn 1.35 times as large (src/hud/sky/top.css), the prompt card with it. The crescent
+   grows away from this strip, to the left. */
+@media (min-width: 1700px) and (min-height: 950px) {
+  .power-ready.power-ready--live { right: var(--power-ready-right, calc(324px * 1.35 + 10px)); }
+}
+/* Under 1280px wide the gap between the crescent and the card is too narrow for the plate: it may run under the card. */
+@media (max-width: 1279px) {
+  .power-ready.power-ready--live { right: var(--power-ready-right, 16px); }
+}
+/* Narrow screens (a phone held upright): the crescent moves up, so the banner is centred on the lower edge, the title
+   on one line on top of the plate, and there is no room beside the ring for the champion plate. */
 @media (max-width: 760px) {
   .power-ready.power-ready--champion { display: none; }
-  .power-ready .power-ready__plate { grid-template-columns: auto; grid-template-areas: "title" "move" "how"; padding: 7px 30px 8px; }
-  .power-ready .power-ready__how { max-width: none; margin-top: 4px; padding-left: 0; border-left: 0; }
-  .power-ready .power-ready__wait { margin-top: 4px; padding-left: 0; border-left: 0; }
+  .power-ready.power-ready--live { left: var(--power-ready-left, 0px); right: var(--power-ready-right, 0px); flex-direction: column; align-items: center; }
+  .power-ready .power-ready__beside { position: static; height: auto; margin-bottom: 4px; }
+  .power-ready .power-ready__title { padding: 3px 11px 4px 9px; }
+  .power-ready .power-ready__tail { display: inline; }
+  .power-ready .power-ready__how { max-width: none; }
 }
