@@ -131,6 +131,8 @@ export function App() {
         setNotice("");
         // Stay put: the player chooses the keyboard, never the failure.
         setCameraProblem(cameraErrorMessage(error));
+        // The camera problem card is on the main menu only: the two-player card's start must not land back on the Multiplayer screen with nothing said.
+        setPanel(null);
         dispatch({ type: "toTitle" });
       },
     );
@@ -176,7 +178,8 @@ export function App() {
         hosting={flow.screen === "host"}
         code={roomFromSearch(window.location.search) ?? ""}
         onOpen={() => { dispatch({ type: "hostRoom" }); }}
-        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); beginCamera(true); }}
+        // Two players on one camera have no room to keep and cannot play without the camera: a camera that fails there goes to the problem card.
+        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); beginCamera(!duoCamera.on()); }}
         onSolo={() => { keyboardOnly.current = true; dispatch({ type: "hosted", together: false }); }}
         onClose={() => { setPanel("multiplayer"); dispatch({ type: "toTitle" }); }}
         onJoined={(next) => { setJoined(next); dispatch({ type: "joinRoom" }); dispatch({ type: "joined" }); }}
