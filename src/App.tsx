@@ -37,7 +37,7 @@ import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
 import type { HostLink } from "./net/host";
 import { WebcamGate } from "./screens/WebcamGate";
-import { getSettings, useSettings } from "./settings/store";
+import { cameraUnder, getSettings, setSettings, useSettings } from "./settings/store";
 import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 import { Cutscene } from "./screens/cutscene/Cutscene";
@@ -78,7 +78,7 @@ export function App() {
   const unlocks = <UnlockNotice items={fresh} onDone={() => { setFresh([]); }} />;
   // A notice belongs to its own result screen: leaving it (retry, map, quit) drops what was left of it.
   useEffect(() => { if (flow.screen !== "result") setFresh([]); }, [flow.screen]);
-  const { musicVolume } = useSettings();
+  const { musicVolume, controls } = useSettings();
   useEffect(() => { setMusicVolume(musicVolume); }, [musicVolume]);
   // Menu music on every screen but the fight and its result. Silent until the first click, then it starts.
   useEffect(() => { if (flow.screen !== "fight" && flow.screen !== "result") startMusic("menu"); }, [flow.screen]);
@@ -99,8 +99,10 @@ export function App() {
   const keyboardOnly = useRef(false);
 
   // The title's camera button, and "Use camera" on the fight's panel. A second press while starting waits on the first.
+  // Picking the camera sets Play with back to Camera, so the fights after this one are handed the camera too.
   const startCamera = (): void => {
     keyboardOnly.current = false;
+    setSettings({ controls: "camera" });
     setCameraProblem("");
     setNotice("Starting the camera... If the browser asks for the camera at the top of this window, choose Allow.");
     camera.start().then(
@@ -235,12 +237,15 @@ export function App() {
   }
 
   return (
+    // "Use keyboard instead" at calibration sets Play with to Keyboard, so no later fight is handed the camera or asks to calibrate,
+    // until "Use camera" on a fight's panel or Play with back on Camera.
     <CameraPanelContext value={{ status: cameraStatus, onCamera: startCamera }}>
       <WebcamGate
         key={flow.seed}
         enemy={enemy}
         style={flow.style}
-        tracker={tracker}
+        tracker={cameraUnder(controls, tracker)}
+        onKeyboard={() => { setSettings({ controls: "keyboard" }); }}
         link={flow.hosting ? hostLink : null}
         seed={flow.seed}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
