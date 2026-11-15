@@ -81,7 +81,7 @@ function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boole
   context.lineWidth = 2.5 * ratio;
   for (const { from, to, faint } of lines) {
     context.globalAlpha = faint ? 0.25 : 0.95;
-    context.strokeStyle = "#e9a15f";
+    context.strokeStyle = "#efe3c6";
     context.beginPath();
     context.moveTo(from.x, from.y);
     context.lineTo(to.x, to.y);
@@ -89,10 +89,13 @@ function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boole
   }
   for (const { x, y, faint } of dots) {
     context.globalAlpha = faint ? 0.25 : 1;
-    context.fillStyle = "#f1e6cf";
+    context.fillStyle = "#d0603a";
     context.beginPath();
-    context.arc(x, y, 3.2 * ratio, 0, Math.PI * 2);
+    context.arc(x, y, 3.6 * ratio, 0, Math.PI * 2);
     context.fill();
+    context.lineWidth = 1.2 * ratio;
+    context.strokeStyle = "#2a1a12";
+    context.stroke();
   }
   context.globalAlpha = 1;
 }
