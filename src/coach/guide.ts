@@ -496,6 +496,13 @@ function entryFor(moveId: string, measure: Measure): Written | undefined {
 }
 
 const MAX_SHOWN = 4;
+/**
+ * For a move either side can make: the side its checklist names while no side is ahead (no pose yet, as with the
+ * keyboard). It is the side the move's instruction and figure show; a move not listed here shows the left.
+ */
+const SHOWN_FIRST: Readonly<Record<string, Side>> = {
+  cross: "right", chain_punch: "right", thunderbolt: "right", front_kick: "right", knee: "right",
+};
 interface Read extends LiveCheck { readonly rank: number }
 
 function readOption(moveId: string, measures: readonly Measure[], history: PoseHistory | null): Read[] {
@@ -519,7 +526,9 @@ export function liveChecks(
   const held = history && baseline !== undefined ? { ...history, baseline } : history;
   const total = (reads: readonly Read[]): number => reads.reduce((sum, read) => sum + (read.met ? 1 : 0) + read.progress, 0);
   const options = (table[move.id] ?? []).map((measures) => readOption(move.id, measures, held));
-  const reads = options.reduce<readonly Read[]>((best, option) => (best.length === 0 || total(option) > total(best) ? option : best), []);
+  // The table has one list per side, in the order of SIDES. A side has to be ahead to take the place of the one shown first.
+  const first = options[SIDES.indexOf(SHOWN_FIRST[move.id] ?? "left")] ?? options[0] ?? [];
+  const reads = options.reduce<readonly Read[]>((best, option) => (total(option) > total(best) ? option : best), first);
   if (reads.length === 0) return { checks: [], overall: 0, matched: false };
   const ranked = reads.filter((read) => read.rank > 0).sort((a, b) => a.rank - b.rank);
   // With no ranked label at all (every condition of the move is new to this file) the conditions are shown as they come.
