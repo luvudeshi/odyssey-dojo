@@ -1,6 +1,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
-import { armOut, armThrust, latest } from "../../pose/signals";
+import { latest } from "../../pose/signals";
+import { armOpening, armOut, flungWide, punch } from "../handSignals";
 
 export const move: MoveDef = {
   id: "cross",
@@ -13,7 +14,10 @@ export const move: MoveDef = {
   teaches: "Strength comes from your feet and hips, not your arm, so stay balanced and ready to move",
   detect(history) {
     const frame = latest(history);
-    return frame && armThrust(history, "right") && !armOut(frame, "left") ? 1 : 0;
+    // A left arm that is out, or on its way out, makes this a two-handed thrust, not a cross.
+    if (!frame || armOut(frame, "left", history.baseline) || armOpening(history, "left")) return 0;
+    // A punch goes at the camera: an arm flung out to the side is not one.
+    return flungWide(frame, "right") ? 0 : punch(history, "right");
   },
   quality(history) {
     return strikeQuality(history, { sides: ["right"] });

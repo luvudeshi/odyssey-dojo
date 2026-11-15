@@ -20,6 +20,10 @@ export const move: MoveDef = {
     const shoulder = joint(frame.image, JOINT.leftShoulder);
     const width = shoulderWidth(frame);
     if (bend < 60 || bend > 130 || Math.abs(wrist.y - shoulder.y) > width * 0.6) return 0;
+    // The arm keeps its bend through the whole swing. A straight arm folding back to the chest also moves the
+    // fist across the picture, but it was straight a moment ago, or its elbow is still closing fast.
+    const widest = Math.max(...recent(history, 150).map((old) => elbowAngle(old, "left")));
+    if (widest > 130 || widest - bend > 35) return 0;
     return clamp01((wrist.x - joint(earlier.image, JOINT.leftWrist).x) / width);
   },
   quality(history) {

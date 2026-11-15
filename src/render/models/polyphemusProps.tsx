@@ -21,10 +21,11 @@ export function Eye({ blinded, glow }: { blinded: boolean; glow: number }) {
     <group>
       <mesh scale={[1, 0.9, 0.8]}>
         <icosahedronGeometry args={[0.48, 1]} />
-        <meshStandardMaterial color="#ffd98a" emissive="#ff8c00" emissiveIntensity={glow} flatShading toneMapped={false} />
+        <meshStandardMaterial color="#e89a3c" emissive="#e0600a" emissiveIntensity={glow * 0.6} flatShading toneMapped={false} />
       </mesh>
-      <mesh position={[0, 0, 0.34]}>
-        <icosahedronGeometry args={[0.16, 0]} />
+      {/* A tall dark slit pupil, so it reads as an eye and not a plate. */}
+      <mesh position={[0, 0, 0.36]} scale={[0.55, 1.6, 0.6]}>
+        <icosahedronGeometry args={[0.2, 0]} />
         <meshStandardMaterial color="#1a0a04" flatShading roughness={1} />
       </mesh>
     </group>
