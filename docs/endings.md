@@ -13,7 +13,7 @@ The lines live in `src/enemies/endings.ts`, one per enemy id, read with `endingF
 | --- | --- | --- | --- | --- | --- |
 | Polyphemus (`polyphemus`) | escape | You are out of the cave, and your men are out with you. | The cave holds you a while longer. Catch your breath. | Getting out is the win. You do not have to beat someone to be safe. | 9 |
 | Circe (`circe`) | escape | The spell did not take you. She lets your men go. | The spell holds for now. Clear your head and try again. | A clear head is your best guard. Spot a trick early and you keep your choices. | 10 |
-| The Sirens (`sirens`) | escape | You heard the song, and the ship sailed on past. | The song pulls you in this time. Steady yourself and retry. | Plan ahead and lean on friends. Help you set up early holds when it gets hard. | 12 |
+| The Sirens (`sirens`) | escape | You heard the song, and the ship sailed on past. | The song pulls you in this time. Steady yourself and retry. | Plan ahead and lean on friends. The help you set up early holds when it gets hard. | 12 |
 | Scylla (`scylla`) | escape | You are past the strait. Six were lost; the ship is through. | The strait turns you back. Rest, then steer through again. | Some dangers cannot be beaten. Do not stop to fight: keep moving and get through. | 12 |
 | Charybdis (`charybdis`) | escape | You held on to the fig tree and got clear of the whirlpool. | The whirlpool pulls you back. Hold on and try once more. | Hold on to something solid and wait for your moment. Staying calm gets you out. | 12 |
 | The Suitors (`suitors`) | stand | You stood your ground. Your home is your own again. | The hall is not yours yet. Get up and try again. | Standing your ground is the last choice, for when you are home and cannot leave. | 22 |
