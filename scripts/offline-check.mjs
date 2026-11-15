@@ -167,7 +167,9 @@ function readHud() {
 }
 
 /** The label on the card to the `event.key` the game listens for (see keyLabel in src/hud/Hud.tsx). */
-const keyFor = (label) => (label === "Space" ? " " : label.length === 1 ? label.toLowerCase() : label);
+/** The arrow keys are shown as glyphs on the cards (ARROWS in src/hud/sky/SkyPromptCard.tsx and src/coach/ui/keyName.ts). */
+const ARROW_KEYS = { "←": "ArrowLeft", "→": "ArrowRight", "↓": "ArrowDown", "↑": "ArrowUp" };
+const keyFor = (label) => ARROW_KEYS[label] ?? (label === "Space" ? " " : label.length === 1 ? label.toLowerCase() : label);
 
 /**
  * Plays by the prompt card: holds the key of a defend until the card changes, taps the key of a strike.

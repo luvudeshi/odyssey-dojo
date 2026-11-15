@@ -309,9 +309,13 @@ function readHud(words) {
   return { over: false, kind: hold ? "defend" : kindOf(card), word, label: clean(card.querySelector("kbd")) };
 }
 
-/** The reverse of `keyLabel` in src/hud/Hud.tsx: "Space" is the space bar, a letter is shown in upper case. */
+/** The arrow keys are shown as glyphs on the cards (ARROWS in src/hud/sky/SkyPromptCard.tsx and src/coach/ui/keyName.ts). */
+const ARROW_KEYS = { "←": "ArrowLeft", "→": "ArrowRight", "↓": "ArrowDown", "↑": "ArrowUp" };
+
+/** The reverse of the card's key hint: "Space" is the space bar, an arrow is its glyph, a letter is shown in upper case. */
 function keyFor(hud, moveKeys) {
   if (hud.label === "Space") return " ";
+  if (ARROW_KEYS[hud.label]) return ARROW_KEYS[hud.label];
   if (hud.label.length === 1) return hud.label.toLowerCase();
   return hud.label || moveKeys[hud.word] || null;
 }
