@@ -5,6 +5,7 @@ import { createGemini } from "./ai/gemini";
 import { NO_AI } from "./ai/types";
 import { createApp } from "./app";
 import { loadConfig } from "./env";
+import { limitSlowRequests } from "./lib/roomLimits";
 
 const config = loadConfig();
 const ai = {
@@ -13,10 +14,11 @@ const ai = {
   ...(config.elevenLabsKey === null ? {} : createElevenLabs(config.elevenLabsKey)),
 };
 const app = await createApp({ config, ai });
-app.listen(config.port, () => {
+// A request that stops half way is closed instead of holding a socket for Node's default five minutes.
+limitSlowRequests(app.listen(config.port, () => {
   log("info", "server_listening", {
     port: config.port,
     gemini: config.geminiKey !== null,
     elevenlabs: config.elevenLabsKey !== null,
   });
-});
+}));
