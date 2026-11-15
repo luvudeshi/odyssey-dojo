@@ -51,6 +51,11 @@ const BREAK_MS = 250;
 export const PROMOTE_MS = 400;
 /** A seat's home is the average of its first frames. */
 const HOME_FRAMES = 15;
+/**
+ * The second player's home then follows where they stand, with this time constant, so it is still right after they
+ * walk to the other side. Player one's home stays where it was: it is where the stance was measured.
+ */
+const HOME_FOLLOW_MS = 1000;
 
 export interface Seats {
   /** Player one, the hero: what the fight reads as its one player. */
@@ -97,13 +102,18 @@ interface Average {
   y: number;
   w: number;
   n: number;
+  t: number;
 }
 
-function add(average: Average | null, home: Home): Average {
-  if (!average) return { ...home, n: 1 };
-  if (average.n >= HOME_FRAMES) return average;
+function add(average: Average | null, home: Home, t: number, follow: boolean): Average {
+  if (!average) return { ...home, n: 1, t };
+  if (average.n >= HOME_FRAMES) {
+    if (!follow) return average;
+    const k = Math.min(1, Math.max(0, t - average.t) / HOME_FOLLOW_MS);
+    return { x: average.x + (home.x - average.x) * k, y: average.y + (home.y - average.y) * k, w: average.w + (home.w - average.w) * k, n: average.n, t };
+  }
   const n = average.n + 1;
-  return { x: average.x + (home.x - average.x) / n, y: average.y + (home.y - average.y) / n, w: average.w + (home.w - average.w) / n, n };
+  return { x: average.x + (home.x - average.x) / n, y: average.y + (home.y - average.y) / n, w: average.w + (home.w - average.w) / n, n, t };
 }
 
 export function createSeating(): Seating {
@@ -154,10 +164,10 @@ export function createSeating(): Seating {
       }
       const firstBody = zero === null ? undefined : bodies[zero];
       const secondBody = one === null ? undefined : bodies[one];
-      if (firstBody && !moved) homes[0] = add(homes[0], homeOf(firstBody.image));
+      if (firstBody && !moved) homes[0] = add(homes[0], homeOf(firstBody.image), t, false);
       if (firstBody) wide[0] = Math.max(homeOf(firstBody.image).w, wide[0] * WIDTH_HOLD);
       if (secondBody) {
-        homes[1] = add(homes[1], homeOf(secondBody.image));
+        homes[1] = add(homes[1], homeOf(secondBody.image), t, true);
         // A break: a picture came without them and they were gone longer than BREAK_MS, or no picture came for as long
         // as it takes the count to fall back to one player (STOPPED_MS).
         const away = t - secondSeenAt;

@@ -289,3 +289,18 @@ test("the camera store: after player two takes over, the frame to draw over the 
   camera.setOn(false);
   expect(promoted && camera.seen(promoted)).toBe(promoted);
 });
+
+test("the two walk past each other, then the one now on the right leaves: the one who stayed is still drawn where the hero stood", () => {
+  const seating = createSeating();
+  const start = run(seating, times(JOINED, () => [body(0.3, 0.5, 0.12), body(0.7, 0.54, 0.16)]));
+  // Three seconds of walking, one body lower in the picture so the two never merge, then standing still on the other sides.
+  const steps = Math.ceil(3000 / FRAME_MS);
+  const walk = run(seating, times(steps, (i) => [body(0.3 + (0.4 * i) / steps, 0.5, 0.12), body(0.7 - (0.4 * i) / steps, 0.7, 0.16)]), start.t);
+  const stand = run(seating, times(Math.ceil(3000 / FRAME_MS), () => [body(0.7, 0.5, 0.12), body(0.3, 0.7, 0.16)]), walk.t);
+  expect([at(stand.out.at(-1)?.first ?? null), at(stand.out.at(-1)?.second ?? null)]).toEqual([0.7, 0.3]);
+  // Player one (now on the right) walks out. Before the fix the one who stayed was read at the left edge, from where they stood at the start.
+  const left = run(seating, times(40, () => [body(0.3, 0.7, 0.16)]), stand.t);
+  const hero = left.out.at(-1)?.first ?? null;
+  expect(Math.abs((at(hero) ?? 0) - 0.3)).toBeLessThan(0.03);
+  expect(at(left.out.at(-1)?.firstSeen ?? null)).toBe(0.3);
+});
