@@ -19,7 +19,8 @@
   flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 0.6rem; margin: 0; padding: 0.3rem; list-style: none;
   overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--dt-line) transparent;
 }
-.dojo-track-row:focus-visible { outline: 3px solid #f0faff; outline-offset: 2px; }
+/* Drawn inside the row: the edge fade below would mask a ring drawn outside it. */
+.dojo-track-row:focus-visible { outline: 3px solid #f0faff; outline-offset: -3px; }
 .dojo-track-chip {
   flex: none; display: flex; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.8rem; white-space: nowrap;
   font-size: 1.15rem; color: var(--dt-dim); background: #14111a; border: 2px solid var(--dt-line); border-radius: 4px;

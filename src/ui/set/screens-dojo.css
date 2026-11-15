@@ -12,7 +12,7 @@
   .dojo-setup { flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; max-width: 1180px; gap: 0; margin: 0 auto; align-items: stretch; }
   .dojo-setup-title { flex: none; margin: -34px 0 4px !important; letter-spacing: 0.04em; text-transform: none; text-align: center; font: 600 24px/1.2 var(--st-body); color: var(--st-dim); }
   .dojo-set-panel {
-    flex: 0 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto auto; gap: 6px 20px; overflow-y: auto; scrollbar-color: var(--st-bronze-mid) transparent;
+    flex: 0 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto minmax(0, auto) auto; gap: 6px 20px;
     padding: 12px 26px 14px; text-align: left;
   }
   .dojo-set-panel > fieldset, .dojo-set-group { min-width: 0; margin: 0; padding: 0; border: 0; background: none; border-radius: 0; }
@@ -25,10 +25,17 @@
   .dojo-set-reps { grid-column: 2; grid-row: 2; }
   .dojo-set-reps legend { float: left; margin: 0 14px 0 0; padding: 0; line-height: 40px; }
   .dojo-set-reps .dojo-set-row { gap: 16px; min-height: 40px; }
-  .dojo-set-moves { grid-column: 1 / -1; grid-row: 3; }
-  /* The panel scrolls; the camera note and Start training stay stuck to its bottom edge. */
-  .dojo-set-foot { grid-column: 1 / -1; grid-row: 4; position: sticky; bottom: -14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 6px 0 14px; background: #082428; box-shadow: 0 -8px 8px -4px #082428; }
-  .dojo-set-camera { margin: 0 !important; text-align: left; }
+  .dojo-set-moves { grid-column: 1 / -1; grid-row: 3; min-height: 0; overflow-y: auto; }
+  /* A drawn scrollbar shows whenever the lists do not fit (a 1024x768 screen), where a hidden overlay bar made them look cut off. */
+  .dojo-set-moves::-webkit-scrollbar { width: 12px; }
+  .dojo-set-moves::-webkit-scrollbar-track { background: rgb(0 0 0 / 0.35); border-radius: 6px; }
+  .dojo-set-moves::-webkit-scrollbar-thumb { background: var(--st-bronze-mid); border-radius: 6px; border: 2px solid rgb(0 0 0 / 0.35); }
+  /* On a small screen the lists run past the box: fade the last rows out so they read as more below, not as cut off. */
+  @media (max-width: 1100px), (max-height: 700px) {
+    .dojo-set-moves { padding-bottom: 26px; -webkit-mask-image: linear-gradient(#000 calc(100% - 26px), transparent); mask-image: linear-gradient(#000 calc(100% - 26px), transparent); }
+  }
+  .dojo-set-camera { grid-column: 1; grid-row: 4; align-self: center; text-align: left; }
+  .dojo-set-start { grid-column: 2; grid-row: 4; }
 
   .dojo-set-style { min-height: 40px; padding: 2px 16px; font-size: 18px; }
   .dojo-set-style[aria-pressed="true"] { color: var(--st-bronze-dark); text-shadow: 0 1px 0 rgba(255, 240, 200, 0.7); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); border-color: #3a1d08; }
@@ -37,7 +44,7 @@
   .dojo-set-count, .dojo-set-camera { font: 600 20px/1.2 var(--st-body); color: var(--st-ink); }
   .dojo-set-count { margin-left: 12px !important; }
   .dojo-set-camera { color: var(--st-dim); }
-  .dojo-set-start { flex: none; min-height: 50px; padding: 6px 48px; font-size: 24px; }
+  .dojo-set-start { justify-self: end; min-height: 50px; padding: 6px 48px; font-size: 24px; }
 
   /* the move list: bronze tick boxes on the glass */
   .dojo-set-moves { grid-template-columns: 1fr 1.45fr 0.9fr 2.2fr; gap: 12px 28px; padding-right: 6px; }
