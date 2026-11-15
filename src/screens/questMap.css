@@ -1,0 +1,107 @@
+/* The quest map as a painted storm sea (QuestMap.tsx, questSea.tsx, questPlaces.tsx). The scene is a 16:9 box fitted
+   inside the panel so no stop is ever cut off; the sea and sky are drawn far past its edges to fill whatever is left.
+   Motion is transform and opacity only, never on anything with a filter, and holds still with reduced motion. */
+.menu.quest-map { container-type: size; padding: 0; overflow: hidden; background: #0b1c1e; }
+.menu.quest-map::before { display: none; }
+.menu > .qm-layer { position: absolute; left: 50%; top: 50%; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; transform: translate(-50%, -50%); }
+.qm-backlayer, .qm-front { overflow: visible; }
+.qm-front { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.menu > .qm-rain { opacity: 0.55; }
+
+/* ---- the storm ---- */
+.qm-sky { fill: url(#qm-sky); }
+.qm-moon { fill: url(#qm-pale); }
+.qm-cloud { fill: url(#qm-cloud); }
+.qm-cloud-lit { fill: url(#qm-pale); opacity: 0.6; }
+.qm-bolt { opacity: 0; animation: qm-flash 9s linear infinite; }
+.qm-bolt__core { fill: none; stroke: #f4fbff; stroke-width: 3; stroke-linejoin: round; }
+.qm-bolt__glow { fill: none; stroke: #bfe4ff; stroke-width: 16; stroke-linejoin: round; opacity: 0.22; }
+@keyframes qm-flash { 0%, 58% { opacity: 0; } 58.6% { opacity: 1; } 59.6% { opacity: 0.15; } 60.6% { opacity: 0.9; } 64% { opacity: 0; } 100% { opacity: 0; } }
+.qm-sea { fill: url(#qm-sea); }
+.qm-haze { fill: rgba(200, 222, 214, 0.1); }
+.qm-wave { fill: url(#qm-wave); }
+.qm-sheen { fill: none; stroke: #8fc4bd; stroke-linecap: round; opacity: 0.16; }
+.qm-foam { fill: none; stroke: #e3f3ef; stroke-linecap: round; }
+.qm-swell--0 { animation: qm-swell 7s ease-in-out infinite alternate; }
+.qm-swell--1 { animation: qm-swell 9s ease-in-out -3s infinite alternate-reverse; }
+.qm-swell--2 { animation: qm-swell 11s ease-in-out -6s infinite alternate; }
+@keyframes qm-swell { from { transform: translateX(-16px); } to { transform: translateX(16px); } }
+.qm-moonpath { fill: url(#qm-pale); opacity: 0.4; }
+.qm-fire-reflect { fill: url(#qm-glow); opacity: 0.35; }
+/* The wind god: a head of cloud, lit from the moon, blowing the storm east. */
+.qm-wind__puff { fill: url(#qm-puff); }
+.qm-wind__head { fill: url(#qm-face); }
+.qm-wind__cheek { fill: #eef4f0; opacity: 0.35; }
+.qm-wind__line { fill: none; stroke: #263537; stroke-width: 2.4; stroke-linecap: round; }
+.qm-wind__lips { fill: #263537; }
+.qm-wind__breath { fill: url(#qm-breath); }
+
+/* ---- the course and the ship ---- */
+.qm-course-edge { fill: none; stroke: #04100f; stroke-width: 9; opacity: 0.55; stroke-linecap: round; }
+.qm-course { fill: none; stroke: #f2c56e; stroke-width: 4; stroke-dasharray: 16 11; stroke-linecap: round; }
+.qm-ship { transform-box: fill-box; transform-origin: 50% 80%; animation: qm-bob 3.4s ease-in-out infinite alternate; }
+@keyframes qm-bob { from { transform: translateY(-2px) rotate(-2.5deg); } to { transform: translateY(3px) rotate(2.5deg); } }
+.qm-ship .f { fill: url(#bronze-cast); }
+.qm-ship .l, .qm-ship .s { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.qm-ship .l { stroke: #f2c56e; stroke-width: 3.4; }
+.qm-ship .s { stroke: #4a2408; stroke-width: 1.8; }
+.qm-ship .e { fill: #fff1c9; }
+.qm-home-glow { fill: url(#qm-glow); opacity: 0.85; }
+
+/* ---- the places: dark rock, warm lights, marble halls ---- */
+:is(.qm-place, .qm-troy) .rk { fill: url(#qm-rock); stroke: #081010; stroke-width: 1.4; }
+:is(.qm-place, .qm-troy) .rk2 { fill: #121b1c; stroke: #081010; stroke-width: 1; }
+:is(.qm-place, .qm-troy) .bd { fill: #d8cdb8; stroke: #4a4236; stroke-width: 1.2; }
+:is(.qm-place, .qm-troy) .dk { fill: #030606; }
+:is(.qm-place, .qm-troy) .gl { fill: #ffc86a; }
+:is(.qm-place, .qm-troy) .fx { fill: #ff8a2a; }
+:is(.qm-place, .qm-troy) .halo { fill: url(#qm-glow); }
+:is(.qm-place, .qm-troy) :is(.sm, .fm, .ln, .nk, .bn) { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+:is(.qm-place, .qm-troy) .sm { stroke: rgba(160, 172, 168, 0.45); stroke-width: 11; }
+:is(.qm-place, .qm-troy) .fm { stroke: #e3f3ef; stroke-width: 2.2; opacity: 0.8; }
+:is(.qm-place, .qm-troy) .ln { stroke: #3a3328; stroke-width: 1.5; }
+:is(.qm-place, .qm-troy) .nk { stroke: #1b2526; stroke-width: 7; }
+:is(.qm-place, .qm-troy) .bn { stroke: #e9dfcc; stroke-width: 2; }
+.qm-troy .fx { filter: drop-shadow(0 0 12px #ff7a1e); }
+.qm-place .lit-only { display: none; }
+.is-home .qm-stop--suitors .lit-only { display: inline; }
+
+/* ---- the stops ---- */
+.menu .qm-stop {
+  position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 0; min-width: 0;
+  border: 0; border-radius: 14px; background: none; box-shadow: none; color: var(--pb-text); font-family: var(--pb-font-body); text-transform: none; letter-spacing: normal;
+}
+.menu .qm-stop:hover:not(:disabled), .menu .qm-stop:active:not(:disabled) { background: none; box-shadow: none; color: var(--pb-text); }
+.menu .qm-stop:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 4px; }
+.qm-place { position: relative; display: block; width: 100%; height: auto; overflow: visible; transition: transform 160ms; }
+.qm-glow { position: absolute; left: 6%; right: 6%; top: 18%; height: 70%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 214, 140, 0.6), rgba(255, 170, 70, 0.18) 60%, transparent); opacity: 0; transition: opacity 160ms; }
+.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-glow, .is-home .qm-stop--suitors .qm-glow { opacity: 1; }
+.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-place { transform: translateY(-5px); }
+.qm-stop.is-next .halo { animation: qm-pulse 1.6s ease-in-out infinite alternate; }
+@keyframes qm-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+.qm-label { position: relative; display: block; margin-top: 2px; white-space: nowrap; font: 700 18px/1.2 var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 4px #000, 0 0 4px #000, 0 2px 6px #000; }
+.qm-label small { display: block; font: 600 16px/1.2 var(--pb-font-body); color: #cfe0dc; }
+.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-label { color: #ffe3a3; }
+.qm-badge { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; border-radius: 50%; vertical-align: 2px; font: 700 14px/1 var(--pb-font-body); color: #2a1406; text-shadow: none; background: linear-gradient(#ffe6b0, #c98f37); box-shadow: 0 1px 3px #000; }
+.qm-badge svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.qm-stop.cleared .qm-label small { color: #f2c56e; }
+.qm-stop.cleared .halo { opacity: 0.4; }
+.menu .qm-stop:disabled { cursor: not-allowed; }
+.qm-stop:disabled .qm-place { filter: grayscale(1) brightness(0.5); }
+.qm-stop:disabled .qm-label { color: #b9c4c0; }
+.qm-stop:disabled .qm-badge { background: #5d6a6a; color: #e6eeec; }
+.qm-port { position: absolute; z-index: 2; transform: translateX(-50%); font: 700 18px var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 4px #000, 0 0 4px #000; }
+.is-home .qm-port--ithaca { color: #ffd27a; }
+
+/* ---- the title and the way back ---- */
+.menu > .qm-head { position: absolute; top: 16px; left: 0; right: 0; z-index: 3; text-align: center; pointer-events: none; }
+.menu .qm-title { margin: 0; font: 800 clamp(2.4rem, 4.4vw, 3.6rem)/1.05 var(--pb-font-body); letter-spacing: 0.16em; text-transform: uppercase; color: #f2d9a0; text-shadow: 0 3px 0 #2a1406, 0 0 18px rgba(0, 0, 0, 0.9), 0 0 2px #000; }
+.menu > .qm-head p { margin: 0.2rem auto 0; max-width: 46rem; font: 500 19px/1.35 var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 4px #000, 0 1px 4px #000; }
+.is-home > .qm-head p { color: #f2d9a0; }
+.menu > .qm-foot { position: absolute; left: 50%; bottom: 18px; z-index: 3; display: flex; gap: 6px; transform: translateX(-50%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .qm-bolt { animation: none; opacity: 0.85; }
+  .qm-swell--0, .qm-swell--1, .qm-swell--2, .qm-ship, .qm-stop.is-next .halo { animation: none; }
+  .qm-place, .qm-glow { transition: none; }
+}

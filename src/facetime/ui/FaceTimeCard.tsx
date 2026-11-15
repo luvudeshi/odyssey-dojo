@@ -91,6 +91,9 @@ export function FaceTimeCard(props: {
   const friendLink = friendSeat ? standInLink(window.location.origin, friendSeat) : null;
   const waiting = state !== null && (state.phase === "dialing" || state.phase === "ringing");
 
+  // Nothing to offer: no phone line on this server and no stand-in. The Multiplayer screen then shows two choices.
+  if (idle && setup.kind !== "ready" && !offerStandIn) return null;
+
   return (
     <section className="acc-card rooms__card ft-card">
       <h2>
