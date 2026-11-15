@@ -1,7 +1,7 @@
 // The rule for joining this browser's progress with the account's (src/account/merge.ts).
 import { expect, test } from "vitest";
 import type { Save } from "../src/account/contracts";
-import { mergeSaves } from "../src/account/merge";
+import { changesBetween, mergeSaves } from "../src/account/merge";
 
 const NO_PROGRESS = { name: "", cleared: [], moves: {}, bestScore: 0, fights: 0, wins: 0 };
 const save = (profile: Partial<Save["profile"]>, rest: Partial<Save> = {}): Save => ({ version: 1, profile: { ...NO_PROGRESS, ...profile }, settings: {}, character: null, ...rest });
@@ -98,4 +98,28 @@ test("an account that was never saved to changes nothing but the name", () => {
   const local = save({ name: "Nobody", styles: ["boxer"], blocks: 3 });
   expect(mergeSaves(local, null, { accountName: "Luv" }).profile).toEqual({ ...local.profile, name: "Luv" });
   expect(mergeSaves(local, save({}, { profile: {} }), { accountName: "Luv" }).profile).toEqual({ ...local.profile, name: "Luv" });
+});
+
+test("when it is known what was changed here, only that wins: a fight sent from a stale browser does not undo a rename made elsewhere", () => {
+  const account = { ...PLAYED, profile: { ...PLAYED.profile, name: "Luv the Bold" }, settings: { musicVolume: 0.3, sfxVolume: 0.8, keyHints: true }, character: "zeus" };
+  const before = save({ name: "Luv", cleared: ["polyphemus"] }, { settings: { musicVolume: 0.3, sfxVolume: 1, keyHints: true }, character: "athena" });
+  // A fight and nothing else.
+  const fought = { ...before, profile: { ...before.profile, cleared: ["polyphemus", "sirens"], wins: 1, fights: 1 } };
+  expect(changesBetween(before, fought)).toEqual({ name: false, settings: [], character: false });
+  const merged = mergeSaves(fought, account, { accountName: "Luv", prefer: changesBetween(before, fought) });
+  expect(merged.profile).toMatchObject({ name: "Luv the Bold", cleared: ["polyphemus", "circe", "sirens"] });
+  expect(merged.settings).toEqual(account.settings);
+  expect(merged.character).toBe("zeus");
+
+  // One slider moved here: that one setting wins, the others and the name are the account's.
+  const slid = { ...before, settings: { ...before.settings, musicVolume: 0.9 } };
+  expect(changesBetween(before, slid)).toEqual({ name: false, settings: ["musicVolume"], character: false });
+  const one = mergeSaves(slid, account, { accountName: "Luv", prefer: changesBetween(before, slid) });
+  expect(one.settings).toEqual({ musicVolume: 0.9, sfxVolume: 0.8, keyHints: true });
+  expect(one.profile.name).toBe("Luv the Bold");
+
+  // A rename and a new character here win over the account's.
+  const renamed = { ...before, profile: { ...before.profile, name: "Luv of Ithaca" }, character: "achilles" };
+  const two = mergeSaves(renamed, account, { accountName: "Luv", prefer: changesBetween(before, renamed) });
+  expect([two.profile.name, two.character, two.settings]).toEqual(["Luv of Ithaca", "achilles", account.settings]);
 });

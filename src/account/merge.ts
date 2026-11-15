@@ -43,14 +43,35 @@ const text = (value: unknown): string => (typeof value === "string" ? value : ""
 /** What an account that was never saved to counts as. */
 const NOTHING_SAVED: Save = { version: 1, profile: {}, settings: {}, character: null };
 
+/** What this browser changed since it last joined with the account. Only these win over what the account holds. */
+export interface LocalChanges {
+  readonly name: boolean;
+  /** The names of the settings that were changed here. */
+  readonly settings: readonly string[];
+  readonly character: boolean;
+}
+
 export interface MergeOptions {
   /** The name the player signed in with. It becomes the hero name when the account has no save yet. */
   readonly accountName: string;
   /**
-   * Whose hero name, settings and character win when both sides have them. "account" on sign-in and at start-up;
-   * "local" when this browser has changes the account does not have yet, so they are not undone by an older save.
+   * Whose hero name, settings and character win when both sides have them. "account" on sign-in and at start-up.
+   * "local" when this browser has changes the account does not have and it is not known which they are.
+   * A list of what was changed here when it is known: then a fight won on a browser that was not looking sends
+   * its fight, and does not also put its old hero name and volume over a change made elsewhere.
    */
-  readonly prefer?: "account" | "local";
+  readonly prefer?: "account" | "local" | LocalChanges;
+}
+
+/** The parts of this browser's save that changed between two snapshots of it. */
+export function changesBetween(before: Save, after: Save): LocalChanges {
+  const differs = (a: unknown, b: unknown): boolean => JSON.stringify(a) !== JSON.stringify(b);
+  const keys = [...new Set([...Object.keys(before.settings), ...Object.keys(after.settings)])];
+  return {
+    name: differs(before.profile.name, after.profile.name),
+    settings: keys.filter((key) => differs(before.settings[key], after.settings[key])),
+    character: differs(before.character, after.character),
+  };
 }
 
 /**
@@ -60,17 +81,20 @@ export interface MergeOptions {
  * Hero name: the one saved in the account, else the name signed in with.
  */
 export function mergeSaves(local: Save, account: Save | null, options: MergeOptions): Save {
-  const localFirst = options.prefer === "local";
+  const prefer = options.prefer ?? "account";
   const theirs = account ?? NOTHING_SAVED;
-  const first = localFirst ? local : theirs;
-  const second = localFirst ? theirs : local;
+  const all = prefer === "local";
+  const changed: LocalChanges = typeof prefer === "object" ? prefer : { name: all, settings: all ? Object.keys(local.settings) : [], character: all };
   const achievements = union(theirs.achievements ?? [], local.achievements ?? []);
-  const profile = joined(theirs.profile, local.profile, localFirst) as Record<string, unknown>;
+  const profile = joined(theirs.profile, local.profile, changed.name) as Record<string, unknown>;
+  // The account's settings when it has any, with the ones changed here put over them.
+  const settings = hasKeys(theirs.settings) && !(all && hasKeys(local.settings)) ? theirs.settings : local.settings;
+  const mine = Object.fromEntries(changed.settings.filter((key) => key in local.settings).map((key) => [key, local.settings[key]]));
   return {
     version: 1,
-    profile: { ...profile, name: (localFirst ? text(local.profile.name) : "") || text(theirs.profile.name) || options.accountName },
-    settings: hasKeys(first.settings) ? first.settings : second.settings,
-    character: first.character ?? second.character,
+    profile: { ...profile, name: (changed.name ? text(local.profile.name) : "") || text(theirs.profile.name) || options.accountName },
+    settings: { ...settings, ...mine },
+    character: (changed.character ? local.character ?? theirs.character : theirs.character ?? local.character),
     ...(achievements.length > 0 ? { achievements } : {}),
   };
 }
