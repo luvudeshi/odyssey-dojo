@@ -2,6 +2,7 @@
 // All of it is in memory and runs on a clock the tests move. The send limit is per member and lives in ./rooms.
 import type { IncomingHttpHeaders, Server } from "node:http";
 import { isLoopback } from "./localOnly";
+import { SENDS_PER_SECOND } from "./rooms";
 
 export const MINUTE_MS = 60_000;
 /** Create and join carry no data, so their bodies are tiny. A send's limit is the message limit plus room for the token. */
@@ -22,6 +23,12 @@ export const ROOMS_KEPT_FOR_THIS_MACHINE = 10;
 export const WRONG_CODES_PER_MINUTE = 20;
 export const MAX_STREAMS_PER_CLIENT = 8;
 export const STREAMS_RETRY_S = 5;
+/**
+ * A poll loop starts a new poll as soon as the last one answers, and a poll answers at once when a message is waiting,
+ * so a member that is sent SENDS_PER_SECOND messages a second polls about that often. Two such members share an
+ * address behind one tunnel visitor or Wi-Fi, so an address gets room for two of them, plus a little. Only a runaway loop reaches this.
+ */
+export const POLLS_PER_SECOND = 2 * SENDS_PER_SECOND + 10;
 /** A reader that lets this much pile up unread has stopped reading, and is cut off (routes/rooms.ts). */
 export const MAX_STREAM_BACKLOG_BYTES = 1024 * 1024;
 /** A request must arrive whole within this, headers within the shorter one, or Node closes it. An event stream is an answer, so it is not cut. */
@@ -111,6 +118,7 @@ export type RoomLimits = ReturnType<typeof createRoomLimits>;
 export function createRoomLimits(now: () => number = Date.now) {
   const creates = createBudget(CREATES_PER_MINUTE, MINUTE_MS, now);
   const wrong = createBudget(WRONG_CODES_PER_MINUTE, MINUTE_MS, now);
+  const polls = createBudget(POLLS_PER_SECOND, 1_000, now);
   const streams = new Map<string, Map<string, number>>();
   let opened = 0;
   return {
@@ -127,9 +135,16 @@ export function createRoomLimits(now: () => number = Date.now) {
     /**
      * Wrong codes and wrong tokens, counted apart for joins ("join") and for sends and streams ("member"),
      * so a tab still talking to a room that is gone cannot use up its own budget for joining the next one.
+     * This machine is not counted, as for creates: it is the laptop's own browser, and guessing its own code gains nothing.
      */
-    wrongWait: (client: string, call: "join" | "member"): number => wrong.wait(`${call} ${client}`),
-    wrongCount: (client: string, call: "join" | "member"): void => { wrong.count(`${call} ${client}`); },
+    wrongWait: (client: string, call: "join" | "member"): number => (client === THIS_MACHINE ? 0 : wrong.wait(`${call} ${client}`)),
+    wrongCount: (client: string, call: "join" | "member"): void => { if (client !== THIS_MACHINE) wrong.count(`${call} ${client}`); },
+    /** Seconds `client` must wait before it polls again; 0 lets it and counts it. */
+    poll: (client: string): number => {
+      const wait = polls.wait(client);
+      if (wait === 0) polls.count(client);
+      return wait;
+    },
     /**
      * Takes one of the client's stream places for `seat` (a room's code and a member's token) and returns how to give
      * it back, or null when the client has none left. A seat's newer stream replaces its older one, so it uses the

@@ -35,8 +35,12 @@ afterEach(() => {
   server = null;
 });
 
-async function serve(): Promise<Call> {
-  const app = await createApp({ config, ai: NO_AI });
+/**
+ * `unguarded` leaves out the tunnel guard, which refuses a proxied caller's create (localOnly.test.ts covers that), so a
+ * test of the per-caller budgets can use the proxy header as the caller's address, as a device on the Wi-Fi would have its own.
+ */
+async function serve(unguarded = false): Promise<Call> {
+  const app = await createApp({ config, ai: NO_AI, ...(unguarded ? { guard: (_request, _response, next) => { next(); } } : {}) });
   const listening = app.listen(0, "127.0.0.1");
   await once(listening, "listening");
   server = listening;
@@ -61,7 +65,9 @@ async function listen(call: Call, code: string, token: string, signal?: AbortSig
       if (cut >= 0) {
         const frame = buffer.slice(0, cut);
         buffer = buffer.slice(cut + 2);
-        return frame.startsWith("data: ") ? JSON.parse(frame.slice(6)) as unknown : frame;
+        // A numbered message has an "id: N" line before its data line.
+        const data = frame.split("\n").find((line) => line.startsWith("data: "));
+        return data === undefined ? frame : JSON.parse(data.slice(6)) as unknown;
       }
       // A connection that is cut rejects the read; one the server ends cleanly reports done. Both mean the stream is over.
       const chunk = await reader.read().catch(() => null);
@@ -225,7 +231,7 @@ test("a body over the relay's own limit gets 413, the app's 6 MB parser never re
 
 test("the tunnel's header is the rate key: each caller gets three rooms, twenty wrong codes and 120 sends a second, then 429 with Retry-After", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
-  const call = await serve();
+  const call = await serve(true);
   const [one, two] = [via("203.0.113.9"), via("203.0.113.10")];
   const room = await (await one("/api/rooms")).json() as { code: string; token: string };
   const lines = [new AbortController(), new AbortController(), new AbortController()];
@@ -279,7 +285,7 @@ test("a caller cannot pick its own key: one IPv6 /64 is one caller, and headers 
 
 test("a host who opens a room and goes back, three times, can still host a fourth, and a refused create writes no log line", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
-  const call = await serve();
+  const call = await serve(true);
   const lan = via("203.0.113.20");
   const warned = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   const codes: string[] = [];
@@ -305,7 +311,7 @@ test("a host who opens a room and goes back, three times, can still host a fourt
 });
 
 test("callers from outside stop ten short of the 50 rooms, so the laptop that runs the server can always open its own", async () => {
-  const call = await serve();
+  const call = await serve(true);
   let made = 0;
   for (let address = 1; made < MAX_ROOMS - ROOMS_KEPT_FOR_THIS_MACHINE; address += 1) {
     for (let index = 0; index < MAX_ROOMS_PER_CLIENT && made < MAX_ROOMS - ROOMS_KEPT_FOR_THIS_MACHINE; index += 1, made += 1) {

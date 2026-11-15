@@ -12,6 +12,8 @@ import { isOpenPath, localOnly } from "./lib/localOnly";
 export interface Deps {
   readonly config: Config;
   readonly ai: AiClients;
+  /** Replaces the local-only guard. Only tests set it, to reach the room limits with callers the guard would refuse. */
+  readonly guard?: (request: Request, response: Response, next: NextFunction) => void;
 }
 
 export type Register = (router: Router, deps: Deps) => void;
@@ -25,7 +27,7 @@ function isRegister(value: unknown): value is Register {
 export async function createApp(deps: Deps): Promise<Express> {
   const app = express();
   app.disable("x-powered-by");
-  app.use(localOnly);
+  app.use(deps.guard ?? localOnly);
   // Webcam snapshots arrive as base64 inside JSON, and only the routes this machine alone may call take them.
   // Every path another device or a tunnel can reach skips this parser, so nobody outside can make the server hold
   // 6 MB: the room relay reads its own, much smaller bodies (routes/rooms.ts). Express matches paths without regard to case.
