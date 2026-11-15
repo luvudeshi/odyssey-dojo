@@ -5,18 +5,19 @@ import { sharedAudioContext } from "../audio/sfx";
 import { log } from "../core/log";
 import { createAnswerer, createWaitingApi } from "./answer";
 import type { Answerer } from "./answer";
-import { faceTimeSession } from "./browserSession";
+import { faceTimeSession, twoWayVoice } from "./browserSession";
 import { openLivekitRoom } from "./livekitRoom";
 
 const TICK_MS = 500;
 
 /**
  * What a browser only gives after a click, asked for at the press of "Wait for a FaceTime call", so nothing has to
- * be asked while the phone is connecting: the sound may play, and the microphone is allowed (it is let go at once;
- * the call takes it again when it starts, inside its one sound track).
+ * be asked while the phone is connecting: the sound may play, and, only when the voices are on (?ftvoice=on), the
+ * microphone is allowed (it is let go at once; the call takes it again when it starts, inside its one sound track).
  */
 function prime(): void {
   void sharedAudioContext()?.resume().catch(() => undefined);
+  if (!twoWayVoice()) return;
   // Not there on a page that is not served securely (another device on the network, over plain http).
   const devices = (navigator as { mediaDevices?: MediaDevices }).mediaDevices;
   if (!devices) return;

@@ -36,13 +36,16 @@ export async function openLivekitRoom(): Promise<FaceTimeRoom> {
       if (room.metadata !== undefined && room.metadata !== "") tell({ type: "metadata", metadata: room.metadata });
     },
     async publish(video, audio) {
+      // The sound goes first: the call service ends a call it hears nothing from, and a call with no picture only
+      // shows the line's default one. Published once, as one track: a second audio track ends the call too.
+      if (audio) await room.localParticipant.publishTrack(audio, { name: TRACK_NAMES.audio, source: Track.Source.Microphone, dtx: false });
       // The picture is published as this participant's camera: the call service sends video only when the
-      // participant that speaks has a camera track.
-      await room.localParticipant.publishTrack(video, {
+      // participant that speaks has a camera track. Tried twice, so one lost answer does not cost the call.
+      const sendPicture = (): Promise<unknown> => room.localParticipant.publishTrack(video, {
         name: TRACK_NAMES.video, source: Track.Source.Camera, simulcast: false,
         videoEncoding: { maxBitrate: 1_500_000, maxFramerate: 20 },
       });
-      if (audio) await room.localParticipant.publishTrack(audio, { name: TRACK_NAMES.audio, source: Track.Source.Microphone, dtx: false });
+      await sendPicture().catch(() => sendPicture());
     },
     on(listener) { listeners.push(listener); },
     async disconnect() { await room.disconnect(); },

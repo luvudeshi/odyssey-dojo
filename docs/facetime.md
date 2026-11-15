@@ -241,7 +241,7 @@ The first version of the agent wrote one room and let the last writer win. Each 
 
 1. Both terminals above are running. `chert dev` says the agent is in a waiting room.
 2. The game's server and the game are running on the same computer. Open Multiplayer.
-3. Press "Wait for a FaceTime call". Allow the microphone. The card says "Waiting for a FaceTime call." and shows the number.
+3. Press "Wait for a FaceTime call". (No microphone is asked for: the two voices are off unless the address has `?ftvoice=on`, because a phone in the same room as the computer would howl.) The card says "Waiting for a FaceTime call." and shows the number.
 4. The friend calls the number on FaceTime **Video**.
 5. The card says "A FaceTime call is coming in. Connecting...", then "Your friend is on the call. Start the fight." The friend hears three notes and Athena and sees the game.
 6. Press "Start the fight" and play as on a dialled call. The plate at the bottom right has the clock and Hang up.

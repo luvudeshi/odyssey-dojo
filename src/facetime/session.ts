@@ -116,6 +116,13 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
   let answering = false;
   /** True when the fallback, not the ready sign, started the greeting of an answered call. */
   let fellBack = false;
+  /** True once an answered call's picture and sound are in the room. */
+  let published = false;
+  /**
+   * An answered call whose ready sign came while its picture and sound were still going out (the game came into the
+   * room after the caller): the greeting waits for them, since a greeting into a track nobody gets yet is not heard.
+   */
+  let greetOwed = false;
   const listeners = new Set<() => void>();
 
   const teardown = (): void => {
@@ -140,12 +147,15 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
     grade = null;
     answering = false;
     fellBack = false;
+    published = false;
+    greetOwed = false;
   };
 
   const run = (effect: CallEffect, mine: number): void => {
     if (effect === "greet") {
       const speaking = sound;
       if (!speaking) return;
+      if (answering && !published) { greetOwed = true; return; }
       void speaking.greet().then(
         () => { if (mine === generation) dispatch({ type: "greeted", now: lastNow }); },
         () => { if (mine === generation) dispatch({ type: "fail", now: lastNow, why: "greet_late" }); },
@@ -317,7 +327,11 @@ export function createFaceTimeSession(deps: SessionDeps): FaceTimeSession {
         if (mine === generation && isOpen(state)) fail("room_lost", NOT_JOINED);
         return;
       }
-      if (mine === generation && isOpen(state)) dispatch({ type: "placed", now: lastNow });
+      if (mine !== generation || !isOpen(state)) return;
+      published = true;
+      // The ready sign came first: greet now that the phone can hear it.
+      if (greetOwed) { greetOwed = false; run("greet", mine); }
+      dispatch({ type: "placed", now: lastNow });
     },
     hangUp(now) { dispatch({ type: "hang_up", now }); },
     reset() {
