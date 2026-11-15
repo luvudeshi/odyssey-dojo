@@ -133,8 +133,15 @@ export const TAUNT_LINES: readonly QuestLine[] = [
     when: "The Sirens taunt the player",
     text: "We know all that was suffered at Troy. We know everything that happens on the earth.",
   },
-  // Scylla's file has one taunt, so she has one clip. Add taunts there first, then lines here.
   { id: "taunt_scylla_1", enemyId: "scylla", speaker: "monster", when: "Scylla taunts the player", text: "Six of your crew. That is the toll." },
+  { id: "taunt_scylla_2", enemyId: "scylla", speaker: "monster", when: "Scylla taunts the player", text: "Six mouths, and every one is hungry." },
+  {
+    id: "taunt_scylla_3",
+    enemyId: "scylla",
+    speaker: "monster",
+    when: "Scylla taunts the player",
+    text: "Row, little king. No oar outruns my necks.",
+  },
   {
     id: "taunt_charybdis_1",
     enemyId: "charybdis",
