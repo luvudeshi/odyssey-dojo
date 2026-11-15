@@ -1,6 +1,6 @@
 // The hero: a bronze figure seen from behind, always on screen. A fresh webcam frame drives it directly; with no
 // frame for half a second (keyboard play, or the tracker lost the body) a stance computed from the fight takes over,
-// blended over ~120 ms either way. It also steps about the arena: lunges on a landed strike, is knocked back on a hit.
+// blended over ~120 ms either way. It also steps about the arena: leaps with a landed strike, is knocked back on a hit.
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import type { RefObject } from "react";
@@ -117,13 +117,14 @@ export function PlayerFigure({ poseRef }: { poseRef: RefObject<PoseFrame | null>
     // Steps about the arena, damped back to the mark.
     const striking = action === "punch" || action === "thrust";
     const targetZ =
-      -0.7 * decay(now, battle.enemyHitAt, 0.3) + 0.6 * decay(now, battle.playerHitAt, 0.4) -
+      0.6 * decay(now, battle.playerHitAt, 0.4) -
       (striking ? 0.15 : 0) + (action === "defeat" ? 0.4 : 0) - (action === "victory" ? 0.3 : 0);
     // The webcam lean already shows a dodge; only the stance needs help sliding.
     const targetX = live ? 0 : action === "dodgeLeft" ? -0.7 : action === "dodgeRight" ? 0.7 : 0;
     battle.heroX = MathUtils.damp(battle.heroX, targetX, 9, dt);
     battle.heroZ = MathUtils.damp(battle.heroZ, targetZ, 9, dt);
-    figure.current?.position.set(battle.heroX, 0, HOME_Z + battle.heroZ);
+    // A counted strike's leap to the monster is measured on the GLB hero (hero/reach.ts); this figure rides along.
+    figure.current?.position.set(battle.heroX + battle.reachX, battle.reachY, HOME_Z + battle.heroZ + battle.reachZ);
   });
 
   return (

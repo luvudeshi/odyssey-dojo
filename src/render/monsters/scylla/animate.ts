@@ -109,7 +109,9 @@ export function animate(rig: Rig, p: MonsterProps, delta: number): void {
     const strike = isActive ? smooth(0.78, 1, p.windup) : 0;
     blend.rear = rear > blend.rear ? rear : MathUtils.damp(blend.rear, rear, 9, dt);
     blend.strike = strike > blend.strike ? strike : MathUtils.damp(blend.strike, strike, 14, dt);
-    const exposed = p.weakSpotId !== null && (i === EXPOSED_NECKS.jaw || i === EXPOSED_NECKS.neck) ? 1 : 0;
+    // The opened head stays out until the hero's blow arrives (enemyHitAt is stamped at his arrival), then recoils.
+    const open = p.weakSpotId !== null || now < battle.enemyHitAt;
+    const exposed = open && (i === EXPOSED_NECKS.jaw || i === EXPOSED_NECKS.neck) ? 1 : 0;
     blend.expose = MathUtils.damp(blend.expose, exposed, 7, dt);
     blend.dead = MathUtils.damp(blend.dead, p.defeated ? 1 : 0, 2.2, dt);
     deadAverage += blend.dead / NECK_COUNT;
