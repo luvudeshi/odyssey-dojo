@@ -5,7 +5,7 @@ import { playEvent } from "../audio/sfx";
 import { playVoice } from "../audio/voice";
 import type { CombatState, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
-import { Hud } from "../hud/Hud";
+import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
 import { TouchPad } from "../hud/TouchPad";
@@ -84,7 +84,7 @@ function Fighting(props: { link: GuestLink; fight: Fight; mode: Joined["mode"]; 
   return (
     <div className="fight">
       <Scene enemy={enemy} state={state} poseRef={poseRef} />
-      <Hud enemy={enemy} state={state} />
+      <SkyHud enemy={enemy} state={state} />
       <div className="preview mirror" ref={holder} />
       {!over && <button className="quiet room-leave" onClick={onLeave}>Leave the room</button>}
       {mode === "touch" && !over && <TouchPad state={state} strikes={style.strikes} onStrike={(move) => { touched.current.push(move); }} />}
