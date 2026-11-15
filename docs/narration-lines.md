@@ -91,23 +91,23 @@ The tool writes both `index.json` files. It does not touch the lines recorded fi
 
 - `speakNarration(enemyId, "before" | "after")`: Homer's line for that stop. If another story line is playing it is cut off first. Then it waits up to 6 seconds for Athena to finish.
 - `speakResult(enemyId, won)`: on a win, the stop's "after" line (or `homer_win` for a fight with none). On a loss, `homer_loss`. It waits for Athena's own result line to end.
-- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It starts at once, at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt plays at a time: a second one asked for meanwhile is dropped and resolves `false`. It does not matter whether it is called before or after `playVoice`. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean.
+- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It starts at once, at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt plays at a time: a second one asked for meanwhile is not played. It resolves `false`, or joins the playing taunt and resolves `true` when the dice pick that same taunt. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean. Ask for the taunt before `playVoice` in a frame, as FightScreen does: a taunt asked for after `playVoice` in the frame the fight ends would play over the result line.
 - `stopStory()`: drops a line that is still waiting and cuts off a story line or a taunt that is playing. Athena's lines are left alone.
 
 Asking for a line that is already waiting or playing joins it, so it is heard once. Asking again after it is over speaks it again, so call these from an effect that runs once per screen, not on every frame.
 
 ### The wiring, and why the cleanup is required
 
-None of this is wired into the screens yet. Those files are the lead's. The lines they need:
+The screens call these since PR #144: IntroScreen and EndPanel through `narrateIntro` and `narrateResult` in `src/screens/hookups.ts`, and FightScreen directly. The lines are:
 
 ```tsx
-// src/screens/IntroScreen.tsx
-useEffect(() => { void speakNarration(enemy.id, "before"); return stopStory; }, [enemy.id]);
+// src/screens/IntroScreen.tsx: narrateIntro calls speakNarration(enemy.id, "before") and returns stopStory
+useEffect(() => narrateIntro(enemy.id), [enemy.id]);
 
-// src/screens/EndScreen.tsx, in EndPanel, which needs a new prop enemyId (App.tsx passes enemyId={enemy.id})
-useEffect(() => { void speakResult(enemyId, won); return stopStory; }, [enemyId, won]);
+// src/screens/EndScreen.tsx, in EndPanel: narrateResult calls speakResult(enemyId, won) and returns stopStory
+useEffect(() => narrateResult(enemyId, won), [enemyId, won]);
 
-// src/screens/FightScreen.tsx, inside result.events.forEach
+// src/screens/FightScreen.tsx, inside result.events.forEach, before playVoice
 if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(enemy.id);
 // and stopStory() in that effect's cleanup, so a taunt does not play on into the next screen
 ```
