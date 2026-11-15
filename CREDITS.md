@@ -49,7 +49,17 @@ His helmet, cuirass, cape, greaves, shield, spear and stake are built in code (`
 |---|---|---|---|
 | Universal Base Characters mannequin and Universal Animation Library 2 clips, by Quaternius, trimmed to 11 clips | `public/models/suitors/suitor.glb`, the suitors in the great hall | https://quaternius.com/packs/universalbasecharacters.html and https://quaternius.com/packs/universalanimationlibrary2.html, and the same packs at https://quaternius.itch.io/universal-base-characters and https://quaternius.itch.io/universal-animation-library-2 (all four pages say CC0) | CC0 |
 
-Their gear, the hall and its props are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens, Scylla and Charybdis are built in code too and ship no model file. Their logs are in `docs/models/`.
+Their gear, the hall and its props are built in code (`src/render/monsters/suitors/`, `src/render/arena/suitors/`). Circe, the Sirens and Scylla are built in code too and ship no model file. Their logs are in `docs/models/`.
+
+## Charybdis
+
+The whirlpool is built in code. The anglerfish, tentacles and scenery are downloaded; the log is `docs/models/charybdis.md`.
+
+| Asset | Used for | URL | Licence |
+|---|---|---|---|
+| Anglerfish, Tentacle, Rock_4, Rock_6, Rock_Moss_4, CommonTree_5, CommonTree_Dead_3, Viking_boat, Sail_ship, by Quaternius | Charybdis and her strait, `public/models/charybdis/*.glb` | https://quaternius.com | CC0 |
+| Rock Moss Set 01, by Kless Gyzen | Rocks of the tentacle look (`?look=b`), `public/models/charybdis/rocks/` | https://polyhaven.com/a/rock_moss_set_01 | CC0 |
+| three.js Water and Sky examples | Sea and sky of the Charybdis stop | https://github.com/mrdoob/three.js | MIT |
 
 ## Icons
 

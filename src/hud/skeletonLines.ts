@@ -51,3 +51,21 @@ export function skeletonLines(image: readonly Landmark[], mirror: boolean, width
   const dots = DOT_JOINTS.flatMap((index) => at(index) ?? []);
   return { lines, dots };
 }
+
+export interface Spot { readonly x: number; readonly y: number }
+
+/** Centres of stones laid along a bone, one every `step` pixels, the two ends left to the joint stones. */
+export function stonesAlong(from: Spot, to: Spot, step: number): Spot[] {
+  const count = Math.max(1, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / step));
+  return Array.from({ length: count - 1 }, (_, i) => {
+    const t = (i + 1) / count;
+    return { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+  });
+}
+
+/** A round cluster of stones for the head: a centre stone, a ring of six, and a ring of twelve when the head is big enough. */
+export function headStones(centre: Spot, radius: number, stone: number): Spot[] {
+  const rings: [number, number][] = [[1.9 * stone, 6]];
+  if (radius > 3.4 * stone) rings.push([3.8 * stone, 12]);
+  return [centre, ...rings.flatMap(([ring, n]) => Array.from({ length: n }, (_, i) => ({ x: centre.x + Math.cos((i / n) * Math.PI * 2) * ring, y: centre.y + Math.sin((i / n) * Math.PI * 2) * ring })))];
+}
