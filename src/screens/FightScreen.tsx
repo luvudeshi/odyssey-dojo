@@ -28,6 +28,7 @@ import { Scene } from "../render/Scene";
 import { PauseMenu } from "../ui/PauseMenu";
 import { pressEscape, shiftBattleTimes } from "../ui/pauseState";
 import type { PauseView } from "../ui/pauseState";
+import { fallsLine } from "../enemies/wording";
 
 export function FightScreen(props: {
   enemy: EnemySpec;
@@ -144,7 +145,7 @@ export function FightScreen(props: {
       <Scene enemy={enemy} state={state} poseRef={poseRef} paused={view !== "off"} />
       <Hud enemy={enemy} state={state} />
       {god && <PowerEffect god={god} powerName={GODS[god].power.name} accent={GODS[god].accent} trigger={powerCount} />}
-      <CameraView tracker={tracker} poseRef={poseRef} />
+      <CameraView tracker={tracker} poseRef={poseRef} paused={view !== "off"} />
       {lost && !over && <div className="overlay"><h1>Step back, I can't see you</h1><p className="notice">Or press any move key to play on the keyboard</p></div>}
       {view !== "off" && !over && (
         <PauseMenu
@@ -158,7 +159,7 @@ export function FightScreen(props: {
       )}
       {over && (
         <div className="overlay">
-          <h1>{state.phase.kind === "won" ? `${enemy.name} falls` : "You are struck down"}</h1>
+          <h1>{state.phase.kind === "won" ? fallsLine(enemy.id, enemy.name) : "You are struck down"}</h1>
           <p>Score {state.score}</p>
           {renderEnd(state.phase.kind === "won", state.score, state.mastery)}
         </div>
