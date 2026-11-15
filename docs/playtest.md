@@ -72,6 +72,11 @@ Each step says what to do and what you should see. Mark it pass, fail or not run
 | Date | Commit | Who | A | B | C | D | E | F |
 |---|---|---|---|---|---|---|---|---|
 | Sat 14 Nov, 3:20 PM | `9e95d61` | tagrawal029's agent, keys sent by script in Chrome | 1 to 8 and 10 pass; 9 not finished (see bug 1) | 11 and 12 pass; 13 and 14 not run | 15 to 17 run; 18 read from the code, not run | not run: needs a person | not run | not run |
+| Sat 14 Nov, evening | `f8b1891` (before the pebble interface) | tagrawal029's agent, `node scripts/smoke.mjs --styles=all`, headless Chrome 157 on the Windows laptop | 6 stops by 5 styles, 30 fights: all 30 won, 0 console errors, 0 page errors, 0 failed requests. Edge 157 stopped after 12 of 30 (all won, no errors) because `main` moved | not run | not run | not run | not run | not run |
+| Sat 14 Nov, evening | `28d9c39` (pebble interface merged) | the same script, headless Chrome 157 and Edge 157 | Chrome: 30 of 30 won, 0 console errors, 0 page errors, 0 failed requests. Edge: stopped after 11 of 30 (all won, no errors) because `main` moved again | not run | not run | not run | not run | not run |
+| Sat 14 Nov, night | `d75694b` (star-chart HUD merged) | the same script, reduced run | Polyphemus with each of the 5 styles in Chrome: 5 of 5 won, no errors. Polyphemus as Boxer in Edge: won, no errors. All six stops as Boxer in Chrome with the move ghost on (`?ghost=1`): 6 of 6 won, no errors. The other five stops were not played with every style on this commit; the full 30 in both browsers is still to do | not run | not run | not run | not run | not run |
+
+The smoke runs found no bug: no console error, no page error, no failed request and no fight that did not end, so they add nothing to the bug log below. They are keyboard only: no camera, no pose tracking.
 
 What the script run measured: with every prompt answered and each strike thrown half a second after its card, the first 14 strikes took 41 seconds and brought Polyphemus to 46% with no damage taken, which is on pace for about 90 seconds. Touching nothing, the fight was lost after about a minute.
 
