@@ -3,6 +3,7 @@
 // a request that says it was passed on by a proxy or a tunnel is not local, even from a loopback socket.
 // Such a request gets the room paths a guest needs, the account paths, the hall of heroes, and nothing else under /api/, and its join attempts are counted.
 // The account paths carry a password, so they answer the tunnel (HTTPS) and this machine only, never another device on plain HTTP.
+// PUBLIC_ACCOUNTS=1 is for a server behind its own HTTPS proxy on another address (the hosted copy): there they also answer a request that was passed on.
 import type { IncomingHttpHeaders } from "node:http";
 import { isIP } from "node:net";
 import type { NextFunction, Request, Response } from "express";
@@ -81,6 +82,21 @@ export function publicRooms(env: Readonly<Record<string, string | undefined>> = 
   return env.PUBLIC_ROOMS?.trim() === "1";
 }
 
+/**
+ * True when PUBLIC_ACCOUNTS=1: this server is the game server behind a public page (docs/accounts.md, "On a public
+ * server"). Every visitor's request then reaches it through its own proxy, from that proxy's address and not from
+ * this machine, so the account paths and the hall of heroes also answer a request that was passed on to a socket
+ * that is not loopback. Off unless the value is exactly "1", so a laptop behaves as it always has.
+ * It opens those paths and nothing else. The proxy must speak HTTPS to the visitor: a password travels on these paths.
+ *
+ * The same setting, and only it, makes the account routes and the hall count a caller by that proxy's own
+ * X-Forwarded-For entry (lastHop below) and stop reading Cf-Connecting-Ip, which such a proxy passes on as the caller
+ * wrote it. PUBLIC_ROOMS=1 alone does not: without PUBLIC_ACCOUNTS=1 these routes count callers as they always have.
+ */
+export function publicAccounts(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return env.PUBLIC_ACCOUNTS?.trim() === "1";
+}
+
 /** Making a room: "/api/rooms" itself, with or without one closing slash, and nothing after it. */
 function isRoomsRoot(path: string): boolean {
   return path === "/api/rooms" || path === "/api/rooms/";
@@ -123,12 +139,17 @@ export function lastHop(headers: IncomingHttpHeaders): string | null {
  * Express matches routes without regard to case, so this does too.
  * `roomsArePublic` is what publicRooms() said: with it a request that was passed on may make a room as well.
  * Making a room is a POST, so with the flag on no other method opens that path: a route added there later stays closed.
+ * `accountsArePublic` is what publicAccounts() said: with it a request that was passed on reaches the account paths
+ * and the hall of heroes on any socket. One with no proxy header is another device speaking plain HTTP, and stays refused.
  */
-export function mayAnswer(path: string, address: string | undefined, headers: IncomingHttpHeaders = {}, roomsArePublic = false, method = "POST"): boolean {
+export function mayAnswer(
+  path: string, address: string | undefined, headers: IncomingHttpHeaders = {}, roomsArePublic = false, method = "POST", accountsArePublic = false,
+): boolean {
   const lower = path.toLowerCase();
   if (!lower.startsWith("/api/")) return true;
-  // A loopback socket is this machine's own browser or a tunnel that runs here. Another device is refused whatever headers it sends.
-  if (isAccountPath(lower) || isHeroesPath(lower)) return isLoopback(address);
+  // A loopback socket is this machine's own browser or a tunnel that runs here. Another device is refused whatever
+  // headers it sends, unless this server was told it sits behind its own proxy (PUBLIC_ACCOUNTS=1) and the request was passed on.
+  if (isAccountPath(lower) || isHeroesPath(lower)) return isLoopback(address) || (accountsArePublic && wasRelayed(headers));
   if (wasRelayed(headers)) return isTunnelPath(lower) || (roomsArePublic && isRoomsRoot(lower) && method.toUpperCase() === "POST");
   return isOpenPath(lower) || isLoopback(address);
 }
@@ -176,16 +197,17 @@ export function joinCaller(address: string | undefined, headers: IncomingHttpHea
 
 /**
  * The guard as middleware. Each one keeps its own count of join attempts.
- * `roomsArePublic` is asked on every request, because the server reads its .env after this file is loaded.
+ * `roomsArePublic` and `accountsArePublic` are asked on every request, because the server reads its .env after this file is loaded.
  */
 export function createGuard(
   joinAllowed: (caller: string) => boolean = createJoinLimit(),
   roomsArePublic: () => boolean = publicRooms,
+  accountsArePublic: () => boolean = publicAccounts,
 ): (request: Request, response: Response, next: NextFunction) => void {
   return (request, response, next) => {
     const address = request.socket.remoteAddress;
     const open = roomsArePublic();
-    if (!mayAnswer(request.path, address, request.headers, open, request.method)) {
+    if (!mayAnswer(request.path, address, request.headers, open, request.method, accountsArePublic())) {
       response.status(403).json({ error: "local_only" });
       return;
     }

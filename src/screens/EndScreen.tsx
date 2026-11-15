@@ -30,7 +30,7 @@ export function EndPanel(props: {
   onRetry: () => void;
   onMap: () => void;
   onStyle: () => void;
-  /** The god card and share panel. Once asked for, it takes the place of the ending and the moves learned until `close` is called. */
+  /** The hero card and share panel. Once asked for, it takes the place of the ending and the moves learned until `close` is called. */
   card?: (close: () => void) => ReactNode;
 }) {
   const { onShown, enemyId, won } = props;
@@ -64,7 +64,7 @@ export function EndPanel(props: {
   const name = ENEMIES.find((enemy) => enemy.id === enemyId)?.name ?? enemyId;
   // The last stop won: the button leads to the homecoming, shown in this same panel, before the map.
   const last = won && enemyId === ENEMIES.at(-1)?.id;
-  // The Back shield does what the primary button does: out of the god card, to the homecoming, or to the map.
+  // The Back shield does what the primary button does: out of the hero card, to the homecoming, or to the map.
   const back = showCard ? () => { setShowCard(false); } : last && !home ? () => { setHome(true); } : props.onMap;
   // The painting and the Back shield sit on the window, outside the panel (which is a transformed box), so they are portalled.
   const stage = createPortal(
@@ -118,7 +118,7 @@ export function EndPanel(props: {
       <div className="end-buttons">
         {!won && <Button primary autoFocus onClick={props.onRetry}>Fight again</Button>}
         <Button primary={won} autoFocus={won} onClick={last ? () => { setHome(true); } : props.onMap}>{!won ? "Map" : last ? "Home to Ithaca" : "Back to the map"}</Button>
-        {props.card !== undefined && !showCard && <Button onClick={() => { setShowCard(true); }}>Your god card</Button>}
+        {props.card !== undefined && !showCard && <Button onClick={() => { setShowCard(true); }}>Your hero card</Button>}
         <Button onClick={props.onStyle}>Change style</Button>
       </div>
     </>

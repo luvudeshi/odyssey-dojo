@@ -1,4 +1,4 @@
-// Online rooms over plain HTTP: create, join, an event stream that pushes the other member's messages, and send.
+// Online rooms over plain HTTP: create, join, an event stream that pushes the other member's messages, send, and leave.
 // The rooms and their rules live in ../lib/rooms and the limits in ../lib/roomLimits; this file only turns them into requests and answers.
 import express from "express";
 import type { Request, RequestHandler, Response } from "express";
@@ -42,8 +42,9 @@ function tooLarge(response: Response): void {
  * is thrown away as it arrives once it passes the limit, and the 413 is written when it ends; a body that never
  * ends is closed by the server's request timeout (REQUEST_TIMEOUT_MS).
  */
-function body(limit: number): RequestHandler {
-  const parse = express.json({ limit });
+function body(limit: number, anyType = false): RequestHandler {
+  // `anyType` reads the body as JSON whatever it is labelled: see the leave route.
+  const parse = express.json(anyType ? { limit, type: () => true } : { limit });
   return (request, response, next) => {
     if (Number(request.headers["content-length"] ?? 0) > limit) {
       tooLarge(response);
@@ -77,6 +78,8 @@ export const register: Register = (router) => {
 
   router.post(["/api/rooms", "/api/rooms/:code/join"], body(SMALL_BODY_BYTES));
   router.post("/api/rooms/:code/send", body(MAX_MESSAGE_BYTES + SEND_ENVELOPE_BYTES));
+  // A page says it is leaving with navigator.sendBeacon, which cannot set a header: a string goes out as text/plain.
+  router.post("/api/rooms/:code/leave", body(SMALL_BODY_BYTES, true));
 
   router.post("/api/rooms", (request, response) => {
     const who = client(request);
@@ -216,5 +219,39 @@ export const register: Register = (router) => {
     if (result === "slow") slowDown(response, 1);
     else if (result === "unknown" || result === "denied") refuseCounted(response, client(request), result);
     else response.json({ delivered: result === "sent" });
+  });
+
+  /**
+   * A member says it is leaving: {"token": "..."} in the body, the same proof a send carries. The other member is
+   * told at once and a guest's seat is free at once (rooms.leave), where a page that only closes is noticed after AWAY_MS.
+   * Every leave that names no seat gets one answer, whether the code is wrong, the room is gone, the token is wrong
+   * or the guest already left, so this call says less than a send does. Those are counted with wrong sends and
+   * streams and get 429 past that budget, so it adds no guesses. A member with the right token never meets that
+   * budget, as with a send. Every leave is counted as a poll, so a loop of them is stopped like a loop of polls.
+   */
+  router.post("/api/rooms/:code/leave", (request, response) => {
+    const who = client(request);
+    const sent: unknown = request.body;
+    const token = isRelayMessage(sent) ? sent.token : undefined;
+    if (typeof token !== "string") {
+      response.status(400).json({ error: "bad_request" });
+      return;
+    }
+    const wait = limits.poll(who);
+    if (wait > 0) {
+      slowDown(response, wait);
+      return;
+    }
+    if (rooms.leave(request.params.code, token) === "left") {
+      response.json({ left: true });
+      return;
+    }
+    const wrongWait = limits.wrongWait(who, "member");
+    if (wrongWait > 0) {
+      slowDown(response, wrongWait);
+      return;
+    }
+    limits.wrongCount(who, "member");
+    response.status(404).json({ error: "not_in_room" });
   });
 };
