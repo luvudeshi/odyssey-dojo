@@ -5,8 +5,8 @@ export function TitleScreen(props: { notice: string; onCamera: () => void; onKey
       <p className="verse">Sing, Muse, of the man who fought his way home to Ithaca.</p>
       <p>Your body is the controller.</p>
       <button onClick={props.onCamera}>Fight with your body (webcam)</button>
-      <button onClick={props.onKeyboard}>Keyboard only</button>
-      <button onClick={props.onSettings}>Settings</button>
+      <button className="quiet" onClick={props.onKeyboard}>Keyboard only</button>
+      <button className="quiet" onClick={props.onSettings}>Settings</button>
       <p className="notice">{props.notice}</p>
     </main>
   );

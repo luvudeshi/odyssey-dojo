@@ -15,6 +15,11 @@ export function routePoints(stops: number): readonly Point[] {
   ]);
 }
 
+/** One row of sea waves across the chart, shifted by `dx` so the rows do not line up. */
+function wave(y: number, dx: number): string {
+  return `M${String(dx - 30)} ${String(y)} q15 -9 30 0${" t30 0".repeat(36)}`;
+}
+
 function pathThrough(points: readonly Point[]): string {
   const [first, ...rest] = points;
   if (!first) return "";
@@ -42,6 +47,7 @@ export function QuestMap(props: {
       <p>Choose your next stop on the sea.</p>
       <div className="chart">
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
+          {[62, 150, 238, 326, 392].map((y, i) => <path key={y} className="wave" d={wave(y, i % 2 === 0 ? 0 : 15)} />)}
           <path className="route" d={pathThrough(points)} />
           {[0, points.length - 1].map((i) => (
             <circle key={i} className="harbour" cx={pos(i)[0]} cy={pos(i)[1]} r="12" />
@@ -72,7 +78,7 @@ export function QuestMap(props: {
           );
         })}
       </div>
-      <button onClick={props.onStyle}>Change style</button>
+      <button className="quiet" onClick={props.onStyle}>Change style</button>
     </main>
   );
 }
