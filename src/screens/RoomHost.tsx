@@ -4,6 +4,7 @@ import { toDataURL } from "qrcode";
 import { createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createRoom, openRoom } from "../net/transport";
+import { Button, Panel, PebbleHeading } from "../ui/pebble";
 import { browserDeps, fetchLanBase } from "./roomNet";
 import { ROOM_MESSAGES, joinUrl, reachableBase } from "./roomUrl";
 
@@ -49,14 +50,14 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
   };
 
   return (
-    <main className="menu room">
-      <h1>Fight together</h1>
+    <Panel as="main" ornament className="menu room">
+      <PebbleHeading as="h1" text={"Fight together".toUpperCase()} px={48} tone="ochre" />
       {phase.kind === "making" && <p className="notice">Opening a room...</p>}
       {phase.kind === "failed" && (
         <>
           <p className="notice" role="alert">{phase.why}</p>
           {phase.why === ROOM_MESSAGES.unreachable && <p>Start the game server (npm run server) to host a room, or play alone.</p>}
-          <button onClick={props.onSolo}>Play alone</button>
+          <Button onClick={props.onSolo}>Play alone</Button>
         </>
       )}
       {phase.kind === "open" && (
@@ -66,15 +67,16 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
           <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={220} height={220} />
           <p className="room-url">{phase.url}</p>
           <p className="notice" role="status">{friend ? "A friend has joined." : "Waiting for a friend..."}</p>
-          <button
+          <Button
+            primary
             disabled={!friend}
             onClick={() => { const current = link.current; if (current) props.onStart(current); }}
           >
             Start
-          </button>
+          </Button>
         </>
       )}
-      <button className="quiet" onClick={leave}>Back</button>
-    </main>
+      <Button onClick={leave}>Back</Button>
+    </Panel>
   );
 }

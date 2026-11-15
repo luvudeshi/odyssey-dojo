@@ -1,0 +1,14 @@
+body { margin: 0; background: #000; font-family: var(--pb-font-body); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; }
+.ground { padding: 14px 16px 40px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; color: var(--pb-text); min-width: 0; }
+.ground h1 { margin: 0; font: 700 14px var(--font-display); letter-spacing: 0.2em; text-transform: uppercase; }
+.ground--dark { background: radial-gradient(circle at 30% 20%, #6b3a2a, #2a1410 60%, #170d0b); }
+.ground--bright { background: linear-gradient(180deg, #e8d9ae 0%, #d8c28e 40%, #7fb4c8 40%, #9cc9d6 100%); }
+.logo-row { display: flex; align-items: center; gap: 20px; }
+.btns { display: flex; gap: 18px; flex-wrap: wrap; padding: 6px 16px; }
+.settings { width: 440px; padding: 8px 16px 12px; }
+.hud { display: flex; flex-direction: column; gap: 22px; }
+.hud__bars { display: flex; flex-direction: column; gap: 26px; }
+.hud__row { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.hud__cards { display: flex; gap: 24px; }
+.chip { display: inline-block; margin-bottom: 4px; padding: 2px 10px; border: 2px solid var(--pb-lead); border-radius: 5px; background: var(--pb-dusk); font: 700 14px var(--font-display); letter-spacing: 0.16em; }

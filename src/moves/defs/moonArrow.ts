@@ -5,13 +5,13 @@ import { armOut } from "../handSignals";
 type Side = "left" | "right";
 
 /** Distance from the hand to its own shoulder, in shoulder widths. */
-function handToShoulder(frame: PoseFrame, side: Side): number {
+export function handToShoulder(frame: PoseFrame, side: Side): number {
   const left = side === "left";
   const wrist = joint(frame.image, left ? JOINT.leftWrist : JOINT.rightWrist);
   return distance2d(wrist, joint(frame.image, left ? JOINT.leftShoulder : JOINT.rightShoulder)) / shoulderWidth(frame);
 }
 
-function drawn(frame: PoseFrame, bow: Side, pull: Side, baseline: Baseline | null): boolean {
+export function drawn(frame: PoseFrame, bow: Side, pull: Side, baseline: Baseline | null): boolean {
   return armOut(frame, bow, baseline) && handToShoulder(frame, pull) < 0.6 && elbowAngle(frame, pull) < 100;
 }
 

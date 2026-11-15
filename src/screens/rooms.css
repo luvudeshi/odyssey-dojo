@@ -1,10 +1,10 @@
 /* The room screens (host, join, guest) and the touch buttons. Colours come from the shared tokens in index.css. */
-.room .room-code { font-size: clamp(3rem, 12vw, 7rem); letter-spacing: 0.3em; padding-left: 0.3em; color: var(--ink); line-height: 1; margin: 0.2rem 0 0.6rem; }
-.room .room-qr { border: var(--bw-line) solid var(--ink); background: var(--marble); padding: 8px; image-rendering: pixelated; }
+.room .room-code { font-size: clamp(3rem, 12vw, 7rem); letter-spacing: 0.3em; padding-left: 0.3em; color: var(--pb-ochre-light); text-shadow: 0 0 5px var(--pb-outline), 0 3px 0 var(--pb-outline); font-family: var(--font-display); font-weight: 700; line-height: 1; margin: 0.2rem 0 0.6rem; }
+.room .room-qr { border: var(--bw-line) solid var(--pb-lead); border-radius: 8px; background: var(--marble); padding: 8px; image-rendering: pixelated; }
 .room .room-url { font-size: 0.85rem; margin: 0.4rem 0; word-break: break-all; max-width: 90vw; }
-.room .room-input { font: inherit; font-size: 3rem; width: 7em; text-align: center; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink); background: transparent; border: var(--bw-line) solid var(--ink); padding: 0.2em; }
+.room .room-input { font: inherit; font-size: 3rem; width: 7em; text-align: center; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pb-text); background: var(--pb-ground-deep); border: var(--bw-line) solid var(--pb-lead); border-radius: var(--pb-radius); font-family: var(--font-display); padding: 0.2em; }
+.room .room-input:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 3px; }
 .room .mode-note { max-width: 28rem; }
-.room button:disabled { opacity: 0.4; cursor: default; }
 
 .touchpad { position: absolute; left: 0; right: 0; bottom: 0; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 5; touch-action: manipulation; }
 .touchpad button { margin: 0; touch-action: manipulation; user-select: none; -webkit-user-select: none; }

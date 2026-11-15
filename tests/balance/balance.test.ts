@@ -72,8 +72,11 @@ test("the route gets harder stop by stop for every player", () => {
       const where = `${player.id}: ${enemy.id} after ${before.id}`;
       expect(here.wins, `${where}, fights won`).toBeLessThanOrEqual(there.wins);
       expect(here.hpLeft, `${where}, health left`).toBeLessThanOrEqual(there.hpLeft);
-      // The beginner ends nearly every fight at zero, so only the other two can show a clear step down.
-      if (player.id !== "beginner") expect(here.hpLeft, `${where}, health left`).toBeLessThan(there.hpLeft - 0.5);
+      // The beginner ends most fights at zero, so only the other two can show a clear step down.
+      // The good player's step was 0.5 until part 3 of issue #127 (ruled by the lead there): a route a beginner
+      // wins 15% of at every stop costs the good player under 4 health, so five steps of half a point do not fit.
+      if (player.id === "average") expect(here.hpLeft, `${where}, health left`).toBeLessThan(there.hpLeft - 0.5);
+      if (player.id === "good") expect(here.hpLeft, `${where}, health left`).toBeLessThan(there.hpLeft - 0.1);
     });
   }
 });
@@ -132,4 +135,34 @@ test("from Circe on, no stop is easier for the beginner than the one before, and
   expect(row(last.id, "beginner").wins).toBeLessThan(row(first.id, "beginner").wins);
   // The first stop is the one tuned for the beginner: every later stop is far harder for them.
   expect(row(first.id, "beginner").wins).toBeLessThan(row("polyphemus", "beginner").wins);
+});
+
+// Issue #127, part 3: the beginner is not shut out after the first stop. Measured without the warm-up.
+// If one of these fails after a retune, lower `damage` (or `hp`) in that stop's file: docs/balance.md says what each does.
+test("the beginner wins Circe at least 35% of the time", () => {
+  const circe = row("circe", "beginner");
+  expect(circe.wins, `circe: ${String(circe.wins)} of ${String(FIGHTS)}`).toBeGreaterThanOrEqual(FIGHTS * 0.35);
+});
+
+test("the beginner wins at least 15% of fights at every stop", () => {
+  for (const enemy of ENEMIES) {
+    const fight = row(enemy.id, "beginner");
+    expect(fight.wins, `${enemy.id}: ${String(fight.wins)} of ${String(FIGHTS)}`).toBeGreaterThanOrEqual(FIGHTS * 0.15);
+  }
+});
+
+// So the route cannot drift into having no bite: the last stop stays the one a beginner usually loses.
+test("the beginner wins at least 15% and at most 35% of fights at the Suitors", () => {
+  const suitors = row("suitors", "beginner");
+  expect(suitors.wins, `suitors: ${String(suitors.wins)} of ${String(FIGHTS)}`).toBeGreaterThanOrEqual(FIGHTS * 0.15);
+  expect(suitors.wins, `suitors: ${String(suitors.wins)} of ${String(FIGHTS)}`).toBeLessThanOrEqual(FIGHTS * 0.35);
+});
+
+test("from Circe on, the good player's fight still lasts at least 40 seconds", () => {
+  for (const enemy of ENEMIES) {
+    if (enemy.id === "polyphemus") continue;
+    const good = row(enemy.id, "good");
+    // If this fails, raise `hp` in that stop's file and lower its `damage` to keep the beginner's wins.
+    expect(good.seconds, `${enemy.id}: ${good.seconds.toFixed(1)} s`).toBeGreaterThanOrEqual(40);
+  }
 });

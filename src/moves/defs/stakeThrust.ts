@@ -13,7 +13,7 @@ import {
 } from "../../pose/signals";
 
 /** How long ago the hands may have been at the chest, in milliseconds. Generous: this move should land first try. */
-const WINDUP_MS = 700;
+export const WINDUP_MS = 700;
 
 /** Both fists close enough to be gripping one stake. */
 function handsTogether(frame: PoseFrame): boolean {
@@ -22,7 +22,7 @@ function handsTogether(frame: PoseFrame): boolean {
 }
 
 /** How far below the shoulders the hands are, in shoulder widths. Negative means above. */
-function handsDrop(frame: PoseFrame): number {
+export function handsDrop(frame: PoseFrame): number {
   const width = shoulderWidth(frame);
   if (width === 0) return 0;
   const hands = (joint(frame.image, JOINT.leftWrist).y + joint(frame.image, JOINT.rightWrist).y) / 2;
@@ -30,7 +30,7 @@ function handsDrop(frame: PoseFrame): number {
 }
 
 /** The start: both hands together at the chest with the elbows bent. */
-function loaded(frame: PoseFrame): boolean {
+export function loaded(frame: PoseFrame): boolean {
   const drop = handsDrop(frame);
   return (
     handsTogether(frame) &&
@@ -57,7 +57,7 @@ export const move: MoveDef = {
   kind: "strike",
   prompt: "DRIVE THE STAKE",
   hint: "Grip both hands together at your chest, then drive them forward and down",
-  key: "o",
+  key: "t",
   diagram: { leftElbow: [36, 48], leftWrist: [47, 66], rightElbow: [64, 48], rightWrist: [53, 66], shiftY: 2 },
   teaches: "Use your body weight, not just arm strength, to break a grip and get free",
   detect(history) {

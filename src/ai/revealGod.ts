@@ -6,9 +6,13 @@ import { offlineReveal } from "./gods/offlineReveal";
 import type { Reveal } from "./gods/offlineReveal";
 import type { Tint } from "./gods/tint";
 import { fetchPortrait, requestReveal } from "./reveal";
+import { rivalFor } from "./rivals";
 
-/** How long the player may watch "the oracle is looking" before the browser decides instead. */
-const REVEAL_BUDGET_MS = 6000;
+/**
+ * How long the player may watch "the oracle is looking" before the browser decides instead.
+ * The server gives up on the model at revealMs (server/env.ts), which is shorter, so it is never still working at this point.
+ */
+export const REVEAL_BUDGET_MS = 6000;
 
 export interface GodReveal extends Reveal {
   /** The portrait's URL, once it exists: the AI's painting if it arrives in time, else the marble one made here. */
@@ -52,7 +56,8 @@ export async function revealGod(input: ScanInput, deps: ScanDeps = {}): Promise<
     god: answer.god,
     epithet: answer.epithet,
     reason: answer.reason,
-    rivalGod: answer.rival_god,
+    // The server already applies this rule. Applied again here so an older server cannot name Athena as the rival.
+    rivalGod: rivalFor(answer.god, answer.rival_god),
     source: "ai",
     portrait: painted.then((url) => url ?? local(answer.god)).catch(() => local(answer.god)),
   };

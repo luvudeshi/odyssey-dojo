@@ -1,75 +1,101 @@
 // The live camera panel on the fight screen: the player's own picture with the tracked skeleton drawn on it,
 // and a caption saying whether the body is tracked and which move was just recognised. Drawn from one
 // requestAnimationFrame loop over refs, so React never re-renders per frame (memo keeps the per-frame FightScreen state from reaching it).
-import { memo, useEffect, useRef } from "react";
+import { memo, useContext, useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import type { PoseFrame } from "../core/types";
 import { MOVES } from "../moves/registry";
 import type { PoseTracker } from "../pose/tracker";
 import { battle } from "../render/battle";
 import { useSettings } from "../settings/store";
-import { NO_FLASH, flashText, isTracking, nextFlash } from "./cameraCaption";
+import { NO_FLASH, flashText, nextFlash, presenceOf } from "./cameraCaption";
 import type { Flash } from "./cameraCaption";
+import { CameraPanelContext, offersCamera, panelNote, panelState } from "./cameraPanel";
 import "./cameraView.css";
 import { skeletonLines } from "./skeletonLines";
 
 const nameOf = (id: string): string => MOVES.get(id)?.name ?? id;
 
-export const CameraView = memo(function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObject<PoseFrame | null> }) {
-  const { tracker, poseRef } = props;
+export const CameraView = memo(function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObject<PoseFrame | null>; paused: boolean }) {
+  const { tracker, poseRef, paused } = props;
   const { mirror } = useSettings();
   const mirrorRef = useRef(mirror);
   useEffect(() => { mirrorRef.current = mirror; }, [mirror]);
+  const pausedRef = useRef(paused);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
   const holder = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const state = useRef<HTMLSpanElement>(null);
   const move = useRef<HTMLSpanElement>(null);
+  // Never null on the fight screen: without a live picture the same frame says why, and offers the camera when it can.
+  const panel = useContext(CameraPanelContext);
+  const shown = panelState(tracker !== null, panel.status);
+  const video = tracker && shown === "live" ? tracker.video : null;
 
   useEffect(() => {
     const box = holder.current;
     const surface = canvas.current;
     const context = surface?.getContext("2d");
-    if (!tracker || !box || !surface || !context) return;
-    box.append(tracker.video);
+    const label = state.current;
+    const flashLabel = move.current;
+    if (!video || !box || !surface || !context) return;
+    box.append(video);
+    // The size changes rarely, so it is read when the box resizes and not every frame.
+    let cssWidth = box.clientWidth;
+    let cssHeight = box.clientHeight;
+    const watcher = new ResizeObserver((entries) => {
+      const size = entries[0]?.contentRect;
+      if (size) { cssWidth = size.width; cssHeight = size.height; }
+    });
+    watcher.observe(box);
     let flash: Flash = NO_FLASH;
     let handle = 0;
     let shownState = "";
     let shownMove = "";
     const tick = (): void => {
       // Size the frame to the camera's real shape so the skeleton lines up with the picture whatever the aspect.
-      const { videoWidth, videoHeight } = tracker.video;
+      const { videoWidth, videoHeight } = video;
       const shape = videoWidth > 0 && videoHeight > 0 ? `${String(videoWidth)} / ${String(videoHeight)}` : "";
       if (box.style.aspectRatio !== shape) box.style.aspectRatio = shape;
-      const rect = box.getBoundingClientRect();
       const ratio = window.devicePixelRatio || 1;
-      const width = Math.round(rect.width * ratio);
-      const height = Math.round(rect.height * ratio);
+      const width = Math.round(cssWidth * ratio);
+      const height = Math.round(cssHeight * ratio);
       if (surface.width !== width || surface.height !== height) { surface.width = width; surface.height = height; }
       context.clearRect(0, 0, width, height);
       const frame = poseRef.current;
-      const tracking = isTracking(frame, performance.now());
-      if (frame && tracking) draw(context, frame, mirrorRef.current, width, height, ratio);
+      const presence = presenceOf(frame, performance.now());
+      const tracking = presence.ok;
+      if (frame && tracking && !pausedRef.current) draw(context, frame, mirrorRef.current, width, height, ratio);
       const now = performance.now() / 1000;
       flash = nextFlash(flash, battle, now, nameOf);
-      const text = tracking ? "Tracking your body" : "No body in view";
+      const text = presence.ok ? "Tracking your body" : presence.reason;
       const recognised = flashText(flash, now);
       if (state.current && text !== shownState) { shownState = text; state.current.textContent = text; state.current.dataset.on = String(tracking); }
       if (move.current && recognised !== shownMove) { shownMove = recognised; move.current.textContent = recognised; }
       handle = requestAnimationFrame(tick);
     };
     handle = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(handle); tracker.video.remove(); };
-  }, [tracker, poseRef]);
+    return () => {
+      cancelAnimationFrame(handle);
+      watcher.disconnect();
+      video.remove();
+      if (label) label.dataset.on = "false";
+      if (flashLabel) flashLabel.textContent = "";
+    };
+  }, [video, poseRef]);
 
-  if (!tracker) return null;
   return (
     <figure className={mirror ? "camera-view mirror" : "camera-view"} aria-label="Your camera">
       <div className="camera-frame" ref={holder}>
         <canvas ref={canvas} />
       </div>
       <figcaption>
-        <span ref={state} className="camera-state" data-on="false">No body in view</span>
+        <span ref={state} className="camera-state" data-on="false">{shown === "live" ? "I can't see you" : panelNote(shown)}</span>
         <span ref={move} className="camera-move" aria-live="polite" />
+        {offersCamera(shown) && panel.onCamera && (
+          // Inline so the HUD restyle owns the look; the panel ignores the pointer, this button must not.
+          <button type="button" style={{ pointerEvents: "auto", minWidth: 0, margin: 0, padding: "0 0.4rem", fontSize: "inherit" }} onClick={panel.onCamera}>Use camera</button>
+        )}
       </figcaption>
     </figure>
   );
@@ -81,7 +107,7 @@ function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boole
   context.lineWidth = 2.5 * ratio;
   for (const { from, to, faint } of lines) {
     context.globalAlpha = faint ? 0.25 : 0.95;
-    context.strokeStyle = "#e9a15f";
+    context.strokeStyle = "#efe3c6";
     context.beginPath();
     context.moveTo(from.x, from.y);
     context.lineTo(to.x, to.y);
@@ -89,10 +115,13 @@ function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boole
   }
   for (const { x, y, faint } of dots) {
     context.globalAlpha = faint ? 0.25 : 1;
-    context.fillStyle = "#f1e6cf";
+    context.fillStyle = "#d0603a";
     context.beginPath();
-    context.arc(x, y, 3.2 * ratio, 0, Math.PI * 2);
+    context.arc(x, y, 3.6 * ratio, 0, Math.PI * 2);
     context.fill();
+    context.lineWidth = 1.2 * ratio;
+    context.strokeStyle = "#2a1a12";
+    context.stroke();
   }
   context.globalAlpha = 1;
 }

@@ -91,8 +91,8 @@ The tool writes both `index.json` files. It does not touch the lines recorded fi
 
 - `speakNarration(enemyId, "before" | "after")`: Homer's line for that stop. If another story line is playing it is cut off first. Then it waits up to 6 seconds for Athena to finish.
 - `speakResult(enemyId, won)`: on a win, the stop's "after" line (or `homer_win` for a fight with none). On a loss, `homer_loss`. It waits for Athena's own result line to end.
-- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It starts at once, at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt plays at a time: a second one asked for meanwhile is not played. It resolves `false`, or joins the playing taunt and resolves `true` when the dice pick that same taunt. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean. Ask for the taunt before `playVoice` in a frame, as FightScreen does: a taunt asked for after `playVoice` in the frame the fight ends would play over the result line.
-- `stopStory()`: drops a line that is still waiting and cuts off a story line or a taunt that is playing. Athena's lines are left alone.
+- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It waits for Athena's phase line first, so the two are not heard together: it looks at the voice one tick after it is asked for, then every 0.1 seconds, and starts when no phase line is playing. If a phase line still holds the voice after 4 seconds (`TAUNT_WAIT_MS`) the taunt is dropped. A phase change with no phase line gets its taunt in the same frame. The taunt plays at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt at a time: a second one asked for while the first waits or plays is not played. It resolves `false`, or joins the first and resolves `true` when the dice pick that same taunt. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean, and a taunt still waiting then never starts: the monsters' channel refuses every taunt from that frame until the next fight's `fight_start` or first event.
+- `stopStory()`: drops a line that is still waiting and cuts off a story line or a taunt that is playing. A dropped line's timer is cleared at once. Athena's lines are left alone.
 
 Asking for a line that is already waiting or playing joins it, so it is heard once. Asking again after it is over speaks it again, so call these from an effect that runs once per screen, not on every frame.
 
@@ -107,7 +107,7 @@ useEffect(() => narrateIntro(enemy.id), [enemy.id]);
 // src/screens/EndScreen.tsx, in EndPanel: narrateResult calls speakResult(enemyId, won) and returns stopStory
 useEffect(() => narrateResult(enemyId, won), [enemyId, won]);
 
-// src/screens/FightScreen.tsx, inside result.events.forEach, before playVoice
+// src/screens/FightScreen.tsx, inside result.events.forEach, before playVoice (after it works too)
 if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(enemy.id);
 // and stopStory() in that effect's cleanup, so a taunt does not play on into the next screen
 ```
@@ -119,4 +119,4 @@ if (event.type === "phaseChanged" && event.index > 0) void speakMonsterTaunt(ene
 
 One case is safe even without it: a new Homer line cuts off an older story line, so the next intro is not silent while the last result line plays on.
 
-A taunt in a fight plays whole, under Athena's calls. Taunts are 2.7 to 5.8 seconds long and her calls come every 0.7 to 3 seconds, so two or three calls are spoken over each taunt. `tests/voicePriorities.test.ts` checks this with stand-in audio and a fake clock. Nobody has listened to the two voices together in a real fight yet. If the taunt is too loud or too quiet under her, change `TAUNT_VOLUME`.
+A taunt in a fight plays whole, after Athena's phase line and under her calls. In a fight replayed in headless Chrome before the taunt waited, the taunt and the phase line started in the same instant and ran together for about two seconds. Now the taunt starts within 0.1 seconds of the phase line's end (1.7 to 2.85 seconds after the phase change). Taunts are 2.7 to 5.8 seconds long and her calls come every 0.7 to 3 seconds, so two or three calls are spoken over each taunt. `tests/voicePriorities.test.ts` replays the clip times of that fight with stand-in audio and a fake clock. Nobody has listened to the two voices together in a real fight since the change. If the taunt is too loud or too quiet under her, change `TAUNT_VOLUME`.
