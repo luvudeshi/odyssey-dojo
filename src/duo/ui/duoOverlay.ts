@@ -1,6 +1,6 @@
 // Two players on one camera: what the screen adds so that both people can see both are followed and both are counted.
 //   1. Player two's skeleton over the camera's picture, in the second hero's blue, wherever that picture is shown
-//      (the calibration screen and the fight). Player one's skeleton is the camera panel's own and is not touched.
+//      (the calibration screen and the fight). Player one's is the camera panel's own, in gold, in the same fine lines.
 //   2. In the fight, each player's hits and points (src/duo/tally.ts) on two small plates right above the camera
 //      panel, player two's in the same blue. Before player two has scored, their plate says what the camera makes
 //      of them, so two people who get one hero know to step apart. It is there and not by the "You + Friend" tag
@@ -11,63 +11,21 @@
 // again when the two-player choice is turned off. It runs only from startDuo() until then: a fight alone, in a room
 // or on a FaceTime call never has it.
 import type { Landmark } from "../../core/types";
-import { headStones, skeletonLines, stonesAlong } from "../../hud/skeletonLines";
+import { FINE_INK, drawFine } from "../../hud/fineSkeleton";
 import { battle } from "../../render/battle";
 import { duoCamera } from "../duoCamera";
 import type { DuoCamera } from "../duoCamera";
 import { duoTally, firstPart, secondPart, tallyLine } from "../tally";
 import type { SecondState, TallyStore } from "../tally";
 
-/** The second hero's blue (SecondFigure turns the hero's colours round to it): stones along the bones, the head, the joints. */
-const BONE = ["#3f8cff", "#2f74e6", "#62a6ff"] as const;
-const HEAD = ["#dcebff", "#c4dcff", "#a9ccff"] as const;
-const JOINT = "#8fe0ff";
-const EDGE = "#0c1a3a";
-const LINE = "#bcd8ff";
 /** Player two's plate is set in the same blue, so each reads their own numbers. */
 const SECOND_INK = "#9fd0ff";
 /** Between the camera panel's top edge and the plates above it, in pixels. */
 const ABOVE_PANEL = 8;
 
-/** One body as stones on the panel, laid the way the camera panel lays player one (src/hud/CameraView.tsx), in blue. */
+/** Player two's body on the panel: the same fine lines the camera panel draws for player one (src/hud/fineSkeleton.ts), in blue. */
 export function drawSecond(context: CanvasRenderingContext2D, image: readonly Landmark[], mirror: boolean, width: number, height: number, ratio: number): void {
-  const { lines, dots } = skeletonLines(image, mirror, width, height);
-  const stone = Math.max(2.2 * ratio, width * 0.017);
-  const lay = (color: string, faint: boolean, x: number, y: number, radius: number): void => {
-    context.globalAlpha = faint ? 0.3 : 1;
-    context.fillStyle = color;
-    context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
-    context.stroke();
-    context.fill();
-  };
-  context.lineCap = "round";
-  context.strokeStyle = LINE;
-  context.lineWidth = 1.4 * ratio;
-  for (const { from, to, faint } of lines) {
-    context.globalAlpha = faint ? 0.2 : 0.7;
-    context.beginPath();
-    context.moveTo(from.x, from.y);
-    context.lineTo(to.x, to.y);
-    context.stroke();
-  }
-  // Every stone gets a dark edge, so the skeleton reads on a bright room as well as a dark one.
-  context.strokeStyle = EDGE;
-  context.lineWidth = 1.6 * ratio;
-  lines.forEach(({ from, to, faint }, bone) => {
-    stonesAlong(from, to, stone * 2.1).forEach((spot, i) => { lay(BONE[(bone + i) % BONE.length] ?? JOINT, faint, spot.x, spot.y, stone); });
-  });
-  // A full landmark list has the nose first; it becomes the head cluster, sized from the shoulder span.
-  const head = dots.length === 13 ? dots[0] : undefined;
-  const shoulders = lines[0];
-  if (head) {
-    const span = shoulders ? Math.hypot(shoulders.to.x - shoulders.from.x, shoulders.to.y - shoulders.from.y) : 0;
-    headStones(head, Math.max(span * 0.22, stone * 3), stone * 0.9).forEach((spot, i) => { lay(HEAD[i % HEAD.length] ?? JOINT, head.faint, spot.x, spot.y, stone * 0.9); });
-  }
-  for (const dot of dots) {
-    if (dot !== head) lay(JOINT, dot.faint, dot.x, dot.y, stone * 1.4);
-  }
-  context.globalAlpha = 1;
+  drawFine(context, image, mirror, width, height, ratio, FINE_INK[1]);
 }
 
 let running = false;
@@ -88,7 +46,7 @@ export function startDuoOverlay(camera: DuoCamera = duoCamera, store: TallyStore
   const second = document.createElement("span");
   first.className = "camera-tag";
   second.className = "camera-tag";
-  Object.assign(second.style, { color: SECOND_INK, borderColor: BONE[0] });
+  Object.assign(second.style, { color: SECOND_INK, borderColor: FINE_INK[1] });
   plates.append(first, second);
   /** The same numbers for the end panel: they follow its "Score" on the same line, so the panel grows no taller. */
   const closing = document.createElement("span");
