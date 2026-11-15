@@ -16,6 +16,8 @@ import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
 import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
+import { MARBLE } from "../../ui/lookSwitch";
+import { SetBack, SetBackdrop } from "../../ui/set";
 import "./dojo.css";
 
 /** What the dojo needs of the camera. The game's `PoseTracker` fits; so does anything that hands out frames. */
@@ -158,12 +160,14 @@ export function Dojo(props: DojoProps) {
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      <ForgeScene />
+      {MARBLE ? <SetBackdrop src="/textures/set/marble/day-yard.jpg" position="50% 55%" veil="soft" /> : <ForgeScene />}
       <header className="dojo-top">
         <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
         {!picking && <p className="dojo-points" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
-        {onQuit && !done && <button type="button" className="dojo-button dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</button>}
+        {onQuit && !done && (MARBLE
+          ? <SetBack className="dojo-quit" label={picking ? "Back" : "Quit"} onClick={onQuit} />
+          : <button type="button" className="dojo-button dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</button>)}
       </header>
 
       {picking && (

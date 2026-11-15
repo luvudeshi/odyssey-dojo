@@ -1,0 +1,140 @@
+/* The "marble and gold" kit (?look=marble). A heroic daylight Greece: sunlit paintings behind, and in front carved marble
+   plaques edged in gold leaf. Text is dark on light throughout. Tokens first, then the shared pieces: backdrop, title,
+   panel, buttons, back button, stat, plaque. Screens (screens.css) only place these pieces; they do not restyle them.
+   The Dojo's own buttons and cards reuse the same rules, through the selectors that name :root[data-look="marble"]. */
+:root {
+  --mb-marble: #f6f2e8;
+  --mb-marble-2: #e9e3d4;
+  --mb-parchment: #fbf8f0;
+  --mb-vein: #8f95a3;
+  --mb-gold: #c99a2e;
+  --mb-gold-light: #f6e3a0;
+  --mb-gold-deep: #8a6416;
+  --mb-ink: #121a30;
+  --mb-ink-soft: #364058;
+  --mb-sea: #197f8c;
+  --mb-focus: #0b2a6b;
+  --mb-good: #1c7a3a;
+  --mb-display: "Big Caslon", Didot, "Hoefler Text", Georgia, serif;
+  --mb-label: Copperplate, "Copperplate Gothic Light", Didot, Georgia, serif;
+  --mb-body: "Hoefler Text", Georgia, serif;
+  --mb-radius: 12px;
+  --mb-leaf: linear-gradient(135deg, #f8e7a6 0%, #d4ab45 26%, #9c7420 50%, #e8cc79 74%, #b38a2c 100%);
+  --mb-gold-fill: linear-gradient(180deg, #fbe9a4 0%, #e3b848 38%, #c29327 70%, #a87c1d 100%);
+  --mb-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 18px -8px rgba(24, 36, 60, 0.5), 0 2px 4px rgba(24, 36, 60, 0.28);
+  --mb-shadow-up: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 16px 24px -8px rgba(24, 36, 60, 0.5), 0 4px 8px rgba(24, 36, 60, 0.28);
+  /* Veined marble: two layers of ridged noise, drawn once as a tile. */
+  --mb-veins:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='520' height='340'><filter id='f' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='turbulence' baseFrequency='0.006 0.012' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.48  0 0 0 0 0.55  -15 0 0 0 3.1'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.5'/></svg>") 0 0 / 520px 340px,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='f' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='turbulence' baseFrequency='0.02 0.034' numOctaves='3' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55  0 0 0 0 0.58  0 0 0 0 0.64  -16 0 0 0 3.0'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.35'/></svg>") 0 0 / 300px 300px;
+  --mb-meander: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='16' viewBox='0 0 24 16'><path d='M0 14.5H24M20 14.5V2H4V10H12V6' fill='none' stroke='%239c7420' stroke-width='2.4' stroke-linecap='square'/></svg>") 0 0 / 24px 16px repeat-x;
+}
+.set-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* The painting: the picture itself at full quality, never blurred or filtered. */
+:root[data-look="marble"] .set-backdrop { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: #8fc5cc; pointer-events: none; }
+.set-backdrop img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.set-veil { position: absolute; inset: 0; }
+.set-veil--top { background: linear-gradient(rgba(250, 247, 238, 0.7), transparent 38%); }
+.set-veil--bottom { background: linear-gradient(transparent 55%, rgba(250, 247, 238, 0.6)); }
+.set-veil--soft { background: rgba(250, 247, 238, 0.22); }
+
+/* Title: deep blue-black inscriptional capitals over a gold underline. */
+.set-titleblock { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.set-kicker { margin: 0 0 4px; font: 700 18px/1.2 var(--mb-label); letter-spacing: 0.22em; text-transform: uppercase; color: var(--mb-gold-deep); }
+.set-title, :root[data-look="marble"] .dojo .dojo-title, :root[data-look="marble"] .dojo .dojo-end-title {
+  margin: 0; font: 700 clamp(30px, 5.2vh, 46px)/1.08 var(--mb-display); letter-spacing: 0.05em; text-transform: uppercase; color: var(--mb-ink);
+  background: none; filter: none; -webkit-background-clip: border-box; background-clip: border-box; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+.set-rule { position: relative; display: block; width: min(100%, 22rem); height: 4px; margin-top: 8px; border-radius: 2px; background: var(--mb-leaf); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7); }
+.set-rule i { position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; transform: rotate(45deg); background: var(--mb-gold-fill); border: 2px solid var(--mb-gold-deep); box-sizing: border-box; }
+
+/* Panel: pale marble with fine grey veining, a gold-leaf border and a meander along the top. */
+.set-panel, :root[data-look="marble"] .dojo-pick {
+  position: relative; border: 3px solid transparent; border-radius: var(--mb-radius); color: var(--mb-ink); font-family: var(--mb-body);
+  background: var(--mb-veins), linear-gradient(165deg, var(--mb-parchment), var(--mb-marble) 55%, var(--mb-marble-2)) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.85), var(--mb-shadow-up);
+}
+.set-panel::before, :root[data-look="marble"] .dojo-pick::before { content: ""; position: absolute; left: 14px; right: 14px; top: 8px; height: 16px; background: var(--mb-meander); opacity: 0.85; pointer-events: none; }
+
+/* Buttons: a carved marble plaque with a gold-leaf border and a soft cast shadow. Primary is solid gold with dark lettering. */
+.set-btn, :root[data-look="marble"] .dojo-button {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; margin: 0; padding: 10px 28px;
+  font: 700 19px/1.1 var(--mb-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mb-ink); text-align: center; cursor: pointer;
+  border: 3px solid transparent; border-radius: 10px;
+  background: var(--mb-veins), linear-gradient(180deg, #fffdf8, #ece6d8) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), inset 0 -3px 0 rgba(150, 140, 120, 0.28), var(--mb-shadow);
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.set-btn:is(:hover, .is-hover), :root[data-look="marble"] .dojo-button:hover {
+  transform: translateY(-2px); color: var(--mb-ink); border-color: transparent;
+  background: var(--mb-veins), linear-gradient(180deg, #ffffff, #f6efde) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px #fff, inset 0 -3px 0 rgba(201, 154, 46, 0.4), var(--mb-shadow-up);
+}
+.set-btn:active, :root[data-look="marble"] .dojo-button:active { transform: translateY(1px); }
+.set-btn--primary, :root[data-look="marble"] .dojo-button.primary {
+  color: #231703; text-shadow: 0 1px 0 rgba(255, 244, 190, 0.75);
+  background: var(--mb-gold-fill) padding-box, var(--mb-leaf) border-box; border-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(255, 246, 200, 0.85), inset 0 -4px 0 rgba(138, 100, 22, 0.45), var(--mb-shadow);
+}
+.set-btn--primary:is(:hover, .is-hover), :root[data-look="marble"] .dojo-button.primary:hover {
+  color: #231703; background: linear-gradient(180deg, #fff1b8, #efc65a 40%, #cfa030 75%, #b88a22) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px #fff6c8, inset 0 -4px 0 rgba(138, 100, 22, 0.45), var(--mb-shadow-up);
+}
+.set-btn:is(:focus-visible, .is-focus), .set-back:is(:focus-visible, .is-focus), .set-plaque:is(:focus-visible, .is-focus), :root[data-look="marble"] .dojo-button:focus-visible, .set-feat:is(:focus-visible, .is-focus) {
+  outline: 3px solid var(--mb-focus); outline-offset: 3px; box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.95), var(--mb-shadow-up);
+}
+
+/* Back: a small marble disc with a gold arrow, and the word beside it. */
+.set-back { display: inline-flex; align-items: center; gap: 10px; margin: 0; padding: 4px 18px 4px 4px; font: 700 19px/1 var(--mb-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mb-ink); cursor: pointer;
+  border: 3px solid transparent; border-radius: 999px; background: linear-gradient(180deg, rgba(255, 253, 248, 0.95), rgba(236, 230, 216, 0.95)) padding-box, var(--mb-leaf) border-box; box-shadow: var(--mb-shadow); transition: transform 140ms ease, box-shadow 140ms ease; }
+.set-back__disc { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--mb-veins), radial-gradient(circle at 35% 30%, #fff, var(--mb-marble) 60%, var(--mb-marble-2)); box-shadow: inset 0 0 0 3px var(--mb-gold), inset 0 0 0 4px rgba(255, 255, 255, 0.8), 0 2px 4px rgba(24, 36, 60, 0.3); }
+.set-back__disc svg { width: 26px; height: 26px; fill: none; stroke: var(--mb-gold-deep); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(255, 244, 190, 0.9)); }
+.set-back:is(:hover, .is-hover) { transform: translateY(-2px); box-shadow: var(--mb-shadow-up); }
+.set-back:is(:hover, .is-hover) .set-back__disc svg { stroke: #231703; }
+
+/* Stat: a figure over a small caps label. */
+.set-stat { display: grid; justify-items: center; gap: 0; min-width: 4.2rem; }
+.set-stat dd { margin: 0; font: 700 30px/1.05 var(--mb-display); font-variant-numeric: lining-nums tabular-nums; color: var(--mb-ink); }
+.set-stat dt { font: 700 18px/1.2 var(--mb-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mb-ink-soft); }
+.set-stat .acc-icon { width: 26px; height: 26px; stroke: var(--mb-gold-deep); }
+
+/* Plaque: one choice of the main menu, a gold-edged tablet with a medallion of gold relief. Primary is solid gold, and larger. */
+.set-plaque {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; margin: 0; padding: 18px 14px 20px; text-align: center; cursor: pointer; color: var(--mb-ink); font-family: var(--mb-body);
+  border: 3px solid transparent; border-radius: 16px 16px 12px 12px;
+  background: var(--mb-veins), linear-gradient(170deg, var(--mb-parchment), var(--mb-marble) 55%, var(--mb-marble-2)) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9), var(--mb-shadow-up); transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.set-plaque::before { content: ""; position: absolute; left: 12px; right: 12px; top: 7px; height: 16px; background: var(--mb-meander); opacity: 0.7; }
+.set-plaque__medal { display: grid; place-items: center; width: clamp(76px, 11vh, 96px); height: clamp(76px, 11vh, 96px); margin-top: 14px; border-radius: 50%;
+  background: var(--mb-veins), radial-gradient(circle at 35% 28%, #fff, var(--mb-marble) 62%, #d9d1bf);
+  box-shadow: inset 0 0 0 4px var(--mb-gold), inset 0 0 0 6px rgba(255, 255, 255, 0.8), inset 0 -6px 10px rgba(120, 100, 60, 0.25), 0 6px 10px -3px rgba(24, 36, 60, 0.5); }
+.set-plaque__medal svg { width: 84%; height: 84%; }
+.set-plaque__name { margin-top: 6px; font: 700 clamp(20px, 2.9vh, 24px)/1.1 var(--mb-label); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mb-ink); }
+.set-plaque__line { display: block; max-width: 15rem; font: 500 18px/1.3 var(--mb-body); color: var(--mb-ink-soft); }
+.set-plaque:is(:hover, .is-hover) { transform: translateY(-5px); box-shadow: inset 0 0 0 1px #fff, var(--mb-shadow-up), 0 0 0 4px rgba(246, 227, 160, 0.85); }
+.set-plaque--primary { padding-top: 24px; padding-bottom: 26px; background: var(--mb-gold-fill) padding-box, var(--mb-leaf) border-box;
+  box-shadow: inset 0 0 0 1px rgba(255, 246, 200, 0.85), inset 0 -5px 0 rgba(138, 100, 22, 0.4), var(--mb-shadow-up); }
+.set-plaque--primary::before { opacity: 0.55; }
+.set-plaque--primary .set-plaque__medal { width: clamp(92px, 14vh, 120px); height: clamp(92px, 14vh, 120px); background: radial-gradient(circle at 35% 28%, #2b3f6e, #121a30 70%); box-shadow: inset 0 0 0 4px #f3d77c, inset 0 0 0 6px rgba(18, 26, 48, 0.7), 0 6px 10px -3px rgba(60, 40, 5, 0.6); }
+.set-plaque--primary .set-plaque__name { font-size: clamp(22px, 3.3vh, 28px); color: #231703; text-shadow: 0 1px 0 rgba(255, 244, 190, 0.75); }
+.set-plaque--primary .set-plaque__line { color: #3a2a08; }
+
+/* The devices in gold relief: a light edge above-left, a shadow below-right. */
+.set-device { filter: drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.9)) drop-shadow(1.5px 2px 1.5px rgba(60, 40, 5, 0.5)); }
+.set-device .f { fill: url(#set-gold); stroke: #5e420c; stroke-width: 0.9; stroke-linejoin: round; }
+.set-device .l, .set-device .s { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.set-device .l { stroke: #a57c1f; stroke-width: 3.4; }
+.set-device .s { stroke: #4a320a; stroke-width: 1.8; }
+.set-device .e { fill: #fff1c0; stroke: #7a5612; stroke-width: 0.8; }
+.set-device .h { fill: #3a2606; }
+.set-plaque--primary .set-device { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.6)); }
+.set-plaque--primary .set-device .l { stroke: #f3d77c; }
+.set-plaque--primary .set-device .s { stroke: #3a2606; }
+
+@media (prefers-reduced-motion: reduce) {
+  .set-btn, .set-back, .set-plaque { transition: none; }
+  .set-btn:hover, .set-back:hover, .set-plaque:hover { transform: none; }
+}

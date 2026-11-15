@@ -12,15 +12,17 @@ import { Trophy, type TrophyEvents } from "../account/ui/Trophy";
 import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
 import { Button, installGround } from "../ui/pebble";
+import { MARBLE } from "../ui/lookSwitch";
+import { MarbleAccount } from "../ui/set/MarbleAccount";
 import "./account.css";
 
-const GROUP_OF: Readonly<Record<string, string>> = {
+export const GROUP_OF: Readonly<Record<string, string>> = {
   favoured: "arms", unbroken: "arms", chain: "arms", student: "arms", second_nature: "arms",
   song: "labours", ages: "labours", olympus: "labours", shield_wall: "labours", light_footed: "labours", many_ways: "labours", veteran: "labours",
   pupil: "dojo", pride: "dojo", shoulder: "dojo",
 };
 /** The four walls of trophies. The road home (first blood, every stop and Ithaca) takes any deed not named above. */
-const GROUPS = [["road", "The road home"], ["dojo", "Dojo and rooms"], ["arms", "Feats of arms"], ["labours", "Long labours"]] as const;
+export const GROUPS = [["road", "The road home"], ["dojo", "Dojo and rooms"], ["arms", "Feats of arms"], ["labours", "Long labours"]] as const;
 
 interface Stage { k: number; w: number; h: number }
 const measure = (): Stage => {
@@ -52,7 +54,7 @@ function Wall(props: { side: "l" | "r"; groups: readonly { key: string; title: s
 }
 
 /** The deed being read: the one hovered or focused, else the next not yet won, else a word for a hero who has won them all. */
-function Detail(props: { feat: Achievement | undefined; picked: boolean }) {
+export function Detail(props: { feat: Achievement | undefined; picked: boolean }) {
   const { feat } = props;
   if (!feat) return <div className="acc-detail is-done" aria-live="polite"><span className="acc-detail__tag">Every trophy hung</span><b className="acc-detail__name">The hall is full</b><span className="acc-detail__how">Every deed is yours. Ithaca is home.</span></div>;
   const p = feat.progress;
@@ -72,13 +74,17 @@ function Detail(props: { feat: Achievement | undefined; picked: boolean }) {
 }
 
 /** The name's size on the herm: full size up to about ten letters, then smaller so a name of NAME_MAX still fits. */
-const namePx = (name: string): number => Math.round(Math.max(18, Math.min(28, 270 / (Math.max(name.length, 1) * 0.62))));
+export const namePx = (name: string): number => Math.round(Math.max(18, Math.min(28, 270 / (Math.max(name.length, 1) * 0.62))));
 
 function WithIcon(props: { icon: IconName; children: string }) {
   return <><Icon name={props.icon} className="acc-btn__icon" />{props.children}</>;
 }
 
 export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => void }) {
+  return MARBLE ? <MarbleAccount {...props} /> : <HallAccount {...props} />;
+}
+
+function HallAccount(props: { enemies: readonly EnemySpec[]; onBack: () => void }) {
   const profile = useProfile();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);

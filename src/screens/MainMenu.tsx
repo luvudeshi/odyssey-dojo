@@ -6,6 +6,8 @@ import { speakLine } from "../audio/voice";
 import { Button, Logo, Panel } from "../ui/pebble";
 import { BronzeDefs, DEVICES, ShieldCard } from "./menuShields";
 import { MenuScene } from "./MenuScene";
+import { MARBLE } from "../ui/lookSwitch";
+import { MarbleMenu } from "../ui/set/MarbleMenu";
 
 export function MainMenu(props: {
   /** The hero name from the Account, or "" when none was typed. */
@@ -21,6 +23,7 @@ export function MainMenu(props: {
   onTraining: () => void;
   onAccount: () => void;
 }) {
+  if (MARBLE) return <MarbleMenu {...props} />;
   const story = (): void => { speakLine("homer_title"); props.onStory(); };
   return (
     <Panel as="main" className="menu menu--title">
