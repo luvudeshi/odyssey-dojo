@@ -76,11 +76,13 @@ export function isEncrypted(url: string): boolean {
  * How the connection is encrypted, read from the address's `sslmode` the way `psql` reads it and not the way the
  * driver does (it takes `require` for `verify-full` and warns about it on every start):
  *
- * - `require` with no CA file: encrypted, and the certificate is not checked. A free Tiger Data service presents a
- *   certificate it signed itself, so there is nothing to check it against. The password and the saves cannot be read
- *   on the way, but a machine that sat between the server and the database could pretend to be the database.
+ * - `require` with no CA file: encrypted, and the certificate is not checked. The password and the saves cannot be
+ *   read by somebody who only listens, but a machine that sat between the server and the database could pretend to
+ *   be the database, and the driver would give it the password.
  * - a CA file (DATABASE_CA_FILE, or `sslrootcert` in the address), `verify-ca` or `verify-full`: encrypted, and the
  *   certificate must chain to that file (or to the CAs Node trusts when no file is named) and be for this host.
+ *   A Tiger Data service signs with a CA of its own, which Node does not know: saved to a file (docs/accounts.md,
+ *   set-up step 3) it is what DATABASE_CA_FILE needs, and the service is then checked in full.
  * - none of these: only a database on this machine (isEncrypted), in the clear.
  *
  * Throws when the CA file cannot be read: accounts stay off rather than run unchecked.
@@ -92,6 +94,12 @@ export function tlsFor(url: string, caFile: string | null = null): ConnectionOpt
   const named = caFile ?? parsed.searchParams.get("sslrootcert");
   if (named !== null && named !== "") return { ca: readFileSync(named, "utf8"), rejectUnauthorized: true };
   return { rejectUnauthorized: mode !== "require" };
+}
+
+/** Whether the connection tlsFor describes checks the database's certificate. Throws as tlsFor does. */
+export function isChecked(url: string, caFile: string | null = null): boolean {
+  const tls = tlsFor(url, caFile);
+  return tls !== false && tls.rejectUnauthorized === true;
 }
 
 /** A part of an address with its escapes undone, or as written when an escape is broken. */
@@ -187,6 +195,11 @@ export interface OpenOptions {
   readonly caFile?: string | null;
   /** Replaces the driver's pool. Only tests set it. */
   readonly makePool?: MakePool;
+  /**
+   * Told why the database was not opened, in place of the log line: the reason (`bad_url`, `not_encrypted`,
+   * `bad_ca_file`, `no_answer`) and the short code of the failure when there is one. The preflight prints it.
+   */
+  readonly onOff?: (reason: string, code: string | null) => void;
   readonly connectMs?: number;
   readonly queryMs?: number;
 }
@@ -199,7 +212,8 @@ export interface OpenOptions {
 export async function openDb(url: string | null, options: OpenOptions = {}): Promise<Db | null> {
   if (url === null || url === "") return null;
   const off = (reason: string, error?: unknown): null => {
-    log("warn", "accounts_unavailable", error === undefined ? { reason } : { reason, code: failureCode(error) });
+    if (options.onOff !== undefined) options.onOff(reason, error === undefined ? null : failureCode(error));
+    else log("warn", "accounts_unavailable", error === undefined ? { reason } : { reason, code: failureCode(error) });
     return null;
   };
   if (!isPostgresUrl(url)) return off("bad_url");
