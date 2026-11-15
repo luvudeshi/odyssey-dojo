@@ -29,14 +29,28 @@ function parse(css: string): Rule[] {
 /** Keyframe stops ("from", "50%") style no element of their own. */
 const RULES = parse(SHEET).filter((rule) => !/^(from|to|\d+%)$/.test(rule.selector));
 
+/** The one selector that looks outside the banner: the fight while the HUD's defend word is on the same strip. */
+const DEFEND_WORD_UP = ".fight:has(.hb-defend__word) ";
+
 test("every rule sits under .power-ready with two classes, so the theme cannot override it and nothing leaks out", () => {
   expect(RULES.length).toBeGreaterThanOrEqual(10);
-  for (const { selector } of RULES) {
+  for (const rule of RULES) {
+    const selector = rule.selector.startsWith(DEFEND_WORD_UP) ? rule.selector.slice(DEFEND_WORD_UP.length) : rule.selector;
     expect(selector).toMatch(/^\.power-ready[ .]/);
     expect(selector.match(/\.[\w-]+/g)?.length ?? 0, selector).toBeGreaterThanOrEqual(2);
     // No bare element or id selectors: only the banner's own classes, and "*" for its descendants.
     expect(selector.replace(/\.power-ready[\w-]*/g, "").trim(), selector).toMatch(/^\*?$/);
   }
+});
+
+test("it steps aside while the HUD's defend word (DODGED!) is on the same strip, and the names it reads are the HUD's own", () => {
+  const aside = RULES.find((rule) => rule.selector === `${DEFEND_WORD_UP}.power-ready.power-ready--live`)?.declarations;
+  expect(aside?.get("opacity")).toBe("0");
+  expect([...(aside?.keys() ?? [])]).toEqual(["opacity"]);
+  // Renaming the word or the fight's root must fail here, not silently bring the overlap back.
+  expect(readFileSync("src/hud/DefendFlash.tsx", "utf8")).toContain('className="hb-defend__word"');
+  expect(readFileSync("src/screens/FightScreen.tsx", "utf8")).toContain('<div className="fight">');
+  expect(RULES.filter((rule) => !rule.selector.startsWith(".power-ready")).map((rule) => rule.selector)).toEqual([`${DEFEND_WORD_UP}.power-ready.power-ready--live`]);
 });
 
 test("keyframes carry the banner's name, so they cannot replace another stylesheet's", () => {
