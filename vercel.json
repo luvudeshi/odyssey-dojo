@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "installCommand": "npm ci --no-audit --no-fund",
+  "installCommand": "sed -i 's/\r$//' scripts/*.sh && npm ci --no-audit --no-fund",
   "buildCommand": "npm run build && test -s dist/mediapipe/pose_landmarker_lite.task && test -d dist/mediapipe/wasm",
   "outputDirectory": "dist",
   "rewrites": [
