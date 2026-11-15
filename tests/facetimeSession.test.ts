@@ -11,7 +11,7 @@ import { createFakeRoom } from "../src/facetime/fakeRoom";
 import type { FakeRoom } from "../src/facetime/fakeRoom";
 import type { FrameHud } from "../src/facetime/frameHud";
 import { createFriendLink } from "../src/facetime/friendLink";
-import { BRIDGE_FALLBACK_MS, POLL_EVERY_MS, createFaceTimeSession } from "../src/facetime/session";
+import { BRIDGE_FALLBACK_MS, IN_VIEW_MS, POLL_EVERY_MS, createFaceTimeSession } from "../src/facetime/session";
 import type { SessionDeps } from "../src/facetime/session";
 import { MOVES } from "../src/moves/registry";
 import { forTwo, TOGETHER_MS } from "../src/net/host";
@@ -37,14 +37,18 @@ interface Rig {
   friendInput: CombatInput | null;
   remote: RemoteCall;
   callsPlaced: { to: string; room: string }[];
+  /** Rooms the server was asked to close, in order. Kept out of `log` so the order of the rest reads as before. */
+  hungUp: string[];
+  /** Whether the pose model finds a body in the friend's camera. */
+  body: boolean;
 }
 
-function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string }>; standIn?: Answer<RoomSeat>; failConnect?: boolean; greetFails?: boolean } = {}): Rig {
+function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string }>; standIn?: Answer<RoomSeat>; failConnect?: boolean; greetFails?: boolean; hangUpFails?: boolean } = {}): Rig {
   const room = createFakeRoom(options.failConnect === true ? { failConnect: true } : {});
   const log: string[] = [];
   const drawn: FrameHud[] = [];
   const self: Rig = {
-    room, log, drawn, friendInput: null, remote: "ringing", callsPlaced: [],
+    room, log, drawn, friendInput: null, remote: "ringing", callsPlaced: [], hungUp: [], body: true,
     deps: {
       api: {
         status: () => Promise.resolve({ ready: true, missing: [], standIn: true }),
@@ -56,6 +60,7 @@ function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string 
         },
         callState: () => { log.push("poll"); return Promise.resolve(self.remote); },
         standIn: (inRoom) => { log.push(`standin ${inRoom}`); return Promise.resolve(options.standIn ?? { ok: true, value: friendSeat }); },
+        hangUp: (inRoom) => { self.hungUp.push(inRoom); return options.hangUpFails === true ? Promise.reject(new TypeError("fetch failed")) : Promise.resolve(true); },
       } satisfies FaceTimeApi,
       openRoom: () => Promise.resolve({
         ...room,
@@ -74,7 +79,7 @@ function rig(options: { seat?: Answer<RoomSeat>; call?: Answer<{ callId: string 
       }),
       watchFriend: () => {
         log.push("watch");
-        return Promise.resolve({ read: () => ({ t: 0, image: [], world: [] }) satisfies PoseFrame, stop: () => { log.push("watch.stop"); } });
+        return Promise.resolve({ read: () => (self.body ? { t: 0, image: [], world: [] } satisfies PoseFrame : null), stop: () => { log.push("watch.stop"); } });
       },
       poseReader: () => () => {
         const input = self.friendInput ?? { held: new Set<string>(), struck: [] };
@@ -283,6 +288,124 @@ describe("the friend in the fight", () => {
       link.publish(state, result.events, now);
     }
     expect(state.players).toBe(2);
+  });
+});
+
+describe("whether the friend is in view", () => {
+  test("a camera with no body in it is not a friend the game can see", async () => {
+    const made = rig();
+    made.body = false;
+    const { session } = await answeredCall(made);
+    session.frame(2000);
+    // The camera is read, but the model found nobody: the card must not say the game sees the friend.
+    expect(session.friendSeen()).toBe(true);
+    expect(session.friendInView()).toBe(false);
+    made.body = true;
+    session.frame(2100);
+    expect(session.friendInView()).toBe(true);
+  });
+
+  test("a body that walks out of the picture stops counting after two seconds", async () => {
+    const { session, made } = await answeredCall();
+    session.frame(2000);
+    expect(session.friendInView()).toBe(true);
+    made.body = false;
+    session.frame(2000 + IN_VIEW_MS - 1);
+    expect(session.friendInView()).toBe(true);
+    session.frame(2000 + IN_VIEW_MS);
+    expect(session.friendInView()).toBe(false);
+    expect(session.friendSeen()).toBe(true);
+  });
+
+  test("nobody is in view before the camera arrives, after it goes, or once the call is over", async () => {
+    const made = rig();
+    const session = createFaceTimeSession(made.deps);
+    expect(session.friendInView()).toBe(false);
+    await session.dial(NUMBER, 1000);
+    session.frame(1100);
+    expect(session.friendInView()).toBe(false);
+    made.room.emit({ type: "video", track: track("friend-camera"), identity: "facetime-bridge" });
+    made.room.emit({ type: "metadata", metadata: "chert_bridge_ready" });
+    await settle();
+    session.frame(1200);
+    expect(session.friendInView()).toBe(true);
+    made.room.emit({ type: "video", track: null, identity: "facetime-bridge" });
+    expect(session.friendInView()).toBe(false);
+    made.room.emit({ type: "video", track: track("friend-camera-2"), identity: "facetime-bridge" });
+    await settle();
+    // A new camera starts unseen until a body is found in it.
+    made.body = false;
+    session.frame(1300);
+    expect(session.friendInView()).toBe(false);
+    made.body = true;
+    session.frame(1400);
+    expect(session.friendInView()).toBe(true);
+    session.hangUp(1500);
+    expect(session.friendInView()).toBe(false);
+  });
+});
+
+describe("closing the room", () => {
+  test("every way a call ends asks the server to close the room, once, after leaving it", async () => {
+    const host = await answeredCall();
+    expect(host.made.hungUp).toEqual([]);
+    host.session.hangUp(9000);
+    expect(host.made.log.at(-1)).toBe("disconnect");
+    expect(host.made.hungUp).toEqual([seat.room]);
+    // A second hang up (the page closing just after) has nothing left to close.
+    host.session.hangUp(9100);
+    expect(host.made.hungUp).toEqual([seat.room]);
+
+    const friend = await answeredCall();
+    friend.made.room.emit({ type: "left", identity: "facetime-bridge" });
+    expect(friend.made.hungUp).toEqual([seat.room]);
+
+    const time = await answeredCall();
+    time.session.tick((time.session.state().readyAt ?? 0) + CALL_CAP_MS);
+    expect(time.made.hungUp).toEqual([seat.room]);
+
+    const lost = await answeredCall();
+    lost.made.room.emit({ type: "disconnected", reason: "network" });
+    expect(lost.made.hungUp).toEqual([seat.room]);
+  });
+
+  test("a refused call, an unanswered one and a stand-in call close their rooms too", async () => {
+    const refused = rig({ call: { ok: false, why: "unverified", message: "" } });
+    await createFaceTimeSession(refused.deps).dial(NUMBER, 0);
+    expect(refused.hungUp).toEqual([seat.room]);
+
+    const unanswered = rig();
+    const ringing = createFaceTimeSession(unanswered.deps);
+    await ringing.dial(NUMBER, 0);
+    ringing.tick(60_000);
+    expect(ringing.state()).toMatchObject({ phase: "failed", failure: "no_answer" });
+    expect(unanswered.hungUp).toEqual([seat.room]);
+
+    const standIn = rig();
+    const session = createFaceTimeSession(standIn.deps);
+    await session.standIn(0);
+    session.hangUp(100);
+    expect(standIn.hungUp).toEqual([seat.room]);
+  });
+
+  test("with no seat there is no room to close, and a server that cannot be reached does not break the hang up", async () => {
+    const none = rig({ seat: { ok: false, why: "not_set_up", message: "" } });
+    await createFaceTimeSession(none.deps).dial(NUMBER, 0);
+    expect(none.hungUp).toEqual([]);
+    const bad = rig();
+    await createFaceTimeSession(bad.deps).dial("555-0100", 0);
+    expect(bad.hungUp).toEqual([]);
+
+    const down = await answeredCall(rig({ hangUpFails: true }));
+    down.session.hangUp(9000);
+    await settle();
+    expect(down.session.state()).toMatchObject({ phase: "ended", ending: "host" });
+    expect(down.made.hungUp).toEqual([seat.room]);
+    // The next call closes its own room, not the last one's again.
+    down.session.reset();
+    await down.session.dial(NUMBER, 10_000);
+    down.session.hangUp(10_100);
+    expect(down.made.hungUp).toEqual([seat.room, seat.room]);
   });
 });
 
@@ -501,6 +624,23 @@ describe("the page's side of the server routes", () => {
     ]);
     expect(await api.standIn(seat.room)).toEqual({ ok: true, value: friendSeat });
     expect(asked.at(-1)).toEqual({ url: "/api/facetime/standin", method: "POST", body: { room: seat.room } });
+  });
+
+  test("hang up is a JSON POST with the room that still goes out while the page closes", async () => {
+    const sent: { url: string; init: RequestInit | undefined }[] = [];
+    let status = 200;
+    const api = createFaceTimeApi((url, init) => { sent.push({ url: String(url), init }); return Promise.resolve(answer(status, status === 200 ? { room: "deleted" } : { error: "service" })); });
+    expect(await api.hangUp(seat.room)).toBe(true);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.url).toBe("/api/facetime/hangup");
+    expect(sent[0]?.init).toEqual({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ room: seat.room }), keepalive: true });
+    status = 400;
+    expect(await api.hangUp("odyssey-dojo-ffffffffffff")).toBe(false);
+    const down = createFaceTimeApi(() => Promise.reject(new TypeError("fetch failed")));
+    expect(await down.hangUp(seat.room)).toBe(false);
+    // The other requests are not marked that way.
+    await api.seat();
+    expect(sent.at(-1)?.init).not.toHaveProperty("keepalive");
   });
 
   test("refusals keep the server's reason and its words; no server at all is plain too", async () => {

@@ -61,7 +61,8 @@ export function Cutscene({ enemyId, bossName, heroName, startedAt, onSkip, onHan
   // Any key, click or tap skips. The key never reaches the fight: it is stopped here, and its release is stopped for a moment after.
   useEffect(() => {
     if (CUT_AT !== null) return undefined;
-    const skip = (event: Event): void => { event.preventDefault(); event.stopImmediatePropagation(); calls.current.onSkip(); };
+    // Browser shortcuts (Cmd, Ctrl, Alt) pass through.
+    const skip = (event: KeyboardEvent): void => { if (event.metaKey || event.ctrlKey || event.altKey) return; event.preventDefault(); event.stopImmediatePropagation(); calls.current.onSkip(); };
     const swallow = (event: Event): void => { event.stopImmediatePropagation(); };
     window.addEventListener("keydown", skip, true);
     window.addEventListener("keyup", swallow, true);

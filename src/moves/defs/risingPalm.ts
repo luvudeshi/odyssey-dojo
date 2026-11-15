@@ -13,7 +13,7 @@ export const move: MoveDef = {
   diagram: { leftElbow: [30, 42], leftWrist: [41, 17], rightElbow: [62, 42], rightWrist: [57, 26] },
   teaches: "The heel of your open hand, pushed up and in, can loosen a grip so you can get away",
   detect(history) {
-    return risingHand(history, "left", 150) ? 1 : 0;
+    return risingHand(history, "left", 170) ? 1 : 0;
   },
   quality(history) {
     return strikeQuality(history, { sides: ["left"], straight: false, rise: 0.5 });

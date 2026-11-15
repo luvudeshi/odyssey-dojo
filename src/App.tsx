@@ -9,6 +9,10 @@ import "./screens/cursor.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
 import type { GodReveal } from "./ai/revealGod";
+import { CharacterPicker } from "./characters/CharacterPicker";
+import { loadCharacter } from "./characters/characters";
+import type { CharacterId } from "./characters/characters";
+import { characterFromScan, confirmCharacter } from "./characters/godCharacter";
 import { assessmentFrom } from "./coach";
 import { Dojo } from "./coach/ui/Dojo";
 import { log } from "./core/log";
@@ -22,6 +26,8 @@ import { MONSTER_MODELS } from "./render/monsters/registry";
 import { SharePanel } from "./replay/ui/SharePanel";
 import { Account } from "./screens/Account";
 import { EndPanel } from "./screens/EndScreen";
+import { lessonsFrom } from "./lessons/lessons";
+import { recordDefense } from "./lessons/defenseStore";
 import { enemyFor, flowReducer, openAt, playable } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
@@ -65,6 +71,9 @@ export function App() {
   // The god the scan found; null until then, and for keyboard play or a skipped scan. The scan is asked for once.
   const [god, setGod] = useState<GodReveal | null>(null);
   const [scanned, setScanned] = useState(false);
+  // The character shown in the picker (the scan's, or the stored one), and whether the player has confirmed it.
+  const [character, setCharacter] = useState<CharacterId>(loadCharacter);
+  const [characterPicked, setCharacterPicked] = useState(false);
   // Writes to the profile through `change` and shows whatever that unlocked.
   const noting = (change: () => void): void => {
     const before = achievements(getProfile(), ENEMIES);
@@ -204,12 +213,21 @@ export function App() {
   }
 
   if (flow.screen === "style" && tracker && !scanned) {
-    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setScanned(true); }} />;
+    return <GodScan tracker={tracker} onDone={(found) => { setGod(found); setCharacter(characterFromScan(found?.god)); setScanned(true); }} />;
+  }
+
+  // After the scan, before the style: the five characters, with the god's one already chosen.
+  if (flow.screen === "style" && !characterPicked) {
+    return (
+      <main className="menu">
+        <CharacterPicker value={character} onChange={setCharacter} onDone={(id) => { setCharacter(confirmCharacter(id)); setCharacterPicked(true); }} />
+      </main>
+    );
   }
 
   if (flow.screen === "style") {
     return (
-      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} />
+      <StyleSelect styles={STYLES} notice={notice} onPick={(style) => { dispatch({ type: "pickStyle", style }); }} onCharacter={() => { setCharacterPicked(false); }} />
     );
   }
 
@@ -245,9 +263,10 @@ export function App() {
         god={god?.god ?? null}
         onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
         onQuit={() => { stopIntro.current(); hostLink?.stop(); dispatch({ type: "quit" }); }}
-        renderEnd={(won, score, mastery, tally) => (
+        renderEnd={(won, score, mastery, tally, events) => (
           <EndPanel
             won={won}
+            defense={lessonsFrom(events)}
             enemyId={enemy.id}
             mastery={mastery}
             card={(close) => <SharePanel god={god} won={won} enemyName={enemy.name} fightTitle={enemy.title} score={score} style={flow.style?.name ?? ""} onClose={close} />}
@@ -256,6 +275,7 @@ export function App() {
                 recorded.current = flow.seed;
                 const styleId = flow.style?.id ?? "";
                 noting(() => { recordFight({ enemyId: enemy.id, won, score, mastery, styleId, tally }); });
+                recordDefense(events, enemy.id);
               }
               dispatch({ type: "ended", enemyId: enemy.id, won });
             }}

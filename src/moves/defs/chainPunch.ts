@@ -2,7 +2,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef, PoseHistory } from "../../core/types";
 import { latest, recent } from "../../pose/signals";
-import { armOut, armThrust, otherSide } from "../handSignals";
+import { armOut, armReach, otherSide, strike } from "../handSignals";
 import type { Side } from "../handSignals";
 
 /** How soon the second punch must follow the first, in milliseconds. */
@@ -12,8 +12,8 @@ const FOLLOW_MS = 700;
 function followsOther(history: PoseHistory, side: Side): boolean {
   const frame = latest(history);
   const other = otherSide(side);
-  if (!frame || !armThrust(history, side) || armOut(frame, other, history.baseline)) return false;
-  return recent(history, FOLLOW_MS).some((old) => armOut(old, other, history.baseline));
+  if (!frame || strike(history, side) < 0.7 || armReach(frame, other, history.baseline, true) >= 0.5) return false;
+  return recent(history, FOLLOW_MS).some((old) => armReach(old, other, history.baseline, true) >= 0.5);
 }
 
 export const move: MoveDef = {
