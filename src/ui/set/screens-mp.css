@@ -1,0 +1,99 @@
+/* Storm and bronze on the Multiplayer screen and what it opens (Multiplayer, RoomHost, RoomJoin, RoomTags, RoomArt and
+   the FaceTime card). Uses the kit's classes (set.css); only this screen's layout and its few own pieces are here.
+   Nothing is under 18 px. The rules sit under :root:root so they outrank the older single-class rules (rooms.css). */
+:root:root {
+  .mp { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; gap: 18px; box-sizing: border-box; overflow-x: hidden; overflow-y: auto; padding: 22px 26px 24px; color: var(--st-ink); font-family: var(--st-body); background: var(--st-abyss); }
+  .mp > * { position: relative; z-index: 1; }
+  .mp > .set-backdrop { position: fixed; z-index: 0; }
+  .mp .mp-back { position: absolute; top: 24px; left: 26px; z-index: 3; }
+  .mp .notice { margin: 0; font: 600 20px/1.3 var(--st-body); color: var(--st-ink); }
+  .mp .notice:empty { display: none; }
+  .mp small { font: 600 18px/1.3 var(--st-body); color: var(--st-dim); }
+
+  /* ---- the choices ---- */
+  .mp-head { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: min(62rem, calc(100vw - 460px)); text-align: center; }
+  .mp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 25rem)); justify-content: center; align-items: stretch; gap: 54px 34px; width: min(84rem, 100%); margin: auto 0; padding-top: 28px; }
+  .mp-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 50px 28px 26px; text-align: center; }
+  .mp-card > .mp-token { position: absolute; top: -38px; left: 50%; margin-left: -38px; }
+  .mp-card h2 { display: flex; flex-direction: column; align-items: center; margin: 0; font: 400 38px/1.05 var(--st-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+  .mp-card h2 .set-kicker { margin-bottom: 2px; }
+  .mp-card > p { margin: 0; font: 500 20px/1.3 var(--st-body); color: var(--st-ink); }
+  .mp-card > .mp-card__as { display: flex; flex-direction: column; gap: 2px; align-self: stretch; margin-top: 8px; }
+  .mp-card__as b { margin: 4px 0; padding: 8px 14px; border: 2px solid var(--st-bronze-mid); border-radius: 8px; background: rgba(2, 12, 14, 0.8); box-shadow: inset 0 2px 8px #000; font: 400 28px var(--st-display); color: var(--st-gold); }
+  .mp-card .pb-btn { align-self: stretch; margin: 0; min-height: 56px; }
+  .mp-card > .pb-btn { margin-top: auto; }
+  .mp-card--call:not(:has(.ft-card)) { display: none; }
+
+  /* The join form (RoomJoin.tsx): the code field big across the panel, then the buttons. */
+  .mp-card .room { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; margin-top: 6px; }
+  .mp-card .room label { font: 700 18px var(--st-body); color: var(--st-ink); }
+  .mp-card .room .room-input { box-sizing: border-box; width: 100%; padding: 0.1em 0.2em; font: 400 2.6rem var(--st-display); color: var(--st-gold); background: rgba(2, 12, 14, 0.8); border: 2px solid var(--st-bronze); border-radius: 8px; box-shadow: inset 0 2px 10px #000; }
+  .mp-card .room .room-input:focus-visible { outline: 3px solid var(--st-focus); outline-offset: 3px; }
+  .mp-card .room .notice { font-size: 18px; color: #ffb08a; }
+  .mp-card .room .mode-note { max-width: none; margin: 0; font: 500 18px/1.3 var(--st-body); color: var(--st-dim); }
+  .mp-card .room .pb-btn { min-height: 52px; }
+
+  /* The FaceTime card (FaceTimeCard.tsx) inside its panel. */
+  .mp-card--call .ft-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; flex: 1; width: 100%; text-align: center; }
+  .mp-card--call .ft-card h2 { flex-direction: row; justify-content: center; align-items: center; gap: 10px; font-size: 30px; }
+  .mp-card--call .ft-card h2 .acc-icon { display: none; }
+  .mp-card--call .ft-card p { margin: 0; font: 500 20px/1.3 var(--st-body); color: var(--st-ink); }
+  .mp-card--call .ft-card .room { margin-top: 0; }
+
+  /* The coin (RoomArt.tsx): cast bronze with a line icon; the cold one is dark sea-glass for an open place. */
+  .mp-token { display: inline-grid; place-items: center; flex: none; box-sizing: border-box; border: 4px solid transparent; border-radius: 50%;
+    background: radial-gradient(circle at 40% 32%, #ffe6b0, #d79a45 45%, #7a4416) padding-box, linear-gradient(160deg, #ffe6b0, #c98f37 40%, #5a300f) border-box;
+    box-shadow: 0 0 0 2px #140a04, inset 0 0 0 2px rgba(20, 10, 4, 0.55), 0 6px 12px rgba(0, 0, 0, 0.55); }
+  .mp-token__icon { width: 52%; height: 52%; fill: none; stroke: #2a1406; stroke-width: 4.4; stroke-linecap: round; stroke-linejoin: round; }
+  .mp-token--cold { background: radial-gradient(circle at 40% 32%, #16464a, #08262a 70%) padding-box, linear-gradient(160deg, #b98a4a, #6a4018 50%, #3a1e0a) border-box; }
+  .mp-token--cold .mp-token__icon { stroke: var(--st-dim); }
+
+  /* ---- the room ---- */
+  .mp-wait { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: auto 0; padding: 22px 36px; }
+  .mp-lobby { display: flex; flex-direction: column; align-items: center; gap: 14px; width: min(64rem, 100%); }
+  .mp-lobby__head { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; max-width: min(46rem, calc(100vw - 460px)); }
+  .mp-lobby__row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; width: 100%; }
+  .mp-code { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 18px 24px; text-align: center; }
+  .mp-code p { margin: 0; }
+  .mp-code__kicker { font: 600 22px var(--st-body); color: var(--st-ink); }
+  .mp-code__note { font: 700 20px var(--st-body); color: var(--st-bronze); }
+  .mp .room .room-code { margin: 0; padding-left: 0.08em; font: 400 clamp(4rem, 7vw, 6.4rem)/1.05 var(--st-display); letter-spacing: 0.1em; color: var(--st-gold); background: linear-gradient(#fff1c2, #f4c56a 45%, #c98f37); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; filter: drop-shadow(0 3px 0 #1a0d06) drop-shadow(0 0 14px rgba(255, 170, 70, 0.35)); }
+  .mp-qr { display: flex; align-items: center; gap: 18px; padding: 16px 22px; }
+  .mp .room .room-qr { display: block; flex: none; padding: 6px; border: 0; border-radius: 6px; background: #fff; }
+  .mp-qr__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .mp-qr__text b { font: 400 24px var(--st-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--st-gold); }
+  .mp .room .room-url { max-width: none; margin: 0; font: 600 18px/1.3 var(--st-body); color: var(--st-dim); word-break: break-all; }
+
+  .mp-tags { width: 100%; padding: 12px 24px 14px; }
+  .mp-tags h2 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; margin: 0 0 8px; font: 400 24px var(--st-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--st-gold); text-shadow: 0 2px 0 #1a0d06; }
+  .mp-tags__count { font: 700 18px var(--st-body); letter-spacing: 0.02em; text-transform: none; color: var(--st-dim); }
+  .mp-tags ul { display: flex; flex-wrap: wrap; gap: 10px 40px; margin: 0; padding: 0; list-style: none; }
+  .mp-tags li { display: flex; align-items: center; gap: 14px; }
+  .mp-tag { display: flex; flex-direction: column; text-align: left; }
+  .mp-tag b { font: 700 20px var(--st-body); color: #fff; }
+  .mp-tag i { font: italic 600 18px var(--st-body); color: var(--st-gold); }
+  .mp-tag small { font: 600 18px var(--st-body); color: var(--st-dim); }
+  .mp-tags .is-open .mp-tag b { color: var(--st-dim); }
+
+  /* The host's controls on one panel: the status line, Start right after it (rooms-smoke.mjs), then playing alone. */
+  .mp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; width: 100%; padding: 12px 22px; }
+  .mp-bar__status { display: inline-flex; align-items: center; gap: 10px; margin: 0 auto 0 0; padding: 7px 14px 7px 10px; border: 2px solid var(--st-bronze-mid); border-radius: 8px; background: rgba(2, 12, 14, 0.8); font: 700 20px var(--st-body); color: var(--st-ink); }
+  .mp-bar__status::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--st-teal); box-shadow: 0 0 10px 2px rgba(60, 190, 180, 0.6); }
+  .mp-bar__status[data-friend="here"]::before { background: var(--st-gold); box-shadow: 0 0 12px 3px rgba(255, 190, 70, 0.8); }
+  .mp-bar .pb-btn { margin: 0; }
+
+  @media (max-height: 820px) {
+    .mp { gap: 12px; padding-top: 18px; }
+    .mp-card { gap: 6px; padding: 46px 24px 20px; }
+    .mp-card h2 { font-size: 32px; }
+    .mp-card__as b { padding: 5px 12px; font-size: 24px; }
+    .mp-card .room .room-input { font-size: 2.2rem; }
+    .mp-lobby { gap: 10px; }
+    .mp-code { padding: 10px 20px; }
+    .mp-tags { padding-top: 8px; }
+  }
+  @media (max-width: 1100px) {
+    .mp-head, .mp-lobby__head { max-width: calc(100vw - 52px); margin-top: 70px; }
+    .mp-lobby__row { grid-template-columns: minmax(0, 1fr); }
+  }
+}
