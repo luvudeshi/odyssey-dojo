@@ -49,6 +49,13 @@ test("sign-up: 201 gives the session; 400, 409, 429 and 503 are named", async ()
   expect(await answering(409, { error: "name_taken" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "name_taken" });
   expect(await answering(429, { error: "slow_down" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "slow_down" });
   expect(await answering(503, { error: "unavailable" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "unavailable" });
+  // The server makes no new accounts for now: said by name, with a 429 (try later) or a 503 (the database is full).
+  expect(await answering(429, { error: "signups_closed", message: "No new accounts can be made right now." }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "signups_closed" });
+  expect(await answering(503, { error: "signups_closed" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "signups_closed" });
+  // Only those two statuses carry it, and a body that is not an object is read by its status as before.
+  expect(await answering(400, { error: "signups_closed" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "invalid" });
+  expect(await answering(429, "signups_closed").client.signUp("Luv", "x")).toEqual({ ok: false, error: "slow_down" });
+  expect(await answering(429).client.signUp("Luv", "x")).toEqual({ ok: false, error: "slow_down" });
   // The right status with the wrong body is not a session.
   expect(await answering(201, { name: "Luv" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "unreachable" });
   expect(await answering(200, { token: TOKEN, name: "Luv" }).client.signUp("Luv", "x")).toEqual({ ok: false, error: "unreachable" });

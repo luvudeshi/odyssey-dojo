@@ -15,13 +15,15 @@ import type { Deps } from "../app";
 import { loadConfig } from "../env";
 import type { Config } from "../env";
 import {
-  ATTEMPTS_PER_ADDRESS, SIGNINS_PER_NAME_AND_ADDRESS, STRANGERS_AT_ONCE, STRANGERS_WAITING, WRONG_TOKENS_PER_ADDRESS,
+  ATTEMPTS_PER_ADDRESS, HASHES_AT_ONCE, HASHES_WAITING, SIGNINS_PER_NAME_AND_ADDRESS, SIGNUPS_OVERALL, SIGNUPS_PER_HOUR, SIGNUP_WINDOW_MS, STRANGERS_AT_ONCE,
+  STRANGERS_WAITING, WRONG_TOKENS_PER_ADDRESS,
 } from "../lib/accountLimits";
+import type { Gate } from "../lib/accountLimits";
 import { createAccounts, makeToken } from "../lib/accounts";
 import type { Accounts } from "../lib/accounts";
 import type { Db } from "../lib/db";
 import { isAccountPath, isOpenPath, isTunnelPath, mayAnswer, readsOwnBody } from "../lib/localOnly";
-import { STATUS_MS, smallBody } from "../routes/account";
+import { CLOSED_RETRY_S, SIGNUPS_CLOSED_TEXT, STATUS_MS, smallBody } from "../routes/account";
 import { captureLog } from "./support/drill";
 
 const config: Config = {
@@ -40,6 +42,7 @@ const SAVE = { save: { version: 1, profile: { name: "Odysseus", cleared: [], mov
 
 const closers: (() => void)[] = [];
 afterEach(() => {
+  vi.useRealTimers();
   for (const close of closers.splice(0)) close();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
@@ -49,6 +52,7 @@ interface Answer {
   readonly status: number;
   readonly text: string;
   readonly cache: string | null;
+  readonly retry: string | null;
 }
 type Call = (method: string, path: string, options?: { json?: unknown; token?: string; headers?: Record<string, string> }) => Promise<Answer>;
 
@@ -72,7 +76,7 @@ async function serve(extra: Partial<Deps> = {}): Promise<{ readonly call: Call; 
       },
       ...(options.json === undefined ? {} : { body: JSON.stringify(options.json) }),
     });
-    return { status: response.status, text: await response.text(), cache: response.headers.get("cache-control") };
+    return { status: response.status, text: await response.text(), cache: response.headers.get("cache-control"), retry: response.headers.get("retry-after") };
   };
   return { call, port };
 }
@@ -326,7 +330,7 @@ function fixed(): Fixed {
   let remembered = false;
   const accounts: Accounts = {
     available: () => Promise.resolve(true),
-    signUp: (name) => answer("signUp", name === "Taken" ? "name_taken" as const : { token: KNOWN_TOKEN, name }),
+    signUp: (name) => answer("signUp", name === "Taken" ? "name_taken" as const : name === "Past The Hour" ? "closed" as const : name === "Brim" ? "full" as const : { token: KNOWN_TOKEN, name }),
     signIn: (name, password) => answer("signIn", password === RIGHT_PASSWORD ? { token: KNOWN_TOKEN, name } : null),
     signOut: (token) => {
       if (token === KNOWN_TOKEN) remembered = false;
@@ -506,4 +510,128 @@ test("a database that takes too long to say it is there is answered for as not a
   } finally {
     vi.useRealTimers();
   }
+});
+
+/**
+ * A Db that keeps nothing: it answers the count before a sign-up with zeros and everything else with no rows, after
+ * `hold` when one is set. It says how many statements are inside it right now and the most there ever were at once.
+ */
+function heldDb(): { readonly db: Db; inside: number; most: number; hold: Promise<void> | null } {
+  const state = {
+    inside: 0, most: 0, hold: null as Promise<void> | null,
+    db: {
+      query: async (text: string): Promise<never[]> => {
+        state.inside += 1;
+        state.most = Math.max(state.most, state.inside);
+        try {
+          if (state.hold !== null) await state.hold;
+          return (text.includes("count(*)") ? [{ n: 0, hour: 0, day: 0 }] : []) as never[];
+        } finally {
+          state.inside -= 1;
+        }
+      },
+      close: () => Promise.resolve(),
+    } satisfies Db,
+  };
+  return state;
+}
+
+test("sign-ins that wait for their password hash hold no place at the database: other strangers are served meanwhile", async () => {
+  captureLog();
+  const stand = heldDb();
+  // The hash gate, held by the test: every sign-in gets as far as its hash and waits there.
+  let release: () => void = () => undefined;
+  const hold = new Promise<void>((resolve) => { release = resolve; });
+  let hashing = 0;
+  const gate: Gate = async (work) => {
+    hashing += 1;
+    await hold;
+    return work();
+  };
+  const accounts = createAccounts(() => Promise.resolve(stand.db), { gate });
+  expect(await accounts.available()).toBe(true);
+  const { call } = await serve({ accounts });
+  const slow = times(6, (index) => call("POST", "/api/account/signin", { json: { name: `Hero ${String(index)}`, password: "a wrong password" }, headers: from(`198.51.100.${String(index)}`) }));
+  await until(() => hashing === 6);
+  // Six sign-ins are in the middle of their work. Before, the first two held both of the strangers' places for as long as their hashes took.
+  expect(stand.inside).toBe(0);
+  const others = times(10, (index) => call("GET", "/api/account/save", { token: makeToken(), headers: from(`198.51.100.${String(50 + index)}`) }));
+  expect(await statuses(others)).toEqual(times(10, () => 401));
+  release();
+  expect(await statuses(slow)).toEqual(times(6, () => 401));
+  expect(stand.most).toBeLessThanOrEqual(STRANGERS_AT_ONCE);
+});
+
+test("a flood of sign-ins holds two places at the database and one hash at a time, waits in two short lines, and the rest are told to come back", async () => {
+  captureLog();
+  const stand = heldDb();
+  const accounts = createAccounts(() => Promise.resolve(stand.db));
+  expect(await accounts.available()).toBe(true);
+  const { call } = await serve({ accounts });
+  let release: () => void = () => undefined;
+  stand.hold = new Promise<void>((resolve) => { release = resolve; });
+  // A hundred sign-ins in one instant, each from its own address and to its own name, so no count per address or per name stops them.
+  const FLOOD = 100;
+  const burst = times(FLOOD, (index) => call("POST", "/api/account/signin", { json: { name: `Hero ${String(index)}`, password: "a wrong password" }, headers: from(`198.51.100.${String(index)}`) }));
+  let turnedAway = 0;
+  for (const ask of burst) void ask.then((answer) => { if (answer.status === 429) turnedAway += 1; });
+  // The database is slow: two look-ups are in it, sixteen wait, and the other 82 already have their answer.
+  await until(() => turnedAway === FLOOD - STRANGERS_AT_ONCE - STRANGERS_WAITING);
+  expect(turnedAway).toBe(FLOOD - STRANGERS_AT_ONCE - STRANGERS_WAITING);
+  expect(stand.inside).toBe(STRANGERS_AT_ONCE);
+  release();
+  stand.hold = null;
+  const answers = await statuses(burst);
+  // Eighteen reach the hash: one runs, eight wait, nine are told to come back. Nothing waits without a bound.
+  expect(answers.filter((status) => status === 401)).toHaveLength(HASHES_AT_ONCE + HASHES_WAITING);
+  expect(answers.filter((status) => status === 429)).toHaveLength(FLOOD - HASHES_AT_ONCE - HASHES_WAITING);
+  expect(stand.most).toBe(STRANGERS_AT_ONCE);
+  // The same for sign-ups: the count before the hash takes a place, the hash does not.
+  stand.most = 0;
+  const signUps = await statuses(times(40, (index) => call("POST", "/api/account/signup", { json: { name: `New ${String(index)}`, password: RIGHT_PASSWORD }, headers: from(`198.51.101.${String(index)}`) })));
+  expect(signUps.filter((status) => status === 429).length).toBeGreaterThan(0);
+  expect(signUps.every((status) => status === 429 || status === 409)).toBe(true);
+  expect(stand.most).toBeLessThanOrEqual(STRANGERS_AT_ONCE);
+}, 30_000);
+
+test("when strangers have made their accounts for the ten minutes or the hour, sign-up says so in plain words with how long, and sign-in and this machine go on", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  // Every account from another address, so no count per address is in the way.
+  let made = 0;
+  const signUp = (name = `Hero ${String(made)}`): Promise<Answer> => {
+    made += 1;
+    return call("POST", "/api/account/signup", { json: { name, password: RIGHT_PASSWORD }, headers: from(`198.51.${String(100 + (made >> 6))}.${String(made & 63)}`) });
+  };
+  const closed = { error: "signups_closed", message: SIGNUPS_CLOSED_TEXT };
+
+  for (let index = 0; index < SIGNUPS_OVERALL; index += 1) expect((await signUp()).status, String(index)).toBe(201);
+  const tenMinutes = await signUp();
+  expect([tenMinutes.status, JSON.parse(tenMinutes.text), tenMinutes.retry]).toEqual([429, closed, String(SIGNUP_WINDOW_MS / 1000)]);
+  // The words are for a person and say nothing of a name: the same for a name that is taken as for a new one.
+  expect(JSON.parse((await signUp("Taken")).text)).toEqual(closed);
+  expect(SIGNUPS_CLOSED_TEXT).not.toMatch(/[_{}]|undefined|error/i);
+  // Nothing reached the accounts for the closed ones.
+  expect(stand.asked.filter((what) => what === "signUp")).toHaveLength(SIGNUPS_OVERALL);
+  // Sign-in is not closed, from the same address or any other, and neither is the laptop's own sign-up.
+  expect((await call("POST", "/api/account/signin", { json: { name: "Hero 3", password: RIGHT_PASSWORD }, headers: from("198.51.100.3") })).status).toBe(200);
+  expect((await call("POST", "/api/account/signup", { json: { name: "Demo Hero", password: RIGHT_PASSWORD } })).status).toBe(201);
+
+  // Ten minutes on: 80 more make the hour's 200, and then it is closed until the hour is over.
+  vi.setSystemTime(Date.now() + SIGNUP_WINDOW_MS);
+  for (let index = SIGNUPS_OVERALL; index < SIGNUPS_PER_HOUR; index += 1) expect((await signUp()).status, String(index)).toBe(201);
+  const hour = await signUp();
+  expect([hour.status, JSON.parse(hour.text), hour.retry]).toEqual([429, closed, String(50 * 60)]);
+  expect((await call("POST", "/api/account/signin", { json: { name: "Hero 3", password: RIGHT_PASSWORD }, headers: from("198.51.100.3") })).status).toBe(200);
+  vi.setSystemTime(Date.now() + 50 * 60 * 1000);
+  expect((await signUp()).status).toBe(201);
+
+  // What the database says is answered the same way: as many made this hour or today as may be (429), or as many accounts as it may hold (503).
+  const pastTheHour = await signUp("Past The Hour");
+  expect([pastTheHour.status, JSON.parse(pastTheHour.text), pastTheHour.retry]).toEqual([429, closed, String(CLOSED_RETRY_S)]);
+  const brim = await signUp("Brim");
+  expect([brim.status, JSON.parse(brim.text), brim.retry]).toEqual([503, closed, null]);
+  // Neither was an account made, so neither used up a place.
+  expect((await signUp()).status).toBe(201);
 });
