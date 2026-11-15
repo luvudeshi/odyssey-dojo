@@ -7,13 +7,12 @@ export type Presence = { readonly ok: true } | { readonly ok: false; readonly re
 
 const MIN_VISIBILITY = 0.5;
 const MIN_WIDTH = 0.1;
-const MAX_WIDTH = 0.5;
+const MAX_WIDTH = 0.7;
 const CENTER_RANGE = [0.25, 0.75] as const;
 /** A frame older than this means the tracker has stopped seeing anyone. */
 const STALE_MS = 300;
-const REQUIRED = [
-  JOINT.leftShoulder, JOINT.rightShoulder, JOINT.leftHip, JOINT.rightHip, JOINT.leftWrist, JOINT.rightWrist,
-] as const;
+// Shoulders only: a player at a table is seen from the waist up, with hips and resting hands out of the picture.
+const REQUIRED = [JOINT.leftShoulder, JOINT.rightShoulder] as const;
 
 export function checkPresence(frame: PoseFrame): Presence {
   if (REQUIRED.some((index) => joint(frame.image, index).visibility < MIN_VISIBILITY)) {
