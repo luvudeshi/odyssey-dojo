@@ -236,7 +236,8 @@ export function tickDojo(state: DojoState, nowMs: number, frame: PoseFrame | nul
     const confidence = finite(Math.max(move.detect(history), loose));
     if (confidence >= state.config.countFrom) {
       // A strike is scored at the frame it counts, the way the fight scores it.
-      const sure = confidence >= 0.7;
+      // Only the strict detector can make it Excellent: a loose reading counts, at Good.
+      const sure = move.detect(history) >= 0.7;
       hit = { atMs: nowMs, quality: sure ? finite(move.quality?.(history) ?? confidence) : confidence, sure };
     }
   }
