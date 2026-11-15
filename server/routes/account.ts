@@ -1,4 +1,4 @@
-// Accounts over plain HTTP: is it on, sign up, sign in, sign out, and read and write the one save of an account.
+// Accounts over plain HTTP: is it on, sign up, sign in, sign out, change the name or the password, and read and write the one save of an account.
 // What is accepted lives in ../lib/accountRules, the database work in ../lib/accounts and the limits in ../lib/accountLimits;
 // this file only turns them into requests and answers.
 //
@@ -13,7 +13,9 @@ import type { Request, RequestHandler, Response } from "express";
 import { log } from "../../src/core/log";
 import type { Register } from "../app";
 import { Busy, STRANGERS_AT_ONCE, STRANGERS_WAITING, callerOf, createAccountLimits, createGate } from "../lib/accountLimits";
-import { CREDENTIALS_BODY_BYTES, SAVE_BODY_BYTES, nameKey, parseCredentials, parseSaveBody } from "../lib/accountRules";
+import {
+  CREDENTIALS_BODY_BYTES, SAVE_BODY_BYTES, nameKey, parseCredentials, parsePasswordChange, parseRename, parseSaveBody,
+} from "../lib/accountRules";
 import { Unavailable, bearerToken, createAccounts } from "../lib/accounts";
 import type { Reach } from "../lib/accounts";
 import { shareAccounts } from "../lib/accountsShared";
@@ -122,7 +124,7 @@ export const register: Register = (router, deps) => {
     };
 
   /** Refuses an address that sends sign-ups, or sign-ins, too fast, before any of the body is read. */
-  const attempt = (what: "signup" | "signin"): RequestHandler => (request, response, next) => {
+  const attempt = (what: "signup" | "signin" | "change"): RequestHandler => (request, response, next) => {
     const wait = limits.attempt(client(request), what);
     if (wait > 0) slowDown(response, wait);
     else next();
@@ -285,6 +287,72 @@ export const register: Register = (router, deps) => {
     }
     response.status(204).end();
   }));
+
+  // The sign-in name, not the hero name in the save. The session stays good, and so does everything the account owns.
+  router.post(
+    "/api/account/rename",
+    attempt("change"),
+    owner,
+    (_request, response, next) => {
+      const wait = limits.rename(accountId(response));
+      if (wait > 0) slowDown(response, wait);
+      else next();
+    },
+    smallBody(CREDENTIALS_BODY_BYTES, (response) => { invalid(response, "body"); }, (response) => { invalid(response, "body"); }),
+    safely(async (request, response) => {
+      const asked = parseRename(request.body);
+      if ("field" in asked) {
+        invalid(response, asked.field);
+        return;
+      }
+      const renamed = await reach(client(request), () => accounts.rename(accountId(response), asked.name));
+      if (renamed === "gone") signedOut(response);
+      // Never a database failure: a name that is taken is an answer, and counts toward nothing.
+      else if (renamed === "name_taken") response.status(409).json({ error: "name_taken" });
+      else response.json({ name: renamed.name });
+    }),
+  );
+
+  // 403, not 401, for a wrong current password: 401 signed_out means the session ended, and this one has not.
+  router.post(
+    "/api/account/password",
+    attempt("change"),
+    owner,
+    smallBody(CREDENTIALS_BODY_BYTES, (response) => { invalid(response, "body"); }, (response) => { invalid(response, "body"); }),
+    safely(async (request, response) => {
+      const asked = parsePasswordChange(request.body);
+      const token = bearerToken(request.headers.authorization);
+      if ("field" in asked) {
+        invalid(response, asked.field);
+        return;
+      }
+      if (token === null) {
+        signedOut(response);
+        return;
+      }
+      const who = client(request);
+      const id = accountId(response);
+      // Counted before the hash, so requests sent together cannot all slip past; given back unless the password was wrong.
+      const wait = limits.password(who, id);
+      if (wait > 0) {
+        slowDown(response, wait);
+        return;
+      }
+      let changed: Awaited<ReturnType<typeof accounts.changePassword>> = "gone";
+      let checked = false;
+      try {
+        changed = await signing(who, (reach) => accounts.changePassword(id, asked.current, asked.next, token, who === THIS_MACHINE, reach));
+        checked = true;
+      } finally {
+        if (changed !== "wrong_password" || !checked) limits.passwordRight(who, id);
+      }
+      if (changed === "gone") signedOut(response);
+      else if (changed === "wrong_password") response.status(403).json({ error: "wrong_password" });
+      // The same change made twice at once: the password was right, so it is no failed guess (passwordRight above).
+      else if (changed === "conflict") response.status(409).json({ error: "conflict" });
+      else response.status(204).end();
+    }),
+  );
 
   router.get("/api/account/save", owner, safely(async (request, response) => {
     response.json(await reach(client(request), () => accounts.readSave(accountId(response))));

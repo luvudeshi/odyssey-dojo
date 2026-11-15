@@ -7,6 +7,8 @@ import { z } from "zod";
 import { log } from "../../src/core/log";
 import { SIGNUPS_PER_DAY, SIGNUPS_PER_HOUR, createGate, createKnownSessions } from "./accountLimits";
 import type { Gate } from "./accountLimits";
+import { createEdits } from "./accountEdits";
+import type { Edits } from "./accountEdits";
 import { nameKey, saveSchema } from "./accountRules";
 import { publicAccounts } from "./localOnly";
 import type { Save } from "./accountRules";
@@ -165,7 +167,7 @@ export interface Stored {
   readonly updatedAt: string | null;
 }
 
-export interface Accounts {
+export interface Accounts extends Edits {
   /** Whether the database answers. Never throws. Asked at most once every STATUS_CACHE_MS. */
   readonly available: () => Promise<boolean>;
   /**
@@ -280,7 +282,7 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
    * FAILURES_TO_GIVE_UP failures in a row, also turn the routes off for STATUS_CACHE_MS. A statement that is not
    * `counted` (the hall's, see `doors` below) is never one of those failures: the hall can fail while the accounts work.
    */
-  const run = async (text: string, params: readonly unknown[], counted = true): Promise<unknown[]> => {
+  const run = async (text: string, params: readonly unknown[], counted = true, tolerate?: string): Promise<unknown[]> => {
     if (now() - checkedAt < STATUS_CACHE_MS && !answers) throw new Unavailable();
     const found = await link();
     if (found === null) {
@@ -295,6 +297,14 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       }
       return rows;
     } catch (error) {
+      // An error the caller expects (a unique key hit by a race) is an answer, so the database is up and nothing is logged as a fault.
+      if (tolerate !== undefined && failureCode(error) === tolerate) {
+        if (counted) {
+          failures = 0;
+          believe(true);
+        }
+        return [];
+      }
       log("warn", "accounts_query_failed", failureCode(error));
       if (counted) {
         failures += 1;
@@ -324,7 +334,11 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     );
   };
 
+  const edits = createEdits({
+    run, table: t, gate, known, hash: hashPassword, verify: verifyPassword, tokenHash, saltBytes: SALT_BYTES, rowsOf,
+  });
   const made: Accounts = {
+    ...edits,
     available: () => {
       if (now() - checkedAt < STATUS_CACHE_MS) return Promise.resolve(answers);
       checking ??= run("select 1", []).then(() => true, () => false).finally(() => { checking = null; });
@@ -382,14 +396,19 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
       if (found === undefined || !right) return null;
       const token = makeToken();
       const at = now();
-      await reach(async () => {
+      // The session is made only while the account still holds the hash that was checked: a password changed during the check
+      // has ended this account's sessions, and one made after that would outlive it.
+      const made = await reach(async () => {
         await makeRoom(found.id, iso(at));
-        await run(
+        return run(
           `insert into ${t.sessions} (token_hash, account_id, created_at, expires_at)
-          values (decode($1::text, 'hex'), $2::uuid, $3::timestamptz, $4::timestamptz)`,
-          [tokenHash(token), found.id, iso(at), iso(at + SESSION_MS)],
+          select decode($1::text, 'hex'), a.id, $3::timestamptz, $4::timestamptz from ${t.accounts} a
+          where a.id = $2::uuid and a.pass_hash = decode($5::text, 'hex')
+          returning 1 as made`,
+          [tokenHash(token), found.id, iso(at), iso(at + SESSION_MS), found.pass_hash],
         );
       });
+      if (made.length === 0) return null;
       return { token, name: found.name };
     },
 
@@ -400,12 +419,14 @@ export function createAccounts(open: () => Promise<Db | null>, options: Accounts
     },
 
     accountOf: async (token) => {
+      const since = known.epoch();
       const rows = await run(
         `select account_id::text as id from ${t.sessions} where token_hash = decode($1::text, 'hex') and expires_at > $2::timestamptz`,
         [tokenHash(token), iso(now())],
       );
       const id = rowsOf(idRow, rows)[0]?.id ?? null;
-      if (id !== null) known.remember(tokenHash(token), id);
+      // Not when a password change ended sessions while the database was being asked: its answer may be from before.
+      if (id !== null && known.epoch() === since) known.remember(tokenHash(token), id);
       return id;
     },
 

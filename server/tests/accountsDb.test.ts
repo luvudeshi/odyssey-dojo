@@ -286,6 +286,61 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     expect(rows).toHaveLength(0);
   });
 
+  test("rename: the new name signs in at once, the old one no longer does and is free, a case-only change is the account's own, and a name another account holds is 409", async () => {
+    const [oldName, newName, otherName] = [hero(), hero(), hero()];
+    const mine = await signUp(oldName);
+    const other = await signUp(otherName);
+    const renamed = await call("POST", "/api/account/rename", { token: mine.token, json: { name: `  ${newName}  ` } });
+    expect(renamed).toEqual({ status: 200, body: { name: newName } });
+    // The session survives, the stored name is the new one, and the save is where it was.
+    expect((await call("GET", "/api/account/save", { token: mine.token })).status).toBe(200);
+    expect(await sql(`select name from ${t.accounts} where name_key = $1::text`, [newName.toLowerCase()])).toEqual([{ name: newName }]);
+    expect((await call("POST", "/api/account/signin", { json: { name: oldName, password: PASSWORD } })).status).toBe(401);
+    expect(await signIn(newName)).toMatchObject({ name: newName });
+    expect((await call("POST", "/api/account/rename", { token: mine.token, json: { name: newName.toUpperCase() } })).body).toEqual({ name: newName.toUpperCase() });
+    // Taken by another account, in any letters: 409, nothing changed, and the database is still answering.
+    for (const name of [otherName, otherName.toLowerCase(), `${otherName}  `]) {
+      expect(await call("POST", "/api/account/rename", { token: mine.token, json: { name } }), name).toEqual({ status: 409, body: { error: "name_taken" } });
+    }
+    expect(await call("GET", "/api/account/status")).toEqual({ status: 200, body: { available: true } });
+    // The old name is free for somebody else, and the other account kept its own.
+    expect((await signUp(oldName)).name).toBe(oldName);
+    expect(await sql(`select name from ${t.accounts} where id in (select account_id from ${t.sessions} where token_hash = decode($1::text, 'hex'))`, [tokenHash(other.token)])).toEqual([{ name: otherName }]);
+    expect((await call("POST", "/api/account/rename", { json: { name: hero() } })).status).toBe(401);
+  });
+
+  test("two renames to one free name at once: one wins, the other is 409 name_taken and no failure is counted", async () => {
+    const [first, second, wanted] = [await signUp(hero()), await signUp(hero()), hero()];
+    const answers = await Promise.all([first, second].map((who) => call("POST", "/api/account/rename", { token: who.token, json: { name: wanted } })));
+    expect(answers.map((answer) => answer.status).sort()).toEqual([200, 409]);
+    expect(await sql(`select 1 from ${t.accounts} where name_key = $1::text`, [wanted.toLowerCase()])).toHaveLength(1);
+    expect(await call("GET", "/api/account/status")).toEqual({ status: 200, body: { available: true } });
+  });
+
+  test("password: the old one fails and the new one works, every other session ends and the caller's stays, a wrong current password changes nothing", async () => {
+    const name = hero();
+    const mine = await signUp(name);
+    const second = await signIn(name);
+    const third = await signIn(name);
+    const [before] = await sql<{ pass_hash: string; salt: string }>(`select encode(pass_hash, 'hex') as pass_hash, encode(salt, 'hex') as salt from ${t.accounts} where name_key = $1::text`, [name.toLowerCase()]);
+    const wrong = await call("POST", "/api/account/password", { token: mine.token, json: { current: OTHER_PASSWORD, next: "another long password" } });
+    expect(wrong).toEqual({ status: 403, body: { error: "wrong_password" } });
+    expect(await sql(`select 1 from ${t.sessions} where account_id = (select id from ${t.accounts} where name_key = $1::text)`, [name.toLowerCase()])).toHaveLength(3);
+    // Known to this server's memory: a read each, so the cache holds them before the change.
+    for (const who of [mine, second, third]) expect((await call("GET", "/api/account/save", { token: who.token })).status).toBe(200);
+    expect(await call("POST", "/api/account/password", { token: mine.token, json: { current: PASSWORD, next: OTHER_PASSWORD } })).toEqual({ status: 204, body: null });
+    const [after] = await sql<{ pass_hash: string; salt: string }>(`select encode(pass_hash, 'hex') as pass_hash, encode(salt, 'hex') as salt from ${t.accounts} where name_key = $1::text`, [name.toLowerCase()]);
+    expect([after?.pass_hash === before?.pass_hash, after?.salt === before?.salt]).toEqual([false, false]);
+    expect(await verifyPassword(OTHER_PASSWORD, Buffer.from(after?.salt ?? "", "hex"), Buffer.from(after?.pass_hash ?? "", "hex"))).toBe(true);
+    // The two others are gone at once, in the database and in the memory of known sessions, with no wait for it to run out.
+    expect((await call("GET", "/api/account/save", { token: second.token })).status).toBe(401);
+    expect((await call("GET", "/api/account/save", { token: third.token })).status).toBe(401);
+    expect((await call("GET", "/api/account/save", { token: mine.token })).status).toBe(200);
+    expect((await call("POST", "/api/account/signin", { json: { name, password: PASSWORD } })).status).toBe(401);
+    expect((await signIn(name, OTHER_PASSWORD)).name).toBe(name);
+    expect((await call("POST", "/api/account/password", { token: mine.token, json: { current: OTHER_PASSWORD, next: "short" } })).body).toEqual({ error: "invalid", field: "next" });
+  }, 30_000);
+
   test("a session runs out after thirty days", async () => {
     const name = hero();
     const { token } = await signUp(name);
@@ -430,4 +485,47 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
       second.closeAllConnections();
     }
   }, 30_000);
+  test("a sign-in whose password was changed while it checked makes no session, and a change twice at once is a conflict, not a wrong password", async () => {
+    const accounts = createAccounts(() => Promise.resolve(db), { prefix, now: () => clock });
+    const name = hero();
+    await signUp(name);
+    const [row] = await sql<{ id: string }>(`select id::text as id from ${t.accounts} where name = $1::text`, [name]);
+    const id = row?.id ?? "";
+    // The password changes after sign-in has read the old hash and before it writes its session.
+    const sessions = (): Promise<unknown[]> => sql(`select 1 from ${t.sessions} where account_id = $1::uuid`, [id]);
+    const before = (await sessions()).length;
+    const moved = await accounts.signIn(name, PASSWORD, false, async (work) => {
+      await sql(`update ${t.accounts} set pass_hash = decode($2::text, 'hex') where id = $1::uuid`, [id, "ab".repeat(64)]);
+      return work();
+    });
+    expect(moved).toBeNull();
+    expect(await sessions()).toHaveLength(before);
+    // A fresh account for the next two cases.
+    await sql(`delete from ${t.accounts} where id = $1::uuid`, [id]);
+    const again = hero();
+    const second = await signUp(again);
+    const [other] = await sql<{ id: string }>(`select id::text as id from ${t.accounts} where name = $1::text`, [again]);
+    const otherId = other?.id ?? "";
+    // The second statement of changePassword (the update) finds the hash already replaced by an equal change.
+    let reached = 0;
+    const raced = await accounts.changePassword(otherId, PASSWORD, OTHER_PASSWORD, second.token, false, async (work) => {
+      reached += 1;
+      if (reached === 2) await sql(`update ${t.accounts} set pass_hash = decode($2::text, 'hex') where id = $1::uuid`, [otherId, "cd".repeat(64)]);
+      return work();
+    });
+    expect(raced).toBe("conflict");
+    // The account removed between the check and the update is gone, which the route answers 401. A fresh account: the
+    // one above no longer has PASSWORD.
+    const last = hero();
+    const third = await signUp(last);
+    const [gone] = await sql<{ id: string }>(`select id::text as id from ${t.accounts} where name = $1::text`, [last]);
+    const goneId = gone?.id ?? "";
+    reached = 0;
+    const lost = await accounts.changePassword(goneId, PASSWORD, OTHER_PASSWORD, third.token, false, async (work) => {
+      reached += 1;
+      if (reached === 2) await sql(`delete from ${t.accounts} where id = $1::uuid`, [goneId]);
+      return work();
+    });
+    expect(lost).toBe("gone");
+  });
 });

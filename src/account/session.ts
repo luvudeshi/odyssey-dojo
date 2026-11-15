@@ -73,6 +73,7 @@ export const ERROR_TEXT: Readonly<Record<AccountError, string>> = {
   invalid: "The server did not accept that name or password.",
   name_taken: "That hero name is taken. Pick another, or sign in.",
   wrong_name_or_password: "Wrong name or password.",
+  wrong_password: "That is not your current password.",
   slow_down: "Too many tries. Wait a minute, then try again.",
   signups_closed: "No new accounts can be made right now. If you have one, sign in. Your progress is kept in this browser.",
   unavailable: "Accounts are not available right now. Your progress is kept in this browser.",
@@ -80,6 +81,17 @@ export const ERROR_TEXT: Readonly<Record<AccountError, string>> = {
   too_big: "The save is too big to send.",
   unreachable: "Cannot reach the server. Check the connection and try again.",
 };
+export const RENAME_TAKEN_TEXT = "That name is taken. Pick another.";
+export const MISMATCH_TEXT = "The two new passwords do not match.";
+export const PASSWORD_CHANGED_TEXT = "Password changed. Other devices are signed out.";
+/** A 409 on the password route: another change of the same account was made at the same moment. */
+export const PASSWORD_BUSY_TEXT = "Your password was just changed by another request. Check the page and try again if you still need to.";
+export const renamedText = (name: string): string => `Your sign-in name is now ${name}.`;
+/** What a rename or a password change gave back: the line to show, and whether it worked. */
+export interface ChangeResult {
+  readonly ok: boolean;
+  readonly text: string;
+}
 export const NAME_TEXT = `A hero name is ${String(ACCOUNT_NAME_MIN)} to ${String(ACCOUNT_NAME_MAX)} characters.`;
 export const PASSWORD_TEXT = `A password is ${String(PASSWORD_MIN)} to ${String(PASSWORD_MAX)} characters.`;
 
@@ -121,6 +133,10 @@ export interface AccountSync {
   readonly signIn: (name: string, password: string) => Promise<void>;
   /** Forgets the session here and ends it on the server. This browser's progress stays. */
   readonly signOut: () => Promise<void>;
+  /** Changes the sign-in name (not the hero name). Never sends a name that fails the rules. */
+  readonly rename: (name: string) => Promise<ChangeResult>;
+  /** Changes the password. Never sends one that fails the rules, or two new ones that differ. */
+  readonly changePassword: (current: string, next: string, again: string) => Promise<ChangeResult>;
 }
 
 export function createAccountSync(deps: AccountDeps): AccountSync {
@@ -370,6 +386,19 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
     await run();
   };
 
+  /** The words for a failed change. A 401 has signed the player out already, so its text is the usual one. */
+  const changeText = (error: AccountError, field: string | undefined, kind: "name" | "password"): string => {
+    if (error === "name_taken") return kind === "name" ? RENAME_TAKEN_TEXT : PASSWORD_BUSY_TEXT;
+    if (error === "invalid") return field === "current" ? ERROR_TEXT.wrong_password : kind === "name" ? NAME_TEXT : PASSWORD_TEXT;
+    return ERROR_TEXT[error];
+  };
+  /** After a change was answered: a 401 ends the session as any other signed-in call does. True when it did. */
+  const endedByServer = (mine: StoredSession, error: AccountError): boolean => {
+    if (error !== "signed_out" || !isMine(mine)) return false;
+    forget("");
+    return true;
+  };
+
   return {
     get: () => state,
     subscribe(listener) {
@@ -413,6 +442,39 @@ export function createAccountSync(deps: AccountDeps): AccountSync {
       if (!mineNow || mineNow.token !== mine.token) return;
       forget("", mineNow.merged && !mineNow.unsent && edits === sentEdits);
       await client.signOut(mine.token);
+    },
+    async rename(rawName) {
+      adopt();
+      const mine = session;
+      if (!mine) return { ok: false, text: ERROR_TEXT.signed_out };
+      const name = accountName(rawName);
+      if (name.length < ACCOUNT_NAME_MIN) return { ok: false, text: NAME_TEXT };
+      const got = await client.rename(mine.token, name);
+      if (!got.ok) {
+        endedByServer(mine, got.error);
+        return { ok: false, text: changeText(got.error, got.field, "name") };
+      }
+      const shown = cleanName(got.value.name);
+      // Only the sign-in name moves: the hero name in the profile and the saved game are not touched.
+      const mineNow = who();
+      if (mineNow && isMine(mine)) {
+        keep({ ...mineNow, name: shown });
+        const cur = now();
+        setSave(cur.status === "signedIn" ? cur.save : "saved");
+      }
+      return { ok: true, text: renamedText(shown) };
+    },
+    async changePassword(current, next, again) {
+      adopt();
+      const mine = session;
+      if (!mine) return { ok: false, text: ERROR_TEXT.signed_out };
+      if (current.length === 0 || current.length > PASSWORD_MAX) return { ok: false, text: ERROR_TEXT.wrong_password };
+      if (next.length < PASSWORD_MIN || next.length > PASSWORD_MAX) return { ok: false, text: PASSWORD_TEXT };
+      if (next !== again) return { ok: false, text: MISMATCH_TEXT };
+      const got = await client.changePassword(mine.token, current, next);
+      if (got.ok) return { ok: true, text: PASSWORD_CHANGED_TEXT };
+      endedByServer(mine, got.error);
+      return { ok: false, text: changeText(got.error, got.field, "password") };
     },
   };
 }
