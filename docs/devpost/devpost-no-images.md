@@ -73,7 +73,7 @@ With no camera the Dojo runs on keys. It can show you each move then, but it can
 - **Alone:** Story mode is six stops in Homer's order: Polyphemus, Circe, the Sirens, Scylla, Charybdis and the Suitors. All six are open from the start, and each has its own monster, arena and attacks to read.
 - **A cutscene before each stop:** pick a stop on the map and the monster's painting rises out of the dark, its name slams in with its book of the Odyssey, and the picture cracks open onto the fight. Any key skips it.
 - **Five characters:** Odysseus, Poseidon, Zeus, Athena or Achilles. The choice is the look only, and any of them can fight in any style.
-- **Five fighting styles:** Boxer, Hoplite, Karate, Kung Fu and Pankration.
+- **Five fighting styles:** Boxer, Jiu-jitsu, Karate, Kung Fu and Taekwondo.
 - **Defending pays.** Five defends fill a power disc. Then Athena lends you her aegis: push both palms forward and the monster takes the damage of three plain strikes.
 - **A finishing move on every stop.** At zero health the game teaches one last move. For Polyphemus it is the stake, the one that blinds him in Book 9.
 - **With a friend:** the Multiplayer screen hosts a room, and a friend joins with a four-letter code or a QR code, from a laptop or a phone. A guest who reloads gets the same seat back. The host defends and both of you strike. Throw the same strike within 0.4 seconds of each other and it does double damage.
@@ -120,7 +120,7 @@ Accounts and a Hall of heroes are built on Tiger Data. Every finished fight of a
 
 ## ElevenLabs: Athena is the coach
 
-A coach has to talk. Athena, Homer and the monsters speak with ElevenLabs. We generated the clips ahead of time with our own account, 135 files in all, and they ship with the game, so a normal fight never calls ElevenLabs.
+A coach has to talk. Athena, Homer and the monsters speak with ElevenLabs. We generated the clips ahead of time with our own account, 141 files in all, and they ship with the game, so a normal fight never calls ElevenLabs.
 
 - **Athena** calls every defense and every strike, praises a hit and warns after one. Her voice is Sarah.
 - **Homer** narrates before and after each stop. His voice is George.

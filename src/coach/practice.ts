@@ -39,48 +39,48 @@ export const PRACTICE_TIPS = {
   strike: tip("whole move", "Do it as one sharp move from your guard, then come straight back to guard."),
   defend: tip("whole move", "Make the move bigger and do it once, clearly, while the attack is coming."),
   // Straight punches and pushes: jab, cross, reverse punch, spear thrust, double palm, chain punch.
-  reach: tip("reach", "Reach all the way out, then bring the hand straight back to your face."),
-  height: tip("height", "Finish with your fist level with your shoulder, not above or below it."),
-  aim: tip("aim", "Send it straight ahead, not out to the side: straight gets there first."),
-  snap: tip("speed", "Snap it out fast from a bent arm, then straight back. A slow reach is easy to read."),
-  together: tip("hands together", "Keep both palms side by side, so the push lands as one."),
-  pull: tip("pulling hand", "Pull your left fist back to your hip as the right goes out, and stay balanced."),
-  follow: tip("second punch", "Send the second fist right behind the first, and bring the first one back."),
+  reach: tip("reach", "Arm not straight. Punch all the way out, then pull your hand back to your chin."),
+  height: tip("height", "Fist off target. Finish with it level with your shoulder, not above or below."),
+  aim: tip("aim", "Punch went wide. Send it straight ahead from your chin, not out to the side."),
+  snap: tip("speed", "Too slow. Snap it out fast from a bent arm, then straight back to your guard."),
+  together: tip("hands together", "Hands too far apart. Keep both palms side by side so the push lands as one."),
+  pull: tip("pulling hand", "Left hand stayed up. Pull your left fist back to your hip as the right goes out."),
+  follow: tip("second punch", "Second punch missing. Send the other fist right behind the first, first one back."),
   // Hook.
-  hookBend: tip("elbow bend", "Keep your elbow bent like a hook the whole way; do not let the arm straighten."),
-  hookLevel: tip("height", "Swing at shoulder height, with your fist level with your elbow."),
-  hookSwing: tip("swing", "Swing it across in one quick move, then bring the hand back to your face."),
+  hookBend: tip("elbow bend", "Arm too straight or too tight. Keep your elbow bent like a hook the whole way."),
+  hookLevel: tip("height", "Hook too high or too low. Swing at shoulder height, fist level with your elbow."),
+  hookSwing: tip("swing", "Swing too short. Turn your hips and shoulders and whip the fist across fast."),
   // Uppercut and rising palm.
-  drive: tip("drive", "Start with the hand at your waist and drive it up in one quick move."),
-  finish: tip("finish", "Finish with your hand at chin height, close in front of you."),
-  riseBend: tip("elbow bend", "Keep your elbow bent and close to you: the hand goes up, not out."),
+  drive: tip("drive", "Started too high. Drop your hand to your waist first, then drive it up fast."),
+  finish: tip("finish", "Wrong finish. End with your hand at chin height, close in front of you."),
+  riseBend: tip("elbow bend", "Arm straightened. Keep your elbow bent and close: the hand goes up, not out."),
   // Hammer fist, overhead strike, thunderbolt.
-  raise: tip("raise", "Lift your hand right over your head, then bring it down in one quick move."),
-  drop: tip("finish", "Follow it all the way down, below your shoulder. Let your weight do the work."),
+  raise: tip("raise", "Not raised enough. Lift your hand right over your head, then strike down fast."),
+  drop: tip("finish", "Stopped short. Follow it all the way down, below your shoulder."),
   // Knife hand.
-  chamber: tip("start", "Start with your hand across at the other shoulder, then sweep it out fast."),
-  sweepOut: tip("sweep", "Sweep further out, past your own side, to knock a reaching arm away."),
-  sweepLevel: tip("height", "Keep the sweep level with your shoulders, at neck height."),
-  sweepOpen: tip("arm", "Open your arm out nearly straight as the sweep finishes."),
+  chamber: tip("start", "No wind-up. Start with your hand across at the other shoulder, then sweep it out."),
+  sweepOut: tip("sweep", "Sweep too short. Carry it out past your own side to knock a reaching arm away."),
+  sweepLevel: tip("height", "Sweep off height. Keep it level with your shoulders, at neck height."),
+  sweepOpen: tip("arm", "Arm still bent. Open it out nearly straight as the sweep finishes."),
   // Block.
-  guard: tip("guard", "Bring both fists right up to your cheeks. Hands at your chest leave your head open."),
-  hold: tip("hold", "Keep your fists up for a beat so the guard reads clearly. Once is enough."),
+  guard: tip("guard", "Hands too low. Bring both fists right up to your cheeks to cover your head."),
+  hold: tip("hold", "Guard dropped too soon. Keep your fists up by your face for a beat."),
   // Duck.
-  depth: tip("depth", "Drop lower: bend your knees until your head would clear a swing."),
-  knees: tip("knees", "Bend your knees, not your waist, and keep your eyes up on what is coming."),
+  depth: tip("depth", "Not low enough. Bend your knees until your head would clear a swing."),
+  knees: tip("knees", "You bent at the waist. Bend your knees instead, and keep your eyes up."),
   // Dodges.
-  distance: tip("distance", "Step further: move your whole body off the line, not only your head."),
-  stay: tip("staying off", "Stay off the line for a moment. Do not sway straight back into it."),
-  toLeft: tip("direction", "Other way: step to your left, off the line of the rush."),
-  toRight: tip("direction", "Other way: step to your right, out of the attack's path."),
+  distance: tip("distance", "Step too small. Move your whole body off the line, not only your head."),
+  stay: tip("staying off", "Back too soon. Stay off the line for a moment before you come back."),
+  toLeft: tip("direction", "Wrong way. Step to your left, off the line of the rush."),
+  toRight: tip("direction", "Wrong way. Step to your right, out of the attack's path."),
   // Front kick.
-  kickChamber: tip("knee lift", "Lift your knee first, then snap your foot straight out in one quick move."),
-  kickHeight: tip("height", "Kick higher: get your foot up to hip height to keep them at leg length."),
-  kickStraight: tip("leg", "Push your foot all the way out until your leg is straight, then pull it back."),
+  kickChamber: tip("knee lift", "No knee lift. Bring your knee up first, then snap your foot straight out."),
+  kickHeight: tip("height", "Kick too low. Lift your knee to hip height and send your foot out from there."),
+  kickStraight: tip("leg", "Leg still bent. Push your foot out until the leg is straight, then pull it back."),
   // Knee strike.
-  kneeHeight: tip("height", "Drive your knee higher, up toward your hands."),
-  kneeFold: tip("tuck", "Keep your foot tucked under your knee. Do not let it swing out."),
-  kneeHold: tip("hold", "Hold your knee up for a beat before you set your foot down."),
+  kneeHeight: tip("height", "Knee too low. Drive it up to hip height, toward your hands."),
+  kneeFold: tip("tuck", "Foot swung out. Keep it tucked under your knee as the knee comes up."),
+  kneeHold: tip("hold", "Down too fast. Hold your knee up for a beat before you set your foot down."),
 } as const satisfies Record<string, PracticeTip>;
 
 /** Shown when a repetition counted and no measured part was weak. `RepResult.tip` is null then. */
@@ -126,6 +126,8 @@ interface Family {
   readonly options: readonly (readonly Part[])[];
   /** Something to say first when the attempt did not count, such as a step the wrong way. */
   gate?(moments: readonly PoseHistory[]): PracticeTip | null;
+  /** What `gate` says, when it has something to say. */
+  readonly wrong?: PracticeTip;
 }
 
 /** 0.5 when `value` is at the detector's `line`, 1 at `full`, 0 as far the other side. `full` may be under `line`. */
@@ -253,6 +255,7 @@ function dodge(way: -1 | 1): Family {
       ),
     ]],
     gate: (moments) => (moments.some((history) => sideStep(history, way === 1 ? -1 : 1) >= ON) ? wrong : null),
+    wrong,
   };
 }
 
@@ -381,6 +384,13 @@ const NEEDS_STANCE: readonly string[] = ["duck", "dodge_left", "dodge_right", "j
 
 /** Ids of the moves with their own table of parts; the rest get the one tip for their kind. */
 export const TABLED_MOVES: readonly string[] = Object.keys(FAMILIES);
+
+/** Every tip a tabled move's own parts can give: one per measured part, and the one for a step the wrong way. Empty for a move with no table. */
+export function partTips(moveId: string): PracticeTip[] {
+  const family = FAMILIES[moveId];
+  if (!family) return [];
+  return [...new Set([...family.options.flat().map((each) => each.say), ...(family.wrong ? [family.wrong] : [])])];
+}
 
 const safe = (value: number): number => (Number.isFinite(value) ? clamp01(value) : 0);
 

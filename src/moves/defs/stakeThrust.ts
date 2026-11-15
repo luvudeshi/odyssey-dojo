@@ -11,6 +11,7 @@ import {
   shoulderCenter,
   shoulderWidth,
 } from "../../pose/signals";
+import { armsWent } from "../looseSignals";
 
 /** How long ago the hands may have been at the chest, in milliseconds. Generous: this move should land first try. */
 export const WINDUP_MS = 700;
@@ -70,6 +71,10 @@ export const move: MoveDef = {
     const frame = latest(history);
     if (!frame || !driven(frame)) return 0;
     return recent(history, WINDUP_MS).some(loaded) ? 1 : 0;
+  },
+  /** Asked for: both hands driven forward or down together. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), armsWent(history, "forward"), armsWent(history, "down"));
   },
   /** Better the straighter the arms end up, the lower the hands are driven and the faster it goes from chest to finish. */
   quality(history) {

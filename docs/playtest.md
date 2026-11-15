@@ -29,7 +29,7 @@ Each step says what to do and what you should see. Mark it pass, fail or not run
 7. **Whiff on purpose.** Let one strike window run out. No damage either way, and the combo resets.
 8. **Prompts shrink.** After two successes with a move its card loses the stick figure and hint. After five it should still be clear which move is wanted (see bug 1).
 9. **Win.** Finish the fight. You see the win text, your score and a "Next fight" button. Time it: a clean run should take 90 to 150 seconds.
-10. **Start as Hoplite.** "Change style", pick Hoplite, and check its two strikes (U, I) land.
+10. **Start as Jiu-jitsu.** "Change style", pick Jiu-jitsu, and check its three strikes (P, G, H) land.
 
 ### B. Losing and restarting
 
