@@ -66,8 +66,8 @@ The Dojo is practice with no monster. An outline figure does one move on a loop 
 
 ### Alone or with a friend
 
-- **Alone:** Story mode is six stops in Homer's order: Polyphemus, Circe, the Sirens, Scylla, Charybdis and the Suitors. Each has its own monster, arena and attacks to read.
-- **With a friend:** host a room and a friend joins with a four-letter code or a QR code, from a laptop or a phone. You fight one monster together. Throw the same strike at the same moment and it does double damage.
+- **Alone:** Story mode is six stops in Homer's order: Polyphemus, Circe, the Sirens, Scylla, Charybdis and the Suitors. All six are open from the start, and each has its own monster, arena and attacks to read.
+- **With a friend:** the Multiplayer screen on the main menu hosts a room, and a friend joins with a four-letter code or a QR code, from a laptop or a phone. A guest who reloads gets the same seat back. You fight one monster together. Throw the same strike at the same moment and it does double damage.
 - **Five fighting styles:** Boxer, Hoplite, Karate, Kung Fu and Pankration, each with its own strikes.
 - **No camera needed:** every move has a key, so anyone can play.
 
@@ -84,7 +84,7 @@ Odyssey Dojo is practice for two things: reacting in time and keeping your dista
 3. **Coach:** the Dojo uses the same measurements. A jab is checked for reach (elbow straight at 145 degrees), height, aim and speed (bent arm to straight within 200 ms). The weakest part becomes the tip.
 4. **Fight:** the combat engine is plain TypeScript with no browser in it. It runs the phases, the combo, the divine power meter and the finishing move.
 5. **Draw:** three.js through React Three Fiber renders the arenas, the monsters and your hero.
-6. **Speak:** every voice line and sound is a clip made ahead of time, so sound works offline.
+6. **Speak:** every voice line and sound effect is a clip made ahead of time, and the music ships with the game, so sound works offline.
 
 The keyboard and the camera feed the same input every frame, so a fight is identical either way. Because the rules do not touch the browser, we test a whole fight, start to finish, as plain code.
 
@@ -97,9 +97,10 @@ The teaching is tested too. One test fails if a move has no real-world line. Ano
 | Frontend | React 19, TypeScript (strict), Vite |
 | 3D | three.js, React Three Fiber, drei, postprocessing |
 | Pose tracking | MediaPipe Tasks Vision (PoseLandmarker, runs in the browser) |
-| Server | Node.js, Express, Zod (optional: the god scan and rooms) |
+| Server | Node.js, Express, Zod (optional: the god scan, rooms, FaceTime and accounts) |
 | AI | Google Gemini (god scan), ElevenLabs (voice, sound effects, stings) |
 | Tests | Vitest, headless browser runs |
+| Database | Tiger Data (Postgres) for accounts, off unless the server is given a database address |
 | Art | Poly Haven (CC0 skies and textures), Quaternius (CC0 models), shapes built in code |
 
 ## ElevenLabs: Athena is the coach
@@ -115,7 +116,7 @@ We ran each clip through speech to text afterward. The check heard `call_knee` a
 
 ## Google Gemini: the god scan
 
-Before the style menu, a webcam player gets a god scan. A snapshot goes to our Express server, which asks Gemini to name the Olympian they take after: Zeus, Poseidon, Athena, Hermes, Artemis or Apollo. The god comes with one power. Defends fill a power ring, so the game pays you for defending well.
+Before the style menu, a webcam player gets a god scan. A snapshot goes to our Express server, which asks Gemini to name the Olympian they take after: Zeus, Poseidon, Athena, Hermes, Artemis or Apollo. The god comes with one power. Defends fill a power ring, so the game pays you for defending well. When the power goes off, the hero strikes a pose and the god's sound plays.
 
 - **The key stays on the server.** The browser never sees it.
 - **Every call has a time limit and a fallback.** With the server off, the scan measures your body in the browser and picks a god from that.
@@ -151,7 +152,9 @@ Before the style menu, a webcam player gets a god scan. A snapshot goes to our E
 - Put the Dojo in front of a self-defense instructor and fix what they flag. `[confirm: the team agrees this is a next step]`
 - Tune the detectors on more real bodies.
 - Swap kicks the camera cannot see when a player is framed from the waist up.
-- Show the character picker: Odysseus, Poseidon, Zeus, Athena and Achilles are built and not yet offered in a menu.
+- Show the character picker: Odysseus, Poseidon, Zeus, Athena and Achilles are built and not yet offered in a menu. The code that gives each god one of the five from the scan is built too, and no screen uses it yet.
+- Turn on accounts and the Hall of heroes. The server routes, the Tiger Data code and the sign-in dialog are built, and the Account page does not show them yet.
+- Try the FaceTime call on a real phone. A friend's iPhone can join a fight from the Multiplayer screen, and nobody has run it on a real call yet.
 - Fights written from a sentence, with Gemini building the level. The server route exists and no menu opens it.
 
 Play it at `[confirm: live demo URL]`. Open the Training Dojo first.
