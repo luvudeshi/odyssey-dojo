@@ -6,6 +6,8 @@ import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "rea
 import type { KeyboardEvent } from "react";
 import type { Group } from "three";
 import { Button } from "../ui/pebble";
+import { Backdrop, SetTitle } from "../ui/set/Set";
+import "../ui/set/screens-flow.css";
 import { CharacterFigure } from "./CharacterFigure";
 import { CHARACTERS, characterById } from "./characters";
 import type { Character, CharacterId } from "./characters";
@@ -17,6 +19,8 @@ export interface CharacterPickerProps {
   readonly onChange: (id: CharacterId) => void;
   /** The player confirmed the choice. */
   readonly onDone: (id: CharacterId) => void;
+  /** Leave without choosing: draws the Back button and answers Escape. */
+  readonly onBack?: () => void;
 }
 
 /** The idle is a guard stance turned toward the enemy; this turn shows his face, his chest and the gear on his back. */
@@ -118,7 +122,7 @@ function Card({ character, chosen, turning, onPick, onHover }: {
 
 const STEP: Readonly<Record<string, number>> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
-export function CharacterPicker({ value, onChange, onDone }: CharacterPickerProps) {
+export function CharacterPicker({ value, onChange, onDone, onBack }: CharacterPickerProps) {
   const [hovered, setHovered] = useState<CharacterId | null>(null);
   const still = useReducedMotion();
   const list = useRef<HTMLDivElement>(null);
@@ -131,6 +135,13 @@ export function CharacterPicker({ value, onChange, onDone }: CharacterPickerProp
     const card = row?.querySelector<HTMLElement>(`[data-character="${chosen.id}"]`);
     if (row && card && row.scrollWidth > row.clientWidth) row.scrollLeft = card.offsetLeft - row.offsetLeft - (row.clientWidth - card.clientWidth) / 2;
   }, [chosen.id]);
+
+  useEffect(() => {
+    if (!onBack) return;
+    const onKey = (event: globalThis.KeyboardEvent): void => { if (event.key === "Escape") onBack(); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); };
+  }, [onBack]);
 
   const move = (to: number): void => {
     const next = CHARACTERS[(to + CHARACTERS.length) % CHARACTERS.length];
@@ -150,10 +161,12 @@ export function CharacterPicker({ value, onChange, onDone }: CharacterPickerProp
   };
 
   return (
-    <section className="character-picker" aria-labelledby="character-picker-title">
-      <h2 id="character-picker-title">Choose your character</h2>
-      <p className="character-hint">The look only: any character can fight in any style.</p>
-      <div ref={list} className="character-cards" role="radiogroup" aria-labelledby="character-picker-title" onKeyDown={onKeyDown}>
+    <main className="menu flow character-picker">
+      <Backdrop src="/textures/set/storm/hall.jpg" />
+      {onBack && <button type="button" className="set-back" onClick={onBack}>Back</button>}
+      <SetTitle>Choose your character</SetTitle>
+      <p className="character-hint set-sub">The look only: any character can fight in any style.</p>
+      <div ref={list} className="character-cards" role="radiogroup" aria-label="Choose your character" onKeyDown={onKeyDown}>
         {CHARACTERS.map((character) => (
           <Card
             key={character.id}
@@ -168,6 +181,6 @@ export function CharacterPicker({ value, onChange, onDone }: CharacterPickerProp
       <Button primary className="character-done" onClick={() => { onDone(chosen.id); }}>
         Fight as {chosen.name}
       </Button>
-    </section>
+    </main>
   );
 }

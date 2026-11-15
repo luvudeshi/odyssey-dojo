@@ -8,13 +8,15 @@
   --cp-mark: var(--pb-ochre-light, var(--clay-light, #e9a15f));
   --cp-focus: var(--pb-focus, var(--white, #f6eedc));
   --cp-line: var(--bw-line, 2px);
-  width: min(78rem, 100%); margin: 0 auto; padding: 1rem; text-align: center;
+  text-align: center;
   font-family: var(--pb-font-body, var(--font-display, Optima, "Gill Sans", "Trebuchet MS", sans-serif));
 }
-.character-picker h2 { margin: 0 0 0.3rem; font-size: clamp(1.5rem, 3.4vw, 2.6rem); letter-spacing: var(--track-wide, 0.14em); text-transform: uppercase; line-height: 1.1; }
-.character-picker .character-hint { margin: 0 0 1rem; font-size: 1.125rem; }
+/* Back sits beside the title, not above it, so a wide screen gives the cards the height the kit's 96px top gap would take. */
+:root:root .flow.menu.character-picker { padding: 22px 32px 22px; gap: 10px; }
+.character-picker > .set-title, .character-picker > .character-hint, .character-picker > .character-done { flex: none; }
+.character-picker .character-hint { margin: 0; font-size: 1.125rem; }
 
-.character-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.8rem; }
+.character-cards { width: min(78rem, 100%); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.8rem; }
 
 /* The page's own button rules (width, capitals, hover colours) are for menu buttons; a card undoes them. */
 .character-picker button.character-card {
@@ -33,7 +35,7 @@
 .character-swatch { display: flex; height: 0.5rem; }
 .character-swatch i { flex: 1; }
 .character-name { margin: 0.7rem 0.5rem 0.2rem; font-size: 1.35rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cp-mark); }
-.character-line { margin: 0 0.7rem; font-size: 1.125rem; line-height: 1.3; color: var(--cp-dim); }
+.character-line { margin: 0 0.7rem; min-height: 3.9em; font-size: 1.125rem; line-height: 1.3; color: var(--cp-dim); }
 
 /* The confirm button is the pebble kit's primary button, which brings its own styles. The :where() rule weighs nothing,
    so it only shows on a page where those styles are missing: the same ochre plaque, drawn from the fallbacks. */
@@ -48,6 +50,7 @@
 
 /* Narrow screens and phones: the cards scroll sideways, each still big enough to press. */
 @media (max-width: 860px) {
+  :root:root .flow.menu.character-picker { padding-top: 96px; overflow-y: auto; justify-content: flex-start; }
   .character-cards { grid-template-columns: repeat(5, minmax(11rem, 1fr)); overflow-x: auto; padding: 0.6rem 0.4rem 1rem; scroll-snap-type: x proximity; }
   .character-picker button.character-card { scroll-snap-align: center; }
 }
