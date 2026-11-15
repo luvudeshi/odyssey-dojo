@@ -8,6 +8,7 @@ import {
   MAX_ROOMS_PER_CLIENT, MAX_STREAM_BACKLOG_BYTES, ROOMS_KEPT_FOR_THIS_MACHINE, SEND_ENVELOPE_BYTES, SMALL_BODY_BYTES, STREAMS_RETRY_S,
   THIS_MACHINE, clientKey, createRoomLimits,
 } from "../lib/roomLimits";
+import { publicRooms } from "../lib/localOnly";
 import { MAX_MESSAGE_BYTES, MAX_ROOMS, POLL_HOLD_MS, createRoomStore, isRelayMessage, peerEvent } from "../lib/rooms";
 import type { Refusal, RelayMessage } from "../lib/rooms";
 
@@ -52,7 +53,7 @@ function body(limit: number): RequestHandler {
 export const register: Register = (router) => {
   const rooms = createRoomStore();
   const limits = createRoomLimits();
-  const client = (request: Request): string => clientKey(request.socket.remoteAddress, request.headers);
+  const client = (request: Request): string => clientKey(request.socket.remoteAddress, request.headers, publicRooms());
   /**
    * Answers a wrong code or token on a send or a stream. Once a client has had too many it gets 429 for both,
    * so trying codes there tells a stranger nothing more. A member with the right token never comes through here.
