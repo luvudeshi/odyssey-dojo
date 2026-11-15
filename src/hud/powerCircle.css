@@ -1,37 +1,53 @@
-/* The power ring (PowerCircle.tsx): bottom centre of the fight, right of the hero's feet (he stands at about 40 to 45%
-   of the width) and clear of the camera panel (bottom left) and the prompt card (right edge). */
+/* The power disc (PowerCircle.tsx): bottom centre of the fight, right of the hero's feet (he stands at about 40 to 45%
+   of the width) and clear of the camera panel (bottom left) and the prompt card (right edge). The glass spikes reach
+   past the disc's box, so it sits a little higher than its size alone would need. No filters: the beat is a transform. */
 .power-circle {
   --pc-size: clamp(76px, 6.6vw, 108px);
+  --pc-bottom: clamp(18px, 2.6vh, 28px);
   --pc-accent: #ffd9a0;
-  position: absolute; left: 50%; bottom: clamp(10px, 1.6vh, 18px); z-index: 6;
+  position: absolute; left: 50%; bottom: var(--pc-bottom); z-index: 6;
   width: var(--pc-size); height: var(--pc-size); transform: translateX(-50%);
   pointer-events: none; transition: bottom 0.25s ease-out;
-  font-family: Optima, "Gill Sans", Candara, Palatino, Georgia, serif; color: #f2e4c8;
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.7));
+  font-family: Copperplate, "Copperplate Gothic Bold", "Copperplate Gothic", Optima, Georgia, serif; color: #fff0d0;
 }
-/* The power-ready banner (src/ai/power/powerReady.css) takes the bottom strip while the meter is full: the ring sits
+/* The power-ready banner (src/ai/power/powerReady.css) takes the bottom strip while the meter is full: the disc sits
    on top of it. The sum is that banner's bottom offset plus its two text lines and padding, with room for a third line. */
-.power-circle.is-lifted { bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 52px); }
-.power-circle svg { display: block; width: 100%; height: 100%; }
-.power-circle__ground { fill: rgba(23, 17, 13, 0.9); stroke: var(--pc-accent); stroke-width: 1.5; }
-.power-circle__track { fill: none; stroke: rgba(242, 228, 200, 0.2); stroke-width: 10; }
-.power-circle__fill { fill: none; stroke: var(--pc-accent); stroke-width: 10; transition: stroke-dashoffset 0.35s ease-out; }
-.power-circle__tick { stroke: #17110d; stroke-width: 2.5; }
-.power-circle__text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; }
-.power-circle__text strong { font-size: calc(var(--pc-size) * 0.29); font-weight: 700; letter-spacing: 0.02em; }
-.power-circle__text span { margin-top: 0.3em; font-size: calc(var(--pc-size) * 0.13); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85; }
+.power-circle.is-lifted { bottom: calc(clamp(10px, 1.6vh, 18px) + clamp(30px, 2.9vw, 48px) + clamp(13px, 1.2vw, 19px) + 60px); }
+.power-circle svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.power-circle__halo { fill: url(#pc-halo); opacity: 0; }
+.power-circle__halo-stop { stop-color: var(--pc-accent); }
+.power-circle__spikes { transform-box: view-box; transform-origin: 50px 50px; transition: transform 0.3s ease-out; }
+.power-circle__spike { fill: #06050a; stroke: #000; stroke-width: 1; }
+.power-circle__spike-light { fill: #2a2436; }
+.power-circle__spike-edge { fill: none; stroke: #d6c8ff; stroke-width: 0.6; stroke-opacity: 0.7; }
+.power-circle__vein { fill: none; stroke: #ffc060; stroke-width: 1.4; opacity: 0; }
+.power-circle__shard { fill: url(#pc-glass); stroke: #000; stroke-width: 1.2; stroke-linejoin: round; }
+.power-circle__edge { fill: none; stroke: #d6c8ff; stroke-width: 0.8; stroke-opacity: 0.6; stroke-linejoin: round; }
+.power-circle__crack { fill: none; stroke: #000; stroke-width: 1.6; stroke-linecap: round; }
+.power-circle__crack.is-lit { stroke: #ffe8a0; stroke-width: 1.2; }
+.power-circle__track { fill: none; stroke: #020103; stroke-width: 4; }
+.power-circle__fill { fill: none; stroke: #ff8a1a; stroke-width: 2.6; transition: stroke-dashoffset 0.35s ease-out; }
+.power-circle__gem { fill: #07060a; stroke: #d6c8ff; stroke-opacity: 0.7; stroke-width: 1; }
+.power-circle__text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1; text-shadow: 0 1px 2px #000; }
+.power-circle__text strong { font-size: calc(var(--pc-size) * 0.19); font-weight: 700; letter-spacing: 0.02em; }
+.power-circle__text span { margin-top: 0.25em; font-size: calc(var(--pc-size) * 0.075); font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #d6c8ff; }
 
-/* Full: the disc turns to the accent colour, glows, beats, and throws a ring outward once a second. */
-.power-circle.is-full { filter: drop-shadow(0 0 16px var(--pc-accent)) drop-shadow(0 0 5px #fff); animation: power-circle-pulse 1s ease-in-out infinite; }
-.power-circle.is-full .power-circle__ground { fill: var(--pc-accent); stroke: #fff; stroke-width: 3; }
-.power-circle.is-full .power-circle__fill { stroke: #fff; }
-.power-circle.is-full .power-circle__text { color: #17110d; }
+/* Full: every shard burns, the spikes grow and carry lava, the disc glows in the god's colour, beats, and throws a ring outward once a second. */
+.power-circle.is-full { animation: power-circle-pulse 1s ease-in-out infinite; }
+.power-circle.is-full .power-circle__halo { opacity: 1; }
+.power-circle.is-full .power-circle__spike-edge { stroke: #ff9a3a; stroke-opacity: 1; }
+.power-circle.is-full .power-circle__spikes { transform: scale(1.32); }
+.power-circle.is-full .power-circle__vein { opacity: 1; }
+.power-circle.is-full .power-circle__gem { fill: #ffd860; stroke: #fff6d0; }
+.power-circle.is-full .power-circle__text { color: #2a0a02; text-shadow: none; }
+.power-circle.is-full .power-circle__text span { color: #5a1804; }
 .power-circle.is-full::after {
   content: ""; position: absolute; inset: 0; border: 3px solid var(--pc-accent); border-radius: 50%;
   animation: power-circle-ring 1s ease-out infinite;
 }
-@keyframes power-circle-pulse { 50% { transform: translateX(-50%) scale(1.12); } }
+@keyframes power-circle-pulse { 50% { transform: translateX(-50%) scale(1.1); } }
 @keyframes power-circle-ring { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.8); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .power-circle.is-full, .power-circle.is-full::after { animation: none; }
+  .power-circle, .power-circle__spikes, .power-circle__fill { transition: none; }
 }
