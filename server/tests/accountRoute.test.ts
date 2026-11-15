@@ -14,12 +14,16 @@ import { createApp } from "../app";
 import type { Deps } from "../app";
 import { loadConfig } from "../env";
 import type { Config } from "../env";
+import {
+  ATTEMPTS_PER_ADDRESS, SIGNINS_PER_NAME_AND_ADDRESS, STRANGERS_AT_ONCE, STRANGERS_WAITING, WRONG_TOKENS_PER_ADDRESS,
+} from "../lib/accountLimits";
 import { createAccounts, makeToken } from "../lib/accounts";
+import type { Accounts } from "../lib/accounts";
 import { dbSecrets } from "../lib/db";
 import type { Db } from "../lib/db";
-import { isAccountPath, isOpenPath, isTunnelPath, mayAnswer } from "../lib/localOnly";
+import { isAccountPath, isOpenPath, isTunnelPath, mayAnswer, readsOwnBody } from "../lib/localOnly";
 import { createRedactor } from "../lib/redact";
-import { smallBody } from "../routes/account";
+import { STATUS_MS, smallBody } from "../routes/account";
 import { captureLog } from "./support/drill";
 
 const config: Config = {
@@ -34,7 +38,7 @@ const LAN = "192.168.1.20";
 const TUNNEL = { "Cf-Connecting-Ip": "203.0.113.7", "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW", "X-Forwarded-For": "203.0.113.7", "X-Forwarded-Proto": "https", "Cdn-Loop": "cloudflare" };
 const PATHS = ["/api/account/status", "/api/account/signup", "/api/account/signin", "/api/account/signout", "/api/account/save"];
 const CREDENTIALS = { name: "Odysseus", password: "nine oars and a sail" };
-const SAVE = { save: { version: 1, profile: { name: "Odysseus", cleared: [], moves: {}, bestScore: 0, fights: 0, wins: 0 }, settings: {}, character: null } };
+const SAVE = { save: { version: 1, profile: { name: "Odysseus", cleared: [], moves: {}, bestScore: 0, fights: 0, wins: 0, styles: ["boxer"] }, settings: {}, character: null } };
 
 const closers: (() => void)[] = [];
 afterEach(() => {
@@ -182,15 +186,19 @@ test("a database that refuses every statement: 503 on every route, and its error
   }
 });
 
-test("the account paths, and only those, are open to another device and to a request that was passed on", () => {
+test("the account paths, and only those, answer the tunnel and this machine, and never another device on plain HTTP", () => {
   const relayed = { "cf-ray": "8f1c2d3e4f5a6b7c-DFW", "cf-connecting-ip": "203.0.113.7" };
   for (const path of [...PATHS, "/API/Account/Status", "/api/account/save/", "/Api/Account/SignIn", "/api/account/signout/"]) {
-    expect(mayAnswer(path, LAN), path).toBe(true);
+    // This machine's own browser, and a tunnel that runs on this machine: both arrive on a loopback socket.
+    expect(mayAnswer(path, "127.0.0.1"), path).toBe(true);
     expect(mayAnswer(path, "127.0.0.1", relayed), path).toBe(true);
-    expect(mayAnswer(path, LAN, relayed), path).toBe(true);
-    expect(mayAnswer(path, undefined, relayed), path).toBe(true);
-    // The app gives its 6 MB JSON parser to every /api/ path that is not open, so these read only their own small bodies.
-    expect([isAccountPath(path.toLowerCase()), isOpenPath(path.toLowerCase()), isTunnelPath(path.toLowerCase())], path).toEqual([true, true, true]);
+    expect(mayAnswer(path, "::1", relayed), path).toBe(true);
+    // Another device speaks plain HTTP to this server: a password must not cross the Wi-Fi that way, whatever headers it sends.
+    expect(mayAnswer(path, LAN), path).toBe(false);
+    expect(mayAnswer(path, LAN, relayed), path).toBe(false);
+    expect(mayAnswer(path, undefined, relayed), path).toBe(false);
+    // The app gives its 6 MB JSON parser to every /api/ path that does not read its own body, so these read only their small ones.
+    expect([isAccountPath(path.toLowerCase()), isOpenPath(path.toLowerCase()), isTunnelPath(path.toLowerCase()), readsOwnBody(path.toLowerCase())], path).toEqual([true, false, true, true]);
   }
   const closed = [
     "/api/account", "/api/account/", "/api/account/admin", "/api/account/save/x", "/api/account/save//", "/api/accounts/save", "/api/account/savex",
@@ -202,10 +210,11 @@ test("the account paths, and only those, are open to another device and to a req
     expect(mayAnswer(path, "127.0.0.1", relayed), path).toBe(false);
     expect(mayAnswer(path, "127.0.0.1"), path).toBe(true);
   }
-  // Opening them opened nothing else to a visitor through the tunnel.
+  // Opening them opened nothing else to a visitor through the tunnel, and closed nothing a second laptop already had.
   for (const path of ["/api/level", "/api/speech", "/api/reveal", "/api/portrait/x", "/api/rooms", "/api/health", "/api/replays/abc"]) {
     expect(mayAnswer(path, "127.0.0.1", relayed), path).toBe(false);
   }
+  for (const path of ["/api/rooms", "/api/rooms/abcd/join", "/api/health", "/api/replays/abc"]) expect(mayAnswer(path, LAN), path).toBe(true);
 });
 
 test("through the tunnel the account routes answer for themselves, and a path beside them is refused by the guard", async () => {
@@ -281,5 +290,221 @@ test("the connection string is read from DATABASE_URL, and is null when that is 
     expect(config.databaseUrl ?? null).toBeNull();
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// From here on the routes run over an Accounts object that gives fixed answers: it is not a database and stores no
+// account and no save. It is only there to see in which order the routes count, refuse and ask.
+const RIGHT_PASSWORD = "the right password";
+const KNOWN_TOKEN = makeToken();
+const ACCOUNT_ID = "0d15ea5e-0000-4000-8000-000000000000";
+
+interface Fixed {
+  readonly accounts: Accounts;
+  /** The name of each call that reached the accounts, in order. */
+  readonly asked: string[];
+  /** How many calls are inside the accounts right now, and the most there ever were at once. */
+  inside: number;
+  most: number;
+  /** When set, every call waits for this before it answers. */
+  hold: Promise<void> | null;
+}
+
+function fixed(): Fixed {
+  const state: Fixed = { accounts: null as unknown as Accounts, asked: [], inside: 0, most: 0, hold: null };
+  const answer = async <T>(what: string, value: T): Promise<T> => {
+    state.asked.push(what);
+    state.inside += 1;
+    state.most = Math.max(state.most, state.inside);
+    try {
+      if (state.hold !== null) await state.hold;
+      return value;
+    } finally {
+      state.inside -= 1;
+    }
+  };
+  // What the real accounts remember of a token they were asked about: here, only whether the one known token is signed in.
+  let remembered = false;
+  const accounts: Accounts = {
+    available: () => Promise.resolve(true),
+    signUp: (name) => answer("signUp", name === "Taken" ? "name_taken" as const : { token: KNOWN_TOKEN, name }),
+    signIn: (name, password) => answer("signIn", password === RIGHT_PASSWORD ? { token: KNOWN_TOKEN, name } : null),
+    signOut: (token) => {
+      if (token === KNOWN_TOKEN) remembered = false;
+      return answer("signOut", undefined);
+    },
+    accountOf: async (token) => {
+      const found = await answer("accountOf", token === KNOWN_TOKEN ? ACCOUNT_ID : null);
+      if (found !== null) remembered = true;
+      return found;
+    },
+    remembered: (token) => (remembered && token === KNOWN_TOKEN ? ACCOUNT_ID : null),
+    readSave: () => answer("readSave", { save: null, updatedAt: null }),
+    writeSave: () => answer("writeSave", { updatedAt: "2026-11-15T07:00:00.000Z" }),
+    close: () => Promise.resolve(),
+  };
+  return Object.assign(state, { accounts });
+}
+
+/** The headers cloudflared adds for a visitor at `address`. */
+const from = (address: string): Record<string, string> => ({ ...TUNNEL, "Cf-Connecting-Ip": address, "X-Forwarded-For": address });
+const statuses = async (asks: readonly Promise<Answer>[]): Promise<number[]> => (await Promise.all(asks)).map((answer) => answer.status);
+const times = <T>(count: number, make: (index: number) => T): T[] => Array.from({ length: count }, (_, index) => make(index));
+/** Waits until `met` is true, for five seconds at most. */
+async function until(met: () => boolean): Promise<void> {
+  for (let waited = 0; waited < 500 && !met(); waited += 1) await new Promise((resolve) => { setTimeout(resolve, 10); });
+}
+
+test("empty and malformed sign-ups use up nobody's sign-ups: the same address and every other one can still make an account", async () => {
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  const venue = from("198.51.100.1");
+  // A hall of people behind one address: no body, a short password, a taken name. None of it is an account made.
+  for (let index = 0; index < 15; index += 1) expect((await call("POST", "/api/account/signup", { headers: venue })).status).toBe(400);
+  for (let index = 0; index < 15; index += 1) {
+    const short = await call("POST", "/api/account/signup", { json: { name: "Odysseus", password: "short" }, headers: venue });
+    expect([short.status, JSON.parse(short.text)]).toEqual([400, { error: "invalid", field: "password" }]);
+  }
+  for (let index = 0; index < 15; index += 1) expect((await call("POST", "/api/account/signup", { json: { name: "Taken", password: RIGHT_PASSWORD }, headers: venue })).status).toBe(409);
+  // Only the taken names reached the accounts at all.
+  expect(stand.asked).toEqual(times(15, () => "signUp"));
+  const made = await call("POST", "/api/account/signup", { json: CREDENTIALS, headers: venue });
+  expect([made.status, JSON.parse(made.text)]).toEqual([201, { token: KNOWN_TOKEN, name: "Odysseus" }]);
+
+  // Past the per-address count of requests the venue waits a minute; an address that did nothing is not held up by it.
+  const flood = await statuses(times(ATTEMPTS_PER_ADDRESS, () => call("POST", "/api/account/signup", { headers: venue })));
+  expect(flood.filter((status) => status === 429).length).toBeGreaterThan(0);
+  const refused = await call("POST", "/api/account/signup", { json: CREDENTIALS, headers: venue });
+  expect([refused.status, JSON.parse(refused.text)]).toEqual([429, { error: "slow_down" }]);
+  for (const address of ["198.51.100.2", "198.51.100.3", "2001:db8:1::5"]) {
+    expect((await call("POST", "/api/account/signup", { json: CREDENTIALS, headers: from(address) })).status, address).toBe(201);
+    expect((await call("POST", "/api/account/signin", { json: { name: "Odysseus", password: RIGHT_PASSWORD }, headers: from(address) })).status, address).toBe(200);
+  }
+});
+
+test("empty sign-ins cost nothing, wrong passwords hold one address on one name, and the owner still gets in from another", async () => {
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  const guesser = from("198.51.100.9");
+  for (let index = 0; index < 20; index += 1) expect((await call("POST", "/api/account/signin", { headers: guesser })).status).toBe(401);
+  expect(stand.asked).toEqual([]);
+
+  const guess = (headers: Record<string, string>, name = "Odysseus"): Promise<Answer> => call("POST", "/api/account/signin", { json: { name, password: "a wrong password" }, headers });
+  for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS; index += 1) {
+    const answer = await guess(guesser);
+    expect([answer.status, JSON.parse(answer.text)]).toEqual([401, { error: "wrong_name_or_password" }]);
+  }
+  // Same answer for a name in any spelling: the count is on the key.
+  expect((await guess(guesser, " ODYSSEUS ")).status).toBe(429);
+  expect(stand.asked.filter((what) => what === "signIn")).toHaveLength(SIGNINS_PER_NAME_AND_ADDRESS);
+  // The owner on another address, and the guesser on another name, are not held.
+  const owner = await call("POST", "/api/account/signin", { json: { name: "Odysseus", password: RIGHT_PASSWORD }, headers: from("198.51.100.10") });
+  expect([owner.status, JSON.parse(owner.text)]).toEqual([200, { token: KNOWN_TOKEN, name: "Odysseus" }]);
+  expect((await guess(guesser, "Penelope")).status).toBe(401);
+  // The right password never uses the name up, however often it is used.
+  for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS + 5; index += 1) {
+    expect((await call("POST", "/api/account/signin", { json: { name: "Telemachus", password: RIGHT_PASSWORD }, headers: from("198.51.100.11") })).status).toBe(200);
+  }
+});
+
+test("junk tokens from an address are counted before the database is asked, and do not stop a player there who is signed in", async () => {
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  const venue = from("198.51.100.20");
+  // The player's token is looked up once, then remembered: a read and a write after it ask nothing more about it.
+  expect((await call("GET", "/api/account/save", { token: KNOWN_TOKEN, headers: venue })).status).toBe(200);
+  expect((await call("PUT", "/api/account/save", { token: KNOWN_TOKEN, json: SAVE, headers: venue })).status).toBe(200);
+  expect(stand.asked).toEqual(["accountOf", "readSave", "writeSave"]);
+
+  // No token at all costs nothing and is counted nowhere.
+  expect(await statuses(times(200, () => call("GET", "/api/account/save", { headers: venue })))).toEqual(times(200, () => 401));
+  expect(stand.asked).toHaveLength(3);
+
+  // Somebody else at the same address sends junk, all at once. Only as many as the budget holds reach the database.
+  const junk = await statuses(times(WRONG_TOKENS_PER_ADDRESS + 40, () => call("GET", "/api/account/save", { token: makeToken(), headers: venue })));
+  expect(junk.filter((status) => status === 401)).toHaveLength(WRONG_TOKENS_PER_ADDRESS);
+  expect(junk.filter((status) => status === 429)).toHaveLength(40);
+  expect(stand.asked.filter((what) => what === "accountOf")).toHaveLength(1 + WRONG_TOKENS_PER_ADDRESS);
+  // Sign-out with junk is counted the same way, and no delete is sent for it.
+  expect((await call("POST", "/api/account/signout", { token: makeToken(), headers: venue })).status).toBe(429);
+  expect(stand.asked).not.toContain("signOut");
+
+  // The player goes on reading and writing.
+  expect((await call("GET", "/api/account/save", { token: KNOWN_TOKEN, headers: venue })).status).toBe(200);
+  expect((await call("PUT", "/api/account/save", { token: KNOWN_TOKEN, json: SAVE, headers: venue })).status).toBe(200);
+  // And can sign out: the session is ended in the database and forgotten here, so the token is asked about again after it.
+  expect((await call("POST", "/api/account/signout", { token: KNOWN_TOKEN, headers: venue })).status).toBe(204);
+  expect(stand.asked.at(-1)).toBe("signOut");
+  expect((await call("GET", "/api/account/save", { token: KNOWN_TOKEN, headers: venue })).status).toBe(429);
+  // Another address was never part of it.
+  expect((await call("GET", "/api/account/save", { token: makeToken(), headers: from("198.51.100.21") })).status).toBe(401);
+});
+
+test("sign-out with no token or a malformed one is 204 and asks nothing", async () => {
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  expect(await statuses(times(150, () => call("POST", "/api/account/signout", { headers: TUNNEL })))).toEqual(times(150, () => 204));
+  expect((await call("POST", "/api/account/signout", { headers: { ...TUNNEL, Authorization: "Bearer not-a-token" } })).status).toBe(204);
+  expect(stand.asked).toEqual([]);
+});
+
+test("a request from this machine that carries any relay header is counted like a stranger, never as the laptop", async () => {
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  // clientKey does not know these two headers; the guard does. Without the check they would get the laptop's free pass.
+  for (const headers of [{ "X-Forwarded-Proto": "https" }, { "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW" }]) {
+    const answers = await statuses(times(SIGNINS_PER_NAME_AND_ADDRESS + 5, () => call("POST", "/api/account/signin", { json: { name: "Odysseus", password: "a wrong password" }, headers })));
+    expect(answers.filter((status) => status === 429).length, JSON.stringify(headers)).toBeGreaterThan(0);
+  }
+  // The laptop's own browser sends none, and is never refused.
+  const own = await statuses(times(ATTEMPTS_PER_ADDRESS + 20, () => call("POST", "/api/account/signin", { json: { name: "Nestor", password: "a wrong password" } })));
+  expect(own).toEqual(times(ATTEMPTS_PER_ADDRESS + 20, () => 401));
+});
+
+test("strangers' database work goes two at a time with a short line, and the laptop is served while they wait", async () => {
+  const stand = fixed();
+  const { call } = await serve({ accounts: stand.accounts });
+  let release: () => void = () => undefined;
+  stand.hold = new Promise<void>((resolve) => { release = resolve; });
+  // Sixty lookups in one instant, from enough addresses that no per-address count stops them.
+  const burst = times(60, (index) => call("GET", "/api/account/save", { token: makeToken(), headers: from(`198.51.100.${String(100 + (index % 6))}`) }));
+  // All sixty have arrived once the ones that found no place in the line have their answer.
+  let turnedAway = 0;
+  for (const ask of burst) void ask.then((answer) => { if (answer.status === 429) turnedAway += 1; });
+  await until(() => turnedAway === 60 - STRANGERS_AT_ONCE - STRANGERS_WAITING);
+  expect(stand.inside).toBe(STRANGERS_AT_ONCE);
+  // The laptop does not stand in that line.
+  const own = call("GET", "/api/account/save", { token: KNOWN_TOKEN });
+  await until(() => stand.inside === STRANGERS_AT_ONCE + 1);
+  expect(stand.inside).toBe(STRANGERS_AT_ONCE + 1);
+  release();
+  stand.hold = null;
+  expect((await own).status).toBe(200);
+  const answers = await statuses(burst);
+  // Two ran, sixteen waited, the rest were told to come back, and nothing ever ran more than two at once beside the laptop.
+  expect(answers.filter((status) => status === 401)).toHaveLength(STRANGERS_AT_ONCE + STRANGERS_WAITING);
+  expect(answers.filter((status) => status === 429)).toHaveLength(60 - STRANGERS_AT_ONCE - STRANGERS_WAITING);
+  expect(stand.most).toBeLessThanOrEqual(STRANGERS_AT_ONCE + 1);
+});
+
+test("a database that takes too long to say it is there is answered for as not available, without waiting for it", async () => {
+  const stand = fixed();
+  const slow: Accounts = { ...stand.accounts, available: () => new Promise(() => undefined) };
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const { call } = await serve({ accounts: slow });
+    const status = call("GET", "/api/account/status");
+    const signIn = call("POST", "/api/account/signin", { json: CREDENTIALS });
+    // Give the two requests time to reach the server before the clock is moved.
+    await new Promise((resolve) => { setImmediate(resolve); });
+    await new Promise((resolve) => { setImmediate(resolve); });
+    for (let waited = 0; waited < 20; waited += 1) {
+      await vi.advanceTimersByTimeAsync(STATUS_MS / 4);
+      await new Promise((resolve) => { setImmediate(resolve); });
+    }
+    expect(JSON.parse((await status).text)).toEqual({ available: false });
+    expect((await signIn).status).toBe(503);
+  } finally {
+    vi.useRealTimers();
   }
 });

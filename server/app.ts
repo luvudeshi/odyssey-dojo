@@ -8,7 +8,7 @@ import { log } from "../src/core/log";
 import type { AiClients } from "./ai/types";
 import type { Config } from "./env";
 import type { Accounts } from "./lib/accounts";
-import { isOpenPath, localOnly } from "./lib/localOnly";
+import { localOnly, readsOwnBody } from "./lib/localOnly";
 
 export interface Deps {
   readonly config: Config;
@@ -37,7 +37,7 @@ export async function createApp(deps: Deps): Promise<Express> {
   const json = express.json({ limit: "6mb" });
   app.use((request, response, next) => {
     const lower = request.path.toLowerCase();
-    if (!lower.startsWith("/api/") || isOpenPath(lower)) next();
+    if (!lower.startsWith("/api/") || readsOwnBody(lower)) next();
     else json(request, response, next);
   });
 

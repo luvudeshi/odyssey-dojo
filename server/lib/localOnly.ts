@@ -2,6 +2,7 @@
 // only answer this machine. The socket's address decides, and a header can only take that away, never grant it:
 // a request that says it was passed on by a proxy or a tunnel is not local, even from a loopback socket.
 // Such a request gets the room paths a guest needs, the account paths, and nothing else under /api/, and its join attempts are counted.
+// The account paths carry a password, so they answer the tunnel (HTTPS) and this machine only, never another device on plain HTTP.
 import type { IncomingHttpHeaders } from "node:http";
 import type { NextFunction, Request, Response } from "express";
 
@@ -29,7 +30,9 @@ export function wasRelayed(headers: IncomingHttpHeaders): boolean {
 const ACCOUNT = /^\/api\/account\/(?:status|signup|signin|signout|save)\/?$/;
 
 /**
- * True for the account paths: a player signs in from any browser, so another device and the tunnel both reach them.
+ * True for the account paths: a player signs in from any browser, so the tunnel reaches them as well as this machine.
+ * Another device on the network does not: this server speaks plain HTTP there, and a name, a password and a session
+ * token would cross the venue's Wi-Fi for anyone to read. Through the tunnel they travel inside HTTPS.
  * They are named one by one, so a route added under /api/account/ later is closed until it is added here.
  * None of them spends a key, each reads a small body of its own, and routes/account.ts bounds what a stranger can ask of them.
  */
@@ -37,10 +40,15 @@ export function isAccountPath(path: string): boolean {
   return ACCOUNT.test(path);
 }
 
-/** True for the API paths any device on the network may call: replays, health, the online rooms a second laptop joins, and accounts. None of them spends a key. */
+/** True for the API paths any device on the network may call: replays, health and the online rooms a second laptop joins. None of them spends a key. */
 export function isOpenPath(path: string): boolean {
   return path.startsWith("/api/replays/") || path === "/api/health" || path === "/api/health/"
-    || path === "/api/rooms" || path.startsWith("/api/rooms/") || isAccountPath(path);
+    || path === "/api/rooms" || path.startsWith("/api/rooms/");
+}
+
+/** True for the API paths that read a small body of their own, so the app's large JSON parser must leave them alone (../app). */
+export function readsOwnBody(path: string): boolean {
+  return isOpenPath(path) || isAccountPath(path);
 }
 
 /**
@@ -58,6 +66,8 @@ export function isTunnelPath(path: string): boolean {
 export function mayAnswer(path: string, address: string | undefined, headers: IncomingHttpHeaders = {}): boolean {
   const lower = path.toLowerCase();
   if (!lower.startsWith("/api/")) return true;
+  // A loopback socket is this machine's own browser or a tunnel that runs here. Another device is refused whatever headers it sends.
+  if (isAccountPath(lower)) return isLoopback(address);
   if (wasRelayed(headers)) return isTunnelPath(lower);
   return isOpenPath(lower) || isLoopback(address);
 }

@@ -14,12 +14,11 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { NO_AI } from "../ai/types";
 import { createApp } from "../app";
 import type { Config } from "../env";
-import { SIGNINS_PER_NAME, SIGNUPS_PER_ADDRESS } from "../lib/accountLimits";
+import { SIGNINS_PER_NAME_AND_ADDRESS } from "../lib/accountLimits";
 import { SAVE_BODY_BYTES } from "../lib/accountRules";
 import { MAX_SESSIONS, SESSION_MS, createAccounts, tables, tokenHash, verifyPassword } from "../lib/accounts";
-import { dbSecrets, openDb } from "../lib/db";
+import { dbRedactor, openDb } from "../lib/db";
 import type { Db } from "../lib/db";
-import { createRedactor } from "../lib/redact";
 
 const url = (process.env.TEST_DATABASE_URL ?? "").trim();
 const config: Config = {
@@ -41,7 +40,7 @@ interface Session {
 function save(name: string, wins: number): Record<string, unknown> {
   return {
     version: 1,
-    profile: { name, cleared: ["polyphemus"], moves: { jab: 4, cross: 1 }, bestScore: 1200 + wins, fights: wins + 1, wins },
+    profile: { name, cleared: ["polyphemus"], moves: { jab: 4, cross: 1 }, bestScore: 1200 + wins, fights: wins + 1, wins, blocks: 3, bestCombo: 6, styles: ["boxer"], rooms: 0 },
     settings: { quality: "low", musicVolume: 0.5, mirror: false },
     character: "athena",
     achievements: ["first_win"],
@@ -95,7 +94,7 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     const opened = await openDb(url);
     if (opened === null) throw new Error("TEST_DATABASE_URL is set but the database did not open: is the pg package installed, and does the database answer?");
     db = opened;
-    const accounts = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, redact: createRedactor(dbSecrets(url)) });
+    const accounts = createAccounts(() => Promise.resolve(opened), { prefix, now: () => clock, redact: dbRedactor(url) });
     const app = await createApp({ config, ai: NO_AI, accounts });
     const listening = app.listen(0, "127.0.0.1");
     await once(listening, "listening");
@@ -310,7 +309,7 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     const { token } = await signUp(name);
     const big = { save: { ...save(name, 1), settings: { note: "x".repeat(200) } }, padding: "x".repeat(SAVE_BODY_BYTES) };
     expect(await call("PUT", "/api/account/save", { token, json: big })).toEqual({ status: 413, body: { error: "too_big" } });
-    for (const json of [{}, { save: null }, { save: { ...save(name, 1), version: 2 } }, { save: { ...save(name, 1), profile: { name } } }, []]) {
+    for (const json of [{}, { save: null }, { save: { ...save(name, 1), version: 2 } }, { save: { ...save(name, 1), profile: [name] } }, []]) {
       expect(await call("PUT", "/api/account/save", { token, json }), JSON.stringify(json)).toEqual({ status: 400, body: { error: "invalid", field: "save" } });
     }
     expect(await call("PUT", "/api/account/save", { token, text: "{not json" })).toEqual({ status: 400, body: { error: "invalid", field: "body" } });
@@ -336,25 +335,27 @@ describe.skipIf(url === "")("accounts on a real Postgres", () => {
     expect((await sql(`select id from ${t.accounts}`, [])).length).toBeGreaterThan(0);
   });
 
-  test("a visitor through the tunnel signs up ten times in ten minutes, and guesses at one name ten times", async () => {
+  test("a visitor through the tunnel: typos and taken names use up no sign-ups, and wrong guesses hold that visitor on that name only", async () => {
     const visitor = { "Cf-Connecting-Ip": "203.0.113.50", "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW", "X-Forwarded-For": "203.0.113.50" };
-    for (let index = 0; index < SIGNUPS_PER_ADDRESS; index += 1) {
-      expect((await call("POST", "/api/account/signup", { json: { name: hero(), password: PASSWORD }, headers: visitor })).status, `sign-up ${String(index + 1)}`).toBe(201);
-    }
-    const eleventh = await call("POST", "/api/account/signup", { json: { name: hero(), password: PASSWORD }, headers: visitor });
-    expect(eleventh).toEqual({ status: 429, body: { error: "slow_down" } });
-    // The laptop itself is not held back by what a visitor used up.
     const name = hero();
     await signUp(name);
+    for (let index = 0; index < 5; index += 1) {
+      expect((await call("POST", "/api/account/signup", { headers: visitor })).status).toBe(400);
+      expect((await call("POST", "/api/account/signup", { json: { name: hero(), password: "short" }, headers: visitor })).status).toBe(400);
+    }
+    expect((await call("POST", "/api/account/signup", { json: { name, password: PASSWORD }, headers: visitor })).status).toBe(409);
+    expect((await call("POST", "/api/account/signup", { json: { name: hero(), password: PASSWORD }, headers: visitor })).status).toBe(201);
 
     const guesser = { "Cf-Connecting-Ip": "203.0.113.51", "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW", "X-Forwarded-For": "203.0.113.51" };
-    for (let index = 0; index < SIGNINS_PER_NAME; index += 1) {
+    for (let index = 0; index < SIGNINS_PER_NAME_AND_ADDRESS; index += 1) {
       expect((await call("POST", "/api/account/signin", { json: { name, password: `wrong guess ${String(index)}` }, headers: guesser })).status, `guess ${String(index + 1)}`).toBe(401);
     }
-    // Past the limit even the right password waits, from any other device, and a name nobody has is treated the same.
+    // Past the limit even the right password waits from that address, and a name nobody has is treated the same.
     expect(await call("POST", "/api/account/signin", { json: { name, password: PASSWORD }, headers: guesser })).toEqual({ status: 429, body: { error: "slow_down" } });
-    expect((await call("POST", "/api/account/signin", { json: { name, password: PASSWORD }, headers: { ...guesser, "Cf-Connecting-Ip": "203.0.113.52" } })).status).toBe(429);
-    // The owner at the laptop still gets in.
+    // The owner on another address gets in, as often as they like, and so does the laptop.
+    for (let index = 0; index < 3; index += 1) {
+      expect((await call("POST", "/api/account/signin", { json: { name, password: PASSWORD }, headers: { ...guesser, "Cf-Connecting-Ip": "203.0.113.52" } })).status).toBe(200);
+    }
     await signIn(name);
-  });
+  }, 30_000);
 });

@@ -9,6 +9,7 @@
 // (no driver, a bad URL, a database that does not answer) ends in null and one log line without the URL or the password.
 import { log } from "../../src/core/log";
 import { createRedactor } from "./redact";
+import type { Redact } from "./redact";
 import { withTimeout } from "./timeout";
 
 export interface Db {
@@ -60,21 +61,63 @@ function isPostgresUrl(url: string): boolean {
   }
 }
 
+const THIS_HOST: readonly string[] = ["localhost", "127.0.0.1", "[::1]"];
+const ENCRYPTED: readonly string[] = ["require", "verify-ca", "verify-full"];
+
+/**
+ * True when the address asks for an encrypted connection, or names a database on this machine (a test Postgres).
+ * Password hashes and saves travel on this connection, so a string pasted without its `sslmode=require` is refused
+ * rather than opened in the clear.
+ */
+export function isEncrypted(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return THIS_HOST.includes(parsed.hostname) || ENCRYPTED.includes(parsed.searchParams.get("sslmode") ?? "");
+  } catch {
+    return false;
+  }
+}
+
+/** Addresses in an error text: Node names the address a host resolved to, which is the host by another name. */
+const IP_V4 = /\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b/g;
+const IP_V6 = /\[?\b(?:[0-9a-f]{1,4}:){2,7}[0-9a-f:]{1,4}\b\]?(?::\d+)?/gi;
+
+/** Cuts network addresses out of a line that is already free of the connection string's own parts. */
+export function withoutAddresses(text: string): string {
+  return text.replace(IP_V4, "[host]").replace(IP_V6, "[host]");
+}
+
+/** A part of an address with its escapes undone, or as written when an escape is broken. */
+function decoded(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
 /**
  * Everything in a connection string that must not reach a log: the string itself, the password as written and as
- * decoded, and the host. Longest first, so a short one cannot cut a long one in two before it is hidden.
+ * decoded, the host, and the user and database names when they are long enough not to be an everyday word.
+ * Longest first, so a short one cannot cut a long one in two before it is hidden.
  */
 export function dbSecrets(url: string | null): string[] {
   if (url === null || url === "") return [];
   const found = [url];
   try {
     const parsed = new URL(url);
-    found.push(parsed.password, parsed.host, parsed.hostname);
-    found.push(decodeURIComponent(parsed.password));
+    found.push(parsed.password, parsed.host, parsed.hostname, decoded(parsed.password));
+    for (const name of [parsed.username, parsed.pathname.slice(1)]) found.push(...[name, decoded(name)].filter((part) => part.length >= 4));
   } catch {
-    // Not a URL, or a password with a bad escape: the whole string is still hidden.
+    // Not a URL: the whole string is still hidden.
   }
   return [...new Set(found.filter((part) => part !== ""))].sort((a, b) => b.length - a.length);
+}
+
+/** Turns a database error into a log line with nothing of the connection string in it, and no network address. */
+export function dbRedactor(url: string | null): Redact {
+  const redact = createRedactor(dbSecrets(url));
+  return (error) => withoutAddresses(redact(error));
 }
 
 export interface OpenOptions {
@@ -90,12 +133,13 @@ export interface OpenOptions {
  */
 export async function openDb(url: string | null, options: OpenOptions = {}): Promise<Db | null> {
   if (url === null || url === "") return null;
-  const redact = createRedactor(dbSecrets(url));
+  const redact = dbRedactor(url);
   const off = (reason: string, error?: unknown): null => {
     log("warn", "accounts_unavailable", error === undefined ? { reason } : { reason, detail: redact(error) });
     return null;
   };
   if (!isPostgresUrl(url)) return off("bad_url");
+  if (!isEncrypted(url)) return off("not_encrypted");
 
   let Pool: PoolClass | null = null;
   try {

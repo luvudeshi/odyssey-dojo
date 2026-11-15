@@ -3,10 +3,12 @@
 import { createHash } from "node:crypto";
 import { afterEach, expect, test, vi } from "vitest";
 import {
-  HASH_BYTES, MAX_ACCOUNTS, MAX_SESSIONS, RETRY_MS, SALT_BYTES, SCRYPT, SESSION_MS, STATUS_CACHE_MS, TOKEN_BYTES, Unavailable, bearerToken,
+  ACCOUNTS_KEPT_FOR_THIS_MACHINE, FAILURES_TO_GIVE_UP, HASH_BYTES, MAX_ACCOUNTS, MAX_SESSIONS, RETRY_MS, SALT_BYTES, SCRYPT, SESSION_MS, STATUS_CACHE_MS, TOKEN_BYTES,
+  Unavailable, bearerToken,
   createAccounts, hashPassword, makeToken, schemaSql, tables, tokenHash, verifyPassword,
 } from "../lib/accounts";
 import type { Accounts } from "../lib/accounts";
+import { KNOWN_SESSION_MS } from "../lib/accountLimits";
 import type { Save } from "../lib/accountRules";
 import type { Db } from "../lib/db";
 import { dbSecrets } from "../lib/db";
@@ -157,6 +159,101 @@ test("a database that refuses every statement leaves accounts off, and its error
   expect(said).not.toContain(SECRET_PASSWORD);
   expect(said).not.toContain("made-up-host");
   expect(said).not.toContain("postgres://");
+});
+
+/**
+ * A Db that keeps nothing: after the tables it answers every statement with the rows `answer` gives, or fails while
+ * `failing` is set. It only shows how accounts treat an answer or a failure; what a real Postgres does is in accountsDb.test.ts.
+ */
+function scripted(answer: (text: string) => unknown[] = () => []): { readonly db: Db; failing: boolean; asked: number } {
+  const state = {
+    failing: false,
+    asked: 0,
+    db: {
+      query: <T>(text: string): Promise<T[]> => {
+        state.asked += 1;
+        return state.failing ? Promise.reject(new Error("canceling statement due to timeout")) : Promise.resolve(answer(text) as T[]);
+      },
+      close: () => Promise.resolve(),
+    } satisfies Db,
+  };
+  return state;
+}
+
+test("one slow query is not an outage: accounts stay on until three fail in a row, and come back with the first that works", async () => {
+  captureLog();
+  let now = 0;
+  const stand = scripted();
+  const accounts = createAccounts(() => Promise.resolve(stand.db), { now: () => now });
+  expect(await accounts.available()).toBe(true);
+  const token = makeToken();
+
+  // One failure: that call is refused, and the very next one is tried again and works.
+  stand.failing = true;
+  await expect(accounts.accountOf(token)).rejects.toBeInstanceOf(Unavailable);
+  stand.failing = false;
+  expect(await accounts.accountOf(token)).toBeNull();
+  expect(await accounts.available()).toBe(true);
+
+  // Two failures, one success, two failures: never three in a row, so never off.
+  for (const failing of [true, true, false, true, true, false]) {
+    stand.failing = failing;
+    await accounts.accountOf(token).catch(() => null);
+  }
+  now += STATUS_CACHE_MS;
+  expect(await accounts.available()).toBe(true);
+
+  // Three in a row: off, and while it is believed off nothing more is sent.
+  stand.failing = true;
+  for (let index = 0; index < FAILURES_TO_GIVE_UP; index += 1) await expect(accounts.accountOf(token)).rejects.toBeInstanceOf(Unavailable);
+  const asked = stand.asked;
+  expect(await accounts.available()).toBe(false);
+  for (const call of everyCall(accounts)) await expect(call()).rejects.toBeInstanceOf(Unavailable);
+  expect(stand.asked).toBe(asked);
+  // After the pause it is asked once more; still failing, so off again at once.
+  now += STATUS_CACHE_MS;
+  expect(await accounts.available()).toBe(false);
+  expect(stand.asked).toBe(asked + 1);
+  // And the first answer brings it back.
+  stand.failing = false;
+  now += STATUS_CACHE_MS;
+  expect(await accounts.available()).toBe(true);
+  expect(await accounts.accountOf(token)).toBeNull();
+  await accounts.close();
+});
+
+test("a token the database knew is remembered without asking again, until it is signed out or five minutes have passed", async () => {
+  captureLog();
+  let now = 0;
+  const token = makeToken();
+  const other = makeToken();
+  const stand = scripted((text) => (text.startsWith("select account_id") ? [{ id: "0d15ea5e-0000-4000-8000-000000000000" }] : []));
+  const accounts = createAccounts(() => Promise.resolve(stand.db), { now: () => now });
+  expect(accounts.remembered(token)).toBeNull();
+  expect(await accounts.accountOf(token)).toBe("0d15ea5e-0000-4000-8000-000000000000");
+  expect(accounts.remembered(token)).toBe("0d15ea5e-0000-4000-8000-000000000000");
+  expect(accounts.remembered(other)).toBeNull();
+  now += KNOWN_SESSION_MS;
+  expect(accounts.remembered(token)).toBeNull();
+  // Signing out forgets it at once, also when the database cannot be reached to end the session there.
+  await accounts.accountOf(token);
+  stand.failing = true;
+  await expect(accounts.signOut(token)).rejects.toBeInstanceOf(Unavailable);
+  expect(accounts.remembered(token)).toBeNull();
+});
+
+test("the last hundred places are kept for this machine: a stranger is told the database is full before any hash is made", async () => {
+  captureLog();
+  const stand = scripted((text) => (text.includes("count(*)") ? [{ n: MAX_ACCOUNTS - ACCOUNTS_KEPT_FOR_THIS_MACHINE }] : []));
+  const accounts = createAccounts(() => Promise.resolve(stand.db));
+  const started = performance.now();
+  expect(accounts.remembered(makeToken())).toBeNull();
+  expect(await accounts.signUp("Odysseus", PASSWORD)).toBe("full");
+  expect(performance.now() - started).toBeLessThan(150);
+  // This machine goes on to the hash and the insert. This Db gives no row back for it, which reads as a taken name.
+  expect(await accounts.signUp("Odysseus", PASSWORD, true)).toBe("name_taken");
+  const brim = scripted((text) => (text.includes("count(*)") ? [{ n: MAX_ACCOUNTS }] : []));
+  expect(await createAccounts(() => Promise.resolve(brim.db)).signUp("Odysseus", PASSWORD, true)).toBe("full");
 });
 
 test("Unavailable says nothing about why", () => {
