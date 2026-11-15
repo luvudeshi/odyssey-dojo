@@ -6,6 +6,8 @@ import { speakLine } from "../audio/voice";
 import { Button, Logo, Panel } from "../ui/pebble";
 import { BronzeDefs, DEVICES, ShieldCard } from "./menuShields";
 import { MenuScene } from "./MenuScene";
+import { lookIs } from "../ui/lookSwitch";
+import { ObsidianMenu } from "../ui/set/ObsidianMenu";
 
 export function MainMenu(props: {
   /** The hero name from the Account, or "" when none was typed. */
@@ -22,6 +24,7 @@ export function MainMenu(props: {
   onAccount: () => void;
 }) {
   const story = (): void => { speakLine("homer_title"); props.onStory(); };
+  if (lookIs("obsidian")) return <ObsidianMenu {...props} />;
   return (
     <Panel as="main" className="menu menu--title">
       <MenuScene />

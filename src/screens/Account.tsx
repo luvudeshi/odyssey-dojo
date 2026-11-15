@@ -12,6 +12,8 @@ import { Trophy, type TrophyEvents } from "../account/ui/Trophy";
 import type { EnemySpec } from "../core/types";
 import { SettingsPanel } from "../ui/SettingsPanel";
 import { Button, installGround } from "../ui/pebble";
+import { lookIs } from "../ui/lookSwitch";
+import { ObsidianAccount } from "../ui/set/ObsidianAccount";
 import "./account.css";
 
 const GROUP_OF: Readonly<Record<string, string>> = {
@@ -79,6 +81,10 @@ function WithIcon(props: { icon: IconName; children: string }) {
 }
 
 export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => void }) {
+  return lookIs("obsidian") ? <ObsidianAccount {...props} /> : <HallAccount {...props} />;
+}
+
+function HallAccount(props: { enemies: readonly EnemySpec[]; onBack: () => void }) {
   const profile = useProfile();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);

@@ -1,0 +1,88 @@
+/* Obsidian and lava: one shared look for every menu screen. Black volcanic glass, lava for what is primary or pressed, ice blue for what is
+   secondary or calm. Everything here is switched on by ?look=obsidian (src/ui/lookSwitch.ts); the .set-* classes only exist then, and the
+   Dojo's own classes are reached through html[data-look="obsidian"]. Only transform and opacity ever move. */
+:root {
+  --ob-ink: #f6f0ff;
+  --ob-dim: #e2d8ea;
+  --ob-ice: #9fd8ff;
+  --ob-ice-hi: #eaf7ff;
+  --ob-lava: #ff6a14;
+  --ob-hot: #ffd890;
+  --ob-glass: linear-gradient(160deg, #2a2436 0%, #14111a 28%, #06050a 66%, #1a1622 100%);
+  --ob-glass-veil: linear-gradient(160deg, rgba(34, 28, 46, 0.93), rgba(8, 6, 12, 0.92) 60%, rgba(22, 18, 30, 0.93));
+  --ob-lava-text: linear-gradient(#fff4c0, #ffd040 30%, #ff8410 62%, #c8300a);
+  --ob-display: Phosphate, "Avenir Next Condensed", Impact, sans-serif;
+  --ob-body: "Avenir Next", "Gill Sans", sans-serif;
+  /* One chipped shard outline, used for buttons, slabs and panels so they cut alike. */
+  --ob-shard: polygon(11px 0, calc(100% - 5px) 4px, 100% 58%, calc(100% - 13px) 100%, 6px calc(100% - 4px), 0 34%);
+  --ob-sheet: polygon(18px 0, calc(100% - 6px) 0, 100% 16px, calc(100% - 2px) calc(100% - 22px), calc(100% - 20px) 100%, 8px calc(100% - 3px), 0 calc(100% - 26px), 3px 12px);
+  --ob-edge-ice: linear-gradient(165deg, var(--ob-ice-hi), #5b7896 30%, #3a3348 60%, var(--ob-ice));
+  --ob-edge-lava: linear-gradient(165deg, var(--ob-hot), var(--ob-lava) 38%, #7a2206 68%, var(--ob-hot));
+}
+
+/* ---- the painted backdrop: the picture at full quality, a soft veil only where text sits ---- */
+.set-backdrop { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #05040a; }
+.set-backdrop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.set-backdrop__veil { position: absolute; inset: 0; background: var(--veil, linear-gradient(rgba(4, 3, 8, 0.55), rgba(4, 3, 8, 0) 34%, rgba(4, 3, 8, 0) 62%, rgba(4, 3, 8, 0.5))); }
+
+/* ---- a title: white-hot letters with an ember glow ---- */
+.set-title, html[data-look="obsidian"] .dojo-title, html[data-look="obsidian"] .dojo-end-title {
+  font-family: var(--ob-display); font-weight: 400; text-transform: uppercase; line-height: 1; letter-spacing: 0.035em; text-align: inherit;
+  color: transparent; background: var(--ob-lava-text); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-stroke: 0.7px #2a0602; filter: drop-shadow(0 0 9px rgba(255, 90, 10, 0.7)) drop-shadow(0 3px 2px #000);
+}
+.set-title { font-size: clamp(3.4rem, 8.4vh, 5.6rem); }
+.set-title__kicker { display: block; margin-bottom: 0.35rem; font: 700 1.15rem/1 var(--ob-body); letter-spacing: 0.3em; color: var(--ob-ice); -webkit-text-fill-color: var(--ob-ice); -webkit-text-stroke: 0; text-shadow: 0 2px 3px #000; }
+
+/* ---- a button: a shard of faceted glass with a lit fissure. Ice is secondary, lava is primary ---- */
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style)) {
+  --edge: var(--ob-edge-ice); --vein: var(--ob-ice);
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; min-height: 3.1rem; padding: 0.55rem 1.9rem 0.55rem 1.7rem;
+  font: 400 1.5rem/1 var(--ob-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ob-ink); text-shadow: 0 2px 2px #000;
+  background: none; border: 0; border-radius: 0; box-shadow: none; transition: transform 0.15s ease-out;
+}
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style))::before,
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style))::after { content: ""; position: absolute; z-index: -1; clip-path: var(--ob-shard); }
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style))::before { inset: 0; background: var(--edge); }
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style))::after {
+  inset: 3px; /* the glass, and a hairline fissure along its lower third */
+  background: linear-gradient(104deg, transparent 8%, var(--vein) 9%, var(--vein) 10%, transparent 11%) 0 0 / 100% 100% no-repeat,
+    linear-gradient(to right, transparent 4%, var(--vein) 24%, var(--ob-ink) 50%, var(--vein) 76%, transparent 96%) 0 82% / 100% 2px no-repeat,
+    radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--vein) 38%, transparent), transparent 62%), var(--ob-glass);
+}
+:is(.set-btn--primary, html[data-look="obsidian"] .dojo-button.primary) { --edge: var(--ob-edge-lava); --vein: var(--ob-lava); font-size: 1.7rem; }
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style)):hover { transform: translateY(-2px); --edge: linear-gradient(165deg, #fff, var(--vein) 40%, #3a3348 70%, var(--vein)); }
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style)):active { transform: translateY(1px); --vein: var(--ob-hot); }
+:is(.set-btn, .set-back, html[data-look="obsidian"] .dojo-button:not(.dojo-style)):focus-visible { outline: 3px solid #f0faff; outline-offset: 5px; }
+.set-btn svg, .set-back svg { width: 1.4rem; height: 1.4rem; flex: none; fill: none; stroke: currentColor; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---- the back button: a small shard with an arrow ---- */
+:is(.set-back, html[data-look="obsidian"] .dojo-quit) { min-height: 2.6rem; padding: 0.4rem 1.4rem 0.4rem 1.1rem; font-size: 1.25rem; }
+html[data-look="obsidian"] .dojo-quit::before { /* the arrow, cut into the shard */
+  position: static; z-index: auto; inset: auto; clip-path: polygon(100% 0, 0 50%, 100% 100%, 72% 50%); width: 1rem; height: 1.2rem; background: currentColor; content: "";
+}
+html[data-look="obsidian"] .dojo-quit { margin-left: auto; }
+html[data-look="obsidian"] .dojo-quit::after { inset: 3px; }
+
+/* ---- a panel: a sheet of smoked black glass with a chipped bright edge ---- */
+:is(.set-panel, html[data-look="obsidian"] .dojo-card) { position: relative; isolation: isolate; color: var(--ob-ink); font-family: var(--ob-body); background: none; border: 0; box-shadow: none; padding: 1.1rem 1.5rem 1.3rem; }
+:is(.set-panel, html[data-look="obsidian"] .dojo-card)::before, :is(.set-panel, html[data-look="obsidian"] .dojo-card)::after { content: ""; position: absolute; z-index: -1; clip-path: var(--ob-sheet); }
+:is(.set-panel, html[data-look="obsidian"] .dojo-card)::before { inset: 0; background: var(--edge, var(--ob-edge-ice)); }
+:is(.set-panel, html[data-look="obsidian"] .dojo-card)::after { inset: 2px; background: var(--ob-glass-veil); }
+.set-panel--lava, html[data-look="obsidian"] .dojo-card:last-child { --edge: var(--ob-edge-lava); }
+.set-panel h2, html[data-look="obsidian"] .dojo-card h2 { margin: 0 0 0.6rem; font: 400 1.5rem/1 var(--ob-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ob-ice); }
+.set-panel--lava h2, html[data-look="obsidian"] .dojo-card:last-child h2 { color: var(--ob-hot); }
+
+/* ---- a stat: a value burning above a small label ---- */
+.set-stat { display: grid; justify-items: center; gap: 0.25rem; padding: 0.5rem 0.4rem; text-align: center; }
+.set-stat b { font: 400 2.8rem/1 var(--ob-display); font-variant-numeric: tabular-nums; color: #ffc040; text-shadow: 0 0 10px #ff5a0a, 0 2px 2px #000; }
+.set-stat span { font: 700 1.1rem/1.1 var(--ob-body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ob-ice); text-shadow: 0 1px 3px #000; }
+
+/* ---- the kit page (?look=obsidian#kit is not used; src/ui/set/Kit.tsx renders this on the menu's own backdrop) ---- */
+.set-kit { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.4rem 2.4rem; padding: 2rem 2.6rem; }
+.set-kit h3 { margin: 0 0 0.7rem; font: 700 1.1rem/1 var(--ob-body); letter-spacing: 0.24em; text-transform: uppercase; color: var(--ob-dim); text-shadow: 0 1px 3px #000; }
+.set-kit__row { display: flex; flex-wrap: wrap; align-items: center; gap: 1.3rem; }
+.set-kit .is-hover { transform: translateY(-2px); --edge: linear-gradient(165deg, #fff, var(--vein) 40%, #3a3348 70%, var(--vein)); }
+.set-kit .is-focus { outline: 3px solid #f0faff; outline-offset: 5px; }
+
+@media (prefers-reduced-motion: reduce) { :is(.set-btn, .set-back, .dojo-button, .dojo-style) { transition: none; } }

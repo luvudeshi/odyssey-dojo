@@ -14,6 +14,8 @@ import type { DojoConfig, DojoRep, DojoState, DojoSummary } from "../dojo";
 import { POINTS } from "../grade";
 import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
+import { lookIs } from "../../ui/lookSwitch";
+import { SetBackdrop } from "../../ui/set/parts";
 import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
@@ -158,7 +160,7 @@ export function Dojo(props: DojoProps) {
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
-      <ForgeScene />
+      {lookIs("obsidian") ? <SetBackdrop src="/textures/set/obsidian/yard.jpg" /> : <ForgeScene />}
       <header className="dojo-top">
         <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}

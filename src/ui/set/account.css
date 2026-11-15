@@ -1,0 +1,57 @@
+/* The Account in the Obsidian set (ObsidianAccount.tsx). */
+.set-acc { position: relative; isolation: isolate; box-sizing: border-box; display: grid; grid-template-columns: minmax(23rem, 28rem) minmax(0, 1fr); gap: 1.6rem; align-items: stretch; width: 100%; min-height: 100vh; padding: clamp(0.8rem, 3vh, 1.6rem) clamp(1rem, 2.4vw, 2.2rem); color: var(--ob-ink); font-family: var(--ob-body); background: #05040a; text-align: left; }
+.set-acc > :not(.set-backdrop) { position: relative; z-index: 1; }
+.set-acc .set-backdrop { --veil: linear-gradient(90deg, rgba(4, 3, 8, 0.5), transparent 40%, transparent 85%, rgba(4, 3, 8, 0.35)); }
+.set-acc .acc-icon, .set-detail ~ * .acc-icon, .set-btn .acc-icon, .set-stat .acc-icon { fill: none; stroke: currentColor; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.set-acc__side { display: flex; flex-direction: column; gap: clamp(0.7rem, 2vh, 1.1rem); justify-content: center; }
+.set-acc__side .set-title { font-size: clamp(3rem, 7.4vh, 4.6rem); }
+.set-acc__hero { display: grid; gap: 0.9rem; padding: 1rem 1.3rem 0.8rem; }
+.set-acc__name { display: grid; gap: 0.35rem; }
+.set-acc__name span { font: 700 1.1rem/1 var(--ob-body); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ob-ice); }
+.set-acc__name input { box-sizing: border-box; width: 100%; padding: 0.35rem 0.8rem; font: 400 2.4rem/1.2 var(--ob-display); letter-spacing: 0.04em; text-transform: uppercase; color: #fff8ee; background: #040308; border: 2px solid #5b7896; border-radius: 0; box-shadow: inset 0 0 14px #000; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+.set-acc__name input::placeholder { color: #8a809a; }
+.set-acc__name input:focus-visible { outline: 3px solid #f0faff; outline-offset: -3px; border-color: var(--ob-lava); }
+.set-acc__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin: 0; }
+.set-acc__stats .set-stat { display: grid; grid-template-rows: auto auto auto; }
+.set-stat__icon { width: 1.8rem; height: 1.8rem; color: var(--ob-hot); }
+.set-acc__stats dd, .set-acc__stats dt { margin: 0; }
+.set-acc__stats .set-stat b { font-size: 2.3rem; }
+.set-detail { display: grid; gap: 0.4rem; min-height: 8.6rem; }
+.set-detail h2 { margin: 0; font-size: 1.25rem; }
+.set-detail p { margin: 0; font: 500 1.2rem/1.3 var(--ob-body); color: var(--ob-ink); }
+.set-detail__name { font: 400 1.9rem/1.05 var(--ob-display); letter-spacing: 0.04em; text-transform: uppercase; color: #fff8ee; text-shadow: 0 0 12px #ff6a14aa, 0 2px 0 #000; }
+.set-detail__progress { display: grid; gap: 0.2rem; font: 700 1.15rem/1 var(--ob-body); color: var(--ob-hot); }
+.set-acc__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.9rem; }
+
+.set-acc__feats { align-self: center; padding: 1rem 1.5rem 1.3rem; }
+.set-acc__count { margin: 0 0 0.5rem; font: 500 1.25rem/1 var(--ob-body); color: var(--ob-dim); }
+.set-acc__count b { font: 400 2rem/1 var(--ob-display); color: #ffc040; text-shadow: 0 0 8px #ff5a0a; }
+.set-acc__groups { display: grid; gap: 0.6rem; }
+.set-acc__groups h2 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 0.35rem; padding-bottom: 0.2rem; border-bottom: 1px solid #5b789688; font: 400 1.35rem/1 var(--ob-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ob-ice); }
+.set-acc__groups h2 b { font: 700 1.15rem/1 var(--ob-body); letter-spacing: 0.06em; color: var(--ob-hot); }
+.set-acc__groups ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.45rem 0.6rem; margin: 0; padding: 0; list-style: none; }
+
+/* A tile: a small shard of glass with the deed's icon and name. Won burns lava, unwon is cold. */
+.set-feat { --edge: var(--ob-edge-lava); --vein: var(--ob-lava); position: relative; isolation: isolate; box-sizing: border-box; display: grid; grid-template-columns: 2.2rem 1fr; align-items: center; gap: 0.2rem 0.55rem; width: 100%; min-height: 3.7rem; padding: 0.3rem 0.8rem 0.35rem 0.6rem; font: 700 1.15rem/1.1 var(--ob-body); color: var(--ob-ink); text-align: left; background: none; border: 0; border-radius: 0; transition: transform 0.12s ease-out; }
+.set-feat.is-locked { --edge: linear-gradient(165deg, #6a7e96, #2c2838 60%, #5b7896); --vein: var(--ob-ice); color: #cfc6dc; }
+.set-feat::before, .set-feat::after { content: ""; position: absolute; z-index: -1; clip-path: var(--ob-shard); }
+.set-feat::before { inset: 0; background: var(--edge); }
+.set-feat::after { inset: 2px; background: radial-gradient(ellipse at 20% 130%, color-mix(in srgb, var(--vein) 36%, transparent), transparent 60%), var(--ob-glass); }
+.set-feat.is-locked::after { background: var(--ob-glass); }
+.set-feat:hover, .set-feat:focus-visible { transform: translateY(-2px); }
+.set-feat:focus-visible { outline: 3px solid #f0faff; outline-offset: 3px; }
+.set-feat__icon { grid-row: 1 / span 2; width: 2.1rem; height: 2.1rem; color: var(--ob-hot); filter: drop-shadow(0 0 5px #ff6a14); }
+.is-locked .set-feat__icon { color: var(--ob-ice); filter: none; opacity: 0.6; }
+.set-feat__name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.4rem; }
+.set-feat__name small { font: 700 1.05rem/1 var(--ob-body); color: var(--ob-hot); }
+.set-feat__lock { position: absolute; right: 0.5rem; top: 0.3rem; width: 0.9rem; height: 0.9rem; color: #8a809a; }
+.set-feat__bar { display: block; height: 5px; overflow: hidden; background: #040308; box-shadow: inset 0 0 0 1px #5b7896; }
+.set-feat__bar b { display: block; height: 100%; background: linear-gradient(#e6f6ff, #5f8fb8); }
+.set-feat .set-feat__bar { grid-column: 2; }
+
+@media (max-height: 760px) {
+  .set-acc__groups ul { gap: 0.3rem 0.5rem; }
+  .set-feat { min-height: 3.2rem; }
+  .set-detail { min-height: 7.4rem; }
+}
+@media (prefers-reduced-motion: reduce) { .set-feat { transition: none; } }
