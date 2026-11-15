@@ -11,10 +11,13 @@ import { RoomToken } from "../../screens/RoomArt";
 import { Button } from "../../ui/pebble";
 import { duoCamera } from "../duoCamera";
 import { createDuoLink } from "../duoLink";
+import { startDuoOverlay } from "./duoOverlay";
 
 /** Turns the second body on and makes the link that brings it into the fight. */
 export function startDuo(): HostLink {
   duoCamera.setOn(true);
+  // Player two's skeleton in the camera panel and the line with each player's hits; it stops when duo is turned off.
+  startDuoOverlay();
   return createDuoLink(duoCamera, MOVES);
 }
 
@@ -23,7 +26,7 @@ export function DuoCard(props: { onStart: (link: HostLink) => void }) {
     <section className="set-panel mp-card mp-card--duo">
       <RoomToken icon="helmets" size={76} />
       <h2><span className="set-kicker">Two players</span>One camera</h2>
-      <p>Stand side by side in front of this computer, an arm's length apart, both in the picture from the head to the waist.</p>
+      <p>Stand side by side about two metres back, with a full arm's length of empty space between you. Any closer and the camera sees one person.</p>
       <p className="mp-card__as"><small>Who is who</small><b>Right is the blue hero</b><small>When the monster attacks, both of you must defend.</small></p>
       <Button primary onClick={() => { props.onStart(startDuo()); }}>Play side by side</Button>
     </section>
