@@ -168,7 +168,7 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
     expect(dojoStyles().map((style) => style.id)).toEqual([...STYLES.map((style) => style.id), "taekwondo_kicks", "self_defense", "muay_thai", "karate_basics"]);
   });
 
-  test("The Taekwondo kicks list is all kicks: its own group holds them, with the whole-body note", () => {
+  test("Taekwondo kicks is all kicks: its own group holds them, with the whole-body note", () => {
     const menu = dojoMenu(styleOf("taekwondo_kicks"));
     expect(group(menu, "style")).toEqual(["front_kick", "roundhouse_kick", "side_kick", "low_kick", "knee"]);
     expect(need(menu[0]).note).toBe(WHOLE_BODY_NOTE);
@@ -222,8 +222,8 @@ describe("the dojo's own moves and styles (src/coach/extra)", () => {
     expect(dojoJudgeRep(need(dojoMoveOf("jab")), [])).toEqual(judgeRep(need(dojoMoveOf("jab")), []));
   });
 
-  test("a Taekwondo kicks session on the keyboard: every kick, in order, each counted by its own key press", () => {
-    const moves = pickedInOrder(dojoMenu(styleOf("taekwondo_kicks")), ["roundhouse_kick", "front_kick", "high_block"]);
+  test("a Taekwondo session on the keyboard: every kick, in order, each counted by its own key press", () => {
+    const moves = pickedInOrder(dojoMenu(styleOf("taekwondo")), ["roundhouse_kick", "front_kick", "high_block"]);
     expect(moves).toEqual(["front_kick", "roundhouse_kick", "high_block"]);
     let state = startDojo({ moves, reps: 1, keyboard: true }, 0);
     const asked: string[] = [];
@@ -308,6 +308,12 @@ describe("the choice kept in the browser", () => {
     saveChoice({ style: "boxer", moves: ["jab", "front_kick"], reps: 5 }, storage);
     expect(Object.keys(storage.kept)).toEqual([DOJO_CHOICE_KEY]);
     expect(loadChoice(storage)).toEqual({ style: "boxer", moves: ["jab", "front_kick"], reps: 5 });
+  });
+
+  test("a kept Hoplite or Pankration is read as Jiu-jitsu or Taekwondo, so the choice is not lost", () => {
+    for (const [old, now] of [["hoplite", "jiu_jitsu"], ["pankration", "taekwondo"], ["boxer", "boxer"]] as const) {
+      expect(loadChoice(memory({ [DOJO_CHOICE_KEY]: JSON.stringify({ style: old, moves: ["jab"], reps: 4 }) })), old).toEqual({ style: now, moves: ["jab"], reps: 4 });
+    }
   });
 
   test("nothing kept, no storage, rubbish or a browser that throws: null, and saving does not throw", () => {

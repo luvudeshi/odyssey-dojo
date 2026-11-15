@@ -8,11 +8,11 @@ import { KICK_IDS } from "../moves/legSignals";
 import { MEASURES } from "../moves/measures";
 import { MOVES } from "../moves/registry";
 import { NEEDS_LEGS } from "../moves/waistUp";
-import { currentDojoStyleId } from "../styles/oldIds";
 import { STYLES } from "../styles/registry";
 import { EXTRA_MEASURES, EXTRA_MOVES, EXTRA_NEEDS_LEGS, EXTRA_STYLES, EXTRA_TIPS, extraGuideFor, judgeExtraRep } from "./extra";
 import type { DojoStyleDef } from "./extra";
 import { guideFor } from "./guide";
+import { currentDojoStyleId } from "../styles/oldIds";
 import type { Guide } from "./guide";
 import { PRACTICE_TIPS, judgeRep } from "./practice";
 import type { RepResult } from "./practice";
@@ -173,7 +173,7 @@ function browserStorage(): ChoiceStorage | null {
   }
 }
 
-/** The stored choice. No storage, a private window that throws, or anything that is not a choice: null. */
+/** The stored choice, its style id as today's (a choice kept before the rename: Hoplite, Pankration and the old "taekwondo" kicks list are read as Jiu-jitsu, Taekwondo and "taekwondo_kicks"). No storage, a private window that throws, or anything that is not a choice: null. */
 export function loadChoice(storage: ChoiceStorage | null = browserStorage()): DojoChoice | null {
   try {
     const data: unknown = JSON.parse(storage?.getItem(DOJO_CHOICE_KEY) ?? "null");
