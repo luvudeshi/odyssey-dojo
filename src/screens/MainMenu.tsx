@@ -33,7 +33,7 @@ export function MainMenu(props: {
         <BronzeDefs />
         <ShieldCard primary device={DEVICES.ship} name="Story mode" line="The road home to Ithaca, fought with your body" onClick={story} />
         <ShieldCard device={DEVICES.pair} name="Multiplayer" line="Host a room or join a friend's" onClick={props.onMultiplayer} />
-        <ShieldCard device={DEVICES.shield} name="Training Dojo" onClick={props.onTraining} />
+        <ShieldCard device={DEVICES.shield} name="Training Dojo" line="Learn each move, with a grade and a tip" onClick={props.onTraining} />
         <ShieldCard device={DEVICES.laurel} name="Account" line="Your name, achievements and settings" onClick={props.onAccount} />
       </nav>
       <p className="notice">{props.notice}</p>
