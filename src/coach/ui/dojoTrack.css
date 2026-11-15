@@ -1,0 +1,39 @@
+/* The strip of moves along the bottom of a training session (DojoTrack.tsx): done, now, next. One row that scrolls
+   sideways and never wraps. Plain, with the dojo's colours as fallbacks, so the dojo screen can restyle it.
+   No text under 18 px. */
+.dojo-track {
+  --dt-ink: var(--dj-ink, #f6f0ff);
+  --dt-dim: var(--dj-dim, #ddd2c4);
+  --dt-line: var(--dj-line, #4a4258);
+  --dt-ice: var(--dj-ice, #9fd8ff);
+  --dt-excellent: var(--dj-excellent, #7fe08a);
+  --dt-good: var(--dj-good, #ffc040);
+  --dt-needs: var(--dj-needs, #ff7a5a);
+  box-sizing: border-box; flex: none; display: flex; align-items: center; gap: 1rem; width: 100%; min-width: 0;
+  padding: 0.45rem 0.8rem; color: var(--dt-ink); background: #07060ae6; border: 2px solid var(--dt-line); border-radius: 4px; line-height: 1.2;
+}
+/* The player's own picture sits in the bottom right corner of the dojo: the strip stops short of it. */
+.dojo:has(.dojo-camera video) > .dojo-track { width: auto; margin-right: 13rem; }
+.dojo-track-count { flex: none; margin: 0; padding-right: 1rem; font-size: 1.2rem; font-weight: 700; white-space: nowrap; color: var(--dt-dim); border-right: 2px solid var(--dt-line); }
+.dojo-track-row {
+  flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 0.6rem; margin: 0; padding: 0.3rem; list-style: none;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--dt-line) transparent;
+}
+.dojo-track-row:focus-visible { outline: 3px solid #f0faff; outline-offset: 2px; }
+.dojo-track-chip {
+  flex: none; display: flex; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0.8rem; white-space: nowrap;
+  font-size: 1.15rem; color: var(--dt-dim); background: #14111a; border: 2px solid var(--dt-line); border-radius: 4px;
+}
+.dojo-track-state { font-size: 1.125rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.dojo-track-name { font-weight: 700; color: var(--dt-ink); }
+.dojo-track-grade { font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.dojo-track-chip[data-status="next"] .dojo-track-name { font-weight: 500; color: var(--dt-dim); }
+.dojo-track-chip[data-status="current"] { color: #06050a; background: linear-gradient(#f0faff, var(--dt-ice)); border-color: #f0faff; }
+.dojo-track-chip[data-status="current"] .dojo-track-name { color: #06050a; }
+.dojo-track-chip[data-status="done"][data-tier="excellent"] { border-color: var(--dt-excellent); }
+.dojo-track-chip[data-status="done"][data-tier="good"] { border-color: var(--dt-good); }
+.dojo-track-chip[data-status="done"][data-tier="needs_work"] { border-color: var(--dt-needs); }
+.dojo-track-chip[data-status="done"][data-tier="excellent"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-excellent); }
+.dojo-track-chip[data-status="done"][data-tier="good"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-good); }
+.dojo-track-chip[data-status="done"][data-tier="needs_work"] :is(.dojo-track-state, .dojo-track-grade) { color: var(--dt-needs); }
+.dojo-track-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
