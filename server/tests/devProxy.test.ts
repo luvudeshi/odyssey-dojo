@@ -66,6 +66,15 @@ test("a spending route called through the dev proxy, as the game does in npm run
   expect((await fetch(`${dev}/api/portrait/x`)).status).not.toBe(403);
 });
 
+test("a tunnel request that reached the dev server instead keeps its headers through the proxy, and is refused", async () => {
+  const dev = await listenVite(await repoProxy(await listenApp()));
+  for (const header of [{ "Cf-Connecting-Ip": "203.0.113.7" }, { "cf-ray": "8f1c2d3e4f5a6b7c-DFW" }, { "X-Forwarded-For": "203.0.113.7" }]) {
+    const response = await fetch(`${dev}/api/level`, { ...LEVEL, headers: { ...LEVEL.headers, ...header } });
+    expect(response.status, JSON.stringify(header)).toBe(403);
+  }
+  expect((await fetch(`${dev}/api/rooms`, { method: "POST", headers: { "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW" } })).status).toBe(200);
+});
+
 test("with xfwd turned on the same proxy would be refused, so vite.config.ts must leave it off", async () => {
   const proxy = await repoProxy(await listenApp());
   const dev = await listenVite(Object.fromEntries(Object.entries(proxy).map(([path, rule]) => [path, { ...rule, xfwd: true }])));

@@ -136,10 +136,17 @@ interface Run {
   readonly done: Promise<number | null>;
 }
 
-/** Runs the script with nothing on PATH but the stand-in, or with nothing at all when `mode` is null. */
+/**
+ * Runs the script with nothing on PATH but the stand-in, or with nothing at all when `mode` is null.
+ * The stand-in's address leads nowhere, so the script's look at the guard from outside goes to TUNNEL_CHECK_ORIGIN:
+ * by default a port nothing listens on, so no test reaches for the network.
+ */
 function tunnel(mode: string | null, args: readonly string[], env: Record<string, string> = {}): Run {
   const child = spawn(process.execPath, [SCRIPT, ...args], {
-    env: { PATH: mode === null ? empty : bin, FAKE_MODE: mode ?? "", FAKE_LOG: fakeLog, TUNNEL_DATA_DIR: dataDir, TUNNEL_WAIT_MS: "20000", ...env },
+    env: {
+      PATH: mode === null ? empty : bin, FAKE_MODE: mode ?? "", FAKE_LOG: fakeLog, TUNNEL_DATA_DIR: dataDir, TUNNEL_WAIT_MS: "20000",
+      TUNNEL_CHECK_ORIGIN: "http://127.0.0.1:1", TUNNEL_CHECK_MS: "50", ...env,
+    },
   });
   let out = "";
   let err = "";
@@ -171,16 +178,34 @@ async function game(built = true): Promise<{ port: number; pageUrl: () => Promis
   return { port, pageUrl };
 }
 
-/** A server that says which address it hands to phones, as the room screens' /api/rooms/address does. */
-async function gameThatSays(base: string): Promise<number> {
+/**
+ * A server that says which address it hands to phones, as the room screens' /api/rooms/address does.
+ * With `guarded` false it stands for a server started before the tunnel guard: a marked GET /api/level gets that server's 404, not a 403.
+ */
+async function gameThatSays(base: string, guarded = true): Promise<number> {
   const server = createServer((request, response) => {
     const says = request.url === "/api/rooms/address";
-    response.writeHead(200, { "Content-Type": says ? "application/json" : "text/html" }).end(says ? JSON.stringify({ base }) : "<!doctype html>");
+    if (request.url === "/api/level") response.writeHead(guarded && "cf-ray" in request.headers ? 403 : 404).end();
+    else response.writeHead(200, { "Content-Type": says ? "application/json" : "text/html" }).end(says ? JSON.stringify({ base }) : "<!doctype html>");
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   closers.push(() => { server.close(); });
   return (server.address() as AddressInfo).port;
+}
+
+/** Stands where the tunnel's public end would be: passes a request on to the game, marked the way cloudflared marks it, or not marked at all. */
+async function publicEnd(gamePort: number, marked: boolean): Promise<string> {
+  const headers: Record<string, string> = marked ? { "Cf-Connecting-Ip": "203.0.113.7", "Cf-Ray": "8f1c2d3e4f5a6b7c-DFW", "X-Forwarded-For": "203.0.113.7" } : {};
+  const server = createServer((request, response) => {
+    fetch(`http://127.0.0.1:${String(gamePort)}${request.url ?? "/"}`, { headers })
+      .then(async (answer) => { response.writeHead(answer.status, { "Content-Type": answer.headers.get("content-type") ?? "text/plain" }).end(await answer.text()); })
+      .catch(() => { response.writeHead(502).end(); });
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  closers.push(() => { server.close(); });
+  return `http://127.0.0.1:${String((server.address() as AddressInfo).port)}`;
 }
 
 /** A port nothing listens on. */
@@ -236,6 +261,11 @@ test("it opens a tunnel to the running game, the server hands out the https addr
   utimesSync(join(dataDir, TUNNEL_FILE), old, old);
   expect(tunnelAddress(dataDir)).toBeNull();
   await until("a beat", () => tunnelAddress(dataDir) === ADDRESS);
+
+  // Nothing answers at the public end here, so the script says the guard was not checked from outside, and stays up.
+  await until("the check to give up", () => script.out().includes("the guard was not checked there"));
+  expect(script.out()).toContain(`Open ${ADDRESS}/api/level on a phone: it must show {"error":"local_only"}.`);
+  expect(tunnelAddress(dataDir)).toBe(ADDRESS);
 
   script.signal("SIGINT");
   expect(await script.done).toBe(0);
@@ -311,7 +341,7 @@ test("when cloudflared dies after the tunnel was up, the address is taken back",
   expect(new URL(await pageUrl()).origin).toBe(lan);
 });
 
-test("it will not open a tunnel to nothing: no server, a server without the built game, or a port that is not one", async () => {
+test("it will not open a tunnel to nothing or to an unguarded server: no server, no built game, old code, or a port that is not one", async () => {
   const nothing = tunnel("up", [String(await freePort())]);
   expect(await nothing.done).toBe(1);
   expect(oneLine(nothing.err())).toContain("Nothing answers on http://127.0.0.1:");
@@ -321,6 +351,11 @@ test("it will not open a tunnel to nothing: no server, a server without the buil
   expect(await unbuilt.done).toBe(1);
   expect(oneLine(unbuilt.err())).toContain("does not serve the game. Run npm run build");
 
+  // A server from before the guard would let the internet spend the keys, so it gets no tunnel either.
+  const old = tunnel("up", [String(await gameThatSays(ADDRESS, false))]);
+  expect(await old.done).toBe(1);
+  expect(oneLine(old.err())).toContain("does not refuse the AI routes to a request from a tunnel, so no tunnel was opened.");
+
   for (const bad of ["abc", "0", "65536", "80 80", "-1"]) {
     const script = tunnel("up", [bad]);
     expect(await script.done, bad).toBe(1);
@@ -328,6 +363,26 @@ test("it will not open a tunnel to nothing: no server, a server without the buil
   }
   expect(starts()).toEqual([]);
   expect(existsSync(dataDir)).toBe(false);
+});
+
+test("it looks at the guard from outside: a tunnel that marks its requests stays up, one that does not is closed", async () => {
+  const { port, pageUrl } = await game();
+  const lan = new URL(await pageUrl()).origin;
+  const marked = tunnel("up", [String(port)], { TUNNEL_CHECK_ORIGIN: await publicEnd(port, true) });
+  await until("the check", () => marked.out().includes("Checked through the tunnel: the routes that spend the API keys are refused there."));
+  expect(marked.err()).toBe("");
+  expect(tunnelAddress(dataDir)).toBe(ADDRESS);
+  marked.signal("SIGINT");
+  expect(await marked.done).toBe(0);
+
+  // If cloudflared put no header on what it passes on, the guard could not tell a stranger from this machine.
+  const bare = tunnel("up", [String(port)], { TUNNEL_CHECK_ORIGIN: await publicEnd(port, false) });
+  expect(await bare.done).toBe(1);
+  expect(bare.out()).toContain(`Tunnel is up: ${ADDRESS}\n`);
+  expect(oneLine(bare.err())).toContain("The routes that spend the API keys are NOT refused through this tunnel, so it is being closed.");
+  expect(existsSync(join(dataDir, TUNNEL_FILE))).toBe(false);
+  expect(starts().map((start) => isRunning(start.pid))).toEqual([false, false]);
+  expect(new URL(await pageUrl()).origin).toBe(lan);
 });
 
 test("a second copy refuses to start while a tunnel is up, and leaves the first one alone", async () => {
