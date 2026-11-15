@@ -11,10 +11,10 @@ Homer's lines are our own words, not a translation. Each is about 20 words and s
 | Folder | What | Index |
 |---|---|---|
 | `public/audio/narration/` | Homer's 11 new lines | `public/audio/narration/index.json` |
-| `public/audio/taunts/` | 13 new taunts | `public/audio/taunts/index.json` |
+| `public/audio/taunts/` | 15 new taunts | `public/audio/taunts/index.json` |
 | `public/audio/athena/` | The 4 Homer lines and 4 Polyphemus taunts recorded first | `public/audio/athena/index.json` |
 
-The game only asks for clips an index lists, and stays silent for the rest. The 24 new clips are 2.2 MB together. Each is between 2.7 and 8.8 seconds.
+The game only asks for clips an index lists, and stays silent for the rest. The 26 new clips are 2.3 MB together. Each is between 2.7 and 8.8 seconds.
 
 ## New lines
 
@@ -38,6 +38,8 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `taunt_sirens_2` | The Sirens | The Sirens taunt the player | No one rows past until he has heard the sweetness of our song. |
 | `taunt_sirens_3` | The Sirens | The Sirens taunt the player | We know all that was suffered at Troy. We know everything that happens on the earth. |
 | `taunt_scylla_1` | Scylla | Scylla taunts the player | Six of your crew. That is the toll. |
+| `taunt_scylla_2` | Scylla | Scylla taunts the player | Six mouths, and every one is hungry. |
+| `taunt_scylla_3` | Scylla | Scylla taunts the player | Row, little king. No oar outruns my necks. |
 | `taunt_charybdis_1` | Charybdis | Charybdis taunts the player | Three times a day she drinks the sea, and three times gives it back. |
 | `taunt_charybdis_2` | Charybdis | Charybdis taunts the player | Not even the Earth-shaker could pull you out of there. |
 | `taunt_charybdis_3` | Charybdis | Charybdis taunts the player | Hold to the fig tree. Hold until she gives your timbers back. |
@@ -45,7 +47,9 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `taunt_suitors_2` | The Suitors | The suitors taunt the player | Stranger, you have shot your last. The vultures will have you here. |
 | `taunt_suitors_3` | The Suitors | The suitors taunt the player | Friends, draw your swords and hold the tables up against his arrows! |
 
-Scylla has one taunt because her file has one, so the "two or three taunts per monster" point of issue #86 is still open for her. When `src/enemies/defs/scylla.ts` gets more, add `taunt_scylla_2` and `taunt_scylla_3` to `TAUNT_LINES` and to this table, run the clip tool again, and change Scylla's range in `tests/narrationLines.test.ts` from `[1, 3]` to `[2, 3]`.
+Scylla's second and third taunts were recorded later the same day, once `src/enemies/defs/scylla.ts` had three: the same command, the same voice (Harry) and the same model (`eleven_v4`), one take each. Before that she had one clip and said the same line at every phase change. A taunt is picked at random, but never the line that monster said last (`src/audio/storyVoice.ts`), so two phase changes running bring two different taunts.
+
+Two lines in the monsters' files have no clip and are never spoken: Circe's fourth ("You are Odysseus. Hermes told me you would come.") and the suitors' third ("It was Antinous who led us. Spare your own people and we will pay it all back."). `taunt_suitors_3` is the suitors' fourth line.
 
 ## Lines recorded first
 
@@ -91,7 +95,7 @@ The tool writes both `index.json` files. It does not touch the lines recorded fi
 
 - `speakNarration(enemyId, "before" | "after")`: Homer's line for that stop. If another story line is playing it is cut off first. Then it waits up to 6 seconds for Athena to finish.
 - `speakResult(enemyId, won)`: on a win, the stop's "after" line (or `homer_win` for a fight with none). On a loss, `homer_loss`. It waits for Athena's own result line to end.
-- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random. It waits for Athena's phase line first, so the two are not heard together: it looks at the voice one tick after it is asked for, then every 0.1 seconds, and starts when no phase line is playing. If a phase line still holds the voice after 4 seconds (`TAUNT_WAIT_MS`) the taunt is dropped. A phase change with no phase line gets its taunt in the same frame. The taunt plays at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt at a time: a second one asked for while the first waits or plays is not played. It resolves `false`, or joins the first and resolves `true` when the dice pick that same taunt. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean, and a taunt still waiting then never starts: the monsters' channel refuses every taunt from that frame until the next fight's `fight_start` or first event.
+- `speakMonsterTaunt(enemyId)`: one of that monster's taunts, picked at random but never the one it said last. It waits for Athena's phase line first, so the two are not heard together: it looks at the voice one tick after it is asked for, then every 0.1 seconds, and starts when no phase line is playing. If a phase line still holds the voice after 4 seconds (`TAUNT_WAIT_MS`) the taunt is dropped. A phase change with no phase line gets its taunt in the same frame. The taunt plays at 0.7 of Athena's volume (`TAUNT_VOLUME` in `src/audio/voice.ts`). Athena's calls play over it and do not cut it, and it never delays her. Only one taunt at a time: a second one asked for while the first waits or plays is not played. It resolves `false`, or joins the first and resolves `true` when the dice pick that same taunt. `playVoice` silences the taunt in the frame the fight is won or lost, so the result lines are heard clean, and a taunt still waiting then never starts: the monsters' channel refuses every taunt from that frame until the next fight's `fight_start` or first event.
 - `stopStory()`: drops a line that is still waiting and cuts off a story line or a taunt that is playing. A dropped line's timer is cleared at once. Athena's lines are left alone.
 
 Asking for a line that is already waiting or playing joins it, so it is heard once. Asking again after it is over speaks it again, so call these from an effect that runs once per screen, not on every frame.

@@ -8,20 +8,53 @@ import { battle, decay, resetBattle, syncBattle } from "../src/render/battle";
 import type { Battle } from "../src/render/battle";
 import { MONSTER_Z } from "../src/render/cameraShots";
 import { MONSTER_CHEST, fxBetween } from "../src/render/effects/events";
-import { REACH, contactPoint, finisherSpot, reachWeight, strikingLimb, travel } from "../src/render/strikeReach";
+import { LEAP_SECONDS, REACH, arcHeight, contactPoint, finisherSpot, leapAt, newLeap, strikingLimb, travel } from "../src/render/strikeReach";
+import type { Leap } from "../src/render/strikeReach";
 
-test("the reach snaps out, holds on the blow and eases home", () => {
-  expect(reachWeight(-0.01)).toBe(0);
-  expect(reachWeight(-Infinity)).toBe(0);
-  expect(reachWeight(0)).toBe(0);
-  expect(reachWeight(REACH.out / 2)).toBeGreaterThan(0.5); // fast off the mark
-  expect(reachWeight(REACH.out)).toBe(1);
-  expect(reachWeight(REACH.out + REACH.hold / 2)).toBe(1);
-  expect(reachWeight(REACH.out + REACH.hold + REACH.back / 2)).toBeCloseTo(0.5);
-  expect(reachWeight(REACH.out + REACH.hold + REACH.back)).toBe(0);
-  // A snap, as the engine counts the hit the frame the strike is seen.
-  expect(REACH.out).toBeGreaterThanOrEqual(0.1);
-  expect(REACH.out).toBeLessThanOrEqual(0.18);
+test("the leap coils, flies, strikes, falls home and lands, with no jump in any part of the pose", () => {
+  const at = (since: number): Leap => leapAt(since);
+  expect(at(-0.01)).toEqual(newLeap());
+  expect(at(-Infinity)).toEqual(newLeap());
+  expect(at(Number.NaN)).toEqual(newLeap());
+  expect(at(LEAP_SECONDS)).toEqual(newLeap());
+  // Coil: crouched on planted feet, not yet moving.
+  const coiled = at(REACH.crouch - 1e-4);
+  expect(coiled.crouch).toBeGreaterThan(0.95);
+  expect(coiled.across).toBe(0);
+  // Arrival: on the contact point, legs drawn up, crouch gone, the monster reacting `out` after the count.
+  const struck = at(REACH.out - 1e-4);
+  expect(struck.across).toBeGreaterThan(0.99);
+  expect(struck.up).toBeGreaterThan(0.99);
+  expect(struck.air).toBeGreaterThan(0.99);
+  expect(struck.crouch).toBe(0);
+  // Mid-flight he is off the straight line, in the air.
+  expect(at((REACH.crouch + REACH.out) / 2).arc).toBeGreaterThan(0.9);
+  // The landing: back on the mark, legs down, knees absorbing.
+  const landed = at(REACH.out + REACH.back + 0.2 * REACH.land);
+  expect(landed.across).toBe(0);
+  expect(landed.air).toBe(0);
+  expect(landed.crouch).toBeGreaterThan(0.8);
+  // Every field is continuous: sampled each millisecond, nothing moves more than a fast flight allows in one step.
+  // The blow is the one hard stop, in speed only, never in position.
+  const keys = ["across", "up", "arc", "crouch", "air", "lean"] as const;
+  let last = at(0);
+  for (let ms = 1; ms <= LEAP_SECONDS * 1000 + 1; ms++) {
+    const now = at(ms / 1000);
+    for (const key of keys) expect(Math.abs(now[key] - last[key]), `${key} at ${String(ms)} ms`).toBeLessThan(0.06);
+    last = now;
+  }
+  // A snap, as the engine counts the hit the frame the strike is seen; the crouch comes out of that time.
+  expect(REACH.out).toBeLessThanOrEqual(0.14);
+  expect(REACH.crouch).toBeLessThan(REACH.out / 2);
+  // He lands with no slide: the floor share eases to rest at the mark.
+  const nearHome = REACH.out + REACH.back - 0.005;
+  expect(at(nearHome).across).toBeLessThan(0.001);
+});
+
+test("the arc is a hop for a near spot and a bound for a far one", () => {
+  expect(arcHeight(0)).toBe(0.3);
+  expect(arcHeight(4)).toBeCloseTo(0.44);
+  expect(arcHeight(20)).toBe(0.6);
 });
 
 test("the contact point is the weak spot in world space, or the chest without one", () => {

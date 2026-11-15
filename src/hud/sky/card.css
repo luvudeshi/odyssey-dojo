@@ -18,10 +18,10 @@
 
 /* The moving figure (src/coach/ui/MoveGuide) is on the card at every mastery level, with no panel of its own: the plate is
    its ground and its colours are the card's. A learned move keeps the figure and drops the instruction and the checklist. */
-.sky-card .move-guide { --mg-figure: 170px; max-height: 330px; --mg-bg: var(--sky-glaze); --mg-ink: var(--sky-bone); --mg-accent: var(--sky-star); width: 100%; padding: 0; background: none; border: 0; font-family: var(--sky-label); }
+.sky-card .move-guide { --mg-figure: 190px; max-height: none; --mg-bg: var(--sky-glaze); --mg-ink: var(--sky-bone); --mg-accent: var(--sky-star); width: 100%; padding: 0; background: none; border: 0; font-family: var(--sky-label); }
 .sky-card--strike .move-guide, .sky-card--finish .move-guide { --mg-bg: var(--sky-sand); --mg-ink: var(--sky-glaze); --mg-accent: var(--sky-clay-lo); --mg-good: #1f5c16; }
-.sky-card:not(.sky-card--full) .move-guide { --mg-figure: 116px; }
-.sky-card:not(.sky-card--full) .mg-how, .sky-card:not(.sky-card--full) .mg-match, .sky-card:not(.sky-card--full) .mg-checks { display: none; }
+.sky-card:not(.sky-card--full) .move-guide { --mg-figure: 150px; }
+.sky-card:not(.sky-card--full) .mg-how { display: none; }
 
 
 .sky-card__word { font: 700 50px/1 var(--sky-display); letter-spacing: 0.02em; overflow-wrap: anywhere; }

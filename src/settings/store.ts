@@ -47,7 +47,7 @@ export interface SettingsStorage {
   setItem(key: string, value: string): void;
 }
 
-function browserStorage(): SettingsStorage | null {
+export function browserStorage(): SettingsStorage | null {
   try {
     return typeof localStorage === "undefined" ? null : localStorage;
   } catch {

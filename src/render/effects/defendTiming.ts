@@ -1,8 +1,36 @@
 // Timing for the guard shield and the defend bursts. Pure, so it is tested without a browser.
+import type { CombatPhase } from "../../core/types";
+
 export const SHIELD_UP_S = 0.12;
 export const SHIELD_DOWN_S = 0.15;
 /** How long a burst for a counted defend lasts, and how long the shield's block flash lasts. */
-export const BURST_S = 0.45;
+export const BURST_S = 0.55;
+
+/** Decelerating 0 -> 1: fast at first, settling at the end. */
+export function easeOut(t: number): number {
+  const k = 1 - Math.min(1, Math.max(0, t));
+  return 1 - k * k * k;
+}
+
+/** A burst's brightness over its progress `p`: eases in over the first tenth (no pop), then fades out smoothly. 0 at both ends. */
+export function burstFade(p: number): number {
+  if (p <= 0 || p >= 1) return 0;
+  const k = Math.min(1, p / 0.1);
+  return k * k * (3 - 2 * k) * (1 - p) * (1 - p);
+}
+
+/** Which of the dodge versions to draw: ?burst=a, b or c; anything else is a. */
+export function burstVariant(search: string): "a" | "b" | "c" {
+  const v = new URLSearchParams(search).get("burst");
+  return v === "b" || v === "c" ? v : "a";
+}
+
+/** The shield is up only while block is held and the card on screen asks for a block, plus the flash right after that block counts. */
+export function shieldUp(held: ReadonlySet<string>, phase: CombatPhase | undefined, sinceBlock: number): boolean {
+  if (!held.has("block")) return false;
+  const asked = phase?.kind === "defend" && phase.attack.counter === "block";
+  return asked || (sinceBlock >= 0 && sinceBlock < BURST_S);
+}
 
 /** Moves the shield's 0..1 size toward up (held) or down (dropped): about 120 ms to rise, 150 ms to leave. */
 export function stepShield(level: number, held: boolean, dt: number): number {
