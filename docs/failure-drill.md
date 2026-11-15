@@ -36,9 +36,12 @@ One slow answer from the vision model used to send the player to the lot. Now `s
 - The first attempt starts. If it answers with a god the game knows, that is the answer (H7 for what happens when both answer).
 - If it has not answered after 2.5 s, a second, identical attempt starts beside it. Whichever usable answer comes first is used and the other is cancelled (H1).
 - If the first attempt fails, or answers with something that is not a god, the second attempt starts at once instead of waiting for 2.5 s (H4, H5).
+- A first attempt that is refused for a bad request, a bad key or no permission (400, 401, 403) is not tried again, because it would be refused again: the route answers "unavailable" at once after one attempt (H9). A busy or over-quota service (429, 500, 503) is still tried again. The Gemini client asks a second model when its first fails, and each model has its own quota, so the error the route sees only tells of the last model asked.
 - There are never more than two attempts (H2, H6). If both fail, the route answers "unavailable" at once. If neither has answered 4.8 s after the first began, it answers "unavailable" then (H2).
 
-Only this call is hedged. It is one cheap request, and its normal answer (under 2 s) leaves room for a second try inside the page's 6 s. A fight takes about 3 s to generate, so a second attempt could not finish in time; speech answers in half a second and has not needed one.
+An attempt is not always one request. The Gemini client (`server/ai/gemini.ts`) asks its second model when the first one fails, so an attempt is one or two requests and a scan makes at most four. On a good day it makes one.
+
+Only this call is hedged. Its request is small, and its normal answer (under 2 s) leaves room for a second try inside the page's 6 s. A fight takes about 3 s to generate, so a second attempt could not finish in time; speech answers in half a second and has not needed one.
 
 ## Route by failure
 
@@ -52,6 +55,7 @@ Only this call is hedged. It is one cheap request, and its normal answer (under 
 | Upstream stalls for 15 s, both attempts | `503 {"error":"unavailable"}` | 4.8 s | "The oracle is reading you" for 4.8 s, then the god chosen on the laptop. | S3, H2, P2 |
 | Upstream stalls once | the second attempt's god, `200` | 2.5 s plus the second attempt's own time | The AI's god, a little later than usual. | H1 |
 | Upstream fails once | the second attempt's god, `200` | at once | The AI's god. | H4 |
+| Upstream refuses the request, the key or the permission (400, 401, 403) | `503 {"error":"unavailable"}` after one attempt | at once | The god chosen on the laptop. | H9, P3 |
 | Upstream answers with something that is not a god (a level, an error page, `null`, an unknown god) | the second attempt's god if that one is good, else `503` | at once | The AI's god, or the god chosen on the laptop. | S6, H5, H6 |
 | The server itself does not answer | nothing | the page gives up at 6 s | "The oracle is reading you" for 6 s, then the god chosen on the laptop. | P2 |
 
@@ -109,7 +113,7 @@ These call no AI service and need no key.
 | --- | --- | --- | --- | --- |
 | Key missing | create, join, send, poll and address all `200` | at once | Not affected. | S1 |
 | AI upstream stalled | the same | at once | Not affected. | S3 |
-| A request that is not what the route asks for (unknown code, wrong token, a body that is not a message, a port that is not a number) | `404`, `400`, or the address with the bad port ignored | at once | A one-line message on the room screen, such as "No room has that code. Check the letters, or ask your friend for a new one." or "Cannot reach the game server. Is it running?" with a "Play alone" button (`tests/net/rooms.test.ts`, "a relay that cannot be reached is an answer, not an exception"). | S11 |
+| A request that is not what the route asks for (unknown code, a wrong token on a real room, a body that is not a message, a port that is not a number) | `404`, `401`, `400`, or the address with the bad port ignored | at once | A one-line message on the room screen, such as "No room has that code. Check the letters, or ask your friend for a new one." or "Cannot reach the game server. Is it running?" with a "Play alone" button (`tests/net/rooms.test.ts`, "a relay that cannot be reached is an answer, not an exception"). | S11 |
 
 A poll with nothing to deliver is held for up to 20 seconds on purpose (`POLL_HOLD_MS`); that is how long polling works, not a failure.
 
@@ -129,13 +133,14 @@ Every error an AI route logs goes through `server/lib/redact.ts` first. It repla
 
 ## What is not covered, and gaps not fixed here
 
-1. **The AI portrait does not work with the key on this laptop.** The key's project is on Gemini's free tier, which has no quota for either image model. Every scan gets the marble portrait. Turning on billing for that project is the only fix; nothing in the code is wrong. `GET /api/health` still says `"portraits": true`, because it only knows a key is present.
-2. **The 4.8 s limit costs some generated fights.** A fight takes about 3 s to generate, so the limit leaves about 1.2 s of room, and 1 call in 11 ran out of it. With the old 9 s limit that call might have been rescued by the second model at about 8 s. Raising `levelMs` (and `LEVEL_TIMEOUT_MS` with it) trades a longer worst wait on "The Muse is composing..." for fewer bundled fights. This issue asked for under 5 seconds, so that is what is set.
+1. **The AI portrait does not work with the key on this laptop.** The key's project is on Gemini's free tier, which has no quota for either image model. Every scan gets the marble portrait. Turning on billing for that project is the only fix; nothing in the code is wrong. `GET /api/health` still says `"portraits": true`, because it only knows a key is present. The same project's free tier also carries the scan's own quota, so its limits (at the address in the error text) are worth a look before demo day.
+2. **The 4.8 s limit costs some generated fights.** A fight takes about 3 s to generate, so the limit leaves about 1.2 s of room, and 1 call in 11 ran out of it. With the old 9 s limit that call might have been rescued by the second model at about 8 s. The Gemini client gives each model 5 s (`JSON_ATTEMPT_MS`), which is now longer than the route's limit, so for a fight the second model is only reached when the first fails fast, never when it stalls. Raising `levelMs` (and `LEVEL_TIMEOUT_MS` with it) trades a longer worst wait on "The Muse is composing..." for fewer bundled fights. This issue asked for under 5 seconds, so 4.8 s is what is set. Generated fights are only reached from the lab page on `main` today, not from the game's own screens. If the team decides to show one to a judge, set `levelMs` to 8500 and `LEVEL_TIMEOUT_MS` to 9500, list the fight beside the portrait as a second limit over 5 seconds, and loosen the checks that pin 4.8 s for it (S3 and P1).
 3. **The room screens can wait for ever on a server that accepts a request and never answers.** `post` in `src/net/transport.ts` and `fetchLanBase` in `src/screens/roomNet.ts` pass no time limit to `fetch`. Neither file is in this issue's list. The server's own room routes answer in under a millisecond, so this only shows if the server process is stuck or a tunnel holds the request. The two lines are in a `NEEDS:` note on #198.
-4. **A real stall was not reproduced against the real services.** The stalls and wrong answers in the tests come from made-up clients that ignore their abort signal. The real clients (`server/ai/gemini.ts`, `server/ai/elevenlabs.ts`) are not covered by any test, and the new `gemini_model_failed` log line in `gemini.ts` was only seen in the real run above.
-5. **A request body that is not JSON gets a `500` from an AI route**, at once (`server/tests/roomsRoute.test.ts` pins this). The page never sends one, and it falls back on any answer that is not `200`.
-6. **The page keeps a spoken line that came back `200` but is not audio**, and plays nothing for it. The server now refuses to send such a line (S8), so this needs something between the two to go wrong.
-7. **Nothing here was looked at on screen.** The player-facing text in the tables was read from `src/ai/ui/RevealScreen.tsx` and `src/ai/ui/StyleScreen.tsx`, not seen in a browser.
+4. **The measurements are from one evening, one network and a small picture.** The scans above sent a 17 KB test pattern. A real webcam frame is several times bigger, and earlier real webcam scans took up to 2.3 s, close to the 2.5 s at which the second attempt starts. On a slow venue network most scans could cross 2.5 s, and then most would send two requests; an answer that takes 4.8 to 6 s is now lost to the lot, where the old code would still have used it. On demo morning a person should run about five real scans at the venue and count the `reveal_second_attempt` lines in the server's log. If most scans show one, raise `revealHedgeMs` in `server/env.ts` and the bounds in the tests that pin it (H3 and P1) together, in one small change.
+5. **A real stall was not reproduced against the real services.** The stalls and wrong answers in the tests come from made-up clients that ignore their abort signal. The real clients (`server/ai/gemini.ts`, `server/ai/elevenlabs.ts`) are not covered by any test, and the new `gemini_model_failed` log line in `gemini.ts` was only seen in the real run above.
+6. **A request body that is not JSON gets a `500` from an AI route**, at once (`server/tests/roomsRoute.test.ts` pins this). The page never sends one, and it falls back on any answer that is not `200`.
+7. **The page keeps a spoken line that came back `200` but is not audio**, and plays nothing for it. The server now refuses to send such a line (S8), so this needs something between the two to go wrong.
+8. **Nothing here was looked at on screen.** The player-facing text in the tables was read from `src/ai/ui/RevealScreen.tsx` and `src/ai/ui/StyleScreen.tsx`, not seen in a browser.
 
 ## The tests
 
@@ -153,7 +158,7 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 - S8: speech that is not audio is refused and not kept: the same line is spoken once the service answers properly
 - S9: a voice list that comes back empty or as something else is not kept: the next line asks again
 - S10: a portrait that is not a picture is no portrait, and the god is not held back for it
-- S11: a request that is not what a route asks for is refused at once with a 400 or a 404, and never held
+- S11: a request that is not what a route asks for is refused at once with a 400, a 401 or a 404, and never held
 - S12: no answer and no log line carries a key, even when the upstream error spells both keys out
 
 `server/tests/revealHedge.test.ts`
@@ -166,6 +171,7 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 - H6: two attempts that fail, in any mix of error and junk, are unavailable at once with exactly two calls
 - H7: when both attempts answer, the first one in is used and one portrait is painted, for that god
 - H8: the snapshot never appears in a log line, whichever way the two attempts go
+- H9: a first attempt refused for a bad request, a bad key or no permission is not tried again: one call, unavailable at once
 
 `server/tests/redact.test.ts`
 
@@ -184,6 +190,6 @@ Run them with `npx vitest run server/tests/failureDrill.test.ts server/tests/rev
 - P6: generated fight, server stalled or answering wrongly: a bundled fight that fits the phrase, inside the wait
 - P7: spoken line, no key, a stalled server or a wrong answer: no voice, no error, and the line is asked for again next time
 
-`server/tests/hedge.test.ts` has nine more tests of the second-attempt helper by itself.
+`server/tests/hedge.test.ts` has twelve more tests of the second-attempt helper by itself.
 
 A note on the timing tests: S3, H1 and H2 check that the answer comes no earlier than the limit and no later than 1 s after it. The second is room for a busy machine running the whole test suite; on a quiet one the answer comes within a few milliseconds of the limit (4.81 s measured for the fight above). The "under five seconds" in the rules rests on the limits being 4.8 s or less, which P1 and S3 check as numbers.
