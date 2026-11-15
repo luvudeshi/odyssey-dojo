@@ -28,6 +28,7 @@ import type { HostLink } from "../net/host";
 import { createKeyboard } from "../input/keyboard";
 import { createPoseInput, mergeInputs } from "../input/poseInput";
 import { MOVES } from "../moves/registry";
+import { legsInView } from "../moves/waistUp";
 import { keyboardTakesOver } from "../pose/escape";
 import { sentence } from "../pose/cameraError";
 import { GATE_START, gateStep, presenceAt } from "../pose/presence";
@@ -93,6 +94,8 @@ export function FightScreen(props: {
     let history: PoseHistory = { frames: [], baseline };
     let gate = GATE_START;
     let keyboardMode = false;
+    // Whether the camera sees the legs (#239). Fed back each frame so it does not flip; the keyboard has every move.
+    let legs = false;
     let last = performance.now();
     let handle = 0;
 
@@ -102,6 +105,7 @@ export function FightScreen(props: {
         poseRef.current = frame;
         history = pushFrame(history, frame);
         historyRef.current = history;
+        legs = legsInView(history, legs);
       }
       const dt = Math.min(now - last, 100);
       const keys = keyboard.read();
@@ -126,7 +130,7 @@ export function FightScreen(props: {
       const input = link?.guestHere() ? link.takeInput(own, now) : own;
       noteInput(input, now / 1000);
       const from = current;
-      const result = step(current, enemy, style, input, dt);
+      const result = step(current, enemy, style, input, dt, !tracker || keyboardMode || legs);
       last = now;
       current = result.state;
       if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
