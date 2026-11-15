@@ -1,0 +1,99 @@
+/* Look C, the painted amphora (scene in SceneC.tsx). The styles are hoplite shields in black glaze with a white device,
+   the figure is painted black on a framed clay panel, and the grade is written in a black glaze cartouche. */
+html[data-look="c"] .dojo {
+  --bf-glaze: #120b07; --bf-clay: #c86a35; --bf-clay-light: #e8955a; --bf-white: #f6e8cc;
+  --bf-meander: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 28'%3E%3Cpath d='M3 25V3H37V19H15V11H27M37 25H45V3' fill='none' stroke='%23120b07' stroke-width='4'/%3E%3C/svg%3E");
+  background: var(--bf-glaze);
+}
+html[data-look="c"] .dojo:not([data-phase="pick"]) .djc-warriors { display: none; }
+
+/* The neck of the pot is the header: clay letters on glaze. */
+html[data-look="c"] .dojo-top { margin-top: -0.4rem; }
+html[data-look="c"] .dojo-title { font-family: var(--font-display); color: var(--bf-clay-light); letter-spacing: 0.24em; }
+html[data-look="c"] .dojo-title span { color: var(--bf-white); }
+html[data-look="c"] .dojo-progress, html[data-look="c"] .dojo-points { color: var(--bf-white); }
+html[data-look="c"] .dojo-points b { color: var(--bf-clay-light); }
+html[data-look="c"] .dojo-button { color: var(--bf-glaze); background: linear-gradient(#e8955a, #b85a28); border: 2px solid var(--bf-glaze); box-shadow: 0 0 0 2px var(--bf-clay); }
+html[data-look="c"] .dojo-button:not(.dojo-style):hover { background: linear-gradient(#f6b07a, #c86a35); }
+html[data-look="c"] .dojo-button:focus-visible { outline: 4px solid var(--bf-white); outline-offset: 5px; }
+
+/* Picking: five shields in a row on the frieze, each with its own device. */
+html[data-look="c"] .dojo-pick { justify-content: flex-start; padding-top: 7.6rem; gap: 0.5rem; }
+html[data-look="c"] .dojo-pick .dojo-end-title { font-family: var(--font-display); font-size: 2.5rem; color: var(--bf-glaze); }
+html[data-look="c"] .dojo-pick .dojo-closing { max-width: 42rem; color: #24120a; font-weight: 600; }
+html[data-look="c"] .dojo-styles { gap: 1.3rem; margin-top: 1.4rem; }
+html[data-look="c"] .dojo-style {
+  box-sizing: border-box; width: 12.6rem; height: 12.6rem; align-content: center; gap: 0.2rem; padding: 1.4rem; border-radius: 50%;
+  color: var(--bf-white); background: radial-gradient(circle at 34% 28%, #3e2a1c, var(--bf-glaze) 62%); border: 6px solid var(--bf-clay);
+  box-shadow: inset 0 0 0 9px var(--bf-glaze), inset 0 0 0 11px var(--bf-clay), 0 0 0 3px var(--bf-glaze), 0 14px 18px -8px #0009;
+  transition: transform 0.15s ease-out;
+}
+html[data-look="c"] .dojo-style::before { content: ""; justify-self: center; width: 2.6rem; height: 2.6rem; background: center / contain no-repeat; }
+html[data-look="c"] .dojo-style:nth-child(1)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M23 2L8 22H18L14 38L32 15H21Z' fill='%23f6e8cc'/%3E%3C/svg%3E"); }
+html[data-look="c"] .dojo-style:nth-child(2)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 39V4M9 3V13Q9 21 20 21Q31 21 31 13V3M16 8L20 2L24 8' fill='none' stroke='%23f6e8cc' stroke-width='3.5'/%3E%3C/svg%3E"); }
+html[data-look="c"] .dojo-style:nth-child(3)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M5 6L12 11Q20 7 28 11L35 6L33 24Q30 37 20 38Q10 37 7 24Z' fill='%23f6e8cc'/%3E%3Ccircle cx='14' cy='19' r='5' fill='%23120b07'/%3E%3Ccircle cx='26' cy='19' r='5' fill='%23120b07'/%3E%3Ccircle cx='14' cy='19' r='2' fill='%23e8955a'/%3E%3Ccircle cx='26' cy='19' r='2' fill='%23e8955a'/%3E%3Cpath d='M18 25L20 29L22 25Z' fill='%23120b07'/%3E%3C/svg%3E"); }
+html[data-look="c"] .dojo-style:nth-child(4)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 20m-2 0a2 2 0 1 1 4 0a6 6 0 1 1-12 0a10 10 0 1 1 20 0a14 14 0 1 1-28 0' fill='none' stroke='%23f6e8cc' stroke-width='3'/%3E%3C/svg%3E"); }
+html[data-look="c"] .dojo-style:nth-child(5)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 1L24 14L37 9L28 20L37 31L24 26L20 39L16 26L3 31L12 20L3 9L16 14Z' fill='%23f6e8cc'/%3E%3Ccircle cx='20' cy='20' r='4' fill='%23120b07'/%3E%3C/svg%3E"); }
+html[data-look="c"] .dojo-style b { font-family: var(--font-display); font-size: 1.3rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--bf-clay-light); }
+html[data-look="c"] .dojo-style span { font-size: 1rem; color: var(--bf-white); }
+html[data-look="c"] .dojo-style:hover { transform: translateY(-6px) rotate(-3deg); border-color: var(--bf-clay-light); }
+html[data-look="c"] .dojo-style:focus-visible { outline: 4px solid var(--bf-white); outline-offset: 6px; }
+@media (max-width: 87rem) {
+  html[data-look="c"] .dojo-styles { gap: 1rem; }
+  html[data-look="c"] .dojo-style { width: 11.4rem; height: 11.4rem; padding: 1.1rem; }
+  html[data-look="c"] .dojo-style b { font-size: 1.1rem; }
+}
+html[data-look="c"] .dojo-pick > .dojo-key { margin-top: 0.8rem; padding: 0.3rem 1.2rem; color: var(--bf-clay-light); background: var(--bf-glaze); border-radius: 999px; }
+
+/* Practice: the figure painted on a framed panel under a meander, the move written beside it. */
+html[data-look="c"] .dojo-stage { padding-top: 2.4rem; }
+html[data-look="c"] .dojo-outline .move-guide {
+  --mg-ink: var(--bf-glaze); --mg-accent: #fff6e2; --mg-figure: 380px; padding: 2.4rem 1.6rem 1rem 0.6rem; border: none; border-radius: 0;
+  background: var(--bf-meander) top left / 34px 20px repeat-x, radial-gradient(ellipse at 40% 50%, #eaa06a, #cf7840 75%);
+  box-shadow: 0 0 0 4px var(--bf-glaze), 0 0 0 9px #d98a50, 0 0 0 12px var(--bf-glaze), 0 18px 26px #0007;
+}
+html[data-look="c"] .dojo[data-phase="go"] .dojo-outline .move-guide { box-shadow: 0 0 0 4px var(--bf-glaze), 0 0 0 9px var(--bf-white), 0 0 0 12px var(--bf-glaze), 0 18px 26px #0007; }
+html[data-look="c"] .dojo-outline .mg-svg line.mg-lit { stroke-width: 10; }
+html[data-look="c"] .dojo-outline .mg-arrow { stroke: var(--bf-glaze); }
+html[data-look="c"] .dojo-outline #mg-head path { fill: var(--bf-glaze); }
+html[data-look="c"] .dojo-outline .mg-depth { color: #3a1a0c; }
+html[data-look="c"] .dojo-outline .mg-words { font-weight: 600; }
+html[data-look="c"] .dojo-outline .mg-match { font-family: var(--font-display); font-size: 1.3rem; }
+html[data-look="c"] .dojo-outline .mg-match-bar { border-width: 3px; }
+
+html[data-look="c"] .dojo-side { --dj-ink: var(--bf-glaze); --dj-dim: #3a1a0c; color: var(--dj-ink); }
+html[data-look="c"] .dojo-cue { width: fit-content; min-height: 1.2em; padding: 0.15rem 1rem; font-size: 1.25rem; color: var(--bf-clay-light); background: var(--bf-glaze); border-radius: 999px; }
+html[data-look="c"] .dojo[data-phase="go"] .dojo-cue { color: var(--bf-glaze); background: var(--bf-white); box-shadow: 0 0 0 3px var(--bf-glaze); }
+html[data-look="c"] .dojo[data-phase="result"] .dojo-cue { visibility: hidden; }
+html[data-look="c"] .dojo-name { font-family: var(--font-display); font-size: 3.8rem; letter-spacing: 0.08em; }
+html[data-look="c"] .dojo-name::after { content: ""; display: block; height: 20px; margin-top: 0.5rem; background: var(--bf-meander) left / 34px 20px repeat-x; }
+html[data-look="c"] .dojo-how { font-size: 1.75rem; font-weight: 600; }
+html[data-look="c"] .dojo-time { height: 1.1rem; background: #f2b88a66; border: 3px solid var(--bf-glaze); border-radius: 0; }
+html[data-look="c"] .dojo-time-fill, html[data-look="c"] .dojo[data-phase="go"] .dojo-time-fill { background: var(--bf-glaze); }
+html[data-look="c"] .dojo-key { font-weight: 600; }
+html[data-look="c"] .dojo-key kbd { color: var(--bf-clay-light); background: var(--bf-glaze); border-color: var(--bf-glaze); }
+html[data-look="c"] .dojo-result {
+  --dj-excellent: #b6ec94; --dj-good: #f6c46a; --dj-needs: #ffa284;
+  padding: 1.1rem 1.5rem 1.3rem; color: var(--bf-white); background: radial-gradient(ellipse at 30% 20%, #3a2618, var(--bf-glaze) 70%);
+  border-radius: 1.4rem; box-shadow: inset 0 0 0 4px var(--bf-glaze), inset 0 0 0 6px var(--bf-clay), 0 12px 20px #0008;
+}
+html[data-look="c"] .dojo-grade { font-family: var(--font-display); font-size: 3.4rem; }
+html[data-look="c"] .dojo[data-tier="needs_work"] .dojo-grade { font-size: 2.6rem; }
+html[data-look="c"] .dojo-tip { margin-top: 0.4rem; color: var(--bf-white); font-size: 1.45rem; }
+html[data-look="c"] .dojo-dot { border: 3px solid var(--bf-glaze); background: radial-gradient(circle, var(--bf-glaze) 0 35%, var(--bf-clay-light) 38% 52%, var(--bf-glaze) 55%); }
+html[data-look="c"] .dojo-dots li { color: var(--bf-glaze); }
+html[data-look="c"] .dojo-dots li[data-now] .dojo-dot { box-shadow: 0 0 0 3px var(--bf-white); }
+html[data-look="c"] .dojo-dots li[data-tier] { color: var(--bf-glaze); }
+html[data-look="c"] .dojo-dots li[data-tier="excellent"] .dojo-dot { background: radial-gradient(circle, #6a9a3a 0 50%, var(--bf-glaze) 54%); border-color: var(--bf-glaze); }
+html[data-look="c"] .dojo-dots li[data-tier="good"] .dojo-dot { background: radial-gradient(circle, #f0b040 0 50%, var(--bf-glaze) 54%); border-color: var(--bf-glaze); }
+html[data-look="c"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { background: radial-gradient(circle, #a8301c 0 50%, var(--bf-glaze) 54%); border-color: var(--bf-glaze); border-style: solid; }
+
+/* The end: glaze cartouches on the frieze. */
+html[data-look="c"] .dojo-end { padding-top: 5rem; }
+html[data-look="c"] .dojo-end .dojo-end-title, html[data-look="c"] .dojo-total, html[data-look="c"] .dojo-end > .dojo-closing, html[data-look="c"] .dojo-tuned { color: var(--bf-glaze); }
+html[data-look="c"] .dojo-total span { color: #3a1a0c; }
+html[data-look="c"] .dojo-card { color: var(--bf-white); background: var(--bf-glaze); border: none; box-shadow: inset 0 0 0 4px var(--bf-glaze), inset 0 0 0 6px var(--bf-clay); }
+html[data-look="c"] .dojo-card h2 { color: var(--bf-clay-light); }
+html[data-look="c"] .dojo-card li[data-tier="excellent"] b { color: #b6ec94; }
+html[data-look="c"] .dojo-card li[data-tier="good"] b { color: #f6c46a; }
+html[data-look="c"] .dojo-card li[data-tier="needs_work"] b { color: #ffa284; }

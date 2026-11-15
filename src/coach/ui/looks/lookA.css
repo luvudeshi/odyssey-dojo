@@ -1,0 +1,106 @@
+/* Look A, the palaestra at dusk (scene in SceneA.tsx). The styles are marble stelae standing in the sand, the figure
+   is set in a pebble-mosaic tondo, the checklist is scratched on a wax tablet and the move is carved on a stele. */
+html[data-look="a"] .dojo {
+  --la-marble: linear-gradient(100deg, transparent 38%, #ffffff30 47%, transparent 56%),
+    repeating-linear-gradient(118deg, transparent 0 26px, #7a684a1c 26px 28px, transparent 28px 61px, #7a684a12 61px 62px),
+    linear-gradient(90deg, #c7b390, #f3e9d2 42%, #e6d7b8 70%, #c3ad86);
+  --la-carve: 0 1px 0 #fffbf0b0, 0 -1px 0 #3a20101f;
+  --la-laurel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 20'%3E%3Cpath d='M8 10H152' stroke='%235e5424' stroke-width='1.6'/%3E%3Cg fill='%236f7d34'%3E%3Cellipse cx='20' cy='5.5' rx='7' ry='2.6' transform='rotate(-24 20 5.5)'/%3E%3Cellipse cx='20' cy='14.5' rx='7' ry='2.6' transform='rotate(24 20 14.5)'/%3E%3Cellipse cx='38' cy='5.5' rx='7' ry='2.6' transform='rotate(-24 38 5.5)'/%3E%3Cellipse cx='38' cy='14.5' rx='7' ry='2.6' transform='rotate(24 38 14.5)'/%3E%3Cellipse cx='56' cy='5.5' rx='7' ry='2.6' transform='rotate(-24 56 5.5)'/%3E%3Cellipse cx='56' cy='14.5' rx='7' ry='2.6' transform='rotate(24 56 14.5)'/%3E%3Cellipse cx='104' cy='5.5' rx='7' ry='2.6' transform='rotate(24 104 5.5)'/%3E%3Cellipse cx='104' cy='14.5' rx='7' ry='2.6' transform='rotate(-24 104 14.5)'/%3E%3Cellipse cx='122' cy='5.5' rx='7' ry='2.6' transform='rotate(24 122 5.5)'/%3E%3Cellipse cx='122' cy='14.5' rx='7' ry='2.6' transform='rotate(-24 122 14.5)'/%3E%3Cellipse cx='140' cy='5.5' rx='7' ry='2.6' transform='rotate(24 140 5.5)'/%3E%3Cellipse cx='140' cy='14.5' rx='7' ry='2.6' transform='rotate(-24 140 14.5)'/%3E%3C/g%3E%3Ccircle cx='80' cy='10' r='5' fill='%23b8553a'/%3E%3C/svg%3E");
+  background: #1a1d33;
+}
+
+/* The roof beam is the header: dark letters cut into marble. */
+html[data-look="a"] .dojo-top { min-height: 3.2rem; margin-top: -0.6rem; }
+html[data-look="a"] .dojo-title { color: #5a2a14; text-shadow: var(--la-carve); font-family: var(--font-display); }
+html[data-look="a"] .dojo-title span { color: #7a4a2a; }
+html[data-look="a"] .dojo-progress, html[data-look="a"] .dojo-points { color: #4a3020; text-shadow: var(--la-carve); }
+html[data-look="a"] .dojo-points b { color: #2a160c; }
+html[data-look="a"] .dojo-top .dojo-button {
+  color: #1b1410; background: linear-gradient(#e2b25d, #a8742c); border: 2px solid #5a3418; box-shadow: 0 2px 0 #5a3418, inset 0 1px 0 #fff3c8;
+}
+html[data-look="a"] .dojo-button:focus-visible { outline: 4px solid #fff4dc; outline-offset: 5px; box-shadow: 0 0 0 9px #2a160c; }
+
+/* Picking: the question hangs in the sunset between the columns, the styles stand on the sand as stelae. */
+html[data-look="a"] .dojo-pick { justify-content: flex-start; padding-top: 5.5rem; gap: 0.8rem; }
+html[data-look="a"] .dojo-pick .dojo-end-title { color: #fff0d4; font-family: var(--font-display); font-size: 2.6rem; text-shadow: 0 2px 0 #2a1408, 0 0 24px #000c; }
+html[data-look="a"] .dojo-pick .dojo-closing { color: #fff4e2; text-shadow: 0 1px 2px #000, 0 0 14px #000d; }
+html[data-look="a"] .dojo-styles { gap: 1.7rem; margin-top: 3.2rem; }
+html[data-look="a"] .dojo-style {
+  position: relative; align-content: center; width: 12.6rem; min-height: 14.5rem; padding: 1.4rem 1rem; color: #2a160c;
+  background: var(--la-marble); border: none; border-radius: 0;
+  box-shadow: inset 0 0 0 2px #a28a64, inset 0 0 0 8px #efe3c8, inset 0 0 0 9px #a28a64, 0 26px 26px -14px #000c;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+html[data-look="a"] .dojo-style::before {
+  content: ""; position: absolute; left: -0.7rem; right: -0.7rem; bottom: 100%; height: 2.6rem; clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  background: radial-gradient(circle at 50% 66%, #e9b955 0 0.5rem, #6b4220 0.55rem 0.7rem, transparent 0.75rem), linear-gradient(#efe3c8, #c5ae86);
+}
+html[data-look="a"] .dojo-style::after {
+  content: ""; position: absolute; left: -0.8rem; right: -0.8rem; top: 100%; height: 1rem; background: linear-gradient(#9c8160, #6b5238); box-shadow: 0 10px 18px #0009;
+}
+html[data-look="a"] .dojo-style b { font-family: var(--font-display); font-size: 1.55rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6a2c12; text-shadow: var(--la-carve); }
+html[data-look="a"] .dojo-style b::after { content: ""; display: block; height: 1.1rem; margin: 0.5rem auto 0; width: 9rem; background: var(--la-laurel) center / contain no-repeat; }
+html[data-look="a"] .dojo-style span { color: #3a2414; font-size: 1.15rem; font-weight: 600; }
+html[data-look="a"] .dojo-style:hover { transform: translateY(-6px); box-shadow: inset 0 0 0 2px #a28a64, inset 0 0 0 8px #fff4dc, inset 0 0 0 9px #c98f37, 0 34px 30px -14px #000c, 0 0 40px #ffc87a66; }
+html[data-look="a"] .dojo-style:focus-visible { outline: 4px solid #fff4dc; outline-offset: 0.9rem; box-shadow: inset 0 0 0 2px #a28a64, inset 0 0 0 8px #fff4dc, inset 0 0 0 9px #c98f37, 0 0 0 0.9rem #2a160cb0, 0 0 50px #ffc87a; }
+html[data-look="a"] .dojo-pick > .dojo-key { margin-top: 1.8rem; padding: 0.35rem 1.1rem; color: #2a160c; font-weight: 700; background: #e9d7b0d9; border-radius: 999px; }
+
+/* Practice: the figure in a pebble tondo, the checklist on a wax tablet, the move carved on a stele. */
+html[data-look="a"] .dojo-stage { gap: 2.2rem; }
+html[data-look="a"] .dojo-outline .move-guide { --mg-figure: 360px; --mg-accent: #e9b955; gap: 1.6rem; padding: 0; background: none; border: none; box-shadow: none; }
+html[data-look="a"] .dojo-outline .mg-figure {
+  box-sizing: border-box; width: 28rem; height: 28rem; justify-content: center; align-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, #2c221c, #15100e 70%); border: 11px dotted #efe3c8;
+  outline: 9px dotted #b8553a; outline-offset: 3px; box-shadow: 0 0 0 18px #3a5560cc, 0 0 0 20px #15100e, 0 26px 40px #000c;
+}
+html[data-look="a"] .dojo[data-phase="go"] .dojo-outline .mg-figure { outline-color: #e9b955; box-shadow: 0 0 0 18px #c98f37, 0 0 0 20px #15100e, 0 0 60px #ffc87a; }
+html[data-look="a"] .dojo-outline .mg-depth { top: 2.2rem; font-size: 1rem; }
+html[data-look="a"] .dojo-outline .mg-words {
+  box-sizing: border-box; width: 18.5rem; padding: 1.5rem 1.4rem; border-radius: 8px;
+  background: radial-gradient(ellipse at 40% 30%, #3a2c1c, #241a10); --mg-ink: #f3e6c8;
+  box-shadow: inset 0 0 0 11px #7a4e2c, inset 0 0 0 13px #3a2212, inset 0 0 18px 14px #0008, 0 20px 30px #000b;
+}
+html[data-look="a"] .dojo-outline .mg-match { font-family: var(--font-display); font-size: 1.3rem; }
+
+html[data-look="a"] .dojo-side {
+  --dj-ink: #24150c; --dj-dim: #5a3c28; --dj-accent: #a8641c; --dj-line: #8a7456; --dj-deep: #3a2414;
+  --dj-excellent: #2f6e1e; --dj-good: #8a560a; --dj-needs: #a3301b;
+  position: relative; margin-top: 2.6rem; color: var(--dj-ink); padding: 1.7rem 1.9rem 1.6rem; background: var(--la-marble);
+  box-shadow: inset 0 0 0 2px #a28a64, inset 0 0 0 9px #efe3c8, inset 0 0 0 10px #a28a64, 0 30px 40px -12px #000d;
+}
+html[data-look="a"] .dojo-side::before {
+  content: ""; position: absolute; left: -0.9rem; right: -0.9rem; bottom: 100%; height: 2.6rem; clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  background: radial-gradient(circle at 50% 66%, #e9b955 0 0.55rem, #6b4220 0.6rem 0.75rem, transparent 0.8rem), linear-gradient(#efe3c8, #c5ae86);
+}
+html[data-look="a"] .dojo-side::after { content: ""; position: absolute; left: -1rem; right: -1rem; top: 100%; height: 1.1rem; background: linear-gradient(#9c8160, #6b5238); }
+html[data-look="a"] .dojo-cue {
+  justify-self: start; width: fit-content; min-height: 1.2em; padding: 0.15rem 0.8rem; font-size: 1.25rem; color: #fff4e0; background: #6b4a34; border-radius: 4px;
+}
+html[data-look="a"] .dojo[data-phase="go"] .dojo-cue { color: #24150c; background: linear-gradient(#f0c36a, #c98f37); }
+html[data-look="a"] .dojo[data-phase="result"] .dojo-cue { visibility: hidden; }
+html[data-look="a"] .dojo-name { font-family: var(--font-display); font-size: 3.6rem; color: #4a1e0c; text-shadow: var(--la-carve); }
+html[data-look="a"] .dojo-name::after { content: ""; display: block; width: 12rem; height: 1.4rem; margin-top: 0.6rem; background: var(--la-laurel) left center / contain no-repeat; }
+html[data-look="a"] .dojo-how { font-size: 1.7rem; font-weight: 600; }
+html[data-look="a"] .dojo-time { height: 1.1rem; background: #3a2414; border: 2px solid #6b4426; border-radius: 0; box-shadow: inset 0 2px 4px #000a; }
+html[data-look="a"] .dojo-time-fill, html[data-look="a"] .dojo[data-phase="go"] .dojo-time-fill { background: linear-gradient(#f0c36a, #a8742c); }
+html[data-look="a"] .dojo-key { font-weight: 600; }
+html[data-look="a"] .dojo-key kbd { background: #2a160c; color: #fff4dc; border-color: #2a160c; }
+html[data-look="a"] .dojo-grade { font-family: var(--font-display); font-size: 3.6rem; text-shadow: var(--la-carve); }
+html[data-look="a"] .dojo[data-tier="needs_work"] .dojo-grade { font-size: 2.7rem; }
+html[data-look="a"] .dojo-gain { font-size: 2.6rem; text-shadow: var(--la-carve); }
+html[data-look="a"] .dojo-tip { margin-top: 0.4rem; padding-top: 0.6rem; font-size: 1.45rem; font-weight: 600; border-top: 2px solid #a28a64; }
+html[data-look="a"] .dojo-dots { padding-top: 0.6rem; }
+html[data-look="a"] .dojo-dot { border: 2px solid #6b5238; background: radial-gradient(circle at 35% 30%, #fffaf0 0 10%, #d8c6a2 45%, #8f7656); }
+html[data-look="a"] .dojo-dots li[data-now] .dojo-dot { box-shadow: 0 0 0 3px #c98f37; }
+html[data-look="a"] .dojo-dots li[data-tier="excellent"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #d8f0b0 0 10%, #6c9a3a 50%, #2f5a1a); border-color: #2f5a1a; }
+html[data-look="a"] .dojo-dots li[data-tier="good"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #fff0c0 0 10%, #d9a34a 50%, #8a560a); border-color: #8a560a; }
+html[data-look="a"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { background: radial-gradient(circle at 35% 30%, #ffd0b8 0 10%, #c9684a 50%, #7a2a14); border-color: #7a2a14; border-style: solid; }
+
+/* The end: the same stelae. */
+html[data-look="a"] .dojo-end { padding-top: 4rem; }
+html[data-look="a"] .dojo-end .dojo-end-title, html[data-look="a"] .dojo-total, html[data-look="a"] .dojo-end > .dojo-closing, html[data-look="a"] .dojo-tuned { color: #fff0d4; text-shadow: 0 2px 2px #000, 0 0 18px #000c; }
+html[data-look="a"] .dojo-card { color: #24150c; background: var(--la-marble); border: none; border-radius: 0; box-shadow: inset 0 0 0 2px #a28a64, inset 0 0 0 8px #efe3c8, inset 0 0 0 9px #a28a64, 0 24px 30px -10px #000c; }
+html[data-look="a"] .dojo-card h2 { color: #6a2c12; text-shadow: var(--la-carve); }
+html[data-look="a"] .dojo-card li span { color: #5a3c28; }
+html[data-look="a"] .dojo-end .dojo-button { color: #1b1410; background: linear-gradient(#efe3c8, #c5ae86); border: 2px solid #5a3418; }
+html[data-look="a"] .dojo-end .dojo-button.primary { background: linear-gradient(#f0c36a, #a8742c); }

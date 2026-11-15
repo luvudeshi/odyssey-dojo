@@ -1,0 +1,7 @@
+/* Draft round, shared by the three looks: the scene sits behind everything, the screen sits on it, and the dojo gets the
+   bronze arrowhead cursor the menus use. With no ?look nothing here applies. */
+html[data-look] .dojo { isolation: isolate; cursor: url("../../../screens/cursor/arrowhead.svg") 1 1, auto; }
+html[data-look] .dojo :is(button, kbd) { cursor: url("../../../screens/cursor/arrowhead-hot.svg") 1 1, pointer; }
+html[data-look] .dojo > .dj-scene { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; }
+html[data-look] .dojo > :not(.dj-scene, .dojo-camera) { position: relative; z-index: 1; }
+html[data-look] .dojo > .dojo-camera { z-index: 2; }

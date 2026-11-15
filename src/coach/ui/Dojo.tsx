@@ -16,6 +16,15 @@ import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
 import { MoveGuide } from "./MoveGuide";
 import "./dojo.css";
+// Draft round (?look=a|b|c): each look is a scene behind the screen plus one stylesheet. Delete the two that lose.
+import { look } from "../../ui/lookSwitch";
+import { SceneA } from "./looks/SceneA";
+import { SceneB } from "./looks/SceneB";
+import { SceneC } from "./looks/SceneC";
+import "./looks/looks.css";
+import "./looks/lookA.css";
+import "./looks/lookB.css";
+import "./looks/lookC.css";
 
 /** What the dojo needs of the camera. The game's `PoseTracker` fits; so does anything that hands out frames. */
 export interface DojoTracker {
@@ -157,6 +166,9 @@ export function Dojo(props: DojoProps) {
 
   return (
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
+      {look === "a" && <SceneA />}
+      {look === "b" && <SceneB />}
+      {look === "c" && <SceneC />}
       <header className="dojo-top">
         <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
         {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}

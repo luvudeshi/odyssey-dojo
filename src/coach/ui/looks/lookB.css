@@ -1,0 +1,102 @@
+/* Look B, the obsidian forge hall (scene in SceneB.tsx), made to sit beside the Obsidian Rift fight HUD. The styles are
+   shards of volcanic glass, the figure stands in a cut-glass frame rimmed in lava for a strike and ice for a defence,
+   and the grade glows like metal out of the fire. */
+html[data-look="b"] .dojo {
+  --ob-ice: #7fd8ff; --ob-lava: #ff7a22; --ob-hot: #ffd08a;
+  --ob-glass: linear-gradient(160deg, #222b3e 0%, #121722 28%, #07090e 66%, #161c2a 100%);
+  --ob-octagon: polygon(26px 0, calc(100% - 26px) 0, 100% 26px, 100% calc(100% - 26px), calc(100% - 26px) 100%, 26px 100%, 0 calc(100% - 26px), 0 26px);
+  --ob-chip: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+  --dj-ink: #eef3ff; --dj-dim: #b9c6dc; --dj-excellent: #8ff0a8; --dj-good: #ffc65a; --dj-needs: #ff7a5a;
+  background: #06070b;
+}
+html[data-look="b"] .dojo :is(.dojo-title, .dojo-end-title, .dojo-points b, .dojo-gain) {
+  color: transparent; background: linear-gradient(#fff0c8, #ffa040 55%, #d8400c); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 0 10px #ff5a1488);
+}
+html[data-look="b"] .dojo-title { font-family: var(--font-display); letter-spacing: 0.3em; }
+html[data-look="b"] .dojo-title span { color: transparent; }
+html[data-look="b"] .dojo-progress { color: var(--ob-ice); font-size: 1.15rem; letter-spacing: 0.24em; text-transform: uppercase; }
+html[data-look="b"] .dojo-points { padding: 0.2rem 1.4rem; clip-path: var(--ob-chip); background: var(--ob-glass); }
+html[data-look="b"] .dojo-points span { font-size: 1rem; letter-spacing: 0.3em; color: var(--dj-dim); }
+html[data-look="b"] .dojo-button { color: var(--dj-ink); background: var(--ob-glass); border: 2px solid #4a5a80; border-radius: 4px; box-shadow: inset 0 1px 0 #ffffff22; }
+html[data-look="b"] .dojo-button:hover { border-color: var(--ob-lava); box-shadow: 0 0 16px #ff6a1a66; }
+html[data-look="b"] .dojo-button.primary { color: #1b0c04; background: linear-gradient(#ffd08a, #ff8a2a 60%, #c8400c); border-color: #ffd08a; }
+html[data-look="b"] .dojo-button:focus-visible { outline: 3px solid #e8f8ff; outline-offset: 5px; box-shadow: 0 0 22px #7fd8ff; }
+
+/* Picking: five shards of glass, each with a vein of lava. */
+html[data-look="b"] .dojo-pick .dojo-end-title { font-family: var(--font-display); font-size: 3rem; letter-spacing: 0.22em; }
+html[data-look="b"] .dojo-pick .dojo-closing { color: #c9d3e6; text-shadow: 0 2px 8px #000; }
+html[data-look="b"] .dojo-styles { gap: 1.6rem; margin: 1.6rem 0 1rem; }
+html[data-look="b"] .dojo-style {
+  position: relative; isolation: isolate; align-content: center; width: 13rem; min-height: 16rem; padding: 2rem 2rem 2rem 1.3rem;
+  background: none; border: none; border-radius: 0; box-shadow: none; transition: transform 0.15s ease-out, filter 0.15s ease-out;
+}
+html[data-look="b"] .dojo-style::before, html[data-look="b"] .dojo-style::after {
+  content: ""; position: absolute; z-index: -1; clip-path: polygon(14% 0, 86% 4%, 100% 24%, 95% 84%, 76% 100%, 20% 96%, 0 78%, 5% 15%);
+}
+html[data-look="b"] .dojo-style::before { inset: 0; background: linear-gradient(165deg, var(--ob-ice), #2b3550 32%, #2b3550 62%, var(--ob-lava)); }
+html[data-look="b"] .dojo-style::after {
+  inset: 3px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cg fill='none' stroke-linejoin='round' vector-effect='non-scaling-stroke'%3E%3Cpath d='M95 0 L88 18 L96 34 L86 56 L93 72 L84 100 M86 56 L77 72 L79 90' stroke='%23ff7a22' stroke-opacity='0.45' stroke-width='7' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M95 0 L88 18 L96 34 L86 56 L93 72 L84 100 M86 56 L77 72 L79 90' stroke='%23ffd08a' stroke-width='1.6' vector-effect='non-scaling-stroke'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat,
+    radial-gradient(ellipse at 70% 100%, #ff6a1a40, transparent 60%), var(--ob-glass);
+}
+html[data-look="b"] .dojo-style b { font-family: var(--font-display); font-size: 1.45rem; letter-spacing: 0.12em; text-transform: uppercase; color: #fff; text-shadow: 0 0 14px #ff6a1a, 0 2px 0 #000; }
+html[data-look="b"] .dojo-style span { color: #c9d3e6; font-size: 1.12rem; text-shadow: 0 1px 2px #000; }
+html[data-look="b"] .dojo-style:hover { box-shadow: none; transform: translateY(-6px); filter: drop-shadow(0 0 18px #ff6a1aaa); }
+html[data-look="b"] .dojo-style:focus-visible { outline: 3px solid #e8f8ff; outline-offset: 8px; filter: drop-shadow(0 0 20px #7fd8ffcc); box-shadow: none; }
+html[data-look="b"] .dojo-pick > .dojo-key { padding: 0.35rem 1.6rem; color: #dff4ff; clip-path: var(--ob-chip); background: linear-gradient(#1a2a3a, #0b121c); }
+
+html[data-look="b"] .dojo-side { padding: 1.5rem; background: radial-gradient(closest-side, #05060ae0 55%, transparent); }
+
+/* Practice: a cut-glass frame, lava for a strike and ice for a defence, with its kind on a chip as in the fight. */
+html[data-look="b"] .dojo-outline { position: relative; filter: drop-shadow(0 0 22px #ff6a1a66); }
+html[data-look="b"] .dojo-outline:has(.defend) { filter: drop-shadow(0 0 22px #5fc8ff66); }
+html[data-look="b"] .dojo-outline::before { content: ""; position: absolute; inset: 0; clip-path: var(--ob-octagon); background: linear-gradient(160deg, var(--ob-hot), var(--ob-lava) 30%, #6a1a04 60%, var(--ob-lava)); }
+html[data-look="b"] .dojo-outline:has(.defend)::before { background: linear-gradient(160deg, #e8f8ff, var(--ob-ice) 30%, #1a4a6a 60%, var(--ob-ice)); }
+html[data-look="b"] .dojo-outline .move-guide {
+  --mg-ink: #f2f6ff; --mg-figure: 400px; position: relative; margin: 4px; padding: 1.2rem 2rem 1.2rem 1rem; clip-path: var(--ob-octagon);
+  background: radial-gradient(ellipse at 30% 92%, #ff6a1a30, transparent 45%), var(--ob-glass); border: none; border-radius: 0; box-shadow: none;
+}
+html[data-look="b"] .dojo-outline .move-guide.strike { --mg-accent: #ffa040; }
+html[data-look="b"] .dojo-outline .move-guide.defend { --mg-accent: var(--ob-ice); background: radial-gradient(ellipse at 30% 92%, #5fc8ff30, transparent 45%), var(--ob-glass); }
+html[data-look="b"] .dojo-outline .mg-kind {
+  display: block; width: fit-content; margin-bottom: 1rem; padding: 0.3rem 1.4rem; font-family: var(--font-display); font-size: 1.15rem; letter-spacing: 0.32em;
+  color: var(--mg-accent); background: #05070b; clip-path: var(--ob-chip); box-shadow: inset 0 0 0 2px var(--mg-accent);
+}
+html[data-look="b"] .dojo-outline .mg-match { font-family: var(--font-display); font-size: 1.3rem; letter-spacing: 0.12em; }
+html[data-look="b"] .dojo-outline .mg-match-bar { border-color: #4a5a80; background: #05070b; }
+html[data-look="b"] .dojo-outline .mg-depth { color: var(--mg-accent); }
+
+html[data-look="b"] .dojo-cue {
+  width: fit-content; min-height: 1.2em; padding: 0.25rem 1.4rem; font-family: var(--font-display); font-size: 1.2rem; letter-spacing: 0.3em;
+  color: var(--dj-dim); background: #0b0e16; clip-path: var(--ob-chip); box-shadow: inset 0 0 0 2px #4a5a80;
+}
+html[data-look="b"] .dojo[data-phase="go"] .dojo-cue { color: #1b0c04; background: linear-gradient(#ffd08a, #ff8a2a); box-shadow: none; }
+html[data-look="b"] .dojo[data-phase="result"] .dojo-cue { visibility: hidden; }
+html[data-look="b"] .dojo-name { font-family: var(--font-display); font-size: 4rem; color: #fff; text-shadow: 0 3px 0 #000, 0 0 28px #7fb8ff55; }
+html[data-look="b"] .dojo-how { color: #dbe3f2; font-size: 1.75rem; text-shadow: 0 2px 4px #000; }
+html[data-look="b"] .dojo-time {
+  height: 1.2rem; border: none; border-radius: 0; background: #0b0e16; clip-path: polygon(0 50%, 14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%);
+  box-shadow: inset 0 0 0 2px #3a4560;
+}
+html[data-look="b"] .dojo-time-fill { background: linear-gradient(#cfe9ff, #5f8fb8); }
+html[data-look="b"] .dojo[data-phase="go"] .dojo-time-fill { background: linear-gradient(#ffe0a0, #ff7a22 50%, #c8340a); box-shadow: 0 0 12px #ff6a1a; }
+html[data-look="b"] .dojo-key { color: #c9d3e6; }
+html[data-look="b"] .dojo-key kbd { color: #fff; background: #151a26; border-color: var(--ob-ice); box-shadow: 0 0 10px #5fc8ff88; }
+html[data-look="b"] .dojo-grade { font-family: var(--font-display); font-size: 4rem; text-shadow: 0 3px 0 #000, 0 0 26px currentColor; }
+html[data-look="b"] .dojo[data-tier="needs_work"] .dojo-grade { font-size: 3rem; }
+html[data-look="b"] .dojo[data-tier] .dojo-gain { font-family: var(--font-display); font-size: 3rem; }
+html[data-look="b"] .dojo-tip {
+  margin-top: 0.6rem; padding: 0.8rem 1.1rem; font-size: 1.5rem; color: #eef3ff;
+  background: linear-gradient(100deg, #18213a, #0a0d15ee); box-shadow: inset 4px 0 0 var(--ob-ice), inset 0 0 0 1px #3a4560;
+}
+html[data-look="b"] .dojo-dot { width: 2.2rem; height: 2.5rem; border: none; border-radius: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: linear-gradient(160deg, #3a4560, #10141e); }
+html[data-look="b"] .dojo-dots li[data-now] .dojo-dot { background: linear-gradient(160deg, #e8f8ff, var(--ob-ice)); box-shadow: none; }
+html[data-look="b"] .dojo-dots li[data-tier="excellent"] .dojo-dot { background: linear-gradient(160deg, #e0ffe8, #4ac070); }
+html[data-look="b"] .dojo-dots li[data-tier="good"] .dojo-dot { background: linear-gradient(160deg, #fff0c8, #e09a20); }
+html[data-look="b"] .dojo-dots li[data-tier="needs_work"] .dojo-dot { background: linear-gradient(160deg, #ffc0a0, #c8340a); }
+
+/* The end: glass slabs. */
+html[data-look="b"] .dojo-total, html[data-look="b"] .dojo-end > .dojo-closing, html[data-look="b"] .dojo-tuned { color: #dbe3f2; text-shadow: 0 2px 6px #000; }
+html[data-look="b"] .dojo-card { background: var(--ob-glass); border: 2px solid #3a4560; border-radius: 0; clip-path: var(--ob-octagon); }
+html[data-look="b"] .dojo-card h2 { color: var(--ob-lava); }
