@@ -8,6 +8,7 @@ import { getSettings, subscribeSettings } from "../settings/store";
 import type { LoopPoints } from "./music";
 import { clipLevel, seamLoop } from "./music";
 import { sharedAudioContext } from "./sfx";
+import { watchVoice } from "./voice";
 import { stopAmbience, stopClipFor, stopClipKey, stopClips } from "./stopSounds";
 
 const CLIP_DIR = "/audio/stops";
@@ -21,6 +22,8 @@ const AMBIENCE_LOUDNESS = 0.08;
  * sound peaks at 0.24 to 0.45). The other four peak at 0.14 or less. Nobody has listened to how the pops sit in the mix.
  */
 const AMBIENCE_PEAK = 2;
+/** While a line is spoken the ambience dips to this share of itself, as the music does (music.ts DUCK). */
+const DUCK = 0.5;
 /** A stop's event sounds sit where the usual effects do (sfx.ts plays through 0.5). */
 const EVENT_GAIN = 0.5;
 const EVENT_LOUDNESS = 0.12;
@@ -95,6 +98,14 @@ let current: Load | null = null;
 let wanted: string | null = null;
 let playing: Playing | null = null;
 let applied: StopVolumes = { music: 1, sfx: 1 };
+let speaking = false;
+let paused = false;
+let appliedTarget = AMBIENCE_GAIN;
+
+/** The gain of the ambience bus: the music setting, halved under a spoken line, and nothing while the game is paused. */
+export function ambienceGain(music: number, ducked: boolean, isPaused: boolean): number {
+  return isPaused ? 0 : AMBIENCE_GAIN * music * (ducked ? DUCK : 1);
+}
 
 /** The clip names in an index.json. Anything malformed gives an empty list. */
 export function listedStopClips(listed: unknown): readonly string[] {
@@ -131,9 +142,11 @@ function readVolumes(): StopVolumes {
 function applyVolumes({ context, ambienceBus, eventBus }: Rig): void {
   try {
     const next = readVolumes();
-    if (next.music === applied.music && next.sfx === applied.sfx) return;
+    const target = ambienceGain(next.music, speaking, paused);
+    if (next.music === applied.music && next.sfx === applied.sfx && target === appliedTarget) return;
     applied = next;
-    ambienceBus.gain.setTargetAtTime(AMBIENCE_GAIN * next.music, context.currentTime, GLIDE_SECONDS);
+    appliedTarget = target;
+    ambienceBus.gain.setTargetAtTime(target, context.currentTime, GLIDE_SECONDS);
     eventBus.gain.setTargetAtTime(EVENT_GAIN * next.sfx, context.currentTime, GLIDE_SECONDS);
   } catch (error) {
     log("warn", "stops.volumeFailed", error);
@@ -267,7 +280,8 @@ function createRig(): Rig | null {
     if (!context) return null;
     applied = readVolumes();
     const ambienceBus = context.createGain();
-    ambienceBus.gain.value = AMBIENCE_GAIN * applied.music;
+    appliedTarget = ambienceGain(applied.music, speaking, paused);
+    ambienceBus.gain.value = appliedTarget;
     ambienceBus.connect(context.destination);
     const eventBus = context.createGain();
     eventBus.gain.value = EVENT_GAIN * applied.sfx;
@@ -359,3 +373,18 @@ export function playStopEvent(enemyId: string, event: CombatEvent): boolean {
     return false;
   }
 }
+
+/** Holds the ambience silent while the game is paused, and brings it back after. */
+export function pauseStopAmbience(isPaused: boolean): void {
+  paused = isPaused;
+  if (rig) applyVolumes(rig);
+}
+
+// Dips under Athena's, Homer's and the monsters' lines; each voice has its own name, so one falling quiet while another speaks keeps the dip.
+const speakers = new Set<string>();
+watchVoice((isSpeaking, who = "voice") => {
+  if (isSpeaking) speakers.add(who);
+  else speakers.delete(who);
+  speaking = speakers.size > 0;
+  if (rig) applyVolumes(rig);
+});
