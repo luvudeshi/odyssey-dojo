@@ -16,7 +16,7 @@ import type { GradeTier } from "../grade";
 import { guideFor } from "../guide";
 import { BronzeDefs, ShieldCard } from "../../screens/menuShields";
 import { lookIs } from "../../ui/lookSwitch";
-import { Backdrop, SetTitle } from "../../ui/set/Set";
+import { Backdrop } from "../../ui/set/Set";
 import { STYLE_DEVICES } from "../../ui/set/styleDevices";
 import { ForgeScene } from "./ForgeScene";
 import { MoveGuide } from "./MoveGuide";
@@ -165,15 +165,16 @@ export function Dojo(props: DojoProps) {
     <main ref={root} className="dojo" data-phase={picking ? "pick" : view.phase} data-move={picking ? "" : (move?.id ?? "")} data-rep={view.repIndex} data-tier={last?.grade.tier ?? ""}>
       {storm ? <Backdrop src="/textures/set/storm/yard.jpg" /> : <ForgeScene />}
       <header className="dojo-top">
-        <p className="dojo-title">Training dojo <span>{style?.name ?? ""}</span></p>
-        {!done && !picking && <p className="dojo-progress">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
-        {!picking && <p className="dojo-points" aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
-        {onQuit && !done && <button type="button" className="dojo-button dojo-quit" onClick={onQuit}>{picking ? "Back" : "Quit"}</button>}
+        <p className={storm ? "dojo-title set-title" : "dojo-title"}>Training dojo <span>{style?.name ?? ""}</span></p>
+        {storm && picking && <h1 className="dojo-progress set-sub">What do you want to train?</h1>}
+        {!done && !picking && <p className={storm ? "dojo-progress set-sub" : "dojo-progress"}>Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
+        {!picking && <p className={storm ? "dojo-points set-stat" : "dojo-points"} aria-label={`${String(view.points)} points`}><span>Points</span> <b>{String(view.points)}</b></p>}
+        {onQuit && !done && <button type="button" className={storm ? "set-back dojo-quit" : "dojo-button dojo-quit"} onClick={onQuit}>{picking ? "Back" : "Quit"}</button>}
       </header>
 
       {picking && (
         <section className="dojo-pick">
-          {storm ? <SetTitle>What do you want to train?</SetTitle> : <h1 className="dojo-end-title">What do you want to train?</h1>}
+          {!storm && <h1 className="dojo-end-title">What do you want to train?</h1>}
           <p className="dojo-closing">Each one is its strikes, then block, duck and both dodges. {String(reps)} tries at every move, with a grade and a tip each time.</p>
           <div className="dojo-styles">
             {storm && <BronzeDefs />}

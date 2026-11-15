@@ -126,10 +126,10 @@ export function Account(props: { enemies: readonly EnemySpec[]; onBack: () => vo
           <Wall side="l" groups={groups.slice(0, 2)} activeId={activeId} events={events} />
           <Wall side="r" groups={groups.slice(2)} activeId={activeId} events={events} />
           <Detail feat={picked ?? feats.find((feat) => !feat.done)} picked={picked !== undefined} />
-          <p className="acc-count"><b>{feats.filter((feat) => feat.done).length}</b> of {feats.length} trophies hung</p>
+          <p className={storm ? "acc-count set-sub" : "acc-count"}><b>{feats.filter((feat) => feat.done).length}</b> of {feats.length} trophies hung</p>
           <div className="acc-actions">
             <Button onClick={() => { setSettingsOpen(true); }}><WithIcon icon="sliders">Open settings</WithIcon></Button>
-            <Button primary className={storm ? "set-back" : undefined} onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
+            <Button className={storm ? "set-back" : undefined} onClick={props.onBack}><WithIcon icon="house">Main menu</WithIcon></Button>
           </div>
         </div>
       </div>
