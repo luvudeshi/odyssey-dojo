@@ -14,7 +14,7 @@ export interface Settings {
   readonly keyHints: boolean;
 }
 
-export const SETTINGS_KEY = "odyssey-fighter.settings";
+export const SETTINGS_KEY = "odyssey-dojo.settings";
 
 export const DEFAULT_SETTINGS: Settings = { quality: "high", musicVolume: 0.7, sfxVolume: 1, voiceVolume: 1, mirror: true, keyHints: true };
 
