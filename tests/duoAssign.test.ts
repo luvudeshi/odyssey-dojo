@@ -189,6 +189,30 @@ test("a hitch in the pictures is not player two leaving: the count stays at two 
   expect(seating.players(alone.t)).toBe(1);
 });
 
+test("slow pictures: player two seen in every picture joins even with pictures 800 ms apart", () => {
+  // Seen on a loaded laptop: pictures 767 to 933 ms apart. Before the fix player two never joined.
+  const slow = 800;
+  const seating = createSeating();
+  const out = times(4, (i) => seating.next([body(0.3), body(0.7)], i * slow));
+  expect(out.map((seats) => seats.players)).toEqual([1, 1, 2, 2]);
+  expect(out.every((seats) => at(seats.first) === 0.3 && at(seats.second) === 0.7)).toBe(true);
+  expect(seating.players(3 * slow + slow)).toBe(2);
+});
+
+test("slow pictures: a picture without player two, or pictures stopping, still starts their steady time again", () => {
+  const slow = 800;
+  // Missing from one picture: the steady time starts again when they are back.
+  const missed = createSeating();
+  const pictures = [[body(0.3), body(0.7)], [body(0.3)], [body(0.3), body(0.7)], [body(0.3), body(0.7)], [body(0.3), body(0.7)]];
+  const out = pictures.map((bodies, i) => missed.next(bodies, i * slow));
+  expect(out.map((seats) => seats.players)).toEqual([1, 1, 1, 1, 2]);
+  // No picture at all for STOPPED_MS: steady time starts again too.
+  const stopped = createSeating();
+  stopped.next([body(0.3), body(0.7)], 0);
+  expect(stopped.next([body(0.3), body(0.7)], STOPPED_MS).players).toBe(1);
+  expect(stopped.next([body(0.3), body(0.7)], STOPPED_MS + JOIN_MS).players).toBe(2);
+});
+
 test("the camera store: off looks for one body, on looks for two and keeps player two's frame", () => {
   const camera = createDuoCamera();
   expect([camera.on(), camera.wanted(), camera.players(0), camera.second(0)]).toEqual([false, 1, 1, null]);
