@@ -5,6 +5,8 @@ import type { CombatInput, MoveDef, PoseHistory, Strike } from "../core/types";
 /** A strike is thrown when its confidence crosses ON, and can be thrown again once it has fallen under OFF. */
 const ON = 0.7;
 const OFF = 0.4;
+/** A strike this sure but short of ON was a real try that did not count: it feeds the MISS flash, nothing else. */
+const TRIED = 0.45;
 /**
  * A defend comes on at DEFEND_ON and stays on down to DEFEND_OFF. Lower than a strike's: a defend only counts when
  * it is the move the attack asks for, so reading one a little eagerly costs nothing, and missing one costs a hit.
@@ -26,6 +28,7 @@ export function createPoseInput(
   return (history) => {
     const held = new Set<string>();
     const struck: Strike[] = [];
+    const tried = new Set<string>();
     const now = latest(history)?.t ?? 0;
     for (const move of moves.values()) {
       const confidence = move.detect(history);
@@ -44,12 +47,14 @@ export function createPoseInput(
         struck.push({ move: move.id, quality: clamp01(move.quality?.(history) ?? 0.7), player: 0 });
       } else if (confidence < OFF) {
         active.delete(move.id);
+      } else if (confidence >= TRIED && confidence < ON && !active.has(move.id)) {
+        tried.add(move.id);
       }
     }
-    return { held, struck };
+    return { held, struck, tried };
   };
 }
 
 export function mergeInputs(a: CombatInput, b: CombatInput): CombatInput {
-  return { held: new Set([...a.held, ...b.held]), struck: [...a.struck, ...b.struck] };
+  return { held: new Set([...a.held, ...b.held]), struck: [...a.struck, ...b.struck], tried: new Set([...(a.tried ?? []), ...(b.tried ?? [])]) };
 }

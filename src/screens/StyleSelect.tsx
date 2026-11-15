@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import type { FightingStyle } from "../core/types";
-import { installGround, PebbleHeading, Panel } from "../ui/pebble";
+import { Button, installGround, PebbleHeading, Panel } from "../ui/pebble";
 
-export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: string; onPick: (style: FightingStyle) => void }) {
+export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: string; onPick: (style: FightingStyle) => void; onCharacter?: () => void }) {
   useEffect(() => { installGround(); }, []);
   return (
     <Panel as="main" ornament className="menu menu--style">
@@ -16,6 +16,7 @@ export function StyleSelect(props: { styles: readonly FightingStyle[]; notice: s
           </button>
         ))}
       </div>
+      {props.onCharacter && <Button onClick={props.onCharacter}>Change character</Button>}
     </Panel>
   );
 }

@@ -6,10 +6,10 @@ import { SIDES, footLift, kneeAngle, kneeLift, legsVisible } from "../legSignals
 
 /** How long ago the knee may have been chambered, in milliseconds. */
 export const CHAMBER_MS = 500;
-export const CHAMBER_LIFT = 0.4;
+export const CHAMBER_LIFT = 0.25;
 export const CHAMBER_BEND = 110;
-export const KICK_LIFT = 0.8;
-export const KICK_STRAIGHT = 140;
+export const KICK_LIFT = 0.5;
+export const KICK_STRAIGHT = 120;
 
 /** The start: the knee is up and the lower leg is still folded under it. */
 export function chambered(frame: PoseFrame, side: Side): boolean {

@@ -5,6 +5,9 @@
 // large: the move's name and figure, the countdown, the two health bars, the grade word and the call clock.
 // A phone on FaceTime is held upright, so the default frame is 720 x 1280 with everything inside a safe margin
 // (FaceTime rounds the corners and may crop the edges a little).
+// A phone's screen is longer than 16:9. When the call fills the screen the long sides of the picture are cut:
+// about 65 px off the left and the right of the upright frame on a 393 x 852 screen, and the same off the top and
+// the bottom of the wide frame on a phone held sideways. So the margin on that pair of edges is larger.
 
 export interface Rect {
   readonly x: number;
@@ -42,48 +45,55 @@ export interface FrameLayout {
 }
 
 export const SAFE_MARGIN = 36;
+/** The margin on the edges a screen-filling phone cuts: left and right when upright, top and bottom when wide. */
+export const CUT_MARGIN = 72;
+
+/** The margins of a shape: `x` from the left and right edges, `y` from the top and bottom. */
+export function safeMargins(shape: FrameShape): { readonly x: number; readonly y: number } {
+  return shape === "portrait" ? { x: CUT_MARGIN, y: SAFE_MARGIN } : { x: SAFE_MARGIN, y: CUT_MARGIN };
+}
 
 const rect = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h });
 
 export function frameLayout(shape: FrameShape = "portrait"): FrameLayout {
-  const m = SAFE_MARGIN;
+  const { x: mx, y: my } = safeMargins(shape);
   if (shape === "portrait") {
-    const width = 720, height = 1280, inner = width - m * 2;
+    const width = 720, height = 1280, inner = width - mx * 2;
     return {
       width, height,
-      safe: rect(m, m, inner, height - m * 2),
-      enemyName: rect(m, 40, inner - 150, 44),
-      clock: rect(width - m - 150, 40, 150, 44),
-      enemyBar: rect(m, 92, inner, 30),
-      heroLabel: rect(m, 130, 120, 34),
-      heroBar: rect(m + 130, 134, inner - 130, 26),
+      safe: rect(mx, my, inner, height - my * 2),
+      enemyName: rect(mx, 40, inner - 150, 44),
+      clock: rect(width - mx - 150, 40, 150, 44),
+      enemyBar: rect(mx, 92, inner, 30),
+      heroLabel: rect(mx, 130, 120, 34),
+      heroBar: rect(mx + 130, 134, inner - 130, 26),
       picture: rect(0, 180, width, 560),
-      grade: rect(m, 600, inner, 110),
+      grade: rect(mx, 600, inner, 110),
       card: rect(0, 740, width, height - 740),
-      tag: rect(m, 760, inner, 50),
-      figure: rect(m, 820, 300, 340),
-      word: rect(m + 316, 830, inner - 316, 170),
-      line: rect(m + 316, 1010, inner - 316, 150),
-      timer: rect(m, 1180, inner, 44),
+      tag: rect(mx, 760, inner, 50),
+      figure: rect(mx, 820, 260, 340),
+      word: rect(mx + 276, 830, inner - 276, 170),
+      line: rect(mx + 276, 1010, inner - 276, 150),
+      timer: rect(mx, 1180, inner, 44),
     };
   }
-  const width = 1280, height = 720, side = 440, left = width - side, inner = side - m * 2;
+  const width = 1280, height = 720, side = 440, left = width - side, inner = side - mx * 2;
   return {
     width, height,
-    safe: rect(m, m, width - m * 2, height - m * 2),
+    safe: rect(mx, my, width - mx * 2, height - my * 2),
     picture: rect(0, 0, left, height),
-    enemyName: rect(m, m, left - m * 2 - 150, 40),
-    clock: rect(left - m - 150, m, 150, 40),
-    enemyBar: rect(m, m + 46, left - m * 2, 26),
-    heroLabel: rect(m, height - m - 30, 120, 30),
-    heroBar: rect(m + 130, height - m - 26, left - m * 2 - 130, 22),
-    grade: rect(m, height - 190, left - m * 2, 100),
+    enemyName: rect(mx, my, left - mx * 2 - 150, 40),
+    clock: rect(left - mx - 150, my, 150, 40),
+    enemyBar: rect(mx, my + 46, left - mx * 2, 26),
+    heroLabel: rect(mx, height - my - 30, 120, 30),
+    heroBar: rect(mx + 130, height - my - 26, left - mx * 2 - 130, 22),
+    grade: rect(mx, height - my - 154, left - mx * 2, 100),
     card: rect(left, 0, side, height),
-    tag: rect(left + m, m, inner, 46),
-    figure: rect(left + m + (inner - 260) / 2, m + 56, 260, 280),
-    word: rect(left + m, m + 346, inner, 110),
-    line: rect(left + m, m + 462, inner, 110),
-    timer: rect(left + m, height - m - 40, inner, 40),
+    tag: rect(left + mx, my, inner, 46),
+    figure: rect(left + mx + (inner - 260) / 2, my + 52, 260, 250),
+    word: rect(left + mx, my + 308, inner, 110),
+    line: rect(left + mx, my + 424, inner, 100),
+    timer: rect(left + mx, height - my - 40, inner, 40),
   };
 }
 
