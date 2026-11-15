@@ -1,11 +1,14 @@
-// The hall of heroes on the Account screen: the best score of each hero tonight and of all time, a podium for the
-// first three, the rest down to ten, and how busy the road has been (fights this hour, a line of the last six hours,
-// wins at each stop). Read from the server's /api/heroes, which keeps every fight as a time series on Tiger Data.
+// The hall of heroes on the Account screen: one button, and behind it the board. The board shows the best score of
+// each hero tonight and of all time, a podium for the first three, the rest down to ten, and how busy the road has
+// been (fights this hour, a line of the last six hours, wins at each stop). Read from the server's /api/heroes, which
+// keeps every fight as a time series on Tiger Data.
 // With no accounts on the server there is no hall and this draws nothing. It brings its own styles (./hall.css).
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { GODS } from "../../ai/gods/gods";
 import { ENEMIES } from "../../enemies/registry";
 import { STYLES } from "../../styles/registry";
+import { Dialog } from "../../ui/Dialog";
 import { Button } from "../../ui/pebble";
 import { loadHall } from "../hall";
 import type { Hall, HallRow } from "../heroes";
@@ -19,13 +22,16 @@ export const HALL_RETRY_MS = 60_000;
 
 type View = "tonight" | "allTime";
 
-/** The hall while this component is on the screen; null until the first answer, and for good when that answer is "no hall". */
-function useHall(): Hall | null {
+/**
+ * The hall while this component is on the screen; null until the first answer, and for good when that answer is
+ * "no hall". It is read once when the page opens, to learn whether there is a hall to show, and again and again
+ * only while the board is open.
+ */
+function useHall(open: boolean): Hall | null {
   const [hall, setHall] = useState<Hall | null>(null);
   useEffect(() => {
     let live = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let shown = false;
     const again = (ms: number): void => { timer = setTimeout(() => { void read(); }, ms); };
     const read = async (): Promise<void> => {
       // A tab in the background asks nothing; it looks again at its next turn.
@@ -35,19 +41,15 @@ function useHall(): Hall | null {
       }
       const got = await loadHall();
       if (!live) return;
-      if (got !== null) {
-        shown = true;
-        setHall(got);
-      }
-      // No hall at the first try means the server has none: nothing more is asked until the page is opened again.
-      if (shown) again(got !== null ? HALL_REFRESH_MS : HALL_RETRY_MS);
+      if (got !== null) setHall(got);
+      if (open) again(got !== null ? HALL_REFRESH_MS : HALL_RETRY_MS);
     };
     void read();
     return () => {
       live = false;
       clearTimeout(timer);
     };
-  }, []);
+  }, [open]);
   return hall;
 }
 
@@ -103,22 +105,18 @@ function Pulse(props: { fights: readonly number[]; label: string }) {
   );
 }
 
-export function HallOfHeroes() {
-  const hall = useHall();
+function Board(props: { hall: Hall }) {
+  const { hall } = props;
   const [view, setView] = useState<View>("tonight");
-  if (hall === null) return null;
   const rows = hall[view];
   const hours = Math.round((hall.activity.fights.length * hall.activity.minutes) / 60);
   const busiest = hall.stops.filter((stop) => stop.wins > 0).slice(0, 3);
   return (
-    <section className="hall" aria-label="Hall of heroes">
-      <header className="hall__head">
-        <h2><Icon name="trophy" className="hall__icon" />Hall of heroes</h2>
-        <div className="hall__switch" role="group" aria-label="Which scores">
-          <Button primary={view === "tonight"} aria-pressed={view === "tonight"} onClick={() => { setView("tonight"); }}>Tonight</Button>
-          <Button primary={view === "allTime"} aria-pressed={view === "allTime"} onClick={() => { setView("allTime"); }}>All time</Button>
-        </div>
-      </header>
+    <section className="hall" aria-label="The best scores">
+      <div className="hall__switch" role="group" aria-label="Which scores">
+        <Button primary={view === "tonight"} aria-pressed={view === "tonight"} onClick={() => { setView("tonight"); }}>Tonight</Button>
+        <Button primary={view === "allTime"} aria-pressed={view === "allTime"} onClick={() => { setView("allTime"); }}>All time</Button>
+      </div>
       {rows.length === 0 ? (
         <p className="hall__none">{hall.allTime.length === 0 ? "No hero has fought yet. Be the first." : "No hero has fought tonight. Be the first."}</p>
       ) : (
@@ -157,5 +155,24 @@ export function HallOfHeroes() {
         )}
       </footer>
     </section>
+  );
+}
+
+export function HallOfHeroes() {
+  const [open, setOpen] = useState(false);
+  const hall = useHall(open);
+  if (hall === null) return null;
+  const close = (): void => { setOpen(false); };
+  return (
+    <div className="hall-door">
+      <Button onClick={() => { setOpen(true); }}><Icon name="trophy" className="hall-door__icon" />Hall of heroes</Button>
+      {open && createPortal(
+        <Dialog title="Hall of heroes" onEscape={close}>
+          <Board hall={hall} />
+          <Button onClick={close}>Back</Button>
+        </Dialog>,
+        document.body,
+      )}
+    </div>
   );
 }
