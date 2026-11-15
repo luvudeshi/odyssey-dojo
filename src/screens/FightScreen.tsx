@@ -13,6 +13,7 @@ import { powerUsable } from "../ai/power/powerPrompt";
 import { PowerEffect } from "../ai/ui/PowerEffect";
 import { GODS } from "../ai/gods/gods";
 import type { GodId } from "../ai/gods/gods";
+import { createFeedbackWatch } from "../coach/extra/fightFlash";
 import { startFight, step } from "../combat/engine";
 import type { Baseline, CombatEvent, EnemySpec, FightingStyle, PoseFrame, PoseHistory } from "../core/types";
 import { ENEMIES } from "../enemies/registry";
@@ -21,7 +22,7 @@ import { PowerCircle } from "../hud/PowerCircle";
 import { SkyHud } from "../hud/sky/SkyHud";
 import { notePhase } from "../hud/PhaseBanner";
 import { noteHit } from "../hud/RatingFlash";
-import { noteMiss } from "../hud/MissFlash";
+import { noteFeedback, noteMiss } from "../hud/MissFlash";
 import { askedMove, createMissWatch, watchPhase } from "../input/missWatch";
 import { forTwo } from "../net/host";
 import type { HostLink } from "../net/host";
@@ -90,6 +91,7 @@ export function FightScreen(props: {
     const keyboard = createKeyboard(MOVES);
     const readPose = createPoseInput(MOVES);
     const watchMiss = createMissWatch();
+    const watchFeedback = createFeedbackWatch();
     let current = link ? forTwo(startFight(enemy, seed)) : startFight(enemy, seed);
     tally.current = newTally();
     fightEvents.current = [];
@@ -135,7 +137,16 @@ export function FightScreen(props: {
       const result = step(current, enemy, style, input, dt, !tracker || keyboardMode || legs);
       last = now;
       current = result.state;
-      if (watchPhase(watchMiss, from.phase, input, result.events, now)) noteMiss();
+      const missed = watchPhase(watchMiss, from.phase, input, result.events, now);
+      // An attempt that needs work gets a line on what to do in the MISS flash: shown only, never spoken, and the
+      // score is not touched. Strong strikes get nothing extra. The body is read only when the camera is playing
+      // and no guest is in the fight (a move may be theirs).
+      const body = tracker && !keyboardMode && !link?.guestHere() ? history : null;
+      const feedback = watchFeedback(from.phase, current.phase, keys, result.events, body, now, missed);
+      // A host on the camera with a guest in the fight has no body to read and no keys in play: the plain MISS, not a key tip.
+      const shown = tracker && !keyboardMode && link?.guestHere() ? null : feedback;
+      if (shown) noteFeedback(shown);
+      else if (missed) noteMiss();
       link?.publish(current, result.events, now);
       tallyFrame(tally.current, result.events, current.combo, link?.guestHere() ?? false);
       fightEvents.current.push(...result.events);
