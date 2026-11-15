@@ -5,6 +5,7 @@ import { startFight } from "../src/combat/engine";
 import type { CombatPhase, EnemySpec } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import { SkyHud } from "../src/hud/sky/SkyHud";
+import { finisherLine } from "../src/enemies/finishers";
 
 const enemy: EnemySpec = ENEMIES[0] ?? (() => { throw new Error("no enemies"); })();
 const base = startFight(enemy, 1);
@@ -30,7 +31,7 @@ describe("SkyHud", () => {
   it("shows a FINISH card for the finisher", () => {
     const html = render({ kind: "finisher", move: "hook", msLeft: 500, totalMs: 1000 });
     expect(html).toContain("sky-card--finish");
-    expect(html).toContain("Finish it");
+    expect(html).toContain(finisherLine(enemy.id));
   });
 
   it("shows no card while recovering", () => {
