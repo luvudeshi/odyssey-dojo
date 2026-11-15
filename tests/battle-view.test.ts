@@ -124,9 +124,9 @@ test("input notes keep the held defends and the last strike", () => {
   const b = fresh();
   noteInput({ held: new Set(["block"]), struck: [{ move: "jab", quality: 1, player: 0 }] }, 5, b);
   expect(b.held.has("block")).toBe(true);
-  expect([b.struckMove, b.struckAt]).toEqual(["jab", 5]);
+  expect([b.struckMove, b.struckAt, b.strikes]).toEqual(["jab", 5, 1]);
   noteInput(idle, 6, b);
-  expect([b.held.size, b.struckAt]).toEqual([0, 5]);
+  expect([b.held.size, b.struckAt, b.strikes]).toEqual([0, 5, 1]);
 });
 
 test("decay runs from 1 to 0", () => {
