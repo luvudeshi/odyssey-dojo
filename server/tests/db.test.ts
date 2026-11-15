@@ -110,8 +110,8 @@ test("an address that does not ask for an encrypted connection is refused, unles
 });
 
 test("the user, the database name and network addresses are cut from a log line too", () => {
-  const url = `postgres://tsdbadmin:${SECRET_PASSWORD}@${HOST}:5432/tsdb-made-up?sslmode=require`;
-  expect(dbSecrets(url)).toEqual(expect.arrayContaining(["tsdbadmin", "tsdb-made-up"]));
+  const url = `postgres://dojoadmin:${SECRET_PASSWORD}@${HOST}:5432/dojo-made-up?sslmode=require`;
+  expect(dbSecrets(url)).toEqual(expect.arrayContaining(["dojoadmin", "dojo-made-up"]));
   // A name of three letters or fewer is an everyday word, and cutting it would only cut up the line.
   expect(dbSecrets(`postgres://me:${SECRET_PASSWORD}@${HOST}:5432/db?sslmode=require`)).not.toEqual(expect.arrayContaining(["me"]));
   expect(dbSecrets(`postgres://me:${SECRET_PASSWORD}@${HOST}:5432/db?sslmode=require`)).not.toEqual(expect.arrayContaining(["db"]));
@@ -120,8 +120,8 @@ test("the user, the database name and network addresses are cut from a log line 
   const redact = dbRedactor(url);
   expect(redact(new Error("connect ECONNREFUSED 10.9.8.7:5432"))).toBe("connect ECONNREFUSED [host]");
   expect(redact(new Error("connect ETIMEDOUT 2001:db8:85a3::8a2e:370:7334:5432"))).not.toMatch(/2001|db8|7334/);
-  expect(redact(new Error('password authentication failed for user "tsdbadmin"'))).toBe('password authentication failed for user "[key]"');
-  expect(redact(new Error('database "tsdb-made-up" does not exist'))).toBe('database "[key]" does not exist');
+  expect(redact(new Error('password authentication failed for user "dojoadmin"'))).toBe('password authentication failed for user "[key]"');
+  expect(redact(new Error('database "dojo-made-up" does not exist'))).toBe('database "[key]" does not exist');
   expect(redact(new Error(`getaddrinfo ENOTFOUND ${HOST}`))).toBe("getaddrinfo ENOTFOUND [key]");
   // What is left says what went wrong.
   expect(withoutAddresses("canceling statement due to timeout after 3000 ms")).toBe("canceling statement due to timeout after 3000 ms");
@@ -163,7 +163,7 @@ test("a CA file that cannot be read leaves accounts off: they never run unchecke
 
 test("a failure is logged as a short code or one of a few words, never as what the driver said", () => {
   const coded = (code: string, message: string): Error => Object.assign(new Error(message), { code });
-  expect(failureCode(coded("28P01", 'password authentication failed for user "tsdbadmin"'))).toBe("28P01");
+  expect(failureCode(coded("28P01", 'password authentication failed for user "dojoadmin"'))).toBe("28P01");
   expect(failureCode(coded("ENOTFOUND", `getaddrinfo ENOTFOUND ${HOST}`))).toBe("ENOTFOUND");
   expect(failureCode(coded("SELF_SIGNED_CERT_IN_CHAIN", "self-signed certificate in certificate chain"))).toBe("SELF_SIGNED_CERT_IN_CHAIN");
   expect(failureCode(coded("22P02", `invalid input syntax for type uuid: "${SECRET_PASSWORD}"`))).toBe("22P02");

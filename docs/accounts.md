@@ -7,9 +7,9 @@ The database is Tiger Data, the sponsor's hosted Postgres. The server reaches it
 ## Where this stands
 
 - Built: the six routes, the rules, the limits, the database code, the browser's sync and merge, the sign-in form.
-- **Nothing here has been run against a real Postgres yet.** The driver package is not in `package.json` yet, so no SQL statement has run and the driver has never been loaded. The tests that need a database are written and are skipped.
-- The owner has said yes on issue #33 to the Tiger Data service (luvudeshi made it), to the `pg` package, and to the database tests skipping when no database is named. The driver and the first real run come next, as their own change.
+- **It runs against the real Tiger Data service** (free plan, PostgreSQL 18.6). The driver is `pg` 8.23.1, pinned in `package.json` with the lockfile. The 15 database tests pass there, and the two-browser walk under "What was run against the real database" was done on it.
 - The sign-in form is not on the Account page yet. `src/screens/Account.tsx` is the lead's file; the two lines are in the PR. Until they land nothing imports the sync, so the game makes no account request at all.
+- The "Hall of heroes" list is not built yet.
 
 ## Set it up on the demo laptop
 
@@ -17,27 +17,52 @@ Today the demo laptop runs the server with no keys at all. With nothing done, ac
 
 1. **Make a Tiger Data service** (free plan, no card) at the Tiger Data console. Copy its connection string. It looks like `postgres://USER:PASSWORD@HOST:PORT/DBNAME?sslmode=require`. For the demo laptop, luvudeshi sends his string to Toyeshh directly.
 2. **Put the string in `.env`** at the repo root, alone on one line: `DATABASE_URL=postgres://...`. Never commit `.env`. Never paste the string in an issue, a PR, a chat or a test.
-3. **Install the driver.** Once `"pg": "8.23.1"` is in `package.json` (approved, not in this PR), `npm ci`. Until then the server logs `no_driver` and accounts stay off.
+3. **Install the driver:** `npm ci`. It is `pg` 8.23.1, in `package.json`.
 4. **Restart the server** (`npm run server`). The first line it logs has `"accounts":true`, which only means the variable is set.
-5. **Check it:** `curl http://localhost:8787/api/account/status` answers `{"available":true}`. The three tables are made at that first request.
+5. **Check it:** `curl http://localhost:8787/api/account/status` answers `{"available":true}`. The three tables are made at that first request, which took half a second here. The log says `accounts_ready`.
 6. **Make the demo's hero names first**, on the laptop itself, before the tunnel is opened. There is no email and no reset, so a name belongs to whoever takes it first.
 
 If it answers `{"available":false}`, the server log says why, in one line:
 
 | Log line | Meaning |
 | --- | --- |
-| `accounts_unavailable` `no_driver` | `pg` is not installed (step 3). |
 | `accounts_unavailable` `bad_url` | `DATABASE_URL` is not a `postgres://` address. |
 | `accounts_unavailable` `not_encrypted` | The address has no `sslmode=require` (or `verify-ca`, `verify-full`) and is not on this machine. Nothing after the address may be on its line in `.env`. |
-| `accounts_unavailable` `no_answer` | The database did not answer in 3 seconds. The detail says what the driver said. |
+| `accounts_unavailable` `bad_ca_file` | `DATABASE_CA_FILE` names a file that cannot be read. Accounts stay off rather than run unchecked. |
+| `accounts_unavailable` `no_answer` | The database did not answer. The `code` beside it says why (below). |
 | `accounts_tables_failed` | It answered, but the tables could not be made. |
 | `accounts_query_failed` | A later statement failed. Three in a row turn accounts off for 5 seconds, then it is tried again. |
+| `accounts_connection_lost` | The database closed a connection nobody was using. The next request opens a new one. |
 
-The connection string, its password, host, user and database name, and any network address are cut out of every log line. After a failed start the server tries the database again at most every 15 seconds, so one that comes back is found without a restart.
+**A log line holds a short code, never what the driver said and never a part of the connection string.** Postgres can repeat a value it was sent in its message, and Node names the address it tried, so the message is not logged at all. The codes you are most likely to see:
+
+| Code | Meaning |
+| --- | --- |
+| `timeout` | No answer within the limit (2.5 s to connect, 3 s a query). |
+| `ECONNREFUSED`, `ENOTFOUND` | Nothing listens at that address, or the host name does not exist. Check the string. |
+| `28P01` | Wrong password or user. |
+| `3D000` | No such database. |
+| `53300` | The service has no free connection left. |
+| `57014` | The database stopped a statement at its own 2 s limit. |
+| `SELF_SIGNED_CERT_IN_CHAIN` | Certificate checking is on and the service signs its own certificate (see "Encryption"). |
+| `connection_closed`, `error` | The connection ended, or something with no code. |
+
+After a failed start the server tries the database again at most every 15 seconds, so one that comes back is found without a restart.
 
 To take accounts off again: remove the line from `.env` and restart.
 
-**Known before the first real start:** a free Tiger Data service has a self-signed certificate. The `pg` driver reads `sslmode=require` as "check the certificate" and will refuse it; the log will then say `no_answer` with a certificate error. The change that adds the driver will connect encrypted without checking the chain (what `psql` does for `require`) and check it when a CA file is given. That is not in this PR and certificate checking is not switched off anywhere here.
+## Encryption to the database
+
+The connection is always encrypted, but for a Postgres on this machine with no `sslmode` (a test database).
+
+- **`sslmode=require` (what Tiger Data's string says): encrypted, and the certificate is not checked.** A free Tiger Data service presents a certificate it signed itself (their docs: free services get no CA-signed one), so there is nothing to check it against. This is what `psql` does for `require`. The password and the saves cannot be read on the way. What it does not stop: a machine that sits between this server and the database and pretends to be the database.
+- **`DATABASE_CA_FILE=/path/to/ca.pem` in `.env`, or `sslmode=verify-ca` or `verify-full` in the string: the certificate is checked in full**, the chain against that file (or against the CAs Node trusts when no file is named) and the host name. `sslrootcert=` in the string is read as the CA file too. Use this on a paid service, which has a CA-signed certificate.
+- A CA file that cannot be read leaves accounts off (`bad_ca_file`). Checking is never dropped silently.
+- Checked on the real service: `require` opens; `verify-ca`, `verify-full` and `require` with a public CA list are all refused with `SELF_SIGNED_CERT_IN_CHAIN` and accounts stay off.
+
+The `pg` driver reads `sslmode=require` as "check the certificate", refuses the free service and prints a warning about `sslmode` at every start. So the server never hands it the connection string: `server/lib/db.ts` reads the string and gives the driver the host, user, password and database one by one, with the encryption decided as above. The string's other parameters are not passed on.
+
+The limits on the connection: 4 connections at most (a free service has no pooler; it allows about 90), 2.5 s to connect, 3 s a query, and the database itself stops a statement after 2 s. A connection nobody used for 30 s is closed, so the first request after a pause opens a new one (about 0.3 s more, see the timings below). The database sees this server as `odyssey-dojo` in `pg_stat_activity`.
 
 ## What the Account page shows
 
@@ -124,7 +149,7 @@ Two rules keep one stranger from locking the others out:
 | Fill it with saves | One save per account, 32 KB at most as sent, so 64 MB at the very most. |
 | Fill it with sessions | 5 per account. Sessions that ran out are removed at the next sign-in. |
 | Keep the database busy | Strangers' database calls run two at a time, 16 may wait, the rest get 429. A token is counted before the database is asked: 30 unknown tokens a minute an address. A known token is remembered for 5 minutes and counted for its account: 120 requests and 60 writes a minute. Status asks the database at most once in 5 seconds. |
-| Turn accounts off for everybody | One failed or slow query does not. Three in a row with none working between them do, for 5 seconds. The pool has 4 connections and strangers use 2, so the laptop always finds one free. |
+| Turn accounts off for everybody | One failed or slow query does not. Three in a row with none working between them do, for 5 seconds. The pool has 4 connections and strangers use 2, so the laptop always finds one free. A statement cannot run longer than 2 s: the database stops it. |
 | Send a huge body | Sign-up and sign-in read 2 KB, a save 32 KB. A body that says it is longer is refused unread. A save body is not read at all before the token is known. |
 | Use another player's save | No route takes an account id. A request reaches the row of the session it carries and no other. |
 | Run SQL | Every value goes to the database apart from the statement text. |
@@ -145,7 +170,9 @@ Things to know about these limits:
 - A signed-out player sees "Accounts are not available here." and plays as before.
 - A signed-in player keeps playing from the browser. The card says "Not sent yet. Kept in this browser." and the save goes when the database is back.
 - Nothing throws into the game and the offline check is not touched: `npm run preflight -- --offline` passes with no `DATABASE_URL`.
-- No error text from the database reaches the browser. The log gets one line with the connection string cut out.
+- No error text from the database reaches the browser. The log gets one line with a short code.
+- **A database that stops answering while the server runs** (tried with the real service behind a forwarder that swallowed every byte): each request still got its 503 within 3 s, the fourth and later ones at once, `/api/health` answered in 1 ms throughout, and the server kept running. Accounts came back by themselves 6 s after the database did, with the save as it was.
+- A `DATABASE_URL` that points at a port nothing listens on: status answers `false` in a few milliseconds. At a port that takes the connection and says nothing: in 2.5 s, then at once for the next 15 s.
 
 ## Tests
 
@@ -171,16 +198,47 @@ TEST_DATABASE_URL='postgres://...' npx vitest run server/tests/accountsDb.test.t
 ```
 
 - Use a Tiger Data string, or a Postgres on this machine (`postgres://USER@localhost:5432/DBNAME`; a local address needs no `sslmode`).
-- They need the `pg` package installed.
-- Each run makes its own three tables under a random prefix and drops them at the end, so it can share a database with the game.
-- **Without `TEST_DATABASE_URL` these 14 tests are skipped**, as the owner allowed. They have never run.
+- To run them on the service in `.env` without the string ever being on a command line or in the shell's history:
+  ```
+  node --env-file=.env -e "process.env.TEST_DATABASE_URL = process.env.DATABASE_URL; require('node:child_process').spawnSync('npx', ['vitest', 'run', 'server/tests/accountsDb.test.ts'], { stdio: 'inherit', shell: process.platform === 'win32' })"
+  ```
+- Each run makes its own three tables under a random prefix and drops them at the end, so it can share a database with the game and with another run. Three runs in a row and two runs at once left no table and no index behind, and the real tables were not touched.
+- A run takes about 21 s against Tiger Data from here: 15 tests, most of the time is password hashes.
+- **Without `TEST_DATABASE_URL` these 15 tests are skipped**, as the owner allowed.
+
+## What was run against the real database
+
+All of it on the Tiger Data service, from luvudeshi's Mac, on the built game (`vite build`, served by `vite preview`, with the server beside it).
+
+- **The 15 database tests:** pass, three runs in a row (21.1 s, 21.0 s, 21.9 s) and two at once.
+- **Two browser profiles in headless Chrome, keyboard play.** In the first: create an account, move the music volume from 70 to 35, win a fight at Polyphemus, see "Saved to your account.", sign out. In the second, with nothing stored: sign in with the name in capitals. The hero name, 1 fight, 1 win, the best score, 6 of 23 achievements, the cleared stop and the volume 35 were there, and that browser kept its own "Play with: Keyboard". A second win there, then sign-in again on the first: 2 fights and 2 wins on both.
+- **Refusals, as the player reads them:** a wrong password ("Wrong name or password."), a taken name ("That hero name is taken. Pick another, or sign in."), and from a visitor through the tunnel ten wrong tries answered 401 and the eleventh 429 ("Too many tries. Wait a minute, then try again."). The right password from that address then waited too; the laptop's own browser still got in.
+- **Sign-in through the tunnel's headers** (`Cf-Connecting-Ip`, `Cf-Ray`, `X-Forwarded-For` on every request): works, and is counted as a stranger.
+- **No request to `/api/account` before the Account page is opened**, signed out, with the database on, off and silent. A whole fight sends none either.
+- **The built game holds no part of the connection string:** built with the string in the environment, then searched for the host, the user, the password, the database name, "postgres", "DATABASE_URL" and "sslmode". None is in it.
+
+How long things take from this Mac (the database is a 40 ms round trip away):
+
+| What | Connection open | After 30 s with no request |
+| --- | --- | --- |
+| Sign-in (one password hash, three statements) | 0.34 s | 0.63 s |
+| A save written | 0.04 s | 0.35 s |
+| A save read | 0.04 s | about 0.33 s |
+| Sign-out | 0.04 s | |
+| The first status after a start (connect, make the tables) | 0.5 s | |
+
+A fight is longer than 30 s, so the save after a fight is the slow case: a third of a second, in the background.
+
+One thing this run found that is not in our files: after a sign-in brings cleared stops into a browser, the map does not mark them until the page is loaded again, because `src/App.tsx` reads the profile's cleared stops once at start. Every stop can be played either way. The file is the lead's, so the fix is not in this branch. It is one line, tried here and not committed: on the `QuestMap` in `src/App.tsx`, `cleared={[...new Set([...flow.cleared, ...profile.cleared])]}` in place of `cleared={flow.cleared}`. With it the second browser's map showed the tick at once.
 
 ## Not done, not checked
 
-- No statement in `server/lib/accounts.ts` has run against Postgres. The database tests have never run. The driver has never been loaded.
-- The certificate of a free Tiger Data service (see above).
-- Whether Tiger Data's pooler port accepts the `application_name` start-up parameter.
-- A real fight played to its result screen while signed in, and sign-in on two real browser profiles against the real server. The page was walked in headless Chrome against a scratch stand-in for the routes.
-- `scripts/check-dist.mjs` does not look for `DATABASE_URL` or its value in the built game: the name does not say "secret" and a URL does not look like a key. The lead owns that file. `tests/accountClient.test.ts` scans `src/` for it.
+- A real person on a real phone through the real tunnel. The tunnel was stood in for by its headers.
+- The camera. Every fight in the walk was played on the keyboard.
+- A service with a CA-signed certificate, or a CA file that matches: checking was only seen to refuse the free service's self-signed certificate.
+- More than a few players at once against the free service. The limits are tested one request at a time.
+- The demo laptop (Windows). Everything above ran on a Mac.
+- Tiger Data pausing a free service that nobody uses: not seen, and not looked up. If it does, the first request after a pause answers "not available" and the next try 15 s later finds it.
+- `scripts/check-dist.mjs` does not look for `DATABASE_URL` or its value in the built game: the name does not say "secret" and a URL does not look like a key. The lead owns that file. `tests/accountClient.test.ts` scans `src/` for it, and the built game was searched by hand (above).
 - The scrypt settings are not stored with the hash. Changing them later needs a column.
 - There is no way to change a password or to end all sessions of an account.
