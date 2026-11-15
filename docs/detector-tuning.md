@@ -44,7 +44,7 @@ Do not loosen a threshold until the trace passes and stop there. Look at why it 
 
 ## Known overlap
 
-Hands that shoot from the waist up to the chin in under 0.4 seconds read as `rising_palm` and `uppercut`, because that is what those moves are. So a take of `block` or `jab` that starts with the arms hanging and snaps up will also fire them. In a fight this does not matter, because only the strike being asked for counts. For a clean trace, raise the guard at a normal pace, or record such takes on purpose and tune the two moves against them.
+One hand that shoots from the waist up to the chin in under 0.4 seconds reads as `rising_palm` (left) or `uppercut` (right), because that is what those moves are. So a take that starts with the arms hanging and snaps one bent arm up will also fire them. Both hands coming up together, and a punch thrown straight from the waist, do not (see [cross-fire.md](cross-fire.md)). In a fight this does not matter, because only the strike being asked for counts. For a clean trace, raise the guard at a normal pace, or record such takes on purpose and tune the two moves against them.
 
 ## The file
 
