@@ -35,16 +35,6 @@ export function floorGeometry(): BufferGeometry {
   return merge(parts);
 }
 
-function column(x: number, z: number, seed: number): BufferGeometry[] {
-  const y0 = PLATFORM_Y;
-  return [
-    place(paint(box(1.55, 0.25, 1.55), "#e9dcc3", 0.03, seed), [x, y0 + 0.125, z]),
-    place(paint(new CylinderGeometry(0.5, 0.62, 5.3, 10), "#efe3cb", 0.035, seed + 1), [x, y0 + 0.25 + 2.65, z]),
-    place(paint(new CylinderGeometry(0.86, 0.52, 0.3, 10), "#e9dcc3", 0.03, seed + 2), [x, y0 + 5.7, z]),
-    place(paint(box(1.7, 0.22, 1.7), "#e3d4ba", 0.03, seed + 3), [x, y0 + 5.96, z]),
-  ];
-}
-
 function pediment(): BufferGeometry {
   const shape = new Shape();
   shape.moveTo(-10.9, 0);
@@ -93,7 +83,6 @@ export function hallGeometry(): BufferGeometry {
   parts.push(place(paint(box(21.5, PLATFORM_Y - GRASS_Y, 5.2), "#b9a98d", 0.03, 1), [0, (PLATFORM_Y + GRASS_Y) / 2, -9.6]));
   parts.push(place(paint(box(7, 0.16, 0.5), "#c9b99d", 0.03, 2), [0, 0.08, -6.75]));
   parts.push(place(paint(box(7.4, 0.3, 0.45), "#cbbb9f", 0.03, 3), [0, 0.15, -7.2]));
-  COLUMN_X.forEach((x, i) => { parts.push(...column(x, COLUMN_Z, 100 + i * 7)); });
   parts.push(place(paint(box(22, 0.85, 1.3), "#e6d8bd", 0.03, 10), [0, 6.45, COLUMN_Z]));
   parts.push(place(paint(box(22, 0.6, 1.1), "#b8552e", 0.04, 11), [0, 7.2, COLUMN_Z - 0.05]));
   for (let i = 0; i < 21; i++) parts.push(place(paint(box(0.3, 0.6, 0.12), "#3b2a3a", 0.03, 120 + i), [-10 + i, 7.2, COLUMN_Z + 0.55]));
