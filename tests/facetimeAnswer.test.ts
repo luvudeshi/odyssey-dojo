@@ -4,7 +4,8 @@ import { describe, expect, test } from "vitest";
 import type { PoseFrame, PoseHistory } from "../src/core/types";
 import { ENEMIES } from "../src/enemies/registry";
 import {
-  CHECK_EVERY_MS, ENDED_SHOW_MS, LOOK_EVERY_MS, NOT_JOINED, NO_SERVER, SAME_ROOM_AFTER_MS, createAnswerer, createWaitingApi, isBridge,
+  CHECK_EVERY_MS, DUPLICATE_IDENTITY, ENDED_SHOW_MS, LOOK_EVERY_MS, NOT_JOINED, NO_ROOM_SAID_AFTER_MS, NO_SERVER, QUICK_ASKS, QUICK_EVERY_MS, SAME_ROOM_AFTER_MS, SEAT_TAKEN,
+  createAnswerer, createWaitingApi, isBridge,
 } from "../src/facetime/answer";
 import type { Waiting } from "../src/facetime/answer";
 import type { FaceTimeApi } from "../src/facetime/api";
@@ -176,18 +177,34 @@ describe("waiting for a call", () => {
     expect(made.answerer.state().phase).toBe("waiting");
   });
 
-  test("with no room yet it says why, asks again every two seconds, and joins when one is there", async () => {
-    const made = await waiting(rig(none("No call can come in yet. Check that chert dev is running.")));
-    expect(made.answerer.state()).toMatchObject({ phase: "looking", room: null, reason: "No call can come in yet. Check that chert dev is running." });
+  test("with no room yet it asks again every two seconds, says why once that has lasted, and joins when one is there", async () => {
+    const WHY = "No call can come in yet. Check that chert dev is running.";
+    const made = await waiting(rig(none(WHY)));
+    // Not said at once: between two waiting rooms there is none for a few seconds.
+    expect(made.answerer.state()).toEqual({ phase: "looking", room: null, reason: "", line: null });
     expect(made.rooms).toHaveLength(0);
     made.answerer.tick(1000 + LOOK_EVERY_MS - 1);
     await settle();
     expect(made.asked).toBe(1);
-    made.says = inRoom("chert-warm-BBBB", { line: "+1 555 555 0100" });
-    made.answerer.tick(1000 + LOOK_EVERY_MS);
+    for (let now = 1000 + LOOK_EVERY_MS; now < 1000 + NO_ROOM_SAID_AFTER_MS; now += LOOK_EVERY_MS) {
+      made.answerer.tick(now);
+      await settle();
+      expect(made.answerer.state().reason).toBe("");
+    }
+    made.answerer.tick(1000 + NO_ROOM_SAID_AFTER_MS);
     await settle();
-    expect(made.asked).toBe(2);
+    expect(made.answerer.state()).toMatchObject({ phase: "looking", room: null, reason: WHY });
+    const asked = made.asked;
+    made.says = inRoom("chert-warm-BBBB", { line: "+1 555 555 0100" });
+    made.answerer.tick(1000 + NO_ROOM_SAID_AFTER_MS + LOOK_EVERY_MS);
+    await settle();
+    expect(made.asked).toBe(asked + 1);
     expect(made.answerer.state()).toEqual({ phase: "waiting", room: "chert-warm-BBBB", reason: "", line: "+1 555 555 0100" });
+  });
+
+  test("a server that does not answer is said at once", async () => {
+    const made = await waiting(rig({ room: undefined, reason: NO_SERVER, line: null }));
+    expect(made.answerer.state()).toMatchObject({ phase: "looking", reason: NO_SERVER });
   });
 
   test("a server that cannot tell changes nothing: the game stays in the room it has", async () => {
@@ -213,13 +230,35 @@ describe("waiting for a call", () => {
     expect(made.hungUp).toEqual([]);
   });
 
-  test("when the server names another room the game moves to it, and leaves the old one without closing it", async () => {
+  test("the next room can be a moment late: it is asked for quickly a few times, and nothing alarming is said meanwhile", async () => {
+    const made = await waiting();
+    made.says = none("No call can come in yet.");
+    made.rooms[0]?.emit({ type: "disconnected", reason: "5" });
+    const before = made.asked;
+    for (let i = 0; i < QUICK_ASKS; i++) {
+      made.answerer.tick(1500 + i * QUICK_EVERY_MS);
+      await settle();
+      expect(made.asked).toBe(before + i + 1);
+      expect(made.answerer.state()).toMatchObject({ phase: "looking", reason: "" });
+    }
+    made.says = inRoom("chert-warm-CCCC");
+    made.answerer.tick(1500 + QUICK_ASKS * QUICK_EVERY_MS);
+    await settle();
+    expect(made.answerer.state()).toMatchObject({ phase: "waiting", room: "chert-warm-CCCC", reason: "" });
+  });
+
+  test("when the server names another room, twice, the game moves to it, and leaves the old one without closing it", async () => {
     const made = await waiting();
     made.says = inRoom("chert-warm-DDDD");
     made.answerer.tick(1000 + CHECK_EVERY_MS - 1);
     await settle();
     expect(made.asked).toBe(1);
+    // Said once, it is not acted on: leaving a waiting room closes it, and one answer can be a moment out of date.
     made.answerer.tick(1000 + CHECK_EVERY_MS);
+    await settle();
+    expect(made.rooms[0]?.calls).toEqual(["connect"]);
+    expect(made.answerer.state()).toMatchObject({ phase: "waiting", room: "chert-warm-AAAA" });
+    made.answerer.tick(1000 + CHECK_EVERY_MS + LOOK_EVERY_MS);
     await settle();
     expect(made.rooms[0]?.calls).toEqual(["connect", "disconnect"]);
     expect(made.last().joined?.token).toBe("token-for-chert-warm-DDDD");
@@ -227,13 +266,50 @@ describe("waiting for a call", () => {
     expect(made.hungUp).toEqual([]);
   });
 
-  test("when the server says there is no room any more the game leaves and says why", async () => {
+  test("one answer that names another room, then the same room again, moves nothing", async () => {
+    const made = await waiting();
+    made.says = none();
+    made.answerer.tick(1000 + CHECK_EVERY_MS);
+    await settle();
+    made.says = inRoom("chert-warm-AAAA");
+    made.answerer.tick(1000 + CHECK_EVERY_MS + LOOK_EVERY_MS);
+    await settle();
+    made.says = inRoom("chert-warm-EEEE");
+    made.answerer.tick(1000 + 2 * CHECK_EVERY_MS + LOOK_EVERY_MS);
+    await settle();
+    expect(made.rooms).toHaveLength(1);
+    expect(made.last().calls).toEqual(["connect"]);
+    expect(made.answerer.state()).toMatchObject({ phase: "waiting", room: "chert-warm-AAAA" });
+  });
+
+  test("when the server says twice that there is no room any more, the game leaves", async () => {
     const made = await waiting();
     made.says = none("No call can come in yet.");
     made.answerer.tick(1000 + CHECK_EVERY_MS);
     await settle();
+    expect(made.rooms[0]?.calls).toEqual(["connect"]);
+    made.answerer.tick(1000 + CHECK_EVERY_MS + LOOK_EVERY_MS);
+    await settle();
     expect(made.rooms[0]?.calls).toEqual(["connect", "disconnect"]);
-    expect(made.answerer.state()).toMatchObject({ phase: "looking", room: null, reason: "No call can come in yet." });
+    expect(made.answerer.state()).toMatchObject({ phase: "looking", room: null });
+    expect(made.hungUp).toEqual([]);
+  });
+
+  test("a second window of the game takes the seat: this one stops and says so, and does not fight for it", async () => {
+    const made = await waiting();
+    made.last().emit({ type: "disconnected", reason: DUPLICATE_IDENTITY });
+    expect(made.answerer.state()).toEqual({ phase: "off", room: null, reason: SEAT_TAKEN, line: null });
+    for (let now = 2000; now < 60_000; now += 1000) {
+      made.answerer.tick(now);
+      await settle();
+    }
+    expect(made.asked).toBe(1);
+    expect(made.rooms).toHaveLength(1);
+    // Pressing the button again waits again.
+    made.answerer.start(61_000);
+    made.answerer.tick(61_000);
+    await settle();
+    expect(made.answerer.state()).toMatchObject({ phase: "waiting", reason: "" });
   });
 
   test("a room that cannot be joined is said plainly and tried again", async () => {
@@ -349,6 +425,18 @@ describe("answering", () => {
     await onCall(made, 3000);
     made.last().emit({ type: "disconnected", reason: "ROOM_DELETED" });
     expect(made.session.state()).toMatchObject({ phase: "ended", ending: "friend" });
+  });
+
+  test("a second window taking the seat during a call ends the call here and the wait with it", async () => {
+    const made = await waiting();
+    await onCall(made, 3000);
+    made.last().emit({ type: "disconnected", reason: DUPLICATE_IDENTITY });
+    await settle();
+    expect(made.session.state().phase).toBe("ended");
+    expect(made.answerer.state()).toMatchObject({ phase: "off", reason: SEAT_TAKEN });
+    made.answerer.tick(60_000);
+    await settle();
+    expect(made.rooms).toHaveLength(1);
   });
 
   test("stop during a call hangs up: the room is left, and still never closed", async () => {
