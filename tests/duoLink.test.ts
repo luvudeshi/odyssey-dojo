@@ -6,6 +6,7 @@ import type { CombatEvent, CombatInput, CombatState, MoveDef, PoseFrame, Strike 
 import { createDuoLink } from "../src/duo/duoLink";
 import type { DuoOptions } from "../src/duo/duoLink";
 import { STANCE_FRAMES, createBodyReader } from "../src/duo/split";
+import { createTallyStore } from "../src/duo/tally";
 import { ENEMIES } from "../src/enemies/registry";
 import { MOVES } from "../src/moves/registry";
 import { TOGETHER_MS, forTwo } from "../src/net/host";
@@ -44,7 +45,8 @@ function fight(options: DuoOptions = {}, moves: ReadonlyMap<string, MoveDef> = M
   let now = 0;
   let players: 1 | 2 = 2;
   let frame: PoseFrame | null = null;
-  const link = createDuoLink({ second: () => frame, players: () => players }, moves, { ...options, clock: () => now });
+  const tally = createTallyStore();
+  const link = createDuoLink({ second: () => frame, players: () => players }, moves, { tally, ...options, clock: () => now });
   links.push(link);
   let state: CombatState = forTwo(startFight(enemy, 7));
   link.start(enemy.id, style.id, 7);
@@ -53,6 +55,11 @@ function fight(options: DuoOptions = {}, moves: ReadonlyMap<string, MoveDef> = M
     second,
     state: () => state,
     events,
+    /** [player one's hits, their points, player two's hits, their points, hits landed together]. */
+    tally: (): number[] => {
+      const { players: [one, two], together } = tally.get();
+      return [one.hits, one.points, two.hits, two.points, together];
+    },
     setPlayers(next: 1 | 2): void { players = next; },
     /** One frame. `own` is what player one does on it. Returns what happened. */
     tick(own: { held?: readonly string[]; struck?: readonly string[] } = {}): readonly CombatEvent[] {
@@ -85,6 +92,9 @@ function until(f: Fight, done: (events: readonly CombatEvent[]) => boolean, own:
   }
   throw new Error(`nothing after ${String(max)} frames; phase ${f.state().phase.kind}`);
 }
+
+/** The two players' points added up: always the fight's score. */
+const points = (f: Fight): number => (f.tally()[1] ?? 0) + (f.tally()[3] ?? 0);
 
 const has = (type: CombatEvent["type"]) => (events: readonly CombatEvent[]): boolean => events.some((event) => event.type === type);
 
@@ -317,4 +327,61 @@ test("player two's strike is read with the move the prompt asks for, as player o
   const events = until(f, (now) => has("enemyHit")(now) || has("whiffed")(now));
   expect(events.find((event) => event.type === "enemyHit")).toMatchObject({ type: "enemyHit", move });
   expect(f.state().enemyHp).toBeLessThan(before);
+});
+
+test("the tally: a strike thrown by player two alone is player two's hit, and the two tallies add up to the score", () => {
+  const f = fight();
+  const move = defendTogether(f);
+  // The defend both made is shared.
+  expect(f.tally()).toEqual([0, 25, 0, 25, 0]);
+  f.second.perform(move);
+  const hit = until(f, (now) => has("enemyHit")(now) || has("whiffed")(now)).find((event) => event.type === "enemyHit");
+  if (hit?.type !== "enemyHit") throw new Error("no hit");
+  expect(f.tally()).toEqual([0, 25, 1, 25 + hit.damage * 10, 0]);
+  expect(points(f)).toBe(f.state().score);
+});
+
+test("the tally: a strike thrown by player one alone is player one's, and one thrown together counts for both", () => {
+  const f = fight();
+  let move = defendTogether(f);
+  // Player one strikes; player two only stands. The link holds the strike a moment, then lets it go alone.
+  let frames = 0;
+  const solo = until(f, (now) => has("enemyHit")(now) || has("whiffed")(now), () => (++frames === 1 ? { struck: [move] } : {})).find((event) => event.type === "enemyHit");
+  if (solo?.type !== "enemyHit") throw new Error("no hit");
+  expect(f.tally()).toEqual([1, 25 + solo.damage * 10, 0, 25, 0]);
+  move = defendTogether(f);
+  f.second.perform(move);
+  frames = 0;
+  const pair = until(f, (now) => has("enemyHit")(now) || has("whiffed")(now), () => (++frames === 3 ? { struck: [move] } : {})).find((event) => event.type === "enemyHit");
+  if (pair?.type !== "enemyHit" || !pair.together) throw new Error("no doubled hit");
+  expect(f.tally()).toEqual([2, 50 + solo.damage * 10 + pair.damage * 5, 1, 50 + pair.damage * 5, 1]);
+  expect(points(f)).toBe(f.state().score);
+});
+
+test("the tally: with player two gone every point is player one's, and a new fight starts it again", () => {
+  const f = fight();
+  f.setPlayers(1);
+  until(f, has("telegraph"));
+  const counter = counterOf(f);
+  let frames = 0;
+  until(f, (now) => has("opening")(now) || has("playerHit")(now), () => (++frames > 8 ? { held: [counter] } : {}));
+  const phase = f.state().phase;
+  if (phase.kind !== "strike") throw new Error("the monster is not open");
+  const hit = f.tick({ struck: [phase.move] }).find((event) => event.type === "enemyHit");
+  if (hit?.type !== "enemyHit") throw new Error("no hit");
+  expect(f.tally()).toEqual([1, 50 + hit.damage * 10, 0, 0, 0]);
+  expect(f.tally()[1]).toBe(f.state().score);
+  f.link.start(enemy.id, style.id, 8);
+  expect(f.tally()).toEqual([0, 0, 0, 0, 0]);
+});
+
+test("the tally: a fight that begins again in the middle, with no new start, is counted from nothing", () => {
+  const f = fight();
+  defendTogether(f);
+  expect(f.tally()).toEqual([0, 25, 0, 25, 0]);
+  // The camera came back and FightScreen began the same fight again: its score is 0 once more.
+  f.link.publish(forTwo(startFight(enemy, 7)), [], 60_000);
+  expect(f.tally()).toEqual([0, 0, 0, 0, 0]);
+  f.link.publish({ ...forTwo(startFight(enemy, 7)), score: 50 }, [], 60_033);
+  expect(points(f)).toBe(50);
 });

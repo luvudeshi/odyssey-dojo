@@ -49,8 +49,13 @@ export const STOPPED_MS = 1500;
 const BREAK_MS = 250;
 /** The hero not seen for this long, with the other player still there: the other player becomes the hero. */
 export const PROMOTE_MS = 400;
-/** A seat's home is the average of its first frames. */
-const HOME_FRAMES = 15;
+/**
+ * A seat's home is where its body stood for most of this long: the middle value of its place over that time. Not
+ * its first frames: the one who pressed the button is at the computer then, close and large, and the friend is
+ * still walking in. And not an average: a walk out of the picture or a dodge is over well inside half of it, so the
+ * middle value is still where the player stands to fight.
+ */
+export const HOME_MS = 3000;
 
 export interface Seats {
   /** Player one, the hero: what the fight reads as its one player. */
@@ -92,23 +97,29 @@ function distinct(bodies: readonly Body[]): Body[] {
   return kept.map((entry) => entry.body);
 }
 
-interface Average {
-  x: number;
-  y: number;
-  w: number;
-  n: number;
+/** Where one seat's body was in each of its newest pictures, oldest first. */
+type Stood = { readonly home: Home; readonly t: number }[];
+
+function note(stood: Stood, home: Home, t: number): void {
+  stood.push({ home, t });
+  while (stood[0] && t - stood[0].t > HOME_MS) stood.shift();
 }
 
-function add(average: Average | null, home: Home): Average {
-  if (!average) return { ...home, n: 1 };
-  if (average.n >= HOME_FRAMES) return average;
-  const n = average.n + 1;
-  return { x: average.x + (home.x - average.x) / n, y: average.y + (home.y - average.y) / n, w: average.w + (home.w - average.w) / n, n };
+function middle(values: number[]): number {
+  values.sort((a, b) => a - b);
+  const half = values.length >> 1;
+  return values.length % 2 === 1 ? (values[half] ?? 0) : ((values[half - 1] ?? 0) + (values[half] ?? 0)) / 2;
+}
+
+/** The seat's home, or null for a seat nobody has sat in. Only asked for at a take-over. */
+function homeFrom(stood: Stood): Home | null {
+  if (stood.length === 0) return null;
+  return { x: middle(stood.map((s) => s.home.x)), y: middle(stood.map((s) => s.home.y)), w: middle(stood.map((s) => s.home.w)) };
 }
 
 export function createSeating(): Seating {
   let assignment: PlayerAssignment = NO_PLAYERS;
-  let homes: [Average | null, Average | null] = [null, null];
+  let stood: [Stood, Stood] = [[], []];
   /** Set when player two took the hero's place: their picture is moved from where they stand to where the hero stood. */
   let moved: { from: Home; to: Home } | null = null;
   /** How wide each seat's shoulders are, as it stands in the picture: see WIDTH_HOLD. */
@@ -132,7 +143,7 @@ export function createSeating(): Seating {
       const forgotten = (memory: PlayerMemory | null): boolean => memory === null || t - memory.t > MEMORY_MS;
       if (moved && forgotten(assignment.memory[0]) && forgotten(assignment.memory[1])) {
         moved = null;
-        homes = [null, null];
+        stood = [[], []];
       }
       assignment = assignPlayers(bodies.map((body) => body.image), t, assignment);
       let [zero, one] = assignment.bodies;
@@ -140,10 +151,10 @@ export function createSeating(): Seating {
       else if (one !== null && t - firstSeenAt >= PROMOTE_MS) {
         // The hero left and the other player stayed: they take the first seat, drawn where the hero stood, so the
         // fight (and the stance it measured for the hero) carries on without a pause.
-        const from = homes[1] ?? homeOf(bodies[one]?.image ?? []);
-        const to = moved?.to ?? homes[0];
+        const from = homeFrom(stood[1]) ?? homeOf(bodies[one]?.image ?? []);
+        const to = moved?.to ?? homeFrom(stood[0]);
         moved = to ? { from, to } : null;
-        homes = [homes[0], null];
+        stood = [stood[0], []];
         wide = [wide[1], 0];
         assignment = { bodies: [one, null], memory: [assignment.memory[1], null] };
         [zero, one] = assignment.bodies;
@@ -154,10 +165,10 @@ export function createSeating(): Seating {
       }
       const firstBody = zero === null ? undefined : bodies[zero];
       const secondBody = one === null ? undefined : bodies[one];
-      if (firstBody && !moved) homes[0] = add(homes[0], homeOf(firstBody.image));
+      if (firstBody && !moved) note(stood[0], homeOf(firstBody.image), t);
       if (firstBody) wide[0] = Math.max(homeOf(firstBody.image).w, wide[0] * WIDTH_HOLD);
       if (secondBody) {
-        homes[1] = add(homes[1], homeOf(secondBody.image));
+        note(stood[1], homeOf(secondBody.image), t);
         // A break: a picture came without them and they were gone longer than BREAK_MS, or no picture came for as long
         // as it takes the count to fall back to one player (STOPPED_MS).
         const away = t - secondSeenAt;
@@ -171,7 +182,7 @@ export function createSeating(): Seating {
         if (t - steadyFrom >= JOIN_MS && wide[1] >= BEHIND * wide[0]) two = true;
       } else if (t - secondSeenAt >= LEAVE_MS) {
         two = false;
-        homes[1] = null;
+        stood[1] = [];
         wide[1] = 0;
       }
       const raw = frameOf(firstBody, t);
@@ -186,7 +197,7 @@ export function createSeating(): Seating {
     players: (now) => (two && now - lastT < STOPPED_MS ? 2 : 1),
     reset() {
       assignment = NO_PLAYERS;
-      homes = [null, null];
+      stood = [[], []];
       moved = null;
       wide = [0, 0];
       firstSeenAt = -Infinity;
