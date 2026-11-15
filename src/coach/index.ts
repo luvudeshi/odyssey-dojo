@@ -11,8 +11,11 @@ export type { PracticeState, PracticeSummary, PracticeTip, RepResult, Trend } fr
 // The move guide: a looping figure per move and a live checklist of what its detector sees. The component is ./ui/MoveGuide.
 export { guideFor, liveChecks, poseAt, toScreen } from "./guide";
 export type { Guide, GuideKeyframe, LiveCheck, LiveChecks } from "./guide";
-// One grade for one attempt: Excellent, Good or Needs improvement, and the points it earns.
+// One grade for one attempt: Excellent, Great or Needs improvement, and the points it earns.
 export { EXCELLENT_AT, POINTS, gradeFor } from "./grade";
+// What the dojo says about each move, written by hand: praise, how to make it, and a tip for each fault.
+export { COACHING, faultFor, faultOf, praiseFor } from "./coaching";
+export type { Fault, MoveCoaching } from "./coaching";
 export type { Grade, GradeTier } from "./grade";
 // The training dojo: a session over a list of moves, graded repetition by repetition. The screen is ./ui/Dojo.
 export {
