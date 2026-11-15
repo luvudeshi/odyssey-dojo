@@ -5,7 +5,9 @@
 import type { PoseFrame } from "../../src/core/types";
 import { createPoseInput } from "../../src/input/poseInput";
 import { MOVES } from "../../src/moves/registry";
-import { EMPTY_HISTORY, pushFrame, shoulderWidth, shoulderWidth3d } from "../../src/pose/signals";
+import { EMPTY_HISTORY, JOINT, pushFrame, shoulderWidth, shoulderWidth3d } from "../../src/pose/signals";
+import { FRAME_MS, STANDING, blend, frameAt } from "../poseFixture";
+import type { BodyPose, Step, Vec3 } from "../poseFixture";
 import { CLEAN, seeded, seenBy } from "./noisyCamera";
 
 export interface Body {
@@ -108,4 +110,67 @@ export function recordingTurned(frames: readonly PoseFrame[], degrees: number, f
   // Shares of the frame width one metre covers, from the standing frame: 0.16 / 0.4 m on the fixture.
   const perMetre = shoulderWidth(first) / shoulderWidth3d(first);
   return frames.map((frame, index) => (index < from ? frame : turnedFrame(frame, degrees, perMetre)));
+}
+
+/**
+ * A body's own proportions, in metres on the 3D body. `recordingOn` scales every part of the fixture's adult
+ * evenly; this sets the parts apart, so adult arms can hang from narrow shoulders (issue #178).
+ */
+export interface Build {
+  /** Shoulder to shoulder. */
+  readonly shoulders: number;
+  /** Shoulder to wrist with the arm straight, split between upper arm and forearm as on the fixture (6 to 5). */
+  readonly arm: number;
+  /** Shoulders to hips. */
+  readonly torso: number;
+}
+
+/** The body `bodyFrame` in tests/poseFixture.ts draws. */
+export const FIXTURE_BUILD: Build = { shoulders: 0.4, arm: 0.55, torso: 0.5 };
+
+/** Shares of the picture one metre covers, across and down: the same as tests/poseFixture.ts. */
+const PICTURE_X = 0.4;
+const PICTURE_Y = 0.6;
+
+function along(from: Vec3, direction: Vec3, length: number): Vec3 {
+  const scale = length / (Math.hypot(...direction) || 1);
+  return [from[0] + direction[0] * scale, from[1] + direction[1] * scale, from[2] + direction[2] * scale];
+}
+
+/**
+ * One frame of a body pose on a body of this build: `bodyFrame` in tests/poseFixture.ts with the three lengths
+ * free. The picture is drawn from the 3D points at the same shares of the frame per metre, so the two agree.
+ */
+export function builtFrame(build: Build, t: number, at: BodyPose): PoseFrame {
+  const half = build.shoulders / 2;
+  const leftShoulder: Vec3 = [-half + at.lean, -build.torso, 0];
+  const rightShoulder: Vec3 = [half + at.lean, -build.torso, 0];
+  const upper = (build.arm * 6) / 11;
+  const leftElbow = along(leftShoulder, at.leftUpper, upper);
+  const rightElbow = along(rightShoulder, at.rightUpper, upper);
+  const world: Record<number, Vec3> = {
+    [JOINT.nose]: [at.lean * 1.2, -build.torso - 0.25, -0.05],
+    [JOINT.leftShoulder]: leftShoulder, [JOINT.rightShoulder]: rightShoulder,
+    [JOINT.leftElbow]: leftElbow, [JOINT.rightElbow]: rightElbow,
+    [JOINT.leftWrist]: along(leftElbow, at.leftFore, build.arm - upper),
+    [JOINT.rightWrist]: along(rightElbow, at.rightFore, build.arm - upper),
+    [JOINT.leftHip]: [-0.125, 0, 0], [JOINT.rightHip]: [0.125, 0, 0],
+  };
+  const image: Record<number, readonly [number, number]> = {};
+  for (const [index, point] of Object.entries(world)) {
+    image[Number(index)] = [0.5 + (point[0] + at.step) * PICTURE_X, 0.65 + (point[1] + at.drop) * PICTURE_Y];
+  }
+  return frameAt(t, image, world);
+}
+
+/** `recording` in tests/poseFixture.ts on a body of this build: 20 still frames for the baseline, then each step. */
+export function builtRecording(build: Build, steps: readonly Step[]): PoseFrame[] {
+  const poses: BodyPose[] = Array.from({ length: CALIBRATION_FRAMES }, () => STANDING);
+  let from = STANDING;
+  for (const [to, ms] of steps) {
+    const count = Math.max(1, Math.round(ms / FRAME_MS));
+    for (let i = 1; i <= count; i++) poses.push(blend(from, to, i / count));
+    from = to;
+  }
+  return poses.map((at, index) => builtFrame(build, index * FRAME_MS, at));
 }
