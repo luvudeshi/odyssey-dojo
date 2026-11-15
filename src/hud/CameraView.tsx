@@ -38,7 +38,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
     const tick = (): void => {
       // Size the frame to the camera's real shape so the skeleton lines up with the picture whatever the aspect.
       const { videoWidth, videoHeight } = tracker.video;
-      const shape = videoWidth > 0 && videoHeight > 0 ? `${videoWidth} / ${videoHeight}` : "";
+      const shape = videoWidth > 0 && videoHeight > 0 ? `${String(videoWidth)} / ${String(videoHeight)}` : "";
       if (box.style.aspectRatio !== shape) box.style.aspectRatio = shape;
       const rect = box.getBoundingClientRect();
       const ratio = window.devicePixelRatio || 1;
