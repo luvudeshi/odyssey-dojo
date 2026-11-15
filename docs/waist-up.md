@@ -15,20 +15,19 @@ fails if the copies below are out of date.
   `styleForLegs` in `src/moves/legSignals.ts` returns the style without its kicks when the legs are out of view.
   It is tested in `tests/kicks.test.ts`, and at the time of writing nothing under `src/` calls it. Calling it
   where the fight is given its style is what hides the leg moves from a waist-up player.
-- **No defend needs a hip.** `block` reads the wrists, the nose and the shoulders. `duck`, `dodge_left` and
-  `dodge_right` read the shoulders against the calibrated baseline. All four count with the hips unseen.
+- **No defend needs a hip.** `block` reads the wrists (or the elbows when a wrist is unsure), the nose and the
+  shoulders. `duck`, `dodge_left` and `dodge_right` read the shoulders against the calibrated baseline, and the
+  head against the shoulders. All four count with the hips unseen.
 - **What fails for the defends is the picture, not a measure.** Seated, with the shoulders 0.6 of the picture
   wide:
-  - `dodge_left` and `dodge_right`: a dodge counts from a shoulder shift of 0.42 baseline shoulder widths
-    (`sideStep` in `src/moves/defs/dodgeLeft.ts`, held from 0.7). At this width that moves the middle of the
-    shoulders 0.25 of the picture or more, so the leading shoulder is past the edge, and the presence check in
-    `src/pose/presence.ts` reads "move into view" (its range for the middle of the shoulders is 0.25 to 0.75).
-    The detector still counts it on these made-up frames, but after 700 ms of that the fight pauses. This
-    happens for every dodge that counts once the shoulders are wider than 0.595 of the picture; the leading
-    shoulder leaves the picture from 0.543. PR #217 raises the widest allowed shoulders from 0.5 to 0.7 and
-    leaves the range for the middle where it was.
-  - `duck`: it counts from a drop of 0.42 shoulder widths (`src/moves/defs/duck.ts`), a quarter of the
-    picture height at this width. A duck just big enough stays in the picture. The suite's own duck, 0.75
+  - `dodge_left` and `dodge_right`: a dodge counts from a shift of 0.25 baseline shoulder widths, half the
+    head's lean added (`sideStep` in `src/moves/defs/dodgeLeft.ts`, held from 0.5). Before that change it
+    needed 0.42, and at this width that moved the middle of the shoulders 0.25 of the picture, past the range
+    the presence check in `src/pose/presence.ts` allows (0.25 to 0.75), so the fight paused after 700 ms. A
+    dodge just big enough now moves the middle 0.15 of the picture and keeps both shoulders in it up to
+    shoulders 0.67 wide. The 0.45 and 0.75 dodges below are bigger than needed and still trip both.
+  - `duck`: it counts from a drop of 0.3 shoulder widths, or the nose down to 0.2 above the shoulder line
+    (`src/moves/defs/duck.ts`). A duck just big enough stays in the picture. The suite's own duck, 0.75
     widths, takes the shoulders out of the bottom, where the tracker is guessing them and presence stops
     seeing the player.
   - `block`: trips nothing.
@@ -43,10 +42,11 @@ fails if the copies below are out of date.
 - **Waist up, unseen and frozen.** The same, with those points also held where they were on the first standing
   frame, in the picture and on the 3D body: a guess that never moves.
 - **Read the way the game reads.** The baseline comes from the standing frames, as at calibration, and the frames
-  go through `tools/recorder/replay.ts`: the real pose input, a strike thrown or a defend held at 0.7.
+  go through `tools/recorder/replay.ts`: the real pose input, a strike thrown at 0.7 or a defend held at 0.5.
 - **Seated.** The picture is scaled so the shoulders are 0.6 of its width and sit 0.65 of the way down, about
   the highest that keeps the head in the picture. The hips end up below the picture and are unseen. The duck and
-  the dodges are done at two sizes: 0.45 shoulder widths, just over the 0.42 that counts, and the suite's 0.75.
+  the dodges are done at two sizes: 0.45 shoulder widths, which was just over the 0.42 that counted before the
+  lenient defends, and the suite's 0.75.
   The last column says what the final frame breaks: a shoulder outside the picture, or one of the presence
   limits from PR #217 (shoulders at most 0.7 wide, their middle between 0.25 and 0.75 across), which are written
   out in `tests/helpers/waistUp.ts` so this table does not depend on which PR merges first.
@@ -83,7 +83,7 @@ A cell is yes or no, and in brackets the highest confidence the move's own detec
 | swift_dash | yes (0.88) | yes (0.88) | yes (0.88) | - |
 | moon_arrow | yes (1.00) | yes (1.00) | yes (1.00) | - |
 | sun_burst | yes (1.00) | yes (1.00) | yes (1.00) | - |
-| jump | yes (1.00) | yes (1.00) | yes (1.00) | - |
+| jump | yes (0.86) | yes (0.86) | yes (0.86) | - |
 | stake_thrust | yes (1.00) | yes (1.00) | yes (1.00) | - |
 
 The 24 that count read exactly as they do with the whole body: the hand moves, the defends and the jump look
@@ -141,9 +141,9 @@ Shoulders 0.6 of the picture wide, hips below the picture and unseen.
 | block | as performed | yes (1.00) | 0.50, 0.65 | - |
 | duck | just enough to count (0.45 widths) | yes (0.75) | 0.50, 0.92 | - |
 | duck | as performed (0.75 widths) | yes (1.00) | 0.50, 1.10 | a shoulder is out of the bottom of the picture |
-| dodge_left | just enough to count (0.45 widths) | yes (0.75) | 0.23, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
+| dodge_left | just enough to count (0.45 widths) | yes (0.90) | 0.23, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
 | dodge_left | as performed (0.75 widths) | yes (1.00) | 0.05, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
-| dodge_right | just enough to count (0.45 widths) | yes (0.75) | 0.77, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
+| dodge_right | just enough to count (0.45 widths) | yes (0.90) | 0.77, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
 | dodge_right | as performed (0.75 widths) | yes (1.00) | 0.95, 0.65 | a shoulder is out of the side of the picture; presence: move into view (middle of the shoulders outside 0.25 to 0.75) |
 
 "Counts" here is the detector alone, fed the made-up position of a shoulder that has left the picture. On a
