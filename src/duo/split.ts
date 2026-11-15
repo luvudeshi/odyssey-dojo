@@ -41,6 +41,13 @@ export function rebase(frame: PoseFrame, from: Home, to: Home): PoseFrame {
 export const FORGET_MS = 1500;
 /** The neutral stance is taken from this many of the newest frames. */
 const SETTLE_FRAMES = 20;
+/**
+ * A player with no neutral stance yet gets one from their first frames, as soon as there are this many. The shared
+ * history (src/pose/signals.ts) waits for 20 frames inside one second, which a camera under 20 pictures a second
+ * never gives, or gives at some chance moment in the middle of a move. A stance taken in the middle of a dodge makes
+ * standing still read as the opposite dodge for the rest of the fight.
+ */
+export const STANCE_FRAMES = 8;
 
 const NOTHING: CombatInput = { held: new Set(), struck: [] };
 
@@ -61,6 +68,10 @@ export function createBodyReader(moves: ReadonlyMap<string, MoveDef>): BodyReade
   let read = createPoseInput(moves);
   let lastT = -Infinity;
   let held: ReadonlySet<string> = NOTHING.held;
+  /** The frames since this player was last new to the reader: their stance comes from the first STANCE_FRAMES of them. */
+  let fresh: PoseFrame[] = [];
+  /** `settle` was asked for before there were frames to take the stance from: take it from the next ones. */
+  let owed = false;
   return {
     read(frame) {
       if (!frame) {
@@ -71,16 +82,31 @@ export function createBodyReader(moves: ReadonlyMap<string, MoveDef>): BodyReade
       if (frame.t - lastT > FORGET_MS) {
         history = EMPTY_HISTORY;
         read = createPoseInput(moves);
+        fresh = [];
       }
       lastT = frame.t;
-      history = pushFrame(history, frame);
+      // The stance is never left to the shared history's own rule: see STANCE_FRAMES.
+      const next = pushFrame({ frames: history.frames, baseline: null }, frame);
+      history = { frames: next.frames, baseline: history.baseline };
+      if (fresh.length < STANCE_FRAMES) {
+        fresh.push(frame);
+        if (fresh.length === STANCE_FRAMES && (owed || !history.baseline)) {
+          history = { frames: history.frames, baseline: baselineOf(fresh) };
+          owed = false;
+        }
+      }
       const input = read(history);
       held = input.held;
       return input;
     },
     settle() {
       const frames = history.frames.slice(-SETTLE_FRAMES);
-      if (frames.length > 0) history = { frames: history.frames, baseline: baselineOf(frames) };
+      if (frames.length >= STANCE_FRAMES) history = { frames: history.frames, baseline: baselineOf(frames) };
+      else {
+        // Too little to go on yet (the fight has only just begun to read this player): the next frames will do.
+        owed = true;
+        fresh = [];
+      }
     },
     history: () => history,
   };

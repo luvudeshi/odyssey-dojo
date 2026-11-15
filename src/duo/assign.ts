@@ -23,6 +23,12 @@ const SAME_PERSON = 0.6;
 export const JOIN_MS = 1000;
 /** A second player not seen for this long has left; until then a few lost frames change nothing. */
 export const LEAVE_MS = 700;
+/**
+ * No picture at all for this long (the camera or the tracker stopped): the count falls back to one player. It is
+ * longer than LEAVE_MS on purpose. A hitch of most of a second in the pictures is not player two walking out, and
+ * for that moment the fight must not let player one defend for both or take player two's stance again.
+ */
+export const STOPPED_MS = 1500;
 /** Not seen for this long, the second player's steady time starts again. */
 const BREAK_MS = 250;
 /** The hero not seen for this long, with the other player still there: the other player becomes the hero. */
@@ -93,11 +99,14 @@ export function createSeating(): Seating {
   let secondSeenAt = -Infinity;
   let steadyFrom = Infinity;
   let two = false;
+  /** The time of the newest picture, whoever was in it. */
+  let lastT = -Infinity;
 
   const frameOf = (body: Body | undefined, t: number): PoseFrame | null => (body ? { t, image: body.image, world: body.world } : null);
 
   return {
     next(found, t) {
+      lastT = t;
       const bodies = distinct(found.filter(usable));
       assignment = assignPlayers(bodies.map((body) => body.image), t, assignment);
       let [zero, one] = assignment.bodies;
@@ -136,7 +145,8 @@ export function createSeating(): Seating {
         players: two ? 2 : 1,
       };
     },
-    players: (now) => (two && now - secondSeenAt < LEAVE_MS ? 2 : 1),
+    // While pictures keep coming, `next` has already said whether player two left. This only covers pictures stopping.
+    players: (now) => (two && now - lastT < STOPPED_MS ? 2 : 1),
     reset() {
       assignment = NO_PLAYERS;
       homes = [null, null];
@@ -145,6 +155,7 @@ export function createSeating(): Seating {
       secondSeenAt = -Infinity;
       steadyFrom = Infinity;
       two = false;
+      lastT = -Infinity;
     },
   };
 }
