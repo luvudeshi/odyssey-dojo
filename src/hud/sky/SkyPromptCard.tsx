@@ -65,9 +65,8 @@ export function SkyPromptCard(props: { move: MoveDef; target: string; successes:
         <div className="sky-card__word">{move.prompt}</div>
         {level !== "mini" && <div className="sky-card__target">{target}</div>}
         {full && situation && <div className="sky-card__situation">{situation}</div>}
-        {/* A defend only counts if it is still held when the attack lands. */}
+        {/* No HOLD tag: a defend made once while the attack is coming counts. */}
         <div className="sky-card__hint">
-          {move.kind === "defend" && <strong className="sky-card__hold">HOLD</strong>}
           {full && <span className="sky-card__how">{move.hint}</span>}
           {key}
         </div>
