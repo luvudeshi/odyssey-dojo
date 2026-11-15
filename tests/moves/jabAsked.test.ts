@@ -5,12 +5,13 @@ import type { PoseFrame, PoseHistory } from "../../src/core/types";
 import { ASK_GRACE_MS, createPoseInput } from "../../src/input/poseInput";
 import { createMissWatch } from "../../src/input/missWatch";
 import { MOVES } from "../../src/moves/registry";
-import { EMPTY_HISTORY, JOINT, pushFrame } from "../../src/pose/signals";
+import { EMPTY_HISTORY, pushFrame } from "../../src/pose/signals";
 import { startDojo, tickDojo } from "../../src/coach";
 import { loadTrace } from "../../tools/recorder/trace";
 import type { StoredTrace } from "../../tools/recorder/trace";
 import { LEFT_OUT, READY, RIGHT_OUT, STANDING, blend, bodyFrame, pose, recording } from "../poseFixture";
 import type { Step } from "../poseFixture";
+import { SEEDS, shaken } from "./looseMoves";
 
 interface Seen { readonly t: number; readonly struck: readonly string[]; readonly miss: boolean }
 
@@ -35,7 +36,7 @@ const take = (steps: readonly Step[], wait: readonly Step[] = [[READY, 600], [RE
   ({ frames: recording([...wait, ...steps]), from: ASKED_AT });
 
 const SMALL = pose(LEFT_OUT, READY);
-const small = take([[blend(READY, SMALL, 0.3), 150], [blend(READY, SMALL, 0.3), 500]]);
+const small = take([[blend(READY, SMALL, 0.3), 150], [blend(READY, SMALL, 0.3), 500]], [[READY, 600], [READY, 450]]);
 
 test("a small left-arm movement is a jab when a jab is asked for (a) and is not on the strict detector (b)", () => {
   expect(strikes(run(small.frames, "jab", small.from), "jab")).toBe(1);
@@ -55,16 +56,12 @@ test("a small movement flashes no MISS on a jab prompt (g)", () => {
   expect(misses(run(small.frames, "jab", small.from))).toBe(0);
 });
 
-test("standing still with the left wrist jittering a tenth of a shoulder width strikes nothing (c)", () => {
-  const still = recording([[STANDING, 1500]]);
-  const jitter = still.map((frame, i): PoseFrame => {
-    const dx = (i % 2 === 0 ? 1 : -1) * 0.016;
-    const dy = (i % 3 === 0 ? 1 : -1) * 0.016;
-    return { ...frame, image: frame.image.map((p, k) => (k === JOINT.leftWrist ? { ...p, x: p.x + dx, y: p.y + dy } : p)) };
-  });
-  const seen = run(jitter, "jab", 0);
-  expect(seen.flatMap((s) => s.struck)).toEqual([]);
-  expect(misses(seen)).toBe(0);
+test.each(SEEDS)("seed %i: standing still with random shake of a tenth of a shoulder width strikes nothing and flashes no MISS (c)", (seed) => {
+  for (const stance of [STANDING, READY]) {
+    const seen = run(shaken(recording([[stance, 33], [stance, 3000]]), seed, 0.1), "jab", 0);
+    expect(seen.flatMap((s) => s.struck)).toEqual([]);
+    expect(misses(seen)).toBe(0);
+  }
 });
 
 test("the whole body shifting sideways and ducking, arms kept in place on the body, is no jab (d)", () => {
@@ -97,7 +94,11 @@ test("the arms coming down in the first 250 ms of the prompt are no jab; a left-
 });
 
 const FILES = import.meta.glob<StoredTrace>("../fixtures/poses/*.json", { eager: true, import: "default" });
-const trace = (name: string) => loadTrace(Object.entries(FILES).find(([path]) => path.endsWith(name))?.[1] as StoredTrace);
+const trace = (name: string) => {
+  const found = Object.entries(FILES).find(([path]) => path.endsWith(name));
+  if (!found) throw new Error(`no pose fixture ${name}`);
+  return loadTrace(found[1]);
+};
 
 test("the idle recording on a jab prompt strikes nothing (h)", () => {
   const idle = trace("idle-madeup-1.json");

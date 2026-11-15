@@ -25,13 +25,13 @@ export const HEROES: Readonly<Record<string, StyleHero>> = {
     look: "Bare-chested, with leather thongs wrapped round both fists and forearms",
     colors: ["#c9a36b", "#f2e6c9"],
   },
-  hoplite: {
-    name: "Achilles",
-    epithet: "Best of the Greeks at Troy",
-    why: "Spear and shield at their best: his ash spear was too heavy for any other Greek, and a god forged his shield.",
-    source: "The Iliad; Odysseus meets his shade in Odyssey 11",
-    look: "Crested bronze helmet, round shield on the left arm, long ash spear",
-    colors: ["#b8792b", "#a01c1c"],
+  jiu_jitsu: {
+    name: "Theseus",
+    epithet: "Who won by skill, not strength",
+    why: "Jiu-jitsu is technique over strength. Theseus is said to be the first to wrestle by skill: he threw the strongman Cercyon.",
+    source: "Pausanias 1.39.3; Homer names him in Odyssey 11",
+    look: "A young Athenian in a short tunic, open hands and bare feet",
+    colors: ["#2c4f8f", "#e8d9a8"],
   },
   karate: {
     name: "Heracles",
@@ -49,13 +49,13 @@ export const HEROES: Readonly<Record<string, StyleHero>> = {
     look: "An old man of the sea: long beard, sea-green robe hung with weed",
     colors: ["#2f8f83", "#d9efe6"],
   },
-  pankration: {
-    name: "Theseus",
-    epithet: "Slayer of the Minotaur",
-    why: "Later Greeks said he invented pankration, striking and grappling together, to beat the Minotaur.",
-    source: "Ancient commentators on Pindar; Homer names him in Odyssey 11",
-    look: "A young Athenian in a short tunic, bare fists and bare feet",
-    colors: ["#2c4f8f", "#e8d9a8"],
+  taekwondo: {
+    name: "Achilles",
+    epithet: "Swift-footed",
+    why: "Taekwondo leads with the feet, and swift-footed is Homer's own name for Achilles, the fastest of the Greeks at Troy.",
+    source: "The Iliad; Odysseus meets his shade in Odyssey 11",
+    look: "Crested bronze helmet and greaves, hands empty, feet bare",
+    colors: ["#b8792b", "#a01c1c"],
   },
 };
 

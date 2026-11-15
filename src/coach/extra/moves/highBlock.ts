@@ -7,6 +7,7 @@ import { otherSide, wristRise } from "../../../moves/handSignals";
 import type { Side } from "../../../moves/handSignals";
 import { joint, shoulderWidth } from "../../../pose/signals";
 import { atLeast, atMost, eitherSide, elbowRise, heldFor, limb, met, now, wristOverNose } from "../signals";
+import { armWent, legRose } from "../../../moves/looseSignals";
 
 /** The wrist is no more than this far under the nose, in shoulder widths: at the forehead or above. */
 export const WRIST_UP = -0.1;
@@ -50,5 +51,8 @@ export const move: MoveDef = {
   teaches: "A forearm raised level with your forehead takes a blow coming at your head.",
   detect(history) {
     return block.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(armWent(history, "left", "up"), armWent(history, "right", "up"));
   },
 };

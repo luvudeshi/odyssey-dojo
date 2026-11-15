@@ -2,6 +2,7 @@
 import { strikeQuality } from "../../pose/quality";
 import type { MoveDef } from "../../core/types";
 import { risingHand } from "../handSignals";
+import { armWent } from "../looseSignals";
 
 export const move: MoveDef = {
   id: "rising_palm",
@@ -14,6 +15,10 @@ export const move: MoveDef = {
   teaches: "The heel of your open hand, pushed up and in, can loosen a grip so you can get away",
   detect(history) {
     return risingHand(history, "left", 170) ? 1 : 0;
+  },
+  /** Asked for: the left arm going up. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), armWent(history, "left", "up"));
   },
   quality(history) {
     return strikeQuality(history, { sides: ["left"], straight: false, rise: 0.5 });

@@ -217,9 +217,6 @@ interface NotWired {
  * When you mount one, its test fails: delete the row here and add a row to WIRED (or a rendered test above).
  */
 const NOT_WIRED: readonly NotWired[] = [
-  { feature: "two players on one camera: the card on Multiplayer", symbol: "DuoCard", own: ["duo/"], wiredBy: "#28, src/duo/mount.diff (src/screens/Multiplayer.tsx)" },
-  { feature: "two players on one camera: the tracker follows two bodies", symbol: "duoCamera", own: ["duo/"], wiredBy: "#28, src/duo/mount.diff (src/App.tsx, src/hud/CameraView.tsx, src/pose/tracker.ts)" },
-  { feature: "two players on one camera: the second figure in the scene", symbol: "SecondFigure", own: ["duo/"], wiredBy: "#28, src/duo/mount.diff" },
   { feature: "waist-up play: are the legs in the picture", symbol: "legsInView", own: ["moves/waistUp.ts"], wiredBy: "#239, docs/waist-up.md (the fight)" },
   { feature: "waist-up play: never ask for a move the camera cannot see", symbol: "askable", own: ["moves/waistUp.ts"], wiredBy: "#239, docs/waist-up.md (the fight)" },
   { feature: "waist-up play: the move asked for in its place", symbol: "swapFor", own: ["moves/waistUp.ts"], wiredBy: "#239, docs/waist-up.md (the fight)" },

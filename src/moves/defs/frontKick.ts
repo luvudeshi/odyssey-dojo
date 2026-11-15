@@ -3,6 +3,7 @@ import type { MoveDef, PoseFrame, PoseHistory } from "../../core/types";
 import { clamp01, latest, recent } from "../../pose/signals";
 import type { Side } from "../handSignals";
 import { SIDES, footLift, kneeAngle, kneeLift, legsVisible } from "../legSignals";
+import { legRose } from "../looseSignals";
 
 /** How long ago the knee may have been chambered, in milliseconds. */
 export const CHAMBER_MS = 500;
@@ -43,6 +44,10 @@ export const move: MoveDef = {
   teaches: "A front kick keeps someone at leg length, further away than their hands can reach.",
   detect(history) {
     return kickingSide(history) ? 1 : 0;
+  },
+  /** Asked for: a leg rising. The knee strike reads the same way: the pose cannot cheaply tell them apart. */
+  detectAsked(history) {
+    return Math.max(move.detect(history), legRose(history));
   },
   /** Better the higher the foot goes, the straighter the leg ends up and the faster it snaps out of the chamber. */
   quality(history) {

@@ -88,26 +88,26 @@ The made-up player stands still with arms hanging for 20 frames (the baseline), 
 | cross | Boxer | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.46) | 0.47 | 0.79 |
 | dodge_left | defend | yes/yes | yes/yes | no/no | no/no | 1.00 | swift_dash | 0.81 (0.94) | 0.98 | 0.36 |
 | dodge_right | defend | yes/yes | yes/yes | no/no | no/no | 1.00 | swift_dash | 0.81 (0.94) | 0.98 | 0.36 |
-| double_palm | Kung Fu | no/no | no/no | no/no | no/no | 0.00 | block | 0.56 (0.56) | 0.61 | 0.81 |
+| double_palm | Jiu-jitsu, Kung Fu | no/no | no/no | no/no | no/no | 0.00 | block | 0.56 (0.56) | 0.61 | 0.81 |
 | duck | defend | yes/yes | yes/yes | yes/yes | no/no | 1.00 | none | 0.81 (0.94) | 0.97 | 0.00 |
-| front_kick | Pankration | no/no | no/no | no/no | no/no | 0.00 | block | 0.00 (1.00) | 1.00 | 0.72 |
-| hammer_fist | Karate, Pankration | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
+| front_kick | Taekwondo | no/no | no/no | no/no | no/no | 0.00 | block | 0.00 (1.00) | 1.00 | 0.72 |
+| hammer_fist | Karate, Taekwondo | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
 | hook | Boxer | no/no | no/no | no/no | no/no | 0.00 | none | 0.25 (0.85) | 0.88 | 0.82 |
 | jab | Boxer | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.46) | 0.47 | 0.79 |
 | jump | defend | yes/yes | yes/yes | yes/yes | no/no | 1.00 | none | 0.62 (0.96) | 0.96 | 0.31 |
-| knee | Pankration | yes/yes | yes/yes | yes/yes | no/no | 1.00 | stake_thrust | 0.47 (1.00) | 1.00 | 0.40 |
-| knife_hand | Karate | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.49) | 0.69 | 0.85 |
+| knee | Taekwondo | yes/yes | yes/yes | yes/yes | no/no | 1.00 | stake_thrust | 0.47 (1.00) | 1.00 | 0.40 |
+| knife_hand | Jiu-jitsu, Karate | no/no | no/no | no/no | no/no | 0.00 | none | 0.00 (0.49) | 0.69 | 0.85 |
 | moon_arrow | god power | no/no | no/no | no/no | yes/no | 0.00 | none | 0.43 (0.43) | 0.62 | 0.92 |
-| overhead_strike | Hoplite | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
+| overhead_strike | finisher | no/no | no/no | no/no | yes/yes | 0.00 | block, cross, jab, rising_palm, uppercut | 0.00 (0.26) | 0.87 | 0.53 |
 | reverse_punch | Karate | no/no | yes/yes | no/no | no/no | 1.00 | none | 0.34 (0.34) | 0.39 | 0.60 |
-| rising_palm | Kung Fu | no/no | no/no | yes/no | no/no | 0.00 | block, uppercut | 0.13 (0.74) | 0.78 | 0.64 |
-| spear_thrust | Hoplite | no/no | no/no | no/no | no/no | 0.00 | sun_burst | 0.00 (0.00) | 0.00 | 0.86 |
+| rising_palm | Jiu-jitsu, Kung Fu | no/no | no/no | yes/no | no/no | 0.00 | block, uppercut | 0.13 (0.74) | 0.78 | 0.64 |
+| spear_thrust | finisher | no/no | no/no | no/no | no/no | 0.00 | sun_burst | 0.00 (0.00) | 0.00 | 0.86 |
 | stake_thrust | finisher | no/no | yes/yes | no/yes | no/no | 1.00 | none | 0.43 (0.43) | 0.59 | 0.46 |
 | sun_burst | god power | no/no | yes/yes | no/yes | no/no | 1.00 | none | 0.00 (0.00) | 0.31 | 0.79 |
 | swift_dash | god power | yes/no | yes/no | yes/yes | no/no | 1.00 | dodge_right | 0.60 (0.98) | 0.98 | 0.34 |
 | thunderbolt | god power | no/no | no/no | no/no | yes/yes | 0.00 | cross, jab, uppercut | 0.03 (0.16) | 0.73 | 0.26 |
 | trident_sweep | god power | no/no | no/no | no/no | no/no | 0.00 | hook | 0.00 (0.00) | 0.37 | 0.70 |
-| uppercut | Boxer, Pankration | no/no | no/no | yes/no | no/no | 0.00 | block, rising_palm | 0.13 (0.74) | 0.78 | 0.64 |
+| uppercut | Boxer, Taekwondo | no/no | no/no | yes/no | no/no | 0.00 | block, rising_palm | 0.13 (0.74) | 0.78 | 0.64 |
 
 Counts:
 
@@ -140,26 +140,26 @@ The made-up player here is the one `tests/coachGuide.test.ts` already uses (`too
 | cross | Boxer | no | no | yes/yes | none | jab |
 | dodge_left | defend | yes | yes | yes/yes | swift_dash | swift_dash |
 | dodge_right | defend | yes | yes | yes/yes | swift_dash | swift_dash |
-| double_palm | Kung Fu | no | no | yes/yes | block | aegis_push, spear_thrust |
+| double_palm | Jiu-jitsu, Kung Fu | no | no | yes/yes | block | aegis_push, spear_thrust |
 | duck | defend | yes | yes | yes/yes | none | none |
-| front_kick | Pankration | no | no | yes/yes | block | block, knee |
-| hammer_fist | Karate, Pankration | no | no | yes/yes | block, cross, jab, rising_palm, thunderbolt, uppercut | block, thunderbolt, uppercut |
+| front_kick | Taekwondo | no | no | yes/yes | block | block, knee |
+| hammer_fist | Karate, Taekwondo | no | no | yes/yes | block, cross, jab, rising_palm, thunderbolt, uppercut | block, thunderbolt, uppercut |
 | hook | Boxer | no | no | yes/yes | none | block, thunderbolt, uppercut |
 | jab | Boxer | no | no | yes/yes | none | cross |
 | jump | defend | yes | yes | yes/yes | none | none |
-| knee | Pankration | yes | yes | yes/yes | stake_thrust | stake_thrust |
-| knife_hand | Karate | no | no | yes/yes | none | block |
+| knee | Taekwondo | yes | yes | yes/yes | stake_thrust | stake_thrust |
+| knife_hand | Jiu-jitsu, Karate | no | no | yes/yes | none | block |
 | moon_arrow | god power | no | no | yes/yes | none | none |
-| overhead_strike | Hoplite | no | no | yes/yes | block, cross, jab, rising_palm, thunderbolt, uppercut | block, rising_palm, thunderbolt |
+| overhead_strike | finisher | no | no | yes/yes | block, cross, jab, rising_palm, thunderbolt, uppercut | block, rising_palm, thunderbolt |
 | reverse_punch | Karate | no | yes | yes/yes | none | cross, jab |
-| rising_palm | Kung Fu | no | no | yes/yes | block, hammer_fist, thunderbolt, uppercut | block, hammer_fist, thunderbolt |
-| spear_thrust | Hoplite | no | no | yes/yes | sun_burst | none |
+| rising_palm | Jiu-jitsu, Kung Fu | no | no | yes/yes | block, hammer_fist, thunderbolt, uppercut | block, hammer_fist, thunderbolt |
+| spear_thrust | finisher | no | no | yes/yes | sun_burst | none |
 | stake_thrust | finisher | no | yes | yes/yes | none | none |
 | sun_burst | god power | no | yes | yes/yes | none | knife_hand, overhead_strike, thunderbolt |
 | swift_dash | god power | yes | yes | yes/yes | dodge_right | dodge_right |
 | thunderbolt | god power | no | no | yes/yes | cross, jab, overhead_strike, uppercut | overhead_strike |
 | trident_sweep | god power | no | no | yes/yes | hook | hook, knife_hand |
-| uppercut | Boxer, Pankration | no | no | yes/yes | block, overhead_strike, rising_palm, thunderbolt | block, overhead_strike, thunderbolt |
+| uppercut | Boxer, Taekwondo | no | no | yes/yes | block, overhead_strike, rising_palm, thunderbolt | block, overhead_strike, thunderbolt |
 
 | | copy the still ghost | follow the guide's figure |
 | --- | --- | --- |

@@ -6,6 +6,7 @@ import { CHAMBER_MS, KICK_LIFT, KICK_STRAIGHT, chambered } from "../../../moves/
 import { footLift, kneeAngle, legsVisible } from "../../../moves/legSignals";
 import { clamp01, latest } from "../../../pose/signals";
 import { ankleOut, atLeast, atMost, eitherSide, kneeOut, now, since, yes } from "../signals";
+import { armWent, legRose } from "../../../moves/looseSignals";
 
 /** The lifted knee is at least this far out to the side of its hip, in shoulder widths. */
 export const KNEE_OUT = 0.6;
@@ -35,6 +36,9 @@ export const move: MoveDef = {
   teaches: "A kick swung in from the side reaches low while you stay out of hand range.",
   detect(history) {
     return kick.side(history) ? 1 : 0;
+  },
+  detectAsked(history) {
+    return Math.max(move.detect(history), legRose(history));
   },
   /** Better the higher the foot goes and the straighter the leg ends up. */
   quality(history) {
