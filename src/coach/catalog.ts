@@ -3,13 +3,18 @@
 // styles are the game's (src/styles/registry) plus the dojo's own. Pure: lists in, lists out. Nothing here is read by
 // the fights, so a move or a style added in ./extra never reaches them.
 import { POWER_MOVES } from "../combat/engine";
-import type { MoveDef } from "../core/types";
+import type { Baseline, MoveDef, PoseFrame } from "../core/types";
 import { KICK_IDS } from "../moves/legSignals";
+import { MEASURES } from "../moves/measures";
 import { MOVES } from "../moves/registry";
 import { NEEDS_LEGS } from "../moves/waistUp";
 import { STYLES } from "../styles/registry";
-import { EXTRA_MOVES, EXTRA_STYLES } from "./extra";
+import { EXTRA_MEASURES, EXTRA_MOVES, EXTRA_NEEDS_LEGS, EXTRA_STYLES, EXTRA_TIPS, extraGuideFor, judgeExtraRep } from "./extra";
 import type { DojoStyleDef } from "./extra";
+import { guideFor } from "./guide";
+import type { Guide } from "./guide";
+import { PRACTICE_TIPS, judgeRep } from "./practice";
+import type { RepResult } from "./practice";
 
 export type { DojoStyleDef } from "./extra";
 
@@ -18,7 +23,7 @@ export const DOJO_DEFENDS: readonly string[] = ["block", "duck", "dodge_left", "
 /** The repetition counts the setup step offers. */
 export const REPS_CHOICES: readonly number[] = [1, 3, 5];
 /** Said with every leg move: the camera has to see the legs to count them. */
-export const WHOLE_BODY_NOTE = "These need your whole body in view: step back until the camera sees your feet.";
+export const WHOLE_BODY_NOTE = "Kicks and knees need your whole body in view: step back until the camera sees your feet.";
 
 /** The moves and styles only the dojo knows. A test hands in its own; left out, the ones in ./extra. */
 export interface DojoExtras {
@@ -37,12 +42,30 @@ export function dojoStyles(extraStyles: readonly DojoStyleDef[] = EXTRA_STYLES):
   return all.filter((style, index) => all.findIndex((other) => other.id === style.id) === index);
 }
 
-/** The words in an id that mark a leg move the dojo was handed in ./extra. */
-const LEG_WORD = /(?:^|_)(?:kick|knee|leg|foot|heel|stomp)(?:_|$)/;
+/** The outline figure for a move: the game's (./guide), else the one written for an extra move. Null when it has neither. */
+export function dojoGuideFor(move: MoveDef): Guide | null {
+  return guideFor(move) ?? extraGuideFor(move);
+}
 
-/** True for a move the camera can only count with the legs in view: the game's two, and an extra move named as one. */
+/** What every move's detector checks, the extra moves' too: the `table` to hand `liveChecks` (./guide) for the live checklist. */
+export const DOJO_MEASURES: typeof MEASURES = { ...MEASURES, ...EXTRA_MEASURES };
+
+/** Judges the frames of one try: `judgeRep` (./practice) for the game's moves, `judgeExtraRep` for the extra ones, which puts the move's own tip in. */
+export function dojoJudgeRep(move: MoveDef, frames: readonly PoseFrame[], baseline: Baseline | null = null): RepResult {
+  return MOVES.has(move.id) ? judgeRep(move, frames, baseline) : judgeExtraRep(move, frames, baseline);
+}
+
+/** The line for a try that was not seen and has no tip of its own: the extra move's own tip, else the one for its kind. */
+export function dojoTipFor(move: Pick<MoveDef, "id" | "kind">): string {
+  return (MOVES.has(move.id) ? undefined : EXTRA_TIPS[move.id]?.tip) ?? PRACTICE_TIPS[move.kind].tip;
+}
+
+/** The words in an id that mark a leg move among the extra ones, for one that EXTRA_NEEDS_LEGS has not listed. */
+const LEG_WORD = /(?:^|_)(?:kick|knee|stomp)(?:_|$)/;
+
+/** True for a move the camera can only count with the legs in view: the game's two, the extra kicks, and any other extra move named as one. */
 export function needsWholeBody(move: Pick<MoveDef, "id">): boolean {
-  return KICK_IDS.includes(move.id) || NEEDS_LEGS.includes(move.id) || (!MOVES.has(move.id) && LEG_WORD.test(move.id));
+  return KICK_IDS.includes(move.id) || NEEDS_LEGS.includes(move.id) || EXTRA_NEEDS_LEGS.includes(move.id) || (!MOVES.has(move.id) && LEG_WORD.test(move.id));
 }
 
 export type DojoGroupId = "style" | "kicks" | "defends" | "more";
@@ -73,8 +96,10 @@ export interface DojoMenuOptions {
 /**
  * The list a player ticks, in the order it is shown and trained. Four groups, each move in the first one it fits:
  * the style's own strikes; "Kicks and knees" (front kick, knee, and any extra leg move); "Defends" (block, duck, both
- * dodges, and any extra defend); "More moves" (the strikes of every other style and the extra strikes). A god's power
- * move is never offered. A group with nothing in it is left out, and an id nobody knows is skipped.
+ * dodges, and any other defend: a style's own, such as a high block, sits here and not with its strikes); "More
+ * moves" (the strikes of every other style and the extra strikes). A god's power move is never offered. A group with
+ * nothing in it is left out, and an id nobody knows is skipped. The style's own group carries the whole-body note
+ * when a kick is in it.
  */
 export function dojoMenu(style: Pick<DojoStyleDef, "name" | "strikes">, options: DojoMenuOptions = {}): DojoMenuGroup[] {
   const extraMoves = options.extras?.moves ?? EXTRA_MOVES;
@@ -89,15 +114,17 @@ export function dojoMenu(style: Pick<DojoStyleDef, "name" | "strikes">, options:
   const offered = (move: MoveDef): boolean => !POWER_MOVES.has(move.id);
   const extras = extraMoves.filter(offered);
 
-  const own = take(style.strikes);
+  const kindOf = (id: string): MoveDef["kind"] | undefined => dojoMoveOf(id, extraMoves)?.kind;
+  const own = take(style.strikes.filter((id) => kindOf(id) !== "defend"));
   const kicks = take([...KICK_IDS, ...extras.filter(needsWholeBody).map((move) => move.id)]);
-  const defends = take([...DOJO_DEFENDS, ...extras.filter((move) => move.kind === "defend").map((move) => move.id)]);
+  const ownDefends = style.strikes.filter((id) => kindOf(id) === "defend");
+  const defends = take([...DOJO_DEFENDS, ...ownDefends, ...extras.filter((move) => move.kind === "defend").map((move) => move.id)]);
   const others = [...styles.flatMap((each) => each.strikes), ...extras.map((move) => move.id)]
     .filter((id) => { const move = dojoMoveOf(id, extraMoves); return move?.kind === "strike" && offered(move); });
   const more = take([...others, ...(options.include ?? [])]);
 
   const groups: DojoMenuGroup[] = [
-    { id: "style", title: `${style.name} strikes`, note: null, moves: own },
+    { id: "style", title: `${style.name} strikes`, note: own.some((move) => move.wholeBody) ? WHOLE_BODY_NOTE : null, moves: own },
     { id: "kicks", title: "Kicks and knees", note: WHOLE_BODY_NOTE, moves: kicks },
     { id: "defends", title: "Defends", note: null, moves: defends },
     { id: "more", title: "More moves", note: null, moves: more },
