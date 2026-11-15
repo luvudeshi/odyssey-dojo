@@ -1,0 +1,31 @@
+/* HUD look C, "Rune stones" (a draft, switched by ?look=c, see src/ui/lookSwitch.ts). The card is a volcanic stone: hexagonal for a strike,
+   round for a defend, with the move's rune carved and glowing in it and a ring fissure round the rim that burns away as the time runs out.
+   Banners and chips are small hexagonal stones with a lit rim. Delete this file with the rest of the looks folder when a look is picked. */
+html[data-look="c"] .sky-card { --vein: #ffc060; --glow: #ff5a10; --core: #fff2c0; width: 340px; right: 26px; }
+html[data-look="c"] .sky-card--defend { --vein: #bfe6ff; --glow: #4aa0ff; --core: #f4fcff; }
+html[data-look="c"] .lk-shape .lk-trough { fill: none; stroke: #020103; stroke-width: 8; stroke-linejoin: round; }
+html[data-look="c"] .lk-shape .lk-timer { fill: none; stroke: var(--core); stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; }
+html[data-look="c"] .lk-shape .lk-timer--glow { stroke: var(--glow); stroke-width: 10; stroke-opacity: 0.6; }
+html[data-look="c"] .lk-shape--c .lk-aura { fill: none; stroke: var(--rim); stroke-width: 12; stroke-opacity: 0.2; stroke-linejoin: round; }
+html[data-look="c"] .lk-shape--c .lk-plate { fill: #050407; stroke: #000; stroke-width: 4; stroke-linejoin: round; }
+html[data-look="c"] .lk-shape--c .lk-rim { fill: none; stroke: var(--rim); stroke-width: 2; stroke-opacity: 0.9; stroke-linejoin: round; }
+html[data-look="c"] .lk-shape--c .lk-crack { fill: none; stroke: #8a7cc0; stroke-width: 1; stroke-opacity: 0.35; }
+html[data-look="c"] .lk-shape--c .lk-rune { fill: none; stroke: var(--core); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; stroke-opacity: 0.4; }
+html[data-look="c"] .lk-shape--c .lk-rune--glow { stroke: var(--glow); stroke-width: 9; stroke-opacity: 0.2; }
+html[data-look="c"] .sky-card__in { padding: 52px 44px 48px; }
+html[data-look="c"] .sky-card--strike .sky-card__in, html[data-look="c"] .sky-card--finish .sky-card__in { padding: 58px 46px 52px; }
+html[data-look="c"] .sky-card .move-guide, html[data-look="c"] .sky-card:not(.sky-card--full) .move-guide { --mg-figure: 112px; }
+html[data-look="c"] .sky-card .mg-how { display: none; }
+html[data-look="c"] .sky-card__tag, html[data-look="c"] .sky-card--strike .sky-card__tag, html[data-look="c"] .sky-card--finish .sky-card__tag { top: 12px; --cut: polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%); }
+html[data-look="c"] .sky-card--defend .sky-card__tag { top: 18px; }
+
+/* The key: a small stone, hexagonal under a strike and round under a defend. */
+html[data-look="c"] .sky-key { position: relative; isolation: isolate; display: inline-grid; place-items: center; min-width: 48px; height: 48px; padding: 0 12px; border: 0; box-shadow: none; background: var(--rim); border-radius: 24px; }
+html[data-look="c"] .sky-card--strike .sky-key, html[data-look="c"] .sky-card--finish .sky-key { border-radius: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); width: 48px; padding: 0; }
+html[data-look="c"] .sky-key::after { content: ""; position: absolute; inset: 2px; z-index: -1; background: #14111a; border-radius: 24px; }
+html[data-look="c"] .sky-card--strike .sky-key::after, html[data-look="c"] .sky-card--finish .sky-key::after { border-radius: 0; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+
+/* Banners and chips: a lozenge-shaped stone, its rim the fissure (lit lava, ice or cold violet), the face black glass. */
+html[data-look="c"] .rift-plate { background: var(--rp-edge); clip-path: polygon(20px 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 20px 100%, 0 50%); }
+html[data-look="c"] .rift-plate::after { content: ""; position: absolute; inset: 0; background: linear-gradient(#1c1826, #07060a 70%, #120e18); clip-path: polygon(21px 2.5px, calc(100% - 21px) 2.5px, calc(100% - 3px) 50%, calc(100% - 21px) calc(100% - 2.5px), 21px calc(100% - 2.5px), 3px 50%); }
+html[data-look="c"] .rift-plate__glass, html[data-look="c"] .rift-plate__seam { display: none; }

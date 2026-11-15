@@ -3,6 +3,7 @@
 // seam of the baked melt (lava.ts) along its foot. Optional glass blades at both ends, as on the boss bar. It is still,
 // with no filter, so the piece around it can pop and fade on transform and opacity alone. The parent needs
 // `isolation: isolate` (the plate sits at z-index -1, behind the words).
+import { currentLook } from "../../../ui/lookSwitch";
 import { END_BLADES, SLAB } from "./geometry";
 import "./plate.css";
 
@@ -35,7 +36,7 @@ export function RiftPlate({ tone, blades = false }: { tone: RiftTone; blades?: b
         <path d={SLAB.bottom} className="rift-plate__under" vectorEffect="non-scaling-stroke" />
       </svg>
       {tone === "lava" && <span className="rift-plate__seam" />}
-      {blades && <><Ends side="left" /><Ends side="right" /></>}
+      {(blades || currentLook() === "b") && <><Ends side="left" /><Ends side="right" /></>}
     </span>
   );
 }
