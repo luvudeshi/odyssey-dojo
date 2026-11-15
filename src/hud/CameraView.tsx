@@ -4,6 +4,7 @@
 import { memo, useContext, useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import type { PoseFrame } from "../core/types";
+import { duoCamera } from "../duo/duoCamera";
 import { MOVES } from "../moves/registry";
 import type { PoseTracker } from "../pose/tracker";
 import { battle } from "../render/battle";
@@ -65,7 +66,7 @@ export const CameraView = memo(function CameraView(props: { tracker: PoseTracker
       const frame = poseRef.current;
       const presence = presenceOf(frame, performance.now());
       const tracking = presence.ok;
-      if (frame && tracking && !pausedRef.current) draw(context, frame, mirrorRef.current, width, height, ratio);
+      if (frame && tracking && !pausedRef.current) draw(context, duoCamera.seen(frame), mirrorRef.current, width, height, ratio);
       const now = performance.now() / 1000;
       flash = nextFlash(flash, battle, now, nameOf);
       const text = presence.ok ? "Tracking your body" : presence.reason;

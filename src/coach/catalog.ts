@@ -9,9 +9,11 @@ import { MEASURES } from "../moves/measures";
 import { MOVES } from "../moves/registry";
 import { NEEDS_LEGS } from "../moves/waistUp";
 import { STYLES } from "../styles/registry";
+import { COACHING, faultOf, praiseFor } from "./coaching";
 import { EXTRA_MEASURES, EXTRA_MOVES, EXTRA_NEEDS_LEGS, EXTRA_STYLES, EXTRA_TIPS, extraGuideFor, judgeExtraRep } from "./extra";
 import type { DojoStyleDef } from "./extra";
 import { guideFor } from "./guide";
+import { currentStyleId } from "../styles/oldIds";
 import type { Guide } from "./guide";
 import { PRACTICE_TIPS, judgeRep } from "./practice";
 import type { RepResult } from "./practice";
@@ -50,14 +52,29 @@ export function dojoGuideFor(move: MoveDef): Guide | null {
 /** What every move's detector checks, the extra moves' too: the `table` to hand `liveChecks` (./guide) for the live checklist. */
 export const DOJO_MEASURES: typeof MEASURES = { ...MEASURES, ...EXTRA_MEASURES };
 
-/** Judges the frames of one try: `judgeRep` (./practice) for the game's moves, `judgeExtraRep` for the extra ones, which puts the move's own tip in. */
+/**
+ * Judges the frames of one try: `judgeRep` (./practice) for the game's moves, `judgeExtraRep` for the extra ones.
+ * Where that has only the line for every move of the kind (or an extra move's one line) to say about a try that
+ * did not count, the move's own words (./coaching) take its place: the tip for the condition the try failed, for a
+ * move judged condition by condition, else how to make this move. What counted, and how well, is not touched.
+ */
 export function dojoJudgeRep(move: MoveDef, frames: readonly PoseFrame[], baseline: Baseline | null = null): RepResult {
-  return MOVES.has(move.id) ? judgeRep(move, frames, baseline) : judgeExtraRep(move, frames, baseline);
+  const result = MOVES.has(move.id) ? judgeRep(move, frames, baseline) : judgeExtraRep(move, frames, baseline);
+  const own = COACHING[move.id];
+  const general = result.part === PRACTICE_TIPS[move.kind].part || (!MOVES.has(move.id) && result.part === EXTRA_TIPS[move.id]?.part);
+  if (!own || result.counted || !general) return result;
+  const say = faultOf(move.id, DOJO_MEASURES[move.id] ?? [], frames, baseline) ?? own.whole;
+  return { ...result, tip: say.tip, part: say.part };
 }
 
-/** The line for a try that was not seen and has no tip of its own: the extra move's own tip, else the one for its kind. */
+/** The line for a try that was not seen and has no tip of its own: how to make this move (./coaching), else the extra move's own tip, else the one for its kind. */
 export function dojoTipFor(move: Pick<MoveDef, "id" | "kind">): string {
-  return (MOVES.has(move.id) ? undefined : EXTRA_TIPS[move.id]?.tip) ?? PRACTICE_TIPS[move.kind].tip;
+  return COACHING[move.id]?.whole.tip ?? (MOVES.has(move.id) ? undefined : EXTRA_TIPS[move.id]?.tip) ?? PRACTICE_TIPS[move.kind].tip;
+}
+
+/** The line shown with an Excellent: what was done well in this move. Null for a move with none written. */
+export function dojoPraiseFor(move: Pick<MoveDef, "id">): string | null {
+  return praiseFor(move.id);
 }
 
 /** The words in an id that mark a leg move among the extra ones, for one that EXTRA_NEEDS_LEGS has not listed. */
@@ -166,14 +183,14 @@ function browserStorage(): ChoiceStorage | null {
   }
 }
 
-/** The stored choice. No storage, a private window that throws, or anything that is not a choice: null. */
+/** The stored choice, its style id as today's (a saved Hoplite or Pankration is read as Jiu-jitsu or Taekwondo). No storage, a private window that throws, or anything that is not a choice: null. */
 export function loadChoice(storage: ChoiceStorage | null = browserStorage()): DojoChoice | null {
   try {
     const data: unknown = JSON.parse(storage?.getItem(DOJO_CHOICE_KEY) ?? "null");
     if (typeof data !== "object" || data === null) return null;
     const { style, moves, reps } = data as Record<string, unknown>;
     if (typeof style !== "string" || !Array.isArray(moves) || typeof reps !== "number" || !Number.isFinite(reps)) return null;
-    return { style, moves: moves.filter((id): id is string => typeof id === "string"), reps };
+    return { style: currentStyleId(style), moves: moves.filter((id): id is string => typeof id === "string"), reps };
   } catch {
     return null;
   }

@@ -1,5 +1,6 @@
-// The door App's main menu comes through (src/ai/ui/museDoor.tsx): the normal menu with its props untouched unless the
-// address has ?ai=1, the Muse's page in its place when it has, and the menu again once she is left or breaks.
+// The door App's main menu comes through (src/ai/ui/museDoor.tsx): the normal menu with its props untouched and one
+// "Ask the Muse" button under it, the Muse's page in its place once that is pressed or when the address has ?ai=1,
+// and the menu again once she is left or breaks.
 // There is no DOM here: React's useState is a small stand-in, the menu is a stub, and the component's element tree is read.
 import { readFileSync } from "node:fs";
 import { isValidElement } from "react";
@@ -64,14 +65,42 @@ async function mount(search: string, fresh = true) {
   };
   /** The Muse's page in the tree: the one element given onLeave. */
   const muse = (): El | undefined => elements(show()).find((element) => typeof element.props.onLeave === "function");
-  return { show, muse };
+  /** Presses the menu's "Ask the Muse" button. */
+  const ask = (): void => { (askButton(show())?.props.onClick as () => void)(); };
+  return { show, muse, ask };
 }
 
+/** The menu's "Ask the Muse" button, if the tree has one. */
+function askButton(shown: unknown): El | undefined {
+  return elements(shown).find((element) => element.type === "button");
+}
+
+function text(node: unknown): string {
+  if (typeof node === "string") return node;
+  if (Array.isArray(node)) return (node as unknown[]).map(text).join(" ");
+  return isValidElement<Record<string, unknown>>(node) ? text(node.props.children) : "";
+}
+
+/** The main menu alone, as it is shown when the Muse broke. */
 function expectMenu(shown: El): void {
   expect(shown.type).toBe(fakes.MainMenu);
   // The same props, and the very same handlers: nothing is wrapped.
   expect(shown.props).toEqual(PROPS);
   for (const [name, given] of Object.entries(PROPS)) expect(shown.props[name], name).toBe(given);
+}
+
+/** The main menu with the "Ask the Muse" button after it, and nothing else. */
+function expectMenuWithButton(shown: El): void {
+  const drawn = elements(shown.props.children);
+  expect(drawn.filter((element) => element.type === fakes.MainMenu)).toHaveLength(1);
+  expectMenu(drawn[0] as El);
+  const button = askButton(shown);
+  // A real button, after the menu so Tab reaches it last, and with no autofocus: the menu's own focus is left alone.
+  expect(drawn.indexOf(button as El)).toBe(1);
+  expect(drawn.filter((element) => element.type === "button")).toHaveLength(1);
+  expect(button?.props.type).toBe("button");
+  expect(button?.props.autoFocus).toBeUndefined();
+  expect(text(button)).toMatch(/^Ask the Muse .*Gemini/);
 }
 
 afterEach(() => { vi.unstubAllGlobals(); vi.resetAllMocks(); });
@@ -83,13 +112,36 @@ test("only ai=1 is the flag", async () => {
   for (const off of ["", "?", "?ai", "?ai=", "?ai=0", "?ai=true", "?ai=11", "?AI=1", "?stop=circe", "?air=1", "?ai=0&ai=1"]) expect(museFlag(off), off).toBe(false);
 });
 
-test("without the flag the door is the main menu, with every prop as App gave it", async () => {
+test("without the flag the door is the main menu, with every prop as App gave it, and the Ask the Muse button", async () => {
   for (const search of ["", "?stop=circe", "?ai=0", "?ai", "?debug"]) {
     const door = await mount(search);
-    expectMenu(door.show());
+    expectMenuWithButton(door.show());
     expect(door.muse(), search).toBeUndefined();
   }
   expect(fakes.startMusic).not.toHaveBeenCalled();
+});
+
+test("pressing Ask the Muse opens her page, and she can be left and asked again as often as the player likes", async () => {
+  const door = await mount("");
+  for (let visit = 0; visit < 3; visit++) {
+    door.ask();
+    const muse = door.muse();
+    expect(muse, `visit ${visit}`).toBeDefined();
+    expect((muse?.type as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for("react.lazy"));
+    expect(Object.keys(muse?.props ?? {})).toEqual(["onLeave"]);
+    // Her page stands in the menu's place: no menu and no button under it.
+    expect(elements(door.show()).some((element) => element.type === fakes.MainMenu || element.type === "button")).toBe(false);
+
+    (muse?.props.onLeave as () => void)();
+    expectMenuWithButton(door.show());
+    expect(door.muse()).toBeUndefined();
+  }
+
+  // The menu drawn again later on the same page still has the button, and it still opens her.
+  const later = await mount("", false);
+  expectMenuWithButton(later.show());
+  later.ask();
+  expect(later.muse()).toBeDefined();
 });
 
 test("with ?ai=1 the Muse's page stands in the menu's place, loaded lazily, and is given only a way to leave", async () => {
@@ -105,22 +157,25 @@ test("with ?ai=1 the Muse's page stands in the menu's place, loaded lazily, and 
   expect(elements(shown).some((element) => element.type === fakes.MainMenu)).toBe(false);
 });
 
-test("leaving the Muse shows the main menu, and she stays away for the rest of the page's life", async () => {
+test("leaving the Muse shows the main menu with its button, and the flag does not open her again for the rest of the page's life", async () => {
   const door = await mount("?ai=1");
   (door.muse()?.props.onLeave as () => void)();
-  expectMenu(door.show());
+  expectMenuWithButton(door.show());
 
   // The menu is drawn again after a trip through the quest: a new mount on the same page, the address unchanged.
   const later = await mount("?ai=1", false);
-  expectMenu(later.show());
+  expectMenuWithButton(later.show());
   expect(later.muse()).toBeUndefined();
+  // The button opens her all the same.
+  later.ask();
+  expect(later.muse()).toBeDefined();
 
   // A reload brings her back.
   const reloaded = await mount("?ai=1");
   expect(reloaded.muse()).toBeDefined();
 });
 
-test("if the Muse's page breaks or cannot be loaded, the main menu is shown with its music, and she is not tried again", async () => {
+test("if the Muse's page breaks or cannot be loaded, the main menu is shown with its music, and the flag does not try her again", async () => {
   const door = await mount("?ai=1");
   const guard = door.show();
   const Guard = guard.type as unknown as {
@@ -137,7 +192,7 @@ test("if the Muse's page breaks or cannot be loaded, the main menu is shown with
   expect(fakes.log).toHaveBeenCalledWith("error", "render-failed:muse", expect.any(Error));
 
   const later = await mount("?ai=1", false);
-  expectMenu(later.show());
+  expectMenuWithButton(later.show());
 });
 
 test("App.tsx is changed in one line, and the door does not pull the Muse's code in with it", () => {
@@ -148,7 +203,7 @@ test("App.tsx is changed in one line, and the door does not pull the Muse's code
   expect(app.filter((line) => line.includes("screens/MainMenu\""))).toHaveLength(0);
 
   const imports = (path: string): string[] => read(path).filter((line) => line.startsWith("import "));
-  // The door's static imports: React, the menu, the music and the log. The Muse's page is reached by import() only.
+  // The door's static imports: React, the menu, the music, the log and its own sheet. The Muse's page is reached by import() only.
   expect(imports("src/ai/ui/museDoor.tsx").filter((line) => /MuseRoute|MuseFight|StyleScreen|\.\.\/(adapt|client|fallbacks)/.test(line))).toEqual([]);
   expect(read("src/ai/ui/museDoor.tsx").filter((line) => line.includes("import(\"./MuseRoute\")"))).toHaveLength(1);
   // Nothing on the Muse's side imports the profile or the quest's flow, so a made fight has no way to record a win or clear a stop.

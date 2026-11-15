@@ -2,6 +2,7 @@
 // as sea-glass panels in one row: host a room, or join one by its code (a scanned link fills the code in). Opening a
 // room turns the whole screen into the room (RoomHost). Rooms need the game's own server (/api/rooms).
 import { useProfile } from "../account/store";
+import { DuoCard } from "../duo/ui/DuoCard";
 import { FaceTimeCard } from "../facetime/ui/FaceTimeCard";
 import type { HostLink } from "../net/host";
 import { Button } from "../ui/pebble";
@@ -53,6 +54,8 @@ export function Multiplayer(props: {
               <p>Scanned a friend's QR code? The code is already filled in.</p>
               <RoomJoin initialCode={props.code} onJoined={props.onJoined} />
             </section>
+            {/* Two players on this computer's one camera (src/duo): no room and no server. */}
+            <DuoCard onStart={(link) => { props.onOpen(); props.onStart(link); }} />
             {/* The FaceTime call: drawn only when the server has it set up (the card returns nothing otherwise, and the
                 panel hides with it). It comes after the join card so the room code box stays the first text box. */}
             <div className="set-panel mp-card mp-card--call">

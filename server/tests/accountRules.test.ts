@@ -111,7 +111,7 @@ test("a save as the browser sends it is accepted and comes back the same", () =>
 
 test("a field the game adds to the profile or the settings later is stored and given back, not dropped", () => {
   const grown = {
-    ...withProfile({ powers: 4, blocks: 31, dodges: 12, bestCombo: 9, unhit: 1, styles: ["boxer", "hoplite"], dojo: 2, dojoPerfect: 1, rooms: 3, medals: { gold: 2, names: ["first"] }, rival: null }),
+    ...withProfile({ powers: 4, blocks: 31, dodges: 12, bestCombo: 9, unhit: 1, styles: ["boxer", "jiu_jitsu"], dojo: 2, dojoPerfect: 1, rooms: 3, medals: { gold: 2, names: ["first"] }, rival: null }),
     settings: { controls: "keyboard", quality: "low", musicVolume: 0.25, somethingNew: { nested: [1, 2, 3] } },
   };
   expect(parseSaveBody({ save: grown })).toEqual(grown);
