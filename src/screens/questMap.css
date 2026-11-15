@@ -1,44 +1,25 @@
-/* The quest map as a painted storm sea (QuestMap.tsx, questSea.tsx, questPlaces.tsx). The scene is a 16:9 box fitted
-   inside the panel so no stop is ever cut off; the sea and sky are drawn far past its edges to fill whatever is left.
-   Motion is transform and opacity only, never on anything with a filter, and holds still with reduced motion. */
-.menu.quest-map { container-type: size; padding: 0; overflow: hidden; background: #0b1c1e; }
+/* The quest map (QuestMap.tsx): a painted storm sea with bronze-rimmed medallions on its islands. The scene is a 16:9 box fitted
+   inside the panel so no stop is ever cut off; the same painting, dimmed, fills what is left. The painting is shown whole: no
+   blur, only a soft dark gradient where text sits. Motion is transform and opacity only and holds still with reduced motion. */
+.menu.quest-map { container-type: size; padding: 0; overflow: hidden; background: #05090c; }
 .menu.quest-map::before { display: none; }
-.menu > .qm-layer { position: absolute; left: 50%; top: 50%; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; transform: translate(-50%, -50%); }
-.qm-backlayer, .qm-front { overflow: visible; }
-.qm-front { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.qm-back { position: absolute; inset: 0; background: url("/textures/map/pano.jpg") 50% 50% / cover; filter: brightness(0.8); }
+.menu > .qm-layer { position: absolute; left: 50%; top: 50%; width: min(100cqw, 100cqh * 16 / 9); aspect-ratio: 16 / 9; transform: translate(-50%, -50%); container-type: inline-size; }
+.qm-paint { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; user-select: none; filter: saturate(1.08) contrast(1.04); -webkit-mask-image: linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent), linear-gradient(to right, transparent, #000 3%, #000 97%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(to bottom, transparent, #000 5%, #000 95%, transparent), linear-gradient(to right, transparent, #000 3%, #000 97%, transparent); mask-composite: intersect; }
+.qm-shade { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(2, 6, 8, 0.72), transparent 24%), linear-gradient(to top, rgba(2, 6, 8, 0.6), transparent 16%); }
 .menu > .qm-rain { opacity: 0.55; }
 
-/* ---- the storm ---- */
-.qm-sky { fill: url(#qm-sky); }
-.qm-moon { fill: url(#qm-pale); }
-.qm-cloud { fill: url(#qm-cloud); }
-.qm-cloud-lit { fill: url(#qm-pale); opacity: 0.6; }
-.qm-bolt { opacity: 0; animation: qm-flash 9s linear infinite; }
-.qm-bolt__core { fill: none; stroke: #f4fbff; stroke-width: 3; stroke-linejoin: round; }
-.qm-bolt__glow { fill: none; stroke: #bfe4ff; stroke-width: 16; stroke-linejoin: round; opacity: 0.22; }
-@keyframes qm-flash { 0%, 58% { opacity: 0; } 58.6% { opacity: 1; } 59.6% { opacity: 0.15; } 60.6% { opacity: 0.9; } 64% { opacity: 0; } 100% { opacity: 0; } }
-.qm-sea { fill: url(#qm-sea); }
-.qm-haze { fill: rgba(200, 222, 214, 0.1); }
-.qm-wave { fill: url(#qm-wave); }
-.qm-sheen { fill: none; stroke: #8fc4bd; stroke-linecap: round; opacity: 0.16; }
-.qm-foam { fill: none; stroke: #e3f3ef; stroke-linecap: round; }
-.qm-swell--0 { animation: qm-swell 7s ease-in-out infinite alternate; }
-.qm-swell--1 { animation: qm-swell 9s ease-in-out -3s infinite alternate-reverse; }
-.qm-swell--2 { animation: qm-swell 11s ease-in-out -6s infinite alternate; }
-@keyframes qm-swell { from { transform: translateX(-16px); } to { transform: translateX(16px); } }
-.qm-moonpath { fill: url(#qm-pale); opacity: 0.4; }
-.qm-fire-reflect { fill: url(#qm-glow); opacity: 0.35; }
-/* The wind god: a head of cloud, lit from the moon, blowing the storm east. */
-.qm-wind__puff { fill: url(#qm-puff); }
-.qm-wind__head { fill: url(#qm-face); }
-.qm-wind__cheek { fill: #eef4f0; opacity: 0.35; }
-.qm-wind__line { fill: none; stroke: #263537; stroke-width: 2.4; stroke-linecap: round; }
-.qm-wind__lips { fill: #263537; }
-.qm-wind__breath { fill: url(#qm-breath); }
+/* Drifting cloud shadow and the whirlpool's slow turn. */
+.qm-cloudshade { position: absolute; inset: 0 -10%; width: 120%; pointer-events: none; opacity: 0.5; background: radial-gradient(ellipse 26% 20% at 22% 64%, rgba(0, 4, 6, 0.6), transparent), radial-gradient(ellipse 30% 22% at 66% 36%, rgba(0, 4, 6, 0.5), transparent), radial-gradient(ellipse 22% 18% at 88% 74%, rgba(0, 4, 6, 0.5), transparent); animation: qm-drift 48s ease-in-out infinite alternate; }
+@keyframes qm-drift { from { transform: translateX(-6%); } to { transform: translateX(6%); } }
+.qm-whirl { position: absolute; width: calc(300 * 100cqw / 1600); height: calc(300 * 100cqw / 1600); margin: calc(-150 * 100cqw / 1600) 0 0 calc(-150 * 100cqw / 1600); transform: scaleY(0.66); pointer-events: none; }
+.qm-whirl::before { content: ""; position: absolute; inset: 0; border-radius: 50%; opacity: 0.4; background: repeating-conic-gradient(rgba(215, 245, 245, 0.55) 0 5deg, transparent 5deg 22deg); -webkit-mask-image: radial-gradient(closest-side, transparent 16%, #000 42%, transparent 100%); mask-image: radial-gradient(closest-side, transparent 16%, #000 42%, transparent 100%); animation: qm-spin 60s linear infinite; }
+@keyframes qm-spin { to { transform: rotate(360deg); } }
 
-/* ---- the course and the ship ---- */
-.qm-course-edge { fill: none; stroke: #04100f; stroke-width: 9; opacity: 0.55; stroke-linecap: round; }
-.qm-course { fill: none; stroke: #f2c56e; stroke-width: 4; stroke-dasharray: 16 11; stroke-linecap: round; }
+/* The course and the ship. */
+.qm-front { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 1; }
+.qm-wake-edge { fill: none; stroke: #04100f; stroke-width: 11; opacity: 0.5; stroke-linecap: round; stroke-linejoin: round; }
+.qm-wake { fill: none; stroke: #ffd98a; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 22 10; filter: drop-shadow(0 0 7px rgba(255, 180, 70, 0.9)); }
 .qm-ship { transform-box: fill-box; transform-origin: 50% 80%; animation: qm-bob 3.4s ease-in-out infinite alternate; }
 @keyframes qm-bob { from { transform: translateY(-2px) rotate(-2.5deg); } to { transform: translateY(3px) rotate(2.5deg); } }
 .qm-ship .f { fill: url(#bronze-cast); }
@@ -46,52 +27,44 @@
 .qm-ship .l { stroke: #f2c56e; stroke-width: 3.4; }
 .qm-ship .s { stroke: #4a2408; stroke-width: 1.8; }
 .qm-ship .e { fill: #fff1c9; }
-.qm-home-glow { fill: url(#qm-glow); opacity: 0.85; }
 
-/* ---- the places: dark rock, warm lights, marble halls ---- */
-:is(.qm-place, .qm-troy) .rk { fill: url(#qm-rock); stroke: #081010; stroke-width: 1.4; }
-:is(.qm-place, .qm-troy) .rk2 { fill: #121b1c; stroke: #081010; stroke-width: 1; }
-:is(.qm-place, .qm-troy) .bd { fill: #d8cdb8; stroke: #4a4236; stroke-width: 1.2; }
-:is(.qm-place, .qm-troy) .dk { fill: #030606; }
-:is(.qm-place, .qm-troy) .gl { fill: #ffc86a; }
-:is(.qm-place, .qm-troy) .fx { fill: #ff8a2a; }
-:is(.qm-place, .qm-troy) .halo { fill: url(#qm-glow); }
-:is(.qm-place, .qm-troy) :is(.sm, .fm, .ln, .nk, .bn) { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-:is(.qm-place, .qm-troy) .sm { stroke: rgba(160, 172, 168, 0.45); stroke-width: 11; }
-:is(.qm-place, .qm-troy) .fm { stroke: #e3f3ef; stroke-width: 2.2; opacity: 0.8; }
-:is(.qm-place, .qm-troy) .ln { stroke: #3a3328; stroke-width: 1.5; }
-:is(.qm-place, .qm-troy) .nk { stroke: #1b2526; stroke-width: 7; }
-:is(.qm-place, .qm-troy) .bn { stroke: #e9dfcc; stroke-width: 2; }
-.qm-troy .fx { filter: drop-shadow(0 0 12px #ff7a1e); }
-.qm-place .lit-only { display: none; }
-.is-home .qm-stop--suitors .lit-only { display: inline; }
-
-/* ---- the stops ---- */
-.menu .qm-stop {
-  position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; margin: 0; padding: 0; min-width: 0;
-  border: 0; border-radius: 14px; background: none; box-shadow: none; color: var(--pb-text); font-family: var(--pb-font-body); text-transform: none; letter-spacing: normal;
+/* The stops: a button on its island, a bronze-rimmed medallion, a plate for the name. Troy's medallion is not a button. */
+.menu .qm-stop, .qm-orb {
+  --d: calc(var(--s) * 100cqw / 1600);
+  position: absolute; z-index: 2; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); padding: 0; min-width: 0;
+  border: 0; border-radius: 50%; background: none; box-shadow: none; color: var(--pb-text); font-family: var(--pb-font-body); text-transform: none; letter-spacing: normal;
 }
 .menu .qm-stop:hover:not(:disabled), .menu .qm-stop:active:not(:disabled) { background: none; box-shadow: none; color: var(--pb-text); }
-.menu .qm-stop:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 4px; }
-.qm-place { position: relative; display: block; width: 100%; height: auto; overflow: visible; transition: transform 160ms; }
-.qm-glow { position: absolute; left: 6%; right: 6%; top: 18%; height: 70%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 214, 140, 0.6), rgba(255, 170, 70, 0.18) 60%, transparent); opacity: 0; transition: opacity 160ms; }
-.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-glow, .is-home .qm-stop--suitors .qm-glow { opacity: 1; }
-.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-place { transform: translateY(-5px); }
-.qm-stop.is-next .halo { animation: qm-pulse 1.6s ease-in-out infinite alternate; }
-@keyframes qm-pulse { from { opacity: 0.55; } to { opacity: 1; } }
-.qm-label { position: relative; display: block; margin-top: 2px; white-space: nowrap; font: 700 18px/1.2 var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 4px #000, 0 0 4px #000, 0 2px 6px #000; }
-.qm-label small { display: block; font: 600 16px/1.2 var(--pb-font-body); color: #cfe0dc; }
-.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-label { color: #ffe3a3; }
-.qm-badge { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; border-radius: 50%; vertical-align: 2px; font: 700 14px/1 var(--pb-font-body); color: #2a1406; text-shadow: none; background: linear-gradient(#ffe6b0, #c98f37); box-shadow: 0 1px 3px #000; }
-.qm-badge svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
-.qm-stop.cleared .qm-label small { color: #f2c56e; }
-.qm-stop.cleared .halo { opacity: 0.4; }
+.menu .qm-stop:focus-visible { outline: 3px solid var(--pb-focus); outline-offset: 6px; }
 .menu .qm-stop:disabled { cursor: not-allowed; }
-.qm-stop:disabled .qm-place { filter: grayscale(1) brightness(0.5); }
-.qm-stop:disabled .qm-label { color: #b9c4c0; }
-.qm-stop:disabled .qm-badge { background: #5d6a6a; color: #e6eeec; }
-.qm-port { position: absolute; z-index: 2; transform: translateX(-50%); font: 700 18px var(--pb-font-body); color: var(--pb-text); text-shadow: 0 0 4px #000, 0 0 4px #000; }
-.is-home .qm-port--ithaca { color: #ffd27a; }
+.qm-face { position: absolute; inset: 0; display: block; border-radius: 50%; transition: transform 180ms; box-shadow: 0 0 0 3px #1a0d06, 0 12px 22px rgba(0, 0, 0, 0.75); background: radial-gradient(circle, transparent 82%, #3e2109 83%, #c98f37 85%, #ffe6b0 88%, #b97f2f 91%, #5a300f 95%, #2a1406 98%), radial-gradient(circle at 50% 45%, #e6aa58, #b8762e 45%, #7a4416 78%); }
+.qm-face img { position: absolute; inset: 8%; width: 84%; height: 84%; border-radius: 50%; object-fit: cover; transform: scale(1.03); box-shadow: 0 0 0 3px #3e2109; }
+.qm-face::after { content: ""; position: absolute; inset: 2.6%; border-radius: 50%; border: 3px dotted #ffe6b0; opacity: 0.85; }
+.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-face { transform: scale(1.08); }
+.qm-badge { position: absolute; left: -3%; top: -3%; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font: 800 20px/1 var(--pb-font-body); color: #2a1406; text-shadow: none; background: linear-gradient(#ffe6b0, #c98f37); box-shadow: 0 0 0 2px #2a1406, 0 3px 6px #000; }
+.qm-badge svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.qm-glow { position: absolute; inset: -28%; border-radius: 50%; opacity: 0; pointer-events: none; transition: opacity 180ms; mix-blend-mode: screen; background: radial-gradient(closest-side, rgba(255, 226, 150, 0.9), rgba(255, 170, 70, 0.3) 58%, transparent); }
+.qm-stop:is(:hover:not(:disabled), :focus-visible) .qm-glow { opacity: 1; }
+.qm-stop.cleared .qm-glow { opacity: 0.7; }
+.qm-stop.is-next .qm-glow { animation: qm-pulse 1.8s ease-in-out infinite alternate; }
+@keyframes qm-pulse { from { opacity: 0.45; } to { opacity: 1; } }
+.qm-cloud { display: none; position: absolute; inset: -80%; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, rgba(3, 7, 9, 0.75), rgba(3, 7, 9, 0.4) 55%, transparent); animation: qm-cloud 14s ease-in-out infinite alternate; }
+.qm-stop.locked .qm-cloud { display: block; }
+@keyframes qm-cloud { from { transform: translateX(-8%); } to { transform: translateX(8%); } }
+.qm-stop.locked .qm-face { filter: grayscale(1) brightness(0.5); }
+.qm-stop.locked .qm-badge { background: #5d6a6a; color: #e6eeec; }
+.qm-laurel { position: absolute; inset: -17%; width: 134%; height: 134%; fill: #f2c56e; stroke: #4a2408; stroke-width: 0.8; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.7)); pointer-events: none; }
+.is-home .qm-stop--suitors .qm-glow { inset: -80%; opacity: 1; }
+
+/* The bronze name plates. The Sirens' sits above its medallion so it keeps clear of Polyphemus. */
+.qm-plate { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 1; display: block; white-space: nowrap; text-align: center; padding: 4px 16px 5px; border-radius: 8px; font: 800 20px/1.15 var(--pb-font-body); color: #2a1406; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.6); background: linear-gradient(#ffe6b0, #e0a552 45%, #a86424); box-shadow: 0 0 0 2px #2a1406, 0 5px 10px rgba(0, 0, 0, 0.7); }
+.qm-plate small { display: block; font: 700 18px/1.15 var(--pb-font-body); color: #3b1f08; }
+.qm-stop--sirens .qm-plate { top: auto; bottom: calc(100% + 8px); }
+.qm-stop.cleared .qm-plate { background: linear-gradient(#fff6d8, #f2c56e 45%, #c98f37); }
+.qm-stop.locked .qm-plate { filter: grayscale(0.9) brightness(0.7); }
+.qm-orb--troy .qm-plate { padding: 3px 14px 4px; }
+.qm-port { position: absolute; z-index: 2; transform: translateX(-50%); font: 700 20px var(--pb-font-body); color: #fff1d0; text-shadow: 0 0 4px #000, 0 0 8px #000, 0 2px 6px #000; }
+.is-home .qm-port { color: #ffd27a; }
 
 /* ---- the title and the way back ---- */
 .menu > .qm-head { position: absolute; top: 16px; left: 0; right: 0; z-index: 3; text-align: center; pointer-events: none; }
@@ -101,7 +74,6 @@
 .menu > .qm-foot { position: absolute; left: 50%; bottom: 18px; z-index: 3; display: flex; gap: 6px; transform: translateX(-50%); }
 
 @media (prefers-reduced-motion: reduce) {
-  .qm-bolt { animation: none; opacity: 0.85; }
-  .qm-swell--0, .qm-swell--1, .qm-swell--2, .qm-ship, .qm-stop.is-next .halo { animation: none; }
-  .qm-place, .qm-glow { transition: none; }
+  .qm-cloudshade, .qm-whirl::before, .qm-cloud, .qm-ship, .qm-stop.is-next .qm-glow { animation: none; }
+  .qm-face, .qm-glow { transition: none; }
 }
