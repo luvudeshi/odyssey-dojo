@@ -64,7 +64,7 @@ const SIDE_STEP = recording([[STANDING, 900], [STANDING, 300], [pose({ step: 0.6
 const style = (id: string): readonly string[] => STYLES.find((s) => s.id === id)?.strikes ?? [];
 
 test("one strike from each style: the rough right movement on its own prompt gives no MISS", () => {
-  for (const [styleId, move] of [["boxer", "cross"], ["karate", "reverse_punch"], ["kung_fu", "chain_punch"], ["hoplite", "overhead_strike"], ["pankration", "front_kick"], ["boxer", "uppercut"], ["karate", "knife_hand"]] as const) {
+  for (const [styleId, move] of [["boxer", "cross"], ["karate", "reverse_punch"], ["kung_fu", "chain_punch"], ["jiu_jitsu", "rising_palm"], ["taekwondo", "front_kick"], ["boxer", "uppercut"], ["karate", "knife_hand"]] as const) {
     expect(style(styleId)).toContain(move);
     const seen = watch(MOVEMENTS[move] ?? [], move);
     expect(counted(seen, move), move).toBe(true);

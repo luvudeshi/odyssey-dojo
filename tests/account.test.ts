@@ -106,8 +106,8 @@ test("the new achievements follow the new counters, and a profile saved before t
   const old = parseProfile(JSON.stringify({ name: "Nobody", wins: 3, fights: 4, cleared: ["a"], bestScore: 900 }));
   expect(old).toMatchObject({ wins: 3, powers: 0, blocks: 0, dodges: 0, bestCombo: 0, unhit: 0, styles: [], dojo: 0, dojoPerfect: 0, rooms: 0 });
   const done = (profile: typeof EMPTY_PROFILE): readonly string[] => achievements(profile, ROAD).filter((feat) => feat.done).map((feat) => feat.id);
-  const clean = withFight(old, { enemyId: "b", won: true, score: EPIC_SCORE_GOAL, mastery: {}, styleId: "hoplite", tally: { powers: 1, blocks: BLOCKS_GOAL, dodges: 2, hitsTaken: 0, bestCombo: COMBO_GOAL, room: true } });
-  expect(clean).toMatchObject({ powers: 1, blocks: BLOCKS_GOAL, dodges: 2, bestCombo: COMBO_GOAL, unhit: 1, styles: ["hoplite"], rooms: 1 });
+  const clean = withFight(old, { enemyId: "b", won: true, score: EPIC_SCORE_GOAL, mastery: {}, styleId: "jiu_jitsu", tally: { powers: 1, blocks: BLOCKS_GOAL, dodges: 2, hitsTaken: 0, bestCombo: COMBO_GOAL, room: true } });
+  expect(clean).toMatchObject({ powers: 1, blocks: BLOCKS_GOAL, dodges: 2, bestCombo: COMBO_GOAL, unhit: 1, styles: ["jiu_jitsu"], rooms: 1 });
   expect(done(clean)).toEqual(expect.arrayContaining(["ages", "favoured", "unbroken", "chain", "shield_wall", "shoulder"]));
   expect(done(clean)).not.toEqual(expect.arrayContaining(["olympus"]));
   expect(done(withFight(clean, { enemyId: "b", won: false, score: 0, mastery: {}, styleId: "karate", tally: newTally() }))).not.toContain("many_ways");
