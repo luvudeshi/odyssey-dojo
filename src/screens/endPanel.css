@@ -1,0 +1,35 @@
+/* The result overlay (win, loss, and the guest's wait) as a pebble panel. FightScreen's .overlay wrapper holds an h1 and a score
+   line; the h1 is replaced here by the solid title from EndPanel, the score line becomes a chip. Text is 20 px or 18 px. */
+.overlay:has(> .end-title), .overlay.guest-over {
+  width: min(42rem, 92vw); max-height: 96vh; padding: 1.4rem 1.8rem; gap: 0; overflow: auto;
+  color: var(--pb-text); font-family: var(--pb-font-body);
+  background: var(--pb-ground-deep) var(--pebble-ground) repeat;
+  border: 2px solid var(--pb-lead); border-radius: var(--pb-radius-panel);
+  box-shadow: 0 0 0 3px rgba(8, 5, 4, 0.7), 0 0 0 100vmax rgba(8, 5, 4, 0.66);
+}
+.overlay:has(> .end-lost) { background: #1f0e0b var(--pebble-blood) repeat; }
+.overlay:has(> .end-title) > h1 { display: none; }
+.overlay:has(> .end-title) > * { order: 5; }
+.overlay > .end-title { order: 1; margin: 0 0 4px; }
+.overlay > .end-title.end-lost { color: #e9a07f; }
+/* The score line from FightScreen: a chip. */
+.overlay:has(> .end-title) > p:not([class]) { order: 3; margin: 2px 0 8px; padding: 2px 16px; border: 2px solid var(--pb-lead); border-radius: 8px; background: var(--pb-plaque-2); font: 700 18px var(--pb-font-body); color: var(--pb-ochre-light); }
+.overlay .end-ending { order: 4; max-width: 36rem; }
+.end-line { margin: 2px 0; font: 600 20px/1.35 var(--pb-font-body); color: var(--pb-text); }
+.overlay .end-lesson { margin: 4px 0; font: italic 500 18px/1.35 var(--pb-font-body); color: var(--pb-text-dim); }
+.overlay .end-result { order: 5; margin: 6px 0 2px; font: 700 18px var(--pb-font-body); color: var(--pb-ochre-light); }
+.overlay .end-learned { order: 6; border: 0; margin: 6px 0 0; padding: 0; width: auto; }
+.overlay .end-learned h2, .end-practised h2 { margin: 0; font: 700 18px var(--pb-font-body); color: var(--pb-slate-light); }
+.overlay .end-learned ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 4px 0; font: 600 18px var(--pb-font-body); color: var(--pb-text); }
+.overlay .end-learned p { font-size: 18px; }
+.overlay .end-practised { order: 7; max-width: 36rem; margin: 4px 0; }
+.end-practised ul { list-style: none; margin: 4px 0 0; padding: 0; text-align: left; }
+.end-practised li { margin: 2px 0; font: 500 18px/1.35 var(--pb-font-body); color: var(--pb-text); }
+.end-practised b { color: var(--pb-ochre-light); }
+.overlay .end-buttons { order: 8; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 20px; margin-top: 14px; }
+.overlay .end-buttons .pb-btn { margin: 0; }
+.guest-over > .guest-wave { width: 100%; margin: 0; }
+.guest-over .notice { margin: 8px 0; font: 600 18px var(--pb-font-body); }
+.guest-over .end-buttons { margin: 8px 0 0; }
+.guest-over > h1 { margin: 6px 0 0; font: 700 28px var(--pb-font-body); color: var(--pb-ochre-light); }
+.guest-over > h1::after { display: none; }

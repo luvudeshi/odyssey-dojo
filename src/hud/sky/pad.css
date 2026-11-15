@@ -1,0 +1,5 @@
+/* Touch pad buttons in the star-chart look: dark glaze plates with a clay rim. CSS only. */
+.sky-pad button { background: #17110d; color: #f2e4c8; border: 2px solid #c8612f; border-radius: 12px 12px 4px 4px; font-family: "Gill Sans", "Gill Sans MT", "Trebuchet MS", sans-serif; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5); }
+.sky-pad button:active:not(:disabled) { background: #221912; border-color: #ffd9a0; }
+.sky-pad button:disabled { opacity: 0.6; }
+.sky-pad .touch-main { border-color: #e58a4e; color: #ffd9a0; }

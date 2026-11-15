@@ -6,8 +6,10 @@ import { useEffect, useMemo, useRef } from "react";
 import { AdditiveBlending } from "three";
 import type { PointLight, Points } from "three";
 import type { CombatState } from "../../core/types";
-import { battle, calmMotion } from "../battle";
+import { battle, calmMotion, nowSeconds } from "../battle";
+import { REACH } from "../strikeReach";
 import { fxBetween } from "./events";
+import type { Fx, Vec3 } from "./events";
 import { markHit } from "./pulse";
 import { createPool, emit, stepPool } from "./sparks";
 
@@ -16,7 +18,9 @@ const SHAKE_SECONDS = 0.25;
 const SHAKE_REACH = 0.13;
 const FLASH_SECONDS = 0.22;
 
-export function HitEffects({ state }: { state: CombatState }) {
+type MonsterFx = Exclude<Fx, { type: "playerHit" }>;
+
+export function HitEffects({ state, finishAt }: { state: CombatState; finishAt: Vec3 }) {
   const gl = useThree((three) => three.gl);
   const pool = useMemo(() => createPool(POOL_SIZE), []);
   const sparks = useRef<Points>(null);
@@ -24,6 +28,8 @@ export function HitEffects({ state }: { state: CombatState }) {
   const light = useRef<PointLight>(null);
   const overlay = useRef<HTMLDivElement | null>(null);
   const live = useRef({ shake: 0, shakeScale: 1, flash: 0, flashPower: 0, sparking: false });
+  /** Blows still on their way: each fires when the hero's reach arrives, so sparks and flash meet the fist. */
+  const pending = useRef<{ fireAt: number; effect: MonsterFx }[]>([]);
 
   // The red edge flash is a plain element laid over the canvas, styled by `.hurt-flash` in index.css.
   useEffect(() => {
@@ -38,7 +44,7 @@ export function HitEffects({ state }: { state: CombatState }) {
   }, [gl]);
 
   useEffect(() => {
-    const fx = fxBetween(previous.current, state);
+    const fx = fxBetween(previous.current, state, finishAt, REACH.out);
     previous.current = state;
     for (const effect of fx) {
       if (effect.type === "playerHit") {
@@ -52,20 +58,26 @@ export function HitEffects({ state }: { state: CombatState }) {
         }
         continue;
       }
-      const big = effect.type === "finished";
-      emit(pool, effect.at, big ? 150 : 34, big ? 7.5 : 4.2);
-      live.current.flash = FLASH_SECONDS * (big ? 2 : 1);
-      live.current.flashPower = big ? 70 : 22;
-      markHit();
-      light.current?.position.set(effect.at[0], effect.at[1], effect.at[2] + 0.4);
-      live.current.shake = SHAKE_SECONDS;
-      live.current.shakeScale = big ? 0.6 : 0.35;
+      pending.current.push({ fireAt: nowSeconds() + effect.delay, effect });
     }
-  }, [state, pool]);
+  }, [state, finishAt]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
     const now = live.current;
+    const clock = nowSeconds();
+    for (let next = pending.current[0]; next && next.fireAt <= clock; next = pending.current[0]) {
+      pending.current.shift();
+      const effect = next.effect;
+      const big = effect.type === "finished";
+      emit(pool, effect.at, big ? 150 : 34, big ? 7.5 : 4.2);
+      now.flash = FLASH_SECONDS * (big ? 2 : 1);
+      now.flashPower = big ? 70 : 22;
+      markHit();
+      light.current?.position.set(effect.at[0], effect.at[1], effect.at[2] + 0.4);
+      now.shake = SHAKE_SECONDS;
+      now.shakeScale = big ? 0.6 : 0.35;
+    }
 
     // Upload on the frame the last spark dies too, or it would stay frozen on screen.
     const alive = stepPool(pool, dt);

@@ -14,11 +14,13 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { HitEffects } from "./effects/HitEffects";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
+import { finisherSpot } from "./strikeReach";
 import { MONSTER_MODELS } from "./monsters/registry";
 import { Hero } from "./hero/Hero";
 import { GhostFigure } from "./GhostFigure";
 import { MOVE_GHOST_ON } from "./ghost/ghostSwitch";
 import { QualityContext, useQualityToggle } from "./quality";
+import { QualityGovernor } from "./qualityGovernor";
 
 const DEBUG = new URLSearchParams(window.location.search).has("debug");
 
@@ -61,13 +63,14 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
     resetBattle();
     return () => { resetBattle(); };
   }, [enemy.id]);
-  useEffect(() => { syncBattle(battle, state, nowSeconds()); }, [state]);
+  const finishAt = finisherSpot(enemy);
+  useEffect(() => { syncBattle(battle, state, nowSeconds(), finishAt); }, [state, finishAt]);
   return (
     <ErrorBoundary label="canvas" fallback={<p style={{ color: "#fff", padding: "1rem" }}>The 3D view failed to start. Reload the page.</p>}>
       <Canvas
         shadows={quality === "high" ? "percentage" : false}
         frameloop={paused ? "never" : "always"}
-        dpr={[1, 1.5]}
+        dpr={quality === "high" ? [1, 1.5] : 1}
         gl={{ toneMapping: ACESFilmicToneMapping }}
         camera={{ position: [1.4, 2.15, 4.9], fov: 52 }}
         onCreated={({ camera }) => {
@@ -90,7 +93,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
               phaseIndex: state.phaseIndex,
               hitFlash: hitPulse(),
             })}
-            <HitEffects state={state} />
+            <HitEffects state={state} finishAt={finishAt} />
             {weakSpot && (
               <mesh position={[...weakSpot.position]}>
                 <torusGeometry args={[0.45, 0.06, 8, 32]} />
@@ -102,6 +105,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
           <Hero poseRef={poseRef} />
           {MOVE_GHOST_ON && <GhostFigure poseRef={poseRef} />}
           <Effects />
+          <QualityGovernor />
         </QualityContext.Provider>
       </Canvas>
       {DEBUG && (

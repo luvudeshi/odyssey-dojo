@@ -35,6 +35,8 @@ export interface NetDeps {
 
 /** The relay writes a line the moment a stream opens, so a stream that has said nothing after this long is not getting through. */
 export const STREAM_PROOF_MS = 3_000;
+/** The longest a POST to the relay may take. After it the request is given up and counts as unreachable. */
+export const POST_TIMEOUT_MS = 8_000;
 /** The wait after a poll fails before the next one. */
 const POLL_RETRY_MS = 1_000;
 
@@ -52,6 +54,8 @@ async function post(deps: NetDeps, url: string, body?: unknown): Promise<{ statu
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body ?? {}),
+      // A relay that takes the request and never answers would leave the room screen waiting for ever.
+      signal: AbortSignal.timeout(POST_TIMEOUT_MS),
     });
     return { status: response.status, data: await response.json().catch(() => null) };
   } catch {
@@ -84,6 +88,56 @@ export async function joinRoom(deps: NetDeps, code: string, base = ""): Promise<
   if (answer.status === 409) return "room_full";
   const token = field(answer.data, "token");
   return answer.status === 200 && token ? { code: cleaned, token } : "unreachable";
+}
+
+/** The part of sessionStorage used to keep a guest's seat for the tab. A private window may throw on any call. */
+export interface SeatStore {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+const SEAT_KEY = "odyssey.room.seat";
+
+function keptSeat(store: SeatStore, code: string): string | null {
+  try {
+    const kept: unknown = JSON.parse(store.getItem(SEAT_KEY) ?? "null");
+    return field(kept, "code") === code ? field(kept, "token") : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * joinRoom for a page that may have been in this room a moment ago (a reload, a phone that was locked). The seat it
+ * was given is kept in `store` (the tab's sessionStorage). If the relay still takes that token, the page is back on
+ * its own seat at once, where a fresh join would be refused as "room full" until the relay frees the seat 20 seconds
+ * later. The check is an "ask" to the host, which also brings the start of a fight that is on. A token the relay no
+ * longer takes is forgotten and the page joins as new.
+ */
+export async function joinRoomAgain(deps: NetDeps, code: string, store: SeatStore | null, base = ""): Promise<{ code: string; token: string } | RoomError> {
+  const cleaned = cleanCode(code);
+  const token = store === null || cleaned === "" ? null : keptSeat(store, cleaned);
+  if (token !== null) {
+    const answer = await post(deps, `${base}/api/rooms/${cleaned}/send`, { token, message: { type: "ask" } });
+    if (!answer) return "unreachable";
+    if (answer.status === 200) return { code: cleaned, token };
+    if (answer.status === 429) return "slow_down";
+    try {
+      store?.removeItem(SEAT_KEY);
+    } catch {
+      // Storage is closed to this page: there is nothing kept to forget.
+    }
+  }
+  const room = await joinRoom(deps, cleaned, base);
+  if (typeof room !== "string") {
+    try {
+      store?.setItem(SEAT_KEY, JSON.stringify(room));
+    } catch {
+      // No storage: this page joins as new next time.
+    }
+  }
+  return room;
 }
 
 /**

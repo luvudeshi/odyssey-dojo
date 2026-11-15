@@ -1,18 +1,81 @@
-/* Black-figure pottery: the one palette, type and ornament for every screen. Other stylesheets read these tokens only. */
+/*
+ * Pebble mosaic: the one palette, type and ornament for every screen. Other stylesheets read these tokens only.
+ * The interface is laid in small river pebbles on a dark ground, outlined in lead, with a wave scroll along the borders.
+ *
+ * Old name -> new value (every old name still works; screens keep reading them):
+ *   --clay          terracotta stone        (was #c9602b)   --pb-terra
+ *   --clay-dark     deep terracotta         (was #8f3f18)   --pb-terra-dark
+ *   --clay-light    ochre stone             (was #e9a15f)   --pb-ochre-light
+ *   --ink           the dark ground         (was #170d08)   --pb-ground
+ *   --white         foam white              (was #f1e6cf)   --pb-foam
+ *   --purple        dark terracotta         (was #8e2433)   --pb-terra-dark
+ *   --gold          ochre                   (was clay-light) --pb-ochre
+ *   --marble        foam white              (was white)     --pb-foam
+ *   --blood         dark terracotta         (was purple)    --pb-terra-dark
+ *   --font-display  Copperplate, then Optima and friends (system fonts only)
+ *   --meander, --meander-s, --meander-s-light  a row of stones with a terracotta bead in place of the Greek key
+ *   --ship, --owl, --palmette, --laurel        unchanged: still the pottery pictures in public/ui until a screen drops them
+ *   --bw-frame/-line/-hair, --meander-h, --meander-s-h, --font-mono, --track-wide   unchanged
+ * New names: --pb-* below.
+ */
 :root {
-  --clay: #c9602b;
-  --clay-dark: #8f3f18;
-  --clay-light: #e9a15f;
-  --ink: #170d08;
-  --white: #f1e6cf;
-  --purple: #8e2433;
+  /* Stones. */
+  --pb-ground: #15100e;
+  --pb-ground-deep: #0d0a09;
+  --pb-ground-2: #211a16;
+  --pb-dusk: #223039;
+  --pb-blood: #2e1713;
+  --pb-lead: #9c9b93;
+  --pb-foam: #f1e6cf;
+  --pb-cream: #e8dabb;
+  --pb-ochre: #d9a34a;
+  --pb-ochre-light: #e2b25d;
+  --pb-terra: #b8553a;
+  --pb-terra-dark: #93402c;
+  --pb-slate: #6f8791;
+  --pb-slate-light: #a9c4cd;
+  --pb-olive: #8d9a5b;
+  --pb-sea: #3a5560;
+  --pb-dim: #2a211c;
+  --pb-outline: rgba(10, 6, 5, 0.9);
 
-  /* Legacy names still used by src/ai/ui/*.css. */
-  --gold: var(--clay-light);
-  --marble: var(--white);
-  --blood: var(--purple);
+  /* Text on stones: always light, always outlined, so it reads over the dark cave and the bright sea alike. */
+  --pb-text: #f6eedc;
+  --pb-text-dim: #d3c7ad;
+  --pb-text-on-ochre: #1b1410;
+  --pb-focus: #f6eedc;
 
-  --font-display: Optima, "Gill Sans", "Trebuchet MS", sans-serif;
+  /* Plain plaques under words (contrast with --pb-text: 16:1, 15:1, 9:1; --pb-text-on-ochre on --pb-ochre: 8:1). */
+  --pb-plaque: #15100e;
+  --pb-plaque-2: #211a16;
+  --pb-plaque-hover: #6b2e1e;
+  /* Width of the pebble band left showing around a panel's plaque. */
+  --pb-band: 12px;
+
+  /* Type. System fonts only. Display for titles and labels; body for anything read in half a second. */
+  --pb-font-body: Optima, "Gill Sans", Palatino, "Trebuchet MS", sans-serif;
+  --pb-radius: 7px;
+  --pb-radius-panel: 14px;
+
+  /* Pebble ground tiles, set at run time by installGround(); until then a flat colour shows. */
+  --pebble-ground: none;
+  --pebble-dusk: none;
+  --pebble-blood: none;
+  --pebble-olive: none;
+
+  /* Old names, re-pointed. */
+  --clay: var(--pb-terra);
+  --clay-dark: var(--pb-terra-dark);
+  --clay-light: var(--pb-ochre-light);
+  --ink: var(--pb-ground);
+  --white: var(--pb-foam);
+  --purple: var(--pb-terra-dark);
+
+  --gold: var(--pb-ochre);
+  --marble: var(--pb-foam);
+  --blood: var(--pb-terra-dark);
+
+  --font-display: Copperplate, "Copperplate Gothic Bold", Optima, "Gill Sans", "Trebuchet MS", sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --track-wide: 0.14em;
 
@@ -20,12 +83,12 @@
   --bw-line: 2px;
   --bw-hair: 1px;
 
-  /* The Greek key: ink ground, clay line. The clay version is the same band on clay (ink ground showing as the line). */
+  /* A row of cream stones with a terracotta bead between: the stand-in for the Greek key band. */
   --meander-h: 22px;
-  --meander: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'><rect width='22' height='22' fill='%23170d08'/><path d='M2 20V4h18v12H8V9h7' fill='none' stroke='%23c9602b' stroke-width='2.4'/></svg>");
+  --meander: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'><rect width='22' height='22' fill='%2315100e'/><circle cx='5' cy='11' r='3.6' fill='%23f1e6cf'/><circle cx='11' cy='11' r='2.6' fill='%23b8553a'/><circle cx='17' cy='11' r='3.6' fill='%23e8dabb'/></svg>");
   --meander-s-h: 10px;
-  --meander-s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><rect width='10' height='10' fill='%23170d08'/><path d='M1 9V2h8v5H4V4h3' fill='none' stroke='%23c9602b' stroke-width='1.1'/></svg>");
-  --meander-s-light: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><rect width='10' height='10' fill='%23c9602b'/><path d='M1 9V2h8v5H4V4h3' fill='none' stroke='%23170d08' stroke-width='1.1'/></svg>");
+  --meander-s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><rect width='10' height='10' fill='%2315100e'/><circle cx='2.5' cy='5' r='1.7' fill='%23f1e6cf'/><circle cx='5' cy='5' r='1.1' fill='%23b8553a'/><circle cx='7.5' cy='5' r='1.7' fill='%23e8dabb'/></svg>");
+  --meander-s-light: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><rect width='10' height='10' fill='%23b8553a'/><circle cx='2.5' cy='5' r='1.7' fill='%2315100e'/><circle cx='5' cy='5' r='1.1' fill='%23f1e6cf'/><circle cx='7.5' cy='5' r='1.7' fill='%2315100e'/></svg>");
 
   --ship: url("/ui/ship.svg");
   --owl: url("/ui/owl.svg");

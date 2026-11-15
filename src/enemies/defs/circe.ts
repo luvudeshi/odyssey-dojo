@@ -10,12 +10,12 @@ export const enemy: EnemySpec = {
   order: 1.4,
   place: "Aeaea, the island of Circe",
   book: 10,
-  hp: 360,
+  hp: 300,
   strikeWindowMs: 2400,
   attacks: [
-    { id: "wand_left", name: "Wand stroke", telegraphMs: 1600, damage: 6, counter: "dodge_right" },
-    { id: "wand_right", name: "Wand stroke", telegraphMs: 1600, damage: 6, counter: "dodge_left" },
-    { id: "cup", name: "Flung cup", telegraphMs: 1700, damage: 6, counter: "duck" },
+    { id: "wand_left", name: "Wand stroke", telegraphMs: 1600, damage: 4, counter: "dodge_right" },
+    { id: "wand_right", name: "Wand stroke", telegraphMs: 1600, damage: 4, counter: "dodge_left" },
+    { id: "cup", name: "Flung cup", telegraphMs: 1700, damage: 3, counter: "duck" },
     { id: "spell", name: "Spell of swine", telegraphMs: 1900, damage: 10, counter: "block", weight: 0.7 },
   ],
   phases: [

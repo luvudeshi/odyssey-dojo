@@ -1,0 +1,58 @@
+/* The prompt card in the star-chart look. One card at the right edge, never over the hero (left of centre) or the monster.
+   Every word is plain type on a solid plate (7:1 or better): bone on dark glaze for DEFEND, dark glaze on sand for STRIKE. */
+.sky-card { position: absolute; right: 24px; top: 50%; width: 300px; box-sizing: border-box; transform: translateY(-50%); text-align: center; color: var(--sky-bone); pointer-events: none; }
+.sky-card__shape { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sky-card__plate { fill: var(--sky-glaze); stroke: var(--sky-clay); stroke-width: 3; stroke-linejoin: round; }
+.sky-card__trough { fill: none; stroke: var(--sky-bone); stroke-opacity: 0.22; stroke-width: 7; stroke-linecap: round; }
+.sky-card__timer { fill: none; stroke: var(--sky-star); stroke-width: 7; stroke-linecap: round; }
+.sky-card__pulse { fill: none; stroke: var(--sky-clay); stroke-width: 4; stroke-linejoin: round; animation: sky-pulse 0.9s ease-in-out infinite alternate; }
+.sky-card__burst path { fill: var(--sky-star); stroke: var(--sky-glaze); stroke-width: 1.5; }
+
+.sky-card__tag { position: absolute; left: 50%; top: -17px; transform: translateX(-50%); white-space: nowrap; padding: 7px 16px 7px 20px; font: 700 18px/1 var(--sky-label); letter-spacing: 0.24em; background: var(--sky-glaze); color: var(--sky-star); border: 2px solid var(--sky-clay); }
+.sky-card--strike .sky-card__tag, .sky-card--finish .sky-card__tag { clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 11px 100%, 0 50%); border: 0; padding: 9px 24px 9px 28px; }
+.sky-card--finish .sky-card__tag { background: var(--sky-star); color: var(--sky-glaze); }
+
+/* The text sits in the flow, so the plate (measured) grows with it. Top padding clears the arch or the spear tip. */
+.sky-card__in { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 30px 20px 26px; }
+.sky-card--strike .sky-card__in, .sky-card--finish .sky-card__in { padding: 60px 20px 50px; }
+
+/* The moving figure (src/coach/ui/MoveGuide) is on the card at every mastery level, with no panel of its own: the plate is
+   its ground and its colours are the card's. A learned move keeps the figure and drops the instruction and the checklist. */
+.sky-card .move-guide { --mg-figure: 170px; max-height: 330px; --mg-bg: var(--sky-glaze); --mg-ink: var(--sky-bone); --mg-accent: var(--sky-star); width: 100%; padding: 0; background: none; border: 0; font-family: var(--sky-label); }
+.sky-card--strike .move-guide, .sky-card--finish .move-guide { --mg-bg: var(--sky-sand); --mg-ink: var(--sky-glaze); --mg-accent: var(--sky-clay-lo); --mg-good: #1f5c16; }
+.sky-card:not(.sky-card--full) .move-guide { --mg-figure: 116px; }
+.sky-card:not(.sky-card--full) .mg-how, .sky-card:not(.sky-card--full) .mg-match, .sky-card:not(.sky-card--full) .mg-checks { display: none; }
+
+
+.sky-card__word { font: 700 50px/1 var(--sky-display); letter-spacing: 0.02em; overflow-wrap: anywhere; }
+.sky-card--mini .sky-card__word { font-size: 46px; }
+.sky-card__target { font: 700 20px/1.2 var(--sky-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--sky-star); }
+.sky-card__situation { font: 18px/1.3 var(--sky-label); }
+.sky-card__hint { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; font: 18px/1.3 var(--sky-label); }
+.sky-key { min-width: 30px; padding: 4px 9px; box-sizing: border-box; border: 2px solid currentColor; border-radius: 4px; font: 700 20px/1 var(--sky-label); }
+.sky-key kbd { all: unset; font: inherit; }
+.sky-key[data-arrow] kbd { font-size: 0; }
+.sky-key[data-arrow]::before { content: attr(data-arrow); }
+
+/* STRIKE and FINISH: a light sand tablet with dark type, told apart from the dark DEFEND stele by shape, tag word and fill. */
+.sky-card--strike, .sky-card--finish { color: var(--sky-glaze); }
+.sky-card--strike .sky-card__plate, .sky-card--finish .sky-card__plate { fill: var(--sky-sand); stroke: var(--sky-clay); stroke-width: 4; }
+.sky-card--strike .sky-card__trough, .sky-card--finish .sky-card__trough { stroke: var(--sky-glaze); stroke-opacity: 0.2; }
+.sky-card--strike .sky-card__timer, .sky-card--finish .sky-card__timer { stroke: var(--sky-glaze); }
+.sky-card--strike .sky-card__target, .sky-card--finish .sky-card__target { color: var(--sky-glaze); }
+
+@keyframes sky-pulse { from { stroke-opacity: 0.25; } to { stroke-opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .sky-card__pulse { animation: none; } }
+
+/* A phone (the touch guest): a narrow card under the monster's bar, above the touch strip. Word, target, key. */
+@media (max-height: 520px), (max-width: 760px) {
+  .sky-card { top: 106px; right: 10px; width: 210px; transform: none; }
+  .sky-card .move-guide, .sky-card__situation { display: none; }
+  .sky-card .sky-card__in { padding: 48px 12px 16px; gap: 6px; }
+  .sky-card--strike .sky-card__in, .sky-card--finish .sky-card__in { padding: 80px 12px 38px; }
+  .sky-card .sky-card__word { font-size: 28px; }
+  .sky-card .sky-card__target { font-size: 15px; }
+  .sky-card__tag { font-size: 15px; }
+}
+/* Upright, the score and power chips sit under the bars, so the card starts below them. */
+@media (max-width: 760px) { .sky-card { top: 150px; } }
