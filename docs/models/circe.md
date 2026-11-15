@@ -1,6 +1,6 @@
 # Circe stop: model log
 
-Quest stop 2 (book 10), `/?stop=circe`. Everything here was looked at in the running keyboard fight; screenshots are `docs/screenshots/circe-*.png`. Nothing in this stop is a downloaded model: the figure, the hall and the yard are built in code (three.js geometry, flat shaded, vertex coloured), so there is no GLB to fail to load. The one downloaded file is the sky.
+Quest stop 2 (book 10), `/?stop=circe`. Everything here was looked at in the running keyboard fight; screenshots are `docs/screenshots/circe-*.png`. The figure, the yard and the rest of the hall are built in code (three.js geometry, flat shaded, vertex coloured). The downloaded files are the sky and the six marble columns (`public/models/circe/doric.glb`, below); if the column file fails to load the portico stands without them.
 
 ## Rows
 
@@ -9,7 +9,8 @@ Quest stop 2 (book 10), `/?stop=circe`. Everything here was looked at in the run
 | Circe (robe, head, hair, diadem, two arms, wand, goblet, magic) | Ours, `src/render/monsters/circe/` | Ours | 0 KB | 2.9 m model units times 1.12 = about 3.2 m, faces +z | Kept. See the first row of "Tried and dropped" for why she is not a downloaded character |
 | Her telegraphs (arc left, arc right, green ring overhead, orb and floor sigil) | Ours, same folder | Ours | 0 KB | metres, in her space | Kept. One per attack, each readable from the camera |
 | Courtyard (marble tiles, crimson carpet with gold edge, stone slab) | Ours, `src/render/arena/circe/hall.ts` | Ours | 0 KB | 10.5 m wide, 27 m long, top at y = 0 | Kept |
-| Portico (6 columns, entablature, frieze, pediment, back wall, doorway glow) | Ours, same file | Ours | 0 KB | laid out at z = -7..-12, moved back 6 m by the arena | Kept. First version sat 6 m closer and filled the frame; moved back |
+| Portico (entablature, frieze, pediment, back wall, doorway glow) | Ours, same file | Ours | 0 KB | laid out at z = -7..-12, moved back 6 m by the arena | Kept. First version sat 6 m closer and filled the frame; moved back |
+| Six Doric columns | "Doric Greek Column" by Victor Vina, https://poly.pizza/m/5VD5-v8NBZ4, `src/render/arena/circe/Columns.tsx` | CC BY 3.0 | 87 KB | 6.3 m, on the platform at z = -8.6 (hall space), x = -8.9 to 8.9 | Kept. White marble, the Greek look the code-built columns lacked (owner's pick, 2026-11-14) |
 | Great loom with warp threads and woven cloth | Ours, same file | Ours | 0 KB | metres | Kept |
 | Table with the cups of green wine, amphora | Ours, same file | Ours | 0 KB | metres | Kept |
 | Braziers (stand, bowl, flame, warm light) | Ours, `Braziers.tsx`, `yard.ts` | Ours | 0 KB | 1.45 m stand | Kept. First legs read as black spikes; replaced by a flat foot |
@@ -28,7 +29,7 @@ Quest stop 2 (book 10), `/?stop=circe`. Everything here was looked at in the run
 
 ## CREDITS.md lines
 
-None to add. Nothing was added to `public/`; the HDRI above is already credited:
+The columns have their own row in `CREDITS.md` (section Circe). The HDRI above is already credited:
 `| Qwantani Dusk 2 Puresky (1K HDRI) | ... | https://polyhaven.com/a/qwantani_dusk_2_puresky | CC0 |`
 
 ## How each attack reads (hero stands behind the camera, Circe faces it)
