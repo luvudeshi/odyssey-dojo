@@ -15,7 +15,7 @@ export interface ShareFight {
   /** A god, when there is one. Null: the card is of `hero`, or of Odysseus himself when that is omitted. */
   readonly god: Pick<GodReveal, "god" | "epithet"> | null;
   /** The hero the player fought as. Names the card when there is no god; omitted, the card is of Odysseus himself. */
-  readonly hero?: string;
+  readonly hero?: string | undefined;
   readonly won: boolean;
   readonly enemyName: string;
   /** The enemy's title, e.g. "The Cyclops of the Cave". */
