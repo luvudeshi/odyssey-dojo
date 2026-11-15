@@ -160,7 +160,13 @@ function unleash(state: CombatState, enemy: EnemySpec): StepResult {
 
 const RECOVER = { kind: "recover", msLeft: RECOVER_MS } as const;
 
-/** Advance the fight by dtMs. A defense counts if it is held at the moment the attack lands. */
+/** What a defend phase has seen of its counter after one more step: "ready" once it is down, "met" once it is made after that. */
+function seenAfter(seen: "ready" | "met" | undefined, held: boolean): "ready" | "met" | undefined {
+  if (seen === "met" || (seen === "ready" && held)) return "met";
+  return held ? seen : "ready";
+}
+
+/** Advance the fight by dtMs. A defense counts if it is made once after the attack is shown, or is held at the moment the attack lands. */
 export function step(
   state: CombatState,
   enemy: EnemySpec,
@@ -200,10 +206,14 @@ export function step(
       return beginDefend(state, enemy);
     }
     case "defend": {
-      const msLeft = phase.msLeft - dtMs;
-      if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft } }, events: [] };
       const attack = phase.attack;
-      if (input.held.has(attack.counter)) {
+      const held = input.held.has(attack.counter);
+      // One dodge while the attack winds up is enough. It must start after the attack is shown: a defense carried over
+      // from before the prompt only counts the old way, by still being held when the attack lands.
+      const seen = dtMs > 0 ? seenAfter(phase.seen, held) : phase.seen;
+      const msLeft = phase.msLeft - dtMs;
+      if (msLeft > 0) return { state: { ...state, phase: { ...phase, msLeft, ...(seen ? { seen } : {}) } }, events: [] };
+      if (seen === "met" || held) {
         const blocked = fill({ ...learned(state, attack.counter), score: state.score + 50 }, POWER_PER_DEFEND);
         return beginStrike(blocked, enemy, style, [{ type: "defended", attack }]);
       }

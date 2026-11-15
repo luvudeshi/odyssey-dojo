@@ -1,0 +1,100 @@
+/* The move guide. A dark panel of its own, so it reads the same on the pottery theme and on the dark pebble and
+   star themes: colours come from the theme's variables (src/theme.css) where they exist, with fallbacks. */
+.move-guide {
+  --mg-bg: var(--pb-ground-deep, var(--ink, #170d08));
+  --mg-ink: var(--pb-text, var(--white, #f1e6cf));
+  --mg-accent: var(--pb-ochre, var(--clay-light, #e9a15f));
+  --mg-edge: var(--pb-terra, var(--clay, #c9602b));
+  --mg-good: #8fd67a;
+  --mg-figure: 420px;
+  --mg-name: 3.6rem;
+  --mg-how: 1.75rem;
+  --mg-check: 1.4rem;
+  --mg-match: 0;
+  --mg-time: 0;
+  display: flex; align-items: center; gap: 1.5rem; width: max-content; max-width: 100%; padding: 1rem 1.75rem 1rem 0.75rem;
+  color: var(--mg-ink); background: var(--mg-bg); border: 3px solid var(--mg-edge); border-radius: var(--pb-radius-panel, 0);
+  box-shadow: 0 8px 22px #000a; font-family: var(--pb-font-body, var(--font-display, Optima, "Gill Sans", "Trebuchet MS", sans-serif));
+  text-align: left; line-height: 1.15;
+}
+.move-guide.medium { --mg-figure: 290px; --mg-name: 2.5rem; --mg-how: 1.4rem; --mg-check: 1.15rem; gap: 1rem; }
+
+.mg-figure { position: relative; flex: none; display: flex; align-items: flex-end; gap: 0.25rem; }
+.mg-depth { position: absolute; left: 0; right: 0; top: 0; margin: 0; text-align: center; font-size: 1.15rem; font-weight: 700; color: var(--mg-accent); }
+.mg-svg { display: block; height: var(--mg-figure); width: auto; overflow: visible; }
+.mg-svg line, .mg-svg polygon { stroke: var(--mg-ink); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.mg-svg polygon { fill: color-mix(in srgb, var(--mg-ink) 22%, transparent); }
+.mg-svg circle { fill: var(--mg-ink); }
+.mg-svg .mg-floor { stroke-width: 2; opacity: 0.35; }
+.mg-svg line.mg-lit, .mg-svg polygon.mg-lit { stroke: var(--mg-accent); stroke-width: 9; }
+.mg-svg polygon.mg-lit { fill: color-mix(in srgb, var(--mg-accent) 30%, transparent); }
+.mg-svg .mg-lit circle, .mg-svg circle.mg-lit { fill: var(--mg-accent); }
+/* The ring round a fist or foot that is coming straight at the camera. */
+.mg-svg circle.mg-ring, .mg-svg .mg-lit circle.mg-ring { fill: none; stroke: var(--mg-accent); stroke-width: 2.5; stroke-dasharray: 5 4; }
+.mg-arrow { fill: none; stroke: var(--mg-accent); stroke-width: 4; stroke-dasharray: 2 8; stroke-linecap: round; opacity: 0.9; }
+#mg-head path { fill: var(--mg-accent); }
+.mg-steps figure { margin: 0; text-align: center; }
+.mg-steps .mg-svg { height: calc(var(--mg-figure) * 0.5); }
+.mg-steps .mg-depth { display: none; }
+.mg-steps figcaption { font-size: var(--mg-how); font-weight: 700; color: var(--mg-accent); }
+
+.mg-words { min-width: 17rem; max-width: 24rem; }
+.mg-kind { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mg-accent); }
+.mg-name { margin: 0; font-size: var(--mg-name); font-weight: 700; line-height: 1; letter-spacing: 0.03em; text-transform: uppercase; color: var(--mg-ink); }
+.mg-how { margin: 0.5rem 0 0.9rem; font-size: var(--mg-how); line-height: 1.2; color: var(--mg-ink); }
+
+.mg-time { height: 0.8rem; margin-bottom: 0.9rem; background: color-mix(in srgb, var(--mg-ink) 18%, transparent); }
+.mg-time-fill { height: 100%; background: var(--mg-accent); transform-origin: left center; transform: scaleX(var(--mg-time)); }
+
+.mg-match { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.8rem; font-size: var(--mg-how); font-weight: 700; text-transform: uppercase; }
+.mg-match-bar { flex: 1; height: 1.6rem; border: 2px solid var(--mg-ink); }
+.mg-match-fill { height: 100%; background: var(--mg-accent); transform-origin: left center; transform: scaleX(var(--mg-match)); }
+.mg-match-number { min-width: 4.2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.move-guide[data-matched="true"] { border-color: var(--mg-good); }
+.move-guide[data-matched="true"] .mg-match-fill { background: var(--mg-good); }
+.move-guide[data-matched="true"] .mg-match-number { color: var(--mg-good); }
+
+.mg-checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; }
+.mg-checks li { display: grid; grid-template-columns: 1.5em 1fr; column-gap: 0.6rem; align-items: center; font-size: var(--mg-check); }
+.mg-checks li[hidden] { display: none; }
+.mg-tick { grid-row: 1 / 3; width: 1.5em; height: 1.5em; border: 2px solid var(--mg-ink); border-radius: 50%; display: grid; place-items: center; opacity: 0.6; }
+.mg-bar { height: 0.35rem; margin-top: 0.15rem; background: color-mix(in srgb, var(--mg-ink) 18%, transparent); }
+.mg-bar-fill { display: block; height: 100%; background: var(--mg-accent); transform-origin: left center; transform: scaleX(var(--mg-progress, 0)); }
+.mg-checks li[data-met="true"] .mg-tick { opacity: 1; border-color: var(--mg-good); background: var(--mg-good); }
+.mg-checks li[data-met="true"] .mg-tick::after { content: ""; width: 0.38em; height: 0.72em; margin-top: -0.14em; border: solid var(--mg-bg); border-width: 0 0.2em 0.2em 0; transform: rotate(45deg); }
+.mg-checks li[data-met="true"] .mg-bar-fill { background: var(--mg-good); }
+.mg-checks li[data-met="true"] .mg-label { color: var(--mg-good); }
+/* No camera: the checklist is a list of what to do, with nothing to tick. */
+.move-guide[data-live="false"] .mg-match, .move-guide[data-live="false"] .mg-bar, .move-guide[data-live="false"] .mg-tick { opacity: 0.35; }
+
+/* The card size: a column that fits the prompt card, 260 px wide and at most 300 px tall. The card has the move's
+   name and its timer already, so here it is the figure, the instruction, the match bar and three checks at 18 px. */
+.move-guide.card {
+  --mg-figure: 140px; --mg-how: 18px; --mg-check: 18px;
+  box-sizing: border-box; flex-direction: column; align-items: stretch; gap: 3px; width: 260px; max-height: 300px; overflow: hidden;
+  padding: 6px 8px; border-width: 2px; box-shadow: none;
+}
+.card .mg-words { display: contents; }
+.card .mg-kind, .card .mg-name, .card .mg-depth, .card .mg-match-word, .card .mg-bar { display: none; }
+.card .mg-figure { justify-content: center; }
+.card .mg-svg { max-width: 100%; }
+.card .mg-svg line, .card .mg-svg polygon { stroke-width: 8; }
+.card .mg-svg line.mg-lit, .card .mg-svg polygon.mg-lit { stroke-width: 11; }
+.card .mg-steps .mg-svg { height: calc(var(--mg-figure) * 0.62); }
+.card .mg-steps figcaption { line-height: 1; }
+.card .mg-how { margin: 0; text-align: center; line-height: 1.15; font-weight: 700; }
+.card .mg-time { height: 5px; margin: 0; }
+.card .mg-match { margin: 0; gap: 6px; line-height: 1; }
+.card .mg-match-bar { height: 12px; }
+.card .mg-checks { gap: 0; }
+.card .mg-checks li {
+  grid-template-columns: 16px 1fr; column-gap: 5px; line-height: 21px;
+  background: linear-gradient(to right, color-mix(in srgb, var(--mg-accent) 30%, transparent) calc(var(--mg-progress, 0) * 100%), transparent 0);
+}
+.card .mg-checks li[data-met="true"] { background: color-mix(in srgb, var(--mg-good) 20%, transparent); }
+.card .mg-tick { grid-row: auto; width: 14px; height: 14px; }
+.card .mg-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 46rem) {
+  .move-guide:not(.card) { flex-direction: column; padding: 0.75rem 1rem 1rem; }
+}

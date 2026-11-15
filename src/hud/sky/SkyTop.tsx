@@ -1,6 +1,7 @@
 // The top of the fight HUD in the star-chart look: everything the pebble Hud draws except the prompt card.
 import { PLAYER_HP } from "../../combat/engine";
 import type { CombatState, EnemySpec } from "../../core/types";
+import { DefendFlash } from "../DefendFlash";
 import { SkyFlashes, SkyIntro, SkyPhase } from "./SkyBanners";
 import { SkyBar, SkyPower, SkyScore } from "./SkyBars";
 import "./top.css";
@@ -14,6 +15,7 @@ export function SkyTop({ enemy, state }: { enemy: EnemySpec; state: CombatState 
       <SkyPower power={state.power} />
       <SkyPhase enemy={enemy} index={state.phaseIndex} />
       <SkyFlashes two={state.players === 2} />
+      <DefendFlash phase={state.phase} />
       {state.phase.kind === "intro" && <SkyIntro enemy={enemy} />}
     </>
   );
