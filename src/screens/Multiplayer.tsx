@@ -2,7 +2,9 @@
 // scans; joining takes the typed code, or the code a scanned link filled in. Rooms need the game's own server (/api/rooms).
 import { Icon } from "../account/ui/icons";
 import type { HostLink } from "../net/host";
+import { look } from "../ui/lookSwitch";
 import { Button, Panel, PebbleHeading } from "../ui/pebble";
+import { MultiplayerLook } from "./MultiplayerLook";
 import { RoomHost } from "./RoomHost";
 import { RoomJoin } from "./RoomJoin";
 import type { Joined } from "./RoomJoin";
@@ -22,6 +24,7 @@ export function Multiplayer(props: {
   onJoined: (joined: Joined) => void;
   onBack: () => void;
 }) {
+  if (look) return <MultiplayerLook {...props} />;
   return (
     <Panel as="main" ornament className="menu menu--rooms">
       <PebbleHeading as="h1" text="Multiplayer" px={48} tone="ochre" />

@@ -1,0 +1,60 @@
+/* Draft look A for Multiplayer, "Forge": cast bronze over forge light. The doors are two arched bronze gateways with an
+   "or" coin between; in the room the code is poured into a round bronze shield on the left, the QR hangs on a tilted
+   marble tablet and the fighters stand on bronze name plates. Scoped to html[data-look="a"]; delete with its import. */
+html[data-look="a"] .menu.mp { background: radial-gradient(ellipse 80% 42% at 50% 112%, rgba(255, 112, 24, 0.5), rgba(160, 40, 8, 0.2) 55%, transparent 78%), var(--pb-ground-deep) var(--pebble-ground) repeat; }
+html[data-look="a"] .menu.mp::before {
+  background: radial-gradient(ellipse 60% 34% at 50% 104%, rgba(255, 120, 30, 0.34), transparent 72%),
+    radial-gradient(1.5px 1.5px at 12% 82%, #ffcf6a 60%, transparent), radial-gradient(2px 2px at 22% 90%, #ff9a2e 60%, transparent),
+    radial-gradient(2px 2px at 63% 86%, #ffb04a 60%, transparent), radial-gradient(2px 2px at 89% 92%, #ff8a2a 60%, transparent),
+    linear-gradient(#130c08, #0b0705 65%, #1c0b05);
+}
+html[data-look="a"] .menu.mp .lead { color: #ffd27a; text-shadow: 0 0 12px rgba(255, 140, 40, 0.45); }
+
+/* Gateways: an arched top, a poured bronze lip, slag inside. */
+html[data-look="a"] .mp__door {
+  padding: 26px 26px 22px; border: 5px solid transparent; border-radius: 15rem 15rem 16px 16px;
+  background: radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 150, 50, 0.16), transparent 70%), linear-gradient(#24170f, #130b07 50%, #0d0705) padding-box,
+    linear-gradient(#ffe6b0, #d9a052 28%, #8e5522 62%, #3e2109) border-box;
+  box-shadow: 0 0 0 2px #0b0604, inset 0 -26px 40px -24px rgba(255, 110, 20, 0.5), 0 14px 30px rgba(0, 0, 0, 0.65);
+}
+html[data-look="a"] .mp__door h2 { color: #ffd98a; letter-spacing: 0.14em; text-transform: uppercase; text-shadow: 0 0 12px rgba(255, 140, 40, 0.5); }
+html[data-look="a"] .mp__door p, html[data-look="a"] .mp__door .room label { color: #ead9bd; }
+html[data-look="a"] .mp__sigil { background: radial-gradient(circle at 38% 32%, #fff3b8, #ffcc3a 24%, #e08a2a 52%, #8a4410 82%, #4a1e06); box-shadow: 0 0 0 4px #8e5522, 0 0 0 6px #0b0604, 0 0 22px 4px rgba(255, 130, 30, 0.45); }
+html[data-look="a"] .mp__sigil .acc-icon { stroke: #2a1206; stroke-width: 4; }
+html[data-look="a"] .mp__or { color: #2a1206; background: radial-gradient(circle at 38% 32%, #ffe6b0, #d9a052 45%, #8e5522); box-shadow: 0 0 0 3px #0b0604, 0 0 16px rgba(255, 130, 30, 0.4); }
+html[data-look="a"] .mp .room .room-input { background: #0b0604; border-color: #b97f2f; color: #ffd98a; }
+
+/* Buttons: dark bronze, and the main one poured hot. */
+html[data-look="a"] .menu.mp .pb-btn { border-color: #b97f2f; background: #1a0f09; color: #ffe6b0; }
+html[data-look="a"] .menu.mp .pb-btn:hover:not(:disabled) { background: #4a1e0a; border-color: #ffcc3a; }
+html[data-look="a"] .menu.mp .pb-btn--primary { border-color: #fff0c0; color: #1b0c04; background: linear-gradient(#ffe08a, #ffb238 42%, #e06a10); box-shadow: 0 0 0 2px #0b0604, 0 0 20px rgba(255, 120, 20, 0.5); }
+html[data-look="a"] .menu.mp .pb-btn--primary:hover:not(:disabled) { background: linear-gradient(#fff0b8, #ffc858 42%, #f07a18); }
+html[data-look="a"] .menu.mp .pb-btn--primary:disabled { background: #3a2414; color: #c8a878; border-color: #8e5522; box-shadow: none; opacity: 1; }
+
+/* The room: shield left, the tablet and the fighters right. */
+html[data-look="a"] .mp__room .room:has(.room-qr) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto auto auto;
+  grid-template-areas: "code qr" "code seats" "code status" "close start";
+}
+html[data-look="a"] .mp__room .room-invite > div {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; width: 400px; height: 400px; border-radius: 50%; box-sizing: border-box; padding: 50px;
+  background: radial-gradient(circle, #1a0f09 0 52%, transparent 52.4%), radial-gradient(circle, #0b0604 0 54%, transparent 54.4%),
+    repeating-radial-gradient(circle, #c98f37 0 6px, #8e5522 6px 9px, #e2b25d 9px 12px), #8e5522;
+  box-shadow: 0 0 0 3px #0b0604, inset 0 0 0 10px #5a3214, inset 0 0 0 12px #ffe6b0, 0 0 50px rgba(255, 120, 20, 0.35), 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+html[data-look="a"] .mp__room .room-invite > div > p:first-child { margin: 0; font: 700 15px var(--pb-font-body); letter-spacing: 0.24em; text-transform: uppercase; color: #e2b25d; }
+html[data-look="a"] .mp__room .room .room-code {
+  margin: 4px 0 6px; padding-left: 0.2em; font-size: 4.6rem; letter-spacing: 0.2em; text-shadow: none;
+  background: linear-gradient(#fff3b8, #ffcc3a 40%, #ff8410 85%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 10px rgba(255, 130, 30, 0.6));
+}
+html[data-look="a"] .mp__room .room .room-url { max-width: 13rem; margin: 0; font-size: 13px; color: #d8c6a8; }
+html[data-look="a"] .mp__room .room-qr { width: 168px; height: 168px; padding: 12px; background: #f1e6cf; border: 0; border-radius: 4px; transform: rotate(-3deg); box-shadow: 0 0 0 3px #b97f2f, 0 0 0 5px #0b0604, 0 12px 26px rgba(0, 0, 0, 0.7); }
+html[data-look="a"] .mp__room .room-seats__count { color: #e2b25d; }
+html[data-look="a"] .mp__room .room-seats li { border: 3px solid transparent; border-radius: 10px; background: linear-gradient(#24170f, #0d0705) padding-box, linear-gradient(#d9a052, #5a3214) border-box; }
+html[data-look="a"] .mp__room .room-seats li .acc-icon { stroke: #ffcc3a; }
+html[data-look="a"] .mp__room .room-seats li b { color: #ffe6b0; }
+html[data-look="a"] .mp__room .room-seats li small { color: #d8c6a8; }
+html[data-look="a"] .mp__room .room-seats li.is-empty { border-style: dashed; background: #0d0705; border-color: #6a4020; }
+html[data-look="a"] .mp__room .room-seats li.is-empty .acc-icon { stroke: #8a7560; }
+html[data-look="a"] .mp__room .room-seats li.is-empty b { color: #cbbba0; }
+html[data-look="a"] .mp__room .room > .notice { color: #ffd27a; font-weight: 700; }

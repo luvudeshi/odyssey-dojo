@@ -1,0 +1,53 @@
+/* Draft looks only: the structure every Multiplayer look shares (MultiplayerLook.tsx, RoomSeats.tsx). Each look's own
+   file (mp-a.css, mp-b.css, mp-c.css) sets the layout of the room and all the ornament. Keep this file with the pick. */
+.menu.mp { justify-content: flex-start; gap: 10px; padding-top: 3.2rem; }
+.mp__head { display: flex; flex-direction: column; align-items: center; }
+.mp__head .pb-heading { margin-bottom: 0.2rem; }
+.menu.mp .mp__head .lead { margin: 0 0 0.4rem; }
+
+/* The two doors. */
+.mp__doors { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 18px; width: min(68rem, 100%); }
+.mp__door { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; text-align: center; }
+.mp__door h2 { margin: 0; font: 700 26px var(--pb-font-body); }
+.menu.mp .mp__door > p { max-width: 26rem; margin: 0 0 4px; font-size: 18px; }
+.mp__door > .pb-btn { margin-top: auto; min-width: 13rem; }
+.mp__sigil { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; }
+.mp__sigil .acc-icon { width: 40px; height: 40px; }
+.mp__or { align-self: center; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 50%; font: 700 18px var(--pb-font-body); letter-spacing: 0.08em; text-transform: uppercase; }
+.mp__door .room { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.mp__door .room label { font: 700 18px var(--pb-font-body); }
+.mp__door .room .room-input { width: 6.2em; font-size: 2.6rem; }
+.menu.mp .mp__door .room .mode-note { margin: 0; font-size: 15px; }
+.mp__door .room .notice:empty { display: none; }
+.mp__door .room .pb-btn { min-width: 13rem; }
+
+/* The host's room. Laid out only once it is open (the QR is there); opening and failing stay a plain column. */
+.mp__room { display: flex; flex-direction: column; justify-content: center; width: min(74rem, 100%); flex: 1 1 auto; min-height: 0; }
+.mp__room .room { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mp__room .room:has(.room-qr) { display: grid; align-items: center; justify-items: center; gap: 10px 26px; }
+.mp__room .room:has(.room-qr) > .room-invite { display: contents; }
+.mp__room .room-invite > div { grid-area: code; }
+.mp__room .room-qr { grid-area: qr; }
+.mp__room .room-seats { grid-area: seats; }
+.mp__room .room > .notice { grid-area: status; margin: 0; }
+.mp__room .room > .pb-btn--primary { grid-area: start; }
+.mp__room .room > .pb-btn:last-child { grid-area: close; }
+.mp__room .room .pb-btn { min-width: 13rem; margin: 0; }
+
+.room-seats { width: 100%; max-width: 30rem; }
+.menu .room-seats__count { margin: 0 0 6px; font: 700 15px var(--pb-font-body); letter-spacing: 0.14em; text-transform: uppercase; }
+.room-seats ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.room-seats li { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; align-items: center; padding: 8px 14px; text-align: left; }
+.room-seats li .acc-icon { grid-row: span 2; width: 36px; height: 36px; }
+.room-seats li b { font: 700 20px/1.15 var(--pb-font-body); }
+.room-seats li small { font: 600 14px var(--pb-font-body); letter-spacing: 0.06em; }
+
+@media (max-width: 760px) { .mp__doors { grid-template-columns: minmax(0, 1fr); } .mp__room .room:has(.room-qr) { display: flex; } }
+
+/* A short window: smaller signs and tighter spacing so the way back stays on screen. */
+@media (max-height: 780px) {
+  .menu.mp { padding-top: 2.8rem; gap: 6px; }
+  .mp__sigil { width: 56px; height: 56px; }
+  .mp__sigil .acc-icon { width: 32px; height: 32px; }
+  .mp__door h2 { font-size: 22px; }
+}

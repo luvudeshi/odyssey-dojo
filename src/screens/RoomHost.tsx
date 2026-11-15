@@ -5,7 +5,9 @@ import { toDataURL } from "qrcode";
 import { createHostLink } from "../net/host";
 import type { HostLink } from "../net/host";
 import { createRoom, openRoom } from "../net/transport";
+import { look } from "../ui/lookSwitch";
 import { Button } from "../ui/pebble";
+import { RoomSeats } from "./RoomSeats";
 import { browserDeps, fetchLanBase } from "./roomNet";
 import { ROOM_MESSAGES, joinUrl, reachableBase } from "./roomUrl";
 
@@ -70,6 +72,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
             </div>
             <img className="room-qr" src={phase.qr} alt="QR code to join this room" data-join-url={phase.url} width={170} height={170} />
           </div>
+          {look && <RoomSeats friend={friend} />}
           <p className="notice" role="status">{friend ? "A friend has joined." : "Waiting for a friend..."}</p>
           <Button
             primary
