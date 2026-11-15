@@ -16,7 +16,9 @@ import type { PoseFrame } from "../../src/core/types";
 import { KICK_IDS, legsVisible } from "../../src/moves/legSignals";
 import { MOVES } from "../../src/moves/registry";
 import type { Body } from "../helpers/anyBody";
-import { body, fired, frameOn, recordingOn, shouldersAt } from "../helpers/anyBody";
+import {
+  CALIBRATION_FRAMES, body, fired, frameOn, recordingOn, recordingTurned, shouldersAt,
+} from "../helpers/anyBody";
 import type { Arm, Key, Leg } from "../helpers/poses";
 import {
   ACROSS, CHOP, COCKED, DOWN, GUARD, HIP, HOOK_IN, HOOK_OUT, LATERAL, LEG_CHAMBER, LEG_DOWN, LEG_KICK, LEG_KNEE,
@@ -122,4 +124,80 @@ describe.each(KICK_IDS)("%s needs the feet in the picture", (id) => {
     expect(fired(recordingOn(body("1.4x", { size: 1.4 }), frames))).toEqual([]);
     expect(fired(recordingOn(body("1.4x, back", { size: 1.4, zoom: 1 / 1.4 }), frames))).toEqual([id]);
   });
+});
+
+// A player turned 30 degrees about the vertical axis, each way (issue #158). The camera model is in
+// `turnedFrame` (tests/helpers/anyBody.ts): 3D points rotate rigidly, and the picture is foreshortened about the
+// body's centre line using each point's 3D depth. Two cases: turned for the move after calibrating face on (the
+// case the baseline's 3D ruler is for), and turned from the first frame, calibration included.
+const TURN = 30;
+const DEGREES = String(TURN);
+const WAYS = [
+  { way: "left", sign: 1 },
+  { way: "right", sign: -1 },
+] as const;
+const WHEN = [
+  { when: "for the move, after calibrating face on", from: CALIBRATION_FRAMES },
+  { when: "from the first frame", from: 0 },
+] as const;
+
+interface TurnLimit {
+  /** Which way the turn goes wrong: 1 is the player's left (right shoulder toward the camera). */
+  readonly signs: readonly number[];
+  /** Left out when it goes wrong whenever the turn starts; else the one `from` it goes wrong for. */
+  readonly from?: number;
+  /** The biggest whole number of degrees that still reads as it does face on. */
+  readonly good: number;
+  /** What the game reads one degree past `good` and at 30 degrees. */
+  readonly then: readonly string[];
+}
+
+// Moves that do not read the same turned 30 degrees. None is the 3D ruler: each is a rule on where a wrist or the
+// shoulders sit in the PICTURE, and a turn moves a hand held out in front sideways in the picture.
+const TURN_LIMITS: Record<string, TurnLimit> = {
+  // A fist punched at where the player faces lands off to its own side in the picture. `flungWide` calls a wrist
+  // more than 1.2 picture shoulder widths out a flung arm: 0.69 face on, 1.38 at 29 degrees, 1.41 at 30.
+  jab: { signs: [1], good: 29, then: [] },
+  cross: { signs: [-1], good: 29, then: [] },
+  // The fixture's chopping hand ends half a metre in front in 3D, so a left turn carries it back toward the body in
+  // the picture: 1.81 widths out face on, 1.203 at 26 degrees, 1.176 at 27. The knife hand needs more than 1.2.
+  knife_hand: { signs: [1], good: 26, then: ["cross", "uppercut"] },
+  // The sun burst itself fires at every angle. Its hands-together start has the right wrist 0.125 widths on its own
+  // side of the centre line face on; a left turn carries it across (0.105 at 3 degrees, 0.099 at 4), and under 0.1
+  // is the knife hand's chamber, so the right arm flung wide then reads as a knife hand as well.
+  sun_burst: { signs: [1], good: 3, then: ["knife_hand", "spear_thrust", "sun_burst"] },
+  // Calibrating side-on makes the baseline's PICTURE shoulder width narrower (0.16 of the frame face on, 0.154 at
+  // 16 degrees, 0.139 at 30), so the fixture's dodge step counts for more shoulder widths and reaches the swift
+  // dash's 0.7 as well: 0.674 face on, 0.698 at 15 degrees, 0.701 at 16, 0.778 at 30. The dodge still holds.
+  dodge_left: { signs: [1, -1], from: 0, good: 15, then: ["dodge_left", "swift_dash"] },
+  dodge_right: { signs: [1, -1], from: 0, good: 15, then: ["dodge_right", "swift_dash"] },
+};
+
+describe.each(Object.keys(GOOD))("%s, turned", (id) => {
+  const frames = sequence(GOOD[id] ?? []);
+  const usual = fired(frames);
+  const limit = TURN_LIMITS[id];
+  const sameAsFaceOn = (seen: readonly string[]): void => {
+    expect(seen).toContain(id);
+    expect(seen.filter((other) => !usual.includes(other))).toEqual([]);
+  };
+
+  for (const { way, sign } of WAYS) {
+    for (const { when, from } of WHEN) {
+      const turned = (degrees: number): string[] => fired(recordingTurned(frames, sign * degrees, from));
+      if (limit && limit.signs.includes(sign) && (limit.from ?? from) === from) {
+        test(`${String(limit.good)} degrees ${way} ${when}: fires, and nothing else that does not fire face on`, () => {
+          sameAsFaceOn(turned(limit.good));
+        });
+        test(`${String(limit.good + 1)} and ${DEGREES} degrees ${way} ${when}: the measured limit`, () => {
+          expect(turned(limit.good + 1)).toEqual(limit.then);
+          expect(turned(TURN)).toEqual(limit.then);
+        });
+        continue;
+      }
+      test(`${DEGREES} degrees ${way} ${when}: fires, and nothing else that does not fire face on`, () => {
+        sameAsFaceOn(turned(TURN));
+      });
+    }
+  }
 });
