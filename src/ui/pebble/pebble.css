@@ -40,7 +40,7 @@
 .pb-btn:focus-visible, .pb-btn.is-focus { outline: 3px solid var(--pb-focus); outline-offset: 4px; }
 .pb-btn:focus-visible .pb-btn__focus, .pb-btn.is-focus .pb-btn__focus { opacity: 1; }
 .pb-btn:active { transform: translateY(1px); }
-.pb-btn:disabled { cursor: default; opacity: 0.45; outline: none; transform: none; background: var(--pb-plaque-2); border-color: var(--pb-lead); }
+.pb-btn:disabled { cursor: default; opacity: 0.45; outline: none; transform: none; background: var(--pb-plaque-2); border-color: var(--pb-lead); color: var(--pb-text); }
 .pb-btn--primary { color: var(--pb-text-on-ochre); background: var(--pb-ochre); border-color: var(--pb-cream); }
 .pb-btn--primary:hover, .pb-btn--primary.is-hover, .pb-btn--primary:active { background: var(--pb-ochre-light); border-color: var(--pb-foam); }
 

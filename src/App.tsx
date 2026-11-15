@@ -20,14 +20,13 @@ import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
 import { Account } from "./screens/Account";
 import { EndPanel } from "./screens/EndScreen";
-import { enemyFor, flowReducer, openAt, playable, unlocked } from "./screens/flow";
+import { enemyFor, flowReducer, openAt, playable } from "./screens/flow";
 import { GodScan } from "./screens/GodScan";
 import { GuestFight } from "./screens/GuestFight";
 import { narrateIntro } from "./screens/hookups";
 import { MainMenu } from "./screens/MainMenu";
 import { QuestMap } from "./screens/QuestMap";
-import { RoomHost } from "./screens/RoomHost";
-import { RoomJoin } from "./screens/RoomJoin";
+import { Multiplayer } from "./screens/Multiplayer";
 import type { Joined } from "./screens/RoomJoin";
 import { roomFromSearch } from "./screens/roomUrl";
 import type { HostLink } from "./net/host";
@@ -44,8 +43,8 @@ export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
   const [notice, setNotice] = useState("");
   const [cameraProblem, setCameraProblem] = useState("");
-  // The main menu's two side doors. They are panels of the title screen, not steps of the quest flow.
-  const [panel, setPanel] = useState<"account" | "training" | null>(null);
+  // The main menu's side doors. They are panels of the title screen, not steps of the quest flow.
+  const [panel, setPanel] = useState<"account" | "training" | "multiplayer" | null>(null);
   const profile = useProfile();
   // Homer's line before a stop now plays as its fight opens; this stops it when the player leaves that fight.
   const stopIntro = useRef<() => void>(() => undefined);
@@ -125,7 +124,23 @@ export function App() {
   }
 
   if (flow.screen === "title" && panel === "account") {
-    return <Account enemies={ENEMIES} onHost={() => { dispatch({ type: "hostRoom" }); }} onJoin={() => { dispatch({ type: "joinRoom" }); }} onBack={() => { setPanel(null); }} />;
+    return <Account enemies={ENEMIES} onBack={() => { setPanel(null); }} />;
+  }
+
+  // One screen for rooms: the Multiplayer card, a room being hosted from it, and a scanned join link all land here.
+  if (flow.screen === "host" || flow.screen === "join" || (flow.screen === "title" && panel === "multiplayer")) {
+    return (
+      <Multiplayer
+        hosting={flow.screen === "host"}
+        code={roomFromSearch(window.location.search) ?? ""}
+        onOpen={() => { dispatch({ type: "hostRoom" }); }}
+        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); startCamera(); }}
+        onSolo={() => { keyboardOnly.current = true; dispatch({ type: "hosted", together: false }); }}
+        onClose={() => { setPanel("multiplayer"); dispatch({ type: "toTitle" }); }}
+        onJoined={(next) => { setJoined(next); dispatch({ type: "joinRoom" }); dispatch({ type: "joined" }); }}
+        onBack={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
+      />
+    );
   }
 
   if (flow.screen === "title") {
@@ -136,28 +151,9 @@ export function App() {
         problem={cameraProblem}
         onStory={startCamera}
         onKeyboard={() => { keyboardOnly.current = true; setCameraProblem(""); dispatch({ type: "ready" }); }}
+        onMultiplayer={() => { setPanel("multiplayer"); }}
         onTraining={openTraining}
         onAccount={() => { setPanel("account"); }}
-      />
-    );
-  }
-
-  if (flow.screen === "host") {
-    return (
-      <RoomHost
-        onStart={(link) => { setHostLink(link); dispatch({ type: "hosted", together: true }); startCamera(); }}
-        onSolo={() => { keyboardOnly.current = true; dispatch({ type: "hosted", together: false }); }}
-        onBack={() => { dispatch({ type: "toTitle" }); }}
-      />
-    );
-  }
-
-  if (flow.screen === "join") {
-    return (
-      <RoomJoin
-        initialCode={roomFromSearch(window.location.search) ?? ""}
-        onJoined={(next) => { setJoined(next); dispatch({ type: "joined" }); }}
-        onBack={() => { dispatch({ type: "toTitle" }); }}
       />
     );
   }
@@ -182,7 +178,7 @@ export function App() {
       <QuestMap
         enemies={ENEMIES}
         cleared={flow.cleared}
-        open={(index) => unlocked(ENEMIES, CAN_PLAY, flow.cleared, index)}
+        open={(index) => CAN_PLAY[index] ?? false}
         onEnter={(index) => {
           const next = ENEMIES[index];
           if (next) stopIntro.current = narrateIntro(next.id);
