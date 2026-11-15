@@ -12,9 +12,10 @@ import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { Boulder } from "./effects/Boulder";
-import { HitEffects } from "./effects/HitEffects";
+import { HitEffects, WeakSpotRing } from "./effects/HitEffects";
 import { DefendBurst } from "./effects/DefendBurst";
 import { GuardShield } from "./effects/GuardShield";
+import { PowerStrike } from "./effects/power/PowerStrike";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { finisherSpot } from "./strikeReach";
@@ -98,13 +99,9 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
             })}
             <HitEffects state={state} finishAt={finishAt} />
             <Boulder />
-            {weakSpot && (
-              <mesh position={[...weakSpot.position]}>
-                <torusGeometry args={[0.45, 0.06, 8, 32]} />
-                <meshBasicMaterial color="#ffd54a" />
-              </mesh>
-            )}
+            <WeakSpotRing spot={weakSpot?.position ?? null} />
           </MonsterRig>
+          <PowerStrike />
           <CameraRig />
           <Hero poseRef={poseRef} />
           <GuardShield />

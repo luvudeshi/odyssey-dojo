@@ -20,4 +20,5 @@ export function shiftBattleTimes(battle: Battle, ms: number): void {
   battle.lostAt += s;
   battle.struckAt += s;
   battle.reachAt += s;
+  battle.powerAt += s;
 }
