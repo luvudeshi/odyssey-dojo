@@ -1,65 +1,99 @@
-/* Star-chart top of the fight HUD. Needs the .sky-hud root (tokens.css) around it. Pure CSS motion, off under reduced motion. */
-.sky-hud .sk-bar { position: absolute; top: 18px; width: min(560px, calc(50% - 137px)); aspect-ratio: 560 / 80; }
-.sky-hud .sk-bar--left { left: 22px; }
-.sky-hud .sk-bar--right { right: 22px; }
-.sky-hud .sk-bar svg, .sky-hud .sk-score svg, .sky-hud .sk-power svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)); }
-.sky-hud .sk-plate { fill: rgba(23, 17, 13, 0.86); stroke: var(--sky-clay); stroke-width: 1.5; }
-.sky-hud .sk-label { font: 600 15px var(--sky-label); letter-spacing: 0.24em; text-transform: uppercase; fill: var(--sky-bone); }
-.sky-hud .sk-label--num { font-size: 13px; letter-spacing: 0.12em; fill: #e8c9a0; }
-.sky-hud .sk-label--sm { font-size: 12.5px; }
-.sky-hud .sk-label--star { fill: var(--sky-star); }
-.sky-hud .sk-star { fill: var(--sky-star); }
+/* Star-chart top of the fight HUD. Needs the .sky-hud root (tokens.css) around it. Pure CSS motion, off under reduced motion.
+   Readability rules: plain type at 18px or more, bone or star-gold on a solid dark plate (13:1 or better), no glow-only text. */
+.sky-hud .sk-bar { position: absolute; top: 16px; width: min(560px, calc(50% - 137px)); height: 68px; display: flex; align-items: center; }
+.sky-hud .sk-bar--left { left: 20px; }
+.sky-hud .sk-bar--right { right: 20px; flex-direction: row-reverse; }
+.sky-hud .sk-roundel { position: relative; z-index: 1; flex: none; width: 68px; height: 68px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)); }
 .sky-hud .sk-roundel__rim { fill: var(--sky-clay); }
 .sky-hud .sk-roundel__bed { fill: var(--sky-glaze); }
-.sky-hud .sk-fig line { stroke: var(--sky-bone); stroke-width: 5; stroke-linecap: round; opacity: 0.9; }
+.sky-hud .sk-fig line { stroke: var(--sky-bone); stroke-width: 5; stroke-linecap: round; }
 .sky-hud .sk-fig__head, .sky-hud .sk-fig__ring { fill: none; stroke: var(--sky-bone); stroke-width: 6; }
-.sky-hud .sk-fig__ring { stroke-width: 1.3; stroke-opacity: 0.6; }
+.sky-hud .sk-fig__ring { stroke-width: 1.3; }
 .sky-hud .sk-fig__eye { fill: var(--sky-ember); }
 .sky-hud .sk-fig__dot { fill: var(--sky-bone); }
+.sky-hud .sk-star { fill: var(--sky-star); }
+
+/* The plate: solid glaze with a clay rim, pointed at both ends. Name and number on the top row, the chain of stars under them. */
+.sky-hud .sk-bar__plate { --tip: 26px; position: relative; flex: 1; min-width: 0; height: 60px; box-sizing: border-box; padding: 7px 38px 0 32px; margin-left: -22px; background: var(--sky-clay); clip-path: polygon(var(--tip) 0, calc(100% - var(--tip)) 0, 100% 50%, calc(100% - var(--tip)) 100%, var(--tip) 100%, 0 50%); }
+.sky-hud .sk-bar--right .sk-bar__plate { margin: 0 -22px 0 0; padding: 7px 32px 0 38px; }
+.sky-hud .sk-bar__plate::before { content: ""; position: absolute; inset: 2px; background: var(--sky-glaze); clip-path: inherit; }
+.sky-hud .sk-bar__row { position: relative; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font: 700 20px/24px var(--sky-label); letter-spacing: 0.14em; text-transform: uppercase; color: var(--sky-bone); }
+.sky-hud .sk-bar--right .sk-bar__row { flex-direction: row-reverse; }
+.sky-hud .sk-bar__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sky-hud .sk-bar__num { flex: none; font-size: 18px; letter-spacing: 0.06em; color: var(--sky-star); font-variant-numeric: tabular-nums; }
+.sky-hud .sk-chain { position: relative; display: block; width: 100%; height: 18px; margin-top: 3px; overflow: visible; }
 
 /* Health: a line of stars. The kept part is solid and bright, the lost part dotted with hollow nodes. */
-.sky-hud .sk-chain__lost { stroke: var(--sky-bone); stroke-opacity: 0.28; stroke-width: 1.4; stroke-dasharray: 2 5; }
+.sky-hud .sk-chain__lost { stroke: var(--sky-bone); stroke-opacity: 0.35; stroke-width: 1.4; stroke-dasharray: 2 5; }
 .sky-hud .sk-chain__kept { stroke: var(--sky-ember); stroke-width: 4; stroke-linecap: round; transform-box: fill-box; transition: transform 0.35s ease-out; }
 .sky-hud .sk-chain__kept.from-left { transform-origin: left center; }
 .sky-hud .sk-chain__kept.from-right { transform-origin: right center; }
 .sky-hud .sk-node { fill: var(--sky-bone); }
-.sky-hud .sk-node--off { r: 3.4px; fill: var(--sky-glaze); stroke: var(--sky-bone); stroke-opacity: 0.4; stroke-width: 1.3; animation: sk-fall 0.9s ease-out; transform-box: fill-box; transform-origin: center; }
+.sky-hud .sk-node--off { r: 3.4px; fill: var(--sky-glaze); stroke: var(--sky-bone); stroke-opacity: 0.5; stroke-width: 1.3; animation: sk-fall 0.9s ease-out; transform-box: fill-box; transform-origin: center; }
 @keyframes sk-fall {
   0% { fill: var(--sky-star); stroke: var(--sky-star); stroke-opacity: 1; stroke-width: 6; transform: scale(1.5); }
   35% { fill: var(--sky-ember); stroke-width: 3; transform: scale(1.2); }
   100% { fill: var(--sky-glaze); transform: scale(1); }
 }
 
-.sky-hud .sk-score { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); text-align: center; }
+.sky-hud .sk-score { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
 .sky-hud .sk-score__plate { position: relative; width: 190px; height: 58px; }
-.sky-hud .sk-score__num { position: absolute; inset: 0; display: grid; place-items: center; font: 700 30px var(--sky-display); letter-spacing: 0.08em; color: var(--sky-bone); text-shadow: 0 2px 4px #000; font-variant-numeric: tabular-nums; }
-.sky-hud .sk-combo { display: inline-flex; align-items: center; white-space: nowrap; margin-top: 6px; font: 600 13px var(--sky-label); letter-spacing: 0.22em; text-transform: uppercase; color: var(--sky-star); text-shadow: 0 1px 3px #000, 0 0 8px #000; }
-.sky-hud .sk-combo svg { vertical-align: -2px; margin-right: 6px; }
+.sky-hud .sk-score__plate svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)); }
+.sky-hud .sk-plate { fill: var(--sky-glaze); stroke: var(--sky-clay); stroke-width: 2; }
+.sky-hud .sk-score__num { position: absolute; inset: 0; display: grid; place-items: center; font: 700 32px var(--sky-display); letter-spacing: 0.08em; color: var(--sky-bone); font-variant-numeric: tabular-nums; }
+/* Small solid chips: the combo, the power meter, the two-player tag. */
+.sky-hud .sk-combo, .sky-hud .sk-power, .sky-hud .hb-duo { box-sizing: border-box; white-space: nowrap; background: var(--sky-glaze); border: 2px solid var(--sky-clay); font: 700 18px/1 var(--sky-label); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-bone); }
+.sky-hud .sk-combo { margin-top: 6px; padding: 6px 12px; color: var(--sky-star); }
 
-.sky-hud .sk-power { position: absolute; left: 100px; top: 92px; width: 196px; height: 38px; }
-.sky-hud .sk-moon__disc { fill: #2b2017; stroke: var(--sky-star); stroke-opacity: 0.55; stroke-width: 1.2; }
+.sky-hud .sk-power { position: absolute; left: 96px; top: 94px; display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 8px; border-radius: 22px; }
+.sky-hud .sk-power strong { min-width: 3.4em; text-align: right; color: var(--sky-star); font-variant-numeric: tabular-nums; }
+.sky-hud .sk-moon__disc { fill: #3a2b1f; stroke: var(--sky-star); stroke-width: 1.5; }
 .sky-hud .sk-moon__lit { fill: var(--sky-star); }
-.sky-hud .sk-moon__halo { fill: var(--sky-star); opacity: 0.18; }
-/* Full: unmissable. A glowing rim, a pulsing chip and READY in place of the percentage. */
-.sky-hud .sk-power.is-full svg { filter: drop-shadow(0 0 8px var(--sky-ember)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)); animation: sk-pulse 1.1s ease-in-out infinite; }
-.sky-hud .sk-power.is-full .sk-power__plate { stroke: var(--sky-star); stroke-width: 2.4; fill: rgba(60, 30, 14, 0.92); }
+/* Full: unmissable. A gold rim, a pulsing chip and READY in place of the percentage. */
+.sky-hud .sk-power.is-full { border-color: var(--sky-star); box-shadow: 0 0 12px var(--sky-ember); animation: sk-pulse 1.1s ease-in-out infinite; }
 @keyframes sk-pulse { 50% { transform: scale(1.06); } }
 
-.sky-hud .sk-phase { position: absolute; top: 132px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 700 26px var(--sky-display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky-bone); text-shadow: 0 2px 6px #000, 0 0 18px #000c; animation: sk-in 0.4s ease-out; }
-.sky-hud .sk-phase small { margin-right: 0.5em; font-size: 17px; color: var(--sky-ember); }
-@keyframes sk-in { from { opacity: 0; letter-spacing: 0.4em; } }
+/* Banners: big display type on a solid plate, so they read over a dark cave and a bright sunset alike. */
+.sky-hud .sk-phase, .sky-hud .sk-intro, .sky-hud .hb-rating, .sky-hud .hb-together { background: var(--sky-glaze); border: 2px solid var(--sky-clay); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5); }
+.sky-hud .sk-phase { position: absolute; top: 140px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 8px 22px; font: 700 28px/1.1 var(--sky-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-bone); animation: sk-in 0.4s ease-out; }
+.sky-hud .sk-phase small { margin-right: 0.5em; font-size: 22px; color: var(--sky-star); }
+@keyframes sk-in { from { opacity: 0; } }
 
-.sky-hud .sk-intro { position: absolute; top: 33%; width: 100%; text-align: center; text-shadow: 0 2px 8px #000, 0 0 22px #000c; }
-.sky-hud .sk-intro h2 { margin: 0; font: 700 72px/1.05 var(--sky-display); letter-spacing: 0.16em; color: var(--sky-bone); }
-.sky-hud .sk-intro small { display: block; margin-top: 8px; font: 600 24px/1.2 var(--sky-label); letter-spacing: 0.3em; text-transform: uppercase; color: var(--sky-ember); }
+.sky-hud .sk-intro { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); padding: 14px 40px 16px; text-align: center; white-space: nowrap; }
+.sky-hud .sk-intro h2 { margin: 0; font: 700 64px/1.05 var(--sky-display); letter-spacing: 0.12em; color: var(--sky-bone); }
+.sky-hud .sk-intro small { display: block; margin-top: 6px; font: 700 24px/1.2 var(--sky-label); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sky-star); }
 
 /* The pebble flash components keep their markup and logic; only their look is replaced here. */
-.sky-hud .hb-rating { position: absolute; left: 22%; top: 29%; width: auto; transform: translateX(-50%); font: 700 44px var(--sky-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--sky-star); text-shadow: 0 2px 0 var(--sky-glaze), 0 0 14px #000, 0 0 26px rgba(229, 138, 78, 0.55); animation: sk-pop 0.7s ease-out; }
-.sky-hud .hb-together { position: absolute; left: 50%; top: 24%; width: auto; transform: translateX(-50%); white-space: nowrap; font: 700 40px var(--sky-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--sky-bone); text-shadow: 0 2px 0 var(--sky-glaze), 0 0 14px #000, 0 0 26px rgba(229, 138, 78, 0.55); animation: sk-pop 0.9s ease-out; }
-.sky-hud .hb-duo { position: absolute; right: 30px; top: 98px; left: auto; margin: 0; padding: 4px 22px; border: 0; border-radius: 0; background: rgba(23, 17, 13, 0.9); font: 600 12.5px var(--sky-label); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sky-bone); clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%); }
+.sky-hud .hb-rating { position: absolute; left: 20%; top: 30%; width: auto; transform: translateX(-50%); padding: 6px 22px; font: 700 44px/1.1 var(--sky-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-star); animation: sk-pop 0.7s ease-out; }
+.sky-hud .hb-together { position: absolute; left: 50%; top: 24%; width: auto; transform: translateX(-50%); white-space: nowrap; padding: 6px 22px; font: 700 40px/1.1 var(--sky-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky-bone); animation: sk-pop 0.9s ease-out; }
+.sky-hud .hb-duo { position: absolute; right: 30px; top: 94px; left: auto; margin: 0; padding: 6px 14px; border-radius: 0; }
 @keyframes sk-pop { from { opacity: 0; transform: translateX(-50%) scale(0.8); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sky-hud .sk-node--off, .sky-hud .sk-power.is-full svg, .sky-hud .sk-phase, .sky-hud .hb-rating, .sky-hud .hb-together { animation: none; }
+  .sky-hud .sk-node--off, .sky-hud .sk-power.is-full, .sky-hud .sk-phase, .sky-hud .hb-rating, .sky-hud .hb-together { animation: none; }
   .sky-hud .sk-chain__kept { transition: none; }
+}
+
+/* Narrow screens (a phone held upright): the bars share the top row edge to edge without their emblems, and the score
+   and power chips drop under them, so a bar is never squeezed to a sliver. */
+@media (max-width: 760px) {
+  .sky-hud .sk-bar { top: 10px; width: calc(50% - 14px); height: 60px; }
+  .sky-hud .sk-bar--left { left: 8px; }
+  .sky-hud .sk-bar--right { right: 8px; }
+  .sky-hud .sk-roundel { display: none; }
+  .sky-hud .sk-bar__plate, .sky-hud .sk-bar--right .sk-bar__plate { --tip: 14px; margin: 0; padding: 7px 18px 0; }
+  .sky-hud .sk-bar__row { font-size: 16px; letter-spacing: 0.04em; }
+  .sky-hud .sk-bar__num { font-size: 16px; }
+  .sky-hud .sk-score { top: 78px; left: auto; right: 8px; transform: none; align-items: flex-end; }
+  .sky-hud .sk-score__plate { width: 130px; height: 44px; }
+  .sky-hud .sk-score__num { font-size: 26px; }
+  .sky-hud .sk-power { left: 8px; top: 80px; }
+  .sky-hud .sk-phase { top: 136px; font-size: 22px; }
+  .sky-hud .sk-intro { width: calc(100% - 16px); box-sizing: border-box; padding: 12px; white-space: normal; }
+  .sky-hud .sk-intro h2 { font-size: 40px; }
+  .sky-hud .sk-intro small { font-size: 18px; }
+}
+/* Big screens: the whole HUD grows with the screen, so its type keeps the same share of the view as at 1280 x 720. */
+@media (min-width: 1700px) and (min-height: 950px) {
+  .fight > .sky-hud { zoom: 1.35; }
 }
