@@ -10,8 +10,8 @@ export interface Pose { h: V3; c1: V3; c2: V3 }
 export const NECK_COUNT = 6;
 /** Which neck winds up for which attack in src/enemies/defs/scylla.ts. Necks 1 and 4 only weave. */
 export const ATTACK_NECK: Readonly<Record<string, number>> = { head_left: 0, head_right: 5, head_high: 2, head_center: 3 };
-/** The two necks that hang down and hold still while the player may strike. */
-export const EXPOSED_NECKS = { jaw: 2, neck: 3 } as const;
+/** The neck that hangs down toward the hero and holds still while the player may strike; both weak-spot rings sit on its head, so the ring is always on the head that dips. */
+export const EXPOSED_NECKS = { jaw: 3, neck: 3 } as const;
 
 export const neckBase = (i: number): V3 => [MOUTH.x + (i - 2.5) * 1.05, MOUTH.y - 0.5 + (i % 2) * 0.35, MOUTH.z - 1];
 
@@ -31,8 +31,9 @@ export function restPose(i: number, phase: number): Pose {
 const REAR: Readonly<Record<number, Pose>> = {
   0: { h: [-4.6, 5.0, -4.8], c1: [-0.5, 0.4, 3.4], c2: [0.6, -2.8, -0.4] },
   5: { h: [5.6, 4.9, -5.0], c1: [0.5, 0.4, 3.4], c2: [-0.6, -2.8, -0.4] },
-  2: { h: [-0.9, 7.4, -7.0], c1: [0, 1.6, 2.0], c2: [0, -3.4, -0.6] },
-  3: { h: [1.9, 7.0, -7.6], c1: [0, 1.4, 1.6], c2: [0, -3.2, -1.0] },
+  // The lunge rears straight up (kept inside the frame), the snap pulls back deep and low, so the two read apart.
+  2: { h: [-0.9, 4.9, -7.6], c1: [0, 1.6, 2.0], c2: [0, -3.0, -0.6] },
+  3: { h: [2.0, 3.6, -8.0], c1: [0.6, 0.3, 3.0], c2: [1.2, 0.8, -1.6] },
 };
 
 const STRIKE: Readonly<Record<number, Pose>> = {
@@ -42,9 +43,8 @@ const STRIKE: Readonly<Record<number, Pose>> = {
   3: { h: [0.3, 1.5, 0.2], c1: [0, 0.2, 3.4], c2: [0, 0.8, -3.2] },
 };
 
-/** While the player may strike: one head hangs with its jaw low and snapping, one neck is stretched out toward him. */
+/** While the player may strike: one neck is stretched out toward him with its jaw low and snapping. */
 const EXPOSED: Readonly<Record<number, Pose>> = {
-  2: { h: [-0.75, 4.1, -3.2], c1: [0, 0.4, 3.0], c2: [0.2, 2.2, -2.2] },
   3: { h: [1.25, 2.5, -2.0], c1: [0, 0.4, 3.0], c2: [0.4, 2.0, -2.8] },
 };
 
