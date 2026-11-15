@@ -2,13 +2,16 @@
 // FightScreen draws the .overlay and its title and score line; endPanel.css lays that wrapper as a pebble panel.
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { getProfile } from "../account/store";
 import { HOMECOMING_ID, NARRATION_LINES } from "../audio/narrationLines";
 import { ENEMIES } from "../enemies/registry";
 import { endingFor } from "../enemies/endings";
 import { fallsLine } from "../enemies/wording";
-import { Button, PebbleHeading, installGround } from "../ui/pebble";
+import { Button, installGround } from "../ui/pebble";
+import { Backdrop, SetTitle } from "../ui/set/Set";
 import "./endPanel.css";
+import "../ui/set/screens-end.css";
 import { narrateHomecoming, narrateResult } from "./hookups";
 import { practisedFrom, practisedLines } from "./practised";
 
@@ -58,10 +61,21 @@ export function EndPanel(props: {
   const name = ENEMIES.find((enemy) => enemy.id === enemyId)?.name ?? enemyId;
   // The last stop won: the button leads to the homecoming, shown in this same panel, before the map.
   const last = won && enemyId === ENEMIES.at(-1)?.id;
+  // The Back shield does what the primary button does: out of the god card, to the homecoming, or to the map.
+  const back = showCard ? () => { setShowCard(false); } : last && !home ? () => { setHome(true); } : props.onMap;
+  // The painting and the Back shield sit on the window, outside the panel (which is a transformed box), so they are portalled.
+  const stage = createPortal(
+    <>
+      <div className="end-stage"><Backdrop src={won ? "/textures/set/storm/hall.jpg" : "/textures/set/storm/camp.jpg"} /></div>
+      <button type="button" className="set-back end-back" onClick={back}>Back</button>
+    </>,
+    document.body,
+  );
   if (home) {
     return (
       <>
-        <PebbleHeading as="div" className="end-title" text="Home in Ithaca" px={40} tone="ochre" />
+        {stage}
+        <div className="end-title"><SetTitle as="p">Home in Ithaca</SetTitle></div>
         <div className="end-ending">
           <p className="end-line">{NARRATION_LINES.find((line) => line.id === HOMECOMING_ID)?.text}</p>
           <p className="end-lesson">The road home is behind you. {ending.win}</p>
@@ -74,7 +88,8 @@ export function EndPanel(props: {
   }
   return (
     <>
-      <PebbleHeading as="div" className={`end-title ${won ? "" : "end-lost"}`} text={won ? fallsLine(enemyId, name) : "You are struck down"} px={40} tone={won ? "ochre" : "terra"} />
+      {stage}
+      <div className={`end-title ${won ? "" : "end-lost"}`}><SetTitle as="p">{won ? fallsLine(enemyId, name) : "You are struck down"}</SetTitle></div>
       {showCard ? props.card?.(() => { setShowCard(false); }) : (
         <>
           <div className="end-ending">
