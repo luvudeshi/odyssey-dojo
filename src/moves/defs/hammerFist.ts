@@ -17,7 +17,7 @@ export const move: MoveDef = {
     const frame = latest(history);
     if (!frame || wristRise(frame, "left") > 0) return 0;
     // The nose sits about one shoulder width above the shoulder line.
-    return recent(history, 500).some((old) => wristRise(old, "left") > 1) ? 1 : 0;
+    return recent(history, 700).some((old) => wristRise(old, "left") > 0.6) ? 1 : 0;
   },
   quality(history) {
     return strikeQuality(history, { sides: ["left"], rise: -0.6, tolerance: 1 });

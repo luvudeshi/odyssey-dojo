@@ -11,11 +11,11 @@ export const move: MoveDef = {
   key: "k",
   diagram: { leftElbow: [38, 42], leftWrist: [43, 26], rightElbow: [72, 30], rightWrist: [86, 26] },
   teaches: "Strength comes from your feet and hips, not your arm, so stay balanced and ready to move",
-  // Either hand counts, the same as the jab: see src/moves/defs/jab.ts.
+  // The right hand only: see src/moves/defs/jab.ts.
   detect(history) {
-    return Math.max(straightPunch(history, "right"), straightPunch(history, "left"));
+    return straightPunch(history, "right");
   },
   quality(history) {
-    return strikeQuality(history, { sides: [straightPunch(history, "left") > straightPunch(history, "right") ? "left" : "right"] });
+    return strikeQuality(history, { sides: ["right"] });
   },
 };
