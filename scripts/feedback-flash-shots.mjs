@@ -34,8 +34,8 @@ const SETTLE_MS = 500;
 const STORY_CARD = /^Story mode/;
 /** The grades, with a tip as long as a tip may be (24 characters), so the widest case is the one looked at. */
 const GRADES = [
-  { file: "excellent", feedback: { grade: "EXCELLENT", points: 150, tip: "Clean. Guard stayed up" } },
-  { file: "great", feedback: { grade: "GREAT", points: 100, tip: "Hands too low" } },
+  { file: "excellent", feedback: { grade: "EXCELLENT", points: 150, tip: null } },
+  { file: "great", feedback: { grade: "GREAT", points: 100, tip: "Guard hand by your chin" } },
   { file: "good", feedback: { grade: "GOOD", points: 50, tip: "Turn your hips into it" } },
   { file: "needs-improvement", feedback: { grade: "NEEDS IMPROVEMENT", points: 25, tip: "Extend your arm fully" } },
 ];
@@ -114,8 +114,11 @@ async function enterFight(page, base) {
   await page.addInitScript(() => { localStorage.setItem("odyssey-dojo.settings", JSON.stringify({ controls: "keyboard" })); });
   await page.goto(`${base}/?stop=${stop.id}`);
   await page.getByRole("button", { name: STORY_CARD }).click({ timeout: SCREEN_TIMEOUT_MS });
-  // The style screen has shown the styles by name and as heroes ("Fight as Odysseus") at different times: either will do.
-  await clickButton(page, ["Fight as ", ...styles], "the style screen");
+  // The hero comes first ("Fight as Odysseus"), then the style by name, then the map. Some builds skip the hero.
+  await clickButton(page, ["Fight as ", ...styles], "the hero or style screen");
+  if (await page.locator(".menu--style").count() > 0 || await page.locator(".menu--style").waitFor({ timeout: 3000 }).then(() => true, () => false)) {
+    await clickButton(page, styles, "the style screen");
+  }
   await clickButton(page, [stop.place, stop.name], "the map");
   await page.locator(".fight canvas").first().waitFor({ timeout: SCREEN_TIMEOUT_MS });
 }
@@ -195,7 +198,11 @@ async function main() {
     browser = await loadChromium().launch({ headless: true, ...(channel ? { channel } : {}), args: glArgs() });
     const context = await browser.newContext({ viewport: { width, height }, reducedMotion: args.includes("--reduced") ? "reduce" : "no-preference" });
     const page = await context.newPage();
-    await enterFight(page, base);
+    // When the way into the fight breaks, the screen it stopped on is kept as failed.png.
+    await enterFight(page, base).catch(async (error) => {
+      await page.screenshot({ path: join(out, "failed.png") }).catch(() => undefined);
+      throw error;
+    });
     const held = { key: null };
     const shoot = async (file, label) => {
       await sleep(SETTLE_MS);

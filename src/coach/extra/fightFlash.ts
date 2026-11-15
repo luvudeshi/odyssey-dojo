@@ -1,25 +1,88 @@
-// What the fight's flash says about a move the moment it counts: a grade word, the bonus for that grade and, when
-// something was off, one short tip ("Hands too low"). The grading is strikeFeedback.ts; the flash is the MISS
-// flash's own element (src/hud/MissFlash.tsx). This file is what sits between them and can be tested without a
-// screen: which moments get a flash, whether the body may be read, how long the flash stays, and the rule that
-// only one is ever up. Nothing here is spoken or played, and the bonus is a number in the flash only: the fight's
-// score is not touched.
+// What the fight's flash says about an attempt that needs work, and when. In story mode the flash is only for
+// attempts to improve on: a strike that landed but was graded GOOD or NEEDS IMPROVEMENT with something to fix, a
+// strike prompt that went by with no strike (MISS, with how to do it), and a defend that failed (the attack hit).
+// A strong strike (EXCELLENT or GREAT) and a defend that held get nothing from here: the game's own hit word stays
+// as it is. No points are shown (the fight's score is not touched). The grading is strikeFeedback.ts; the flash is
+// the MISS flash's own element (src/hud/MissFlash.tsx). Nothing here is spoken or played.
 import type { CombatEvent, CombatInput, CombatPhase, PoseHistory } from "../../core/types";
-import { strikeFeedback } from "./strikeFeedback";
-import type { FeedbackGrade, StrikeFeedback } from "./strikeFeedback";
+import { MOVES } from "../../moves/registry";
+import { TIP_MAX, strikeFeedback, tipsFor } from "./strikeFeedback";
+import type { StrikeFeedback } from "./strikeFeedback";
 
-/** What the flash shows: strikeFeedback's own answer. */
-export type FlashFeedback = StrikeFeedback;
+/** The word on the flash: MISS, or one of the two grades that leave something to fix. */
+export type FlashWord = "MISS" | "GOOD" | "NEEDS IMPROVEMENT";
 
-/** The four grades as the stylesheet names them (`data-feedback`). */
-export const GRADE_KEYS: Readonly<Record<FeedbackGrade, string>> = {
-  EXCELLENT: "excellent", GREAT: "great", GOOD: "good", "NEEDS IMPROVEMENT": "needs-improvement",
-};
+/** What the flash shows: a word and one short line on what to do. */
+export interface FlashFeedback {
+  readonly word: FlashWord;
+  readonly tip: string | null;
+}
 
-/** What a screen reader is told: one sentence with the same facts as the flash. */
+/** The words as the stylesheet names them (`data-feedback`). */
+export const WORD_KEYS: Readonly<Record<FlashWord, string>> = { MISS: "miss", GOOD: "good", "NEEDS IMPROVEMENT": "needs-improvement" };
+
+/** What a screen reader is told: one sentence with the same words as the flash. */
 export function spokenLine(feedback: FlashFeedback): string {
-  const word = feedback.grade.charAt(0) + feedback.grade.slice(1).toLowerCase();
-  return `${word}, ${String(feedback.points)} points.${feedback.tip ? ` ${feedback.tip}.` : ""}`;
+  const word = feedback.word.charAt(0) + feedback.word.slice(1).toLowerCase();
+  return `${word}.${feedback.tip ? ` ${feedback.tip}.` : ""}`;
+}
+
+/**
+ * The story-mode rule for a strike that landed: flashed only when it needs improvement and there is something to
+ * say. EXCELLENT and GREAT never are, and neither is a grade with no tip (a key press has no body to read).
+ */
+export function shouldShowFeedback(feedback: StrikeFeedback): boolean {
+  return (feedback.grade === "GOOD" || feedback.grade === "NEEDS IMPROVEMENT") && feedback.tip !== null;
+}
+
+/** A landed strike's flash, or null when the rule above says nothing is shown. */
+export function landedStrike(feedback: StrikeFeedback): FlashFeedback | null {
+  if (!shouldShowFeedback(feedback)) return null;
+  return { word: feedback.grade === "GOOD" ? "GOOD" : "NEEDS IMPROVEMENT", tip: feedback.tip };
+}
+
+// ---------- the line under the word ----------
+
+/** On the keyboard the reminder is the key: "Press J" for a strike, "Hold Space" for a defend. */
+export function keyReminder(moveId: string, defend: boolean): string | null {
+  const key = MOVES.get(moveId)?.key;
+  if (!key) return null;
+  const name = key === " " ? "Space" : key.length === 1 ? key.toUpperCase() : key;
+  return `${defend ? "Hold" : "Press"} ${name}`;
+}
+
+/** How to make a strike, in a glance: the move's first tip, else its hint when that is short enough. */
+export function howTo(moveId: string): string | null {
+  const first = tipsFor(moveId)[0];
+  if (first) return first;
+  const hint = MOVES.get(moveId)?.hint ?? "";
+  return hint && hint.length <= TIP_MAX ? hint : null;
+}
+
+/** A strike prompt went by with no strike: MISS and what to do, read from the body over the prompt when it can be. */
+export function missedStrike(moveId: string, history: PoseHistory | null, sinceMs: number): FlashFeedback {
+  if (history === null) return { word: "MISS", tip: keyReminder(moveId, false) ?? howTo(moveId) };
+  const frames = history.frames.filter((frame) => frame.t >= sinceMs);
+  const tip = frames.length > 0 ? strikeFeedback(moveId, frames).tip : null;
+  return { word: "MISS", tip: tip ?? howTo(moveId) };
+}
+
+/** No move at all in the warning, or nothing better to say. */
+export const REACT_TIP = "React sooner";
+
+/**
+ * Stand-in for defendMissFeedback (branch defend-timing-tips: same arguments, same answer): what went wrong with a
+ * defend that failed, read from the body over the warning. Until that lands it always says "React sooner". To swap
+ * it in, change the one call in failedDefend below to `defendMissFeedback(...)`, imported from "./defendMissFeedback".
+ */
+export function defendMissStandIn(_defendId: string, _history: PoseHistory, _startMs: number, _endMs: number): StrikeFeedback {
+  return { grade: "NEEDS IMPROVEMENT", points: 0, tip: REACT_TIP };
+}
+
+/** A defend that failed: NEEDS IMPROVEMENT and what went wrong; on the keyboard, the key to hold. */
+export function failedDefend(defendId: string, history: PoseHistory | null, startMs: number, endMs: number): FlashFeedback {
+  if (history === null) return { word: "NEEDS IMPROVEMENT", tip: keyReminder(defendId, true) ?? REACT_TIP };
+  return { word: "NEEDS IMPROVEMENT", tip: defendMissStandIn(defendId, history, startMs, endMs).tip ?? REACT_TIP };
 }
 
 // ---------- which moments get a flash ----------
@@ -27,65 +90,64 @@ export function spokenLine(feedback: FlashFeedback): string {
 /** A move made on a key this short a time ago was a key press, not a body move: the body is not read for it. */
 export const KEY_WINDOW_MS = 500;
 
-/** The defend a phase asks for and whether it has been made (the same reading as the HUD's defend chip). */
-function defendOf(phase: CombatPhase): { counter: string | null; met: boolean } {
-  const defend = phase.kind === "defend";
-  return { counter: defend ? phase.attack.counter : null, met: defend && phase.seen === "met" };
+/** The move a phase asks for, and whether it is a defend. */
+function asked(phase: CombatPhase): { move: string | null; defend: boolean } {
+  if (phase.kind === "strike" || phase.kind === "finisher") return { move: phase.move, defend: false };
+  if (phase.kind === "defend") return { move: phase.attack.counter, defend: true };
+  return { move: null, defend: false };
 }
 
 /**
- * The defend that has just counted, or null: made while the attack is coming (the phase turns "met"), or, for one
- * held from before, when the attack lands on it and the strike opens. The same rule as the HUD's defend chip, so
- * the grade comes up with the chip, while the body is still in the defend.
- */
-export function defendJustCounted(from: CombatPhase, to: CombatPhase): string | null {
-  const [last, now] = [defendOf(from), defendOf(to)];
-  if (now.met && !(last.met && last.counter === now.counter)) return now.counter;
-  if (from.kind === "defend" && !last.met && to.kind === "strike") return last.counter;
-  return null;
-}
-
-/**
- * Call once per frame of the fight, after the engine's step. Returns the feedback to flash now, or null.
+ * Call once per frame of the fight, after the engine's step. Returns what to flash now, or null.
  *   from, to   the phase before and after the step
  *   keys       what the keyboard gave this frame (not the camera's part of the input)
  *   events     the step's events
- *   history    the pose history the detectors read; null with no camera
- * A strike that landed is graded from its event, a defend the moment it counts. A move made on a key gets its
- * grade with no tip, even with the camera on: the body did not make it, so the body is not read.
+ *   history    the pose history the detectors read; null when the camera is not playing (keyboard)
+ *   missed     the MISS watch fired this frame (a wrong or fizzled try)
  */
 export type FeedbackWatch = (
-  from: CombatPhase, to: CombatPhase, keys: CombatInput, events: readonly CombatEvent[], history: PoseHistory | null, nowMs: number,
+  from: CombatPhase, to: CombatPhase, keys: CombatInput, events: readonly CombatEvent[], history: PoseHistory | null, nowMs: number, missed: boolean,
 ) => FlashFeedback | null;
 
 export function createFeedbackWatch(): FeedbackWatch {
   const keyAt = new Map<string, number>();
-  return (from, to, keys, events, history, nowMs) => {
+  let prompt = "";
+  let promptAt = 0;
+  return (from, to, keys, events, history, nowMs, missed) => {
     for (const strike of keys.struck) keyAt.set(strike.move, nowMs);
     for (const move of keys.held) keyAt.set(move, nowMs);
     const body = (move: string): PoseHistory | null => (nowMs - (keyAt.get(move) ?? -Infinity) <= KEY_WINDOW_MS ? null : history);
+    const ask = asked(from);
+    const key = ask.move === null ? "" : `${from.kind}:${ask.move}`;
+    if (key !== prompt) { prompt = key; promptAt = nowMs; }
     // The last strike of the frame wins: with two players both may land at once, and there is one flash.
     let hit: Extract<CombatEvent, { type: "enemyHit" }> | null = null;
     for (const event of events) if (event.type === "enemyHit") hit = event;
-    if (hit) return strikeFeedback(hit.move, body(hit.move), hit.quality);
-    const defend = defendJustCounted(from, to);
-    return defend === null ? null : strikeFeedback(defend, body(defend));
+    if (hit) return landedStrike(strikeFeedback(hit.move, body(hit.move), hit.quality));
+    for (const event of events) {
+      if (event.type === "playerHit") return to.kind === "lost" ? null : failedDefend(event.attack.counter, body(event.attack.counter), promptAt, nowMs);
+    }
+    if (ask.move !== null && !ask.defend && (missed || events.some((event) => event.type === "whiffed"))) {
+      // A wrong key, or no key at all, on the keyboard: the key reminder.
+      return missedStrike(ask.move, keys.struck.length > 0 ? null : history, promptAt);
+    }
+    return null;
   };
 }
 
 // ---------- how long it stays, and one at a time ----------
 
-/** MISS stays this long (as it always has). */
+/** A plain MISS (the Dojo's, or a wrong defend, with no line under it) stays this long, as it always has. */
 export const MISS_MS = 700;
-/** A grade pops in over this long, ... */
+/** A flash with a line pops in over this long, ... */
 export const POP_IN_MS = 160;
-/** ...stands still this long, enough to read a word, a number and a five-word tip, ... */
+/** ...stands still this long, enough to read a word and a five-word tip, ... */
 export const POP_HOLD_MS = 1400;
 /** ...and fades over this long. */
 export const POP_OUT_MS = 340;
 export const POP_TOTAL_MS = POP_IN_MS + POP_HOLD_MS + POP_OUT_MS;
 
-/** The one flash on screen: MISS (`feedback` null) or a grade. */
+/** The one flash on screen: a plain MISS (`feedback` null) or a word with its line. */
 export interface Flash {
   readonly id: number;
   readonly feedback: FlashFeedback | null;

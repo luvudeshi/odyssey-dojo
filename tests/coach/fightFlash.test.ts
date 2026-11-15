@@ -20,9 +20,13 @@ import { EMPTY_HISTORY, pushFrame } from "../../src/pose/signals";
 import { STYLES } from "../../src/styles/registry";
 import { STANDING, recording } from "../poseFixture";
 
-const enemy = ENEMIES[0];
-const style = STYLES[0];
-if (!enemy || !style) throw new Error("no enemy or style");
+function first<T>(list: readonly T[]): T {
+  const item = list[0];
+  if (item === undefined) throw new Error("empty registry");
+  return item;
+}
+const enemy = first(ENEMIES);
+const style = first(STYLES);
 
 const css = readFileSync(new URL("../../src/coach/extra/fightFlash.css", import.meta.url), "utf8");
 const read = (path: string): string => readFileSync(new URL(`../../src/${path}`, import.meta.url), "utf8");
