@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { candidate as spartan } from "../src/render/hero/defs/spartan";
+import { REACH } from "../src/render/strikeReach";
 import { CONTACT_LEAD, chooseHeroPose, decideHeroPose, strikeStart, strikeWindow } from "../src/render/hero/heroClips";
 import type { HeroInput, HeroRig } from "../src/render/hero/heroClips";
 import { newDecision } from "../src/render/models/clipMap";
@@ -74,6 +75,8 @@ describe("decideHeroPose", () => {
     expect(at(CONTACT_LEAD)).toBeCloseTo(rig.punch.hit ?? 0, 5);
     expect(at(10)).toBe(1);
     expect(strikeStart({ seconds: 0.05, hit: 0.1 })).toBe(0);
+    // The clip's contact frame is the moment the leap arrives on the weak spot.
+    expect(CONTACT_LEAD).toBe(REACH.out);
   });
   test("hurt scrubs by time since the hit", () => {
     expect(decide("hurt", { ...calm, sinceHurt: 0.2 })).toMatchObject({ clip: "Hit", scrub: 0.5, loop: false });

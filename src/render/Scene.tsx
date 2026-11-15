@@ -11,7 +11,7 @@ import { battle, nowSeconds, resetBattle, syncBattle } from "./battle";
 import { CameraRig } from "./CameraRig";
 import { Effects } from "./Effects";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { HitEffects } from "./effects/HitEffects";
+import { HitEffects, WeakSpotRing } from "./effects/HitEffects";
 import { hitPulse } from "./effects/pulse";
 import { MonsterRig } from "./MonsterRig";
 import { finisherSpot } from "./strikeReach";
@@ -94,12 +94,7 @@ export function Scene(props: { enemy: EnemySpec; state: CombatState; poseRef: Re
               hitFlash: hitPulse(),
             })}
             <HitEffects state={state} finishAt={finishAt} />
-            {weakSpot && (
-              <mesh position={[...weakSpot.position]}>
-                <torusGeometry args={[0.45, 0.06, 8, 32]} />
-                <meshBasicMaterial color="#ffd54a" />
-              </mesh>
-            )}
+            <WeakSpotRing spot={weakSpot?.position ?? null} />
           </MonsterRig>
           <CameraRig />
           <Hero poseRef={poseRef} />

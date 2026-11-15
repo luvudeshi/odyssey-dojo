@@ -2,6 +2,7 @@
 // Every word and number is HTML text on a solid plate, so it stays the same size whatever the bar's width.
 // A lost star flares and goes dark through a CSS animation (see top.css).
 import type { ReactNode } from "react";
+import { useLandedScore } from "../RatingFlash";
 
 const NODES = 12;
 
@@ -91,11 +92,12 @@ export function SkyBar(props: { label: string; value: number; side: "left" | "ri
 
 /** The hexagonal score plate, centre top, with the combo under it when there is one. */
 export function SkyScore({ score, combo }: { score: number; combo: number }): ReactNode {
+  const shown = useLandedScore(score);
   return (
     <div className="sk-score">
       <div className="sk-score__plate">
         <svg viewBox="0 0 190 58" aria-hidden="true"><path d={plate(190, 58)} className="sk-plate" /></svg>
-        <span className="sk-score__num">{score}</span>
+        <span className="sk-score__num">{shown}</span>
       </div>
       {combo > 1 && <span className="sk-combo">x{combo} combo</span>}
     </div>
