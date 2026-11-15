@@ -47,7 +47,7 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `taunt_suitors_2` | The Suitors | The suitors taunt the player | Stranger, you have shot your last. The vultures will have you here. |
 | `taunt_suitors_3` | The Suitors | The suitors taunt the player | Friends, draw your swords and hold the tables up against his arrows! |
 
-Scylla's second and third taunts were recorded later the same day, once `src/enemies/defs/scylla.ts` had three: the same command, the same voice (Harry) and the same model (`eleven_v4`), one take each. Before that she had one clip and said the same line at every phase change. A taunt is picked at random each time, so a line can still come twice in one fight.
+Scylla's second and third taunts were recorded later the same day, once `src/enemies/defs/scylla.ts` had three: the same command, the same voice (Harry) and the same model (`eleven_v4`), one take each. Before that she had one clip and said the same line at every phase change. A taunt is picked at random, but never the line that monster said last (`src/audio/storyVoice.ts`), so two phase changes running bring two different taunts.
 
 Two lines in the monsters' files have no clip and are never spoken: Circe's fourth ("You are Odysseus. Hermes told me you would come.") and the suitors' third ("It was Antinous who led us. Spare your own people and we will pay it all back."). `taunt_suitors_3` is the suitors' fourth line.
 

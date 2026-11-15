@@ -501,6 +501,28 @@ test("every monster can taunt, and the dice pick which taunt", async () => {
   }
 });
 
+test("a monster does not say the same taunt at two phase changes running, whatever the dice pick", async () => {
+  for (const enemy of ENEMIES) {
+    for (const roll of [0, 0.5, 0.999]) {
+      const { taunts, story, started } = fakeStory({ random: () => roll });
+      // A fight has at most three phase changes; the rematch after it starts on a different line too.
+      for (let change = 0; change < 4; change += 1) {
+        const taunt = watch(story.speakMonsterTaunt(enemy.id));
+        await vi.advanceTimersByTimeAsync(100);
+        taunts.stop(started.at(-1) ?? "");
+        await vi.advanceTimersByTimeAsync(100);
+        expect(taunt.settled, enemy.id).toBe(true);
+      }
+      expect(started.length, enemy.id).toBe(4);
+      for (const [at, id] of started.entries()) {
+        expect(tauntIds(enemy.id), enemy.id).toContain(id);
+        if (at > 0) expect(id, `${enemy.id} at roll ${String(roll)}`).not.toBe(started[at - 1]);
+      }
+      expect(vi.getTimerCount()).toBe(0);
+    }
+  }
+});
+
 test("a taunt waits for Athena's phase line to end, and then her next call does not cut it", async () => {
   const { voice, taunts, story, started, stopped, end } = fakeStory();
   // As the fight screen does it: the taunt is asked for first, and the phase line starts later in the same frame.
