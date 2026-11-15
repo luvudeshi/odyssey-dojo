@@ -1,4 +1,4 @@
-// The star-chart edge pieces: two health chains with roundel emblems, the hexagonal score plate and the power chip.
+// The star-chart edge pieces: two health chains with roundel emblems, and the hexagonal score plate.
 // Every word and number is HTML text on a solid plate, so it stays the same size whatever the bar's width.
 // A lost star flares and goes dark through a CSS animation (see top.css).
 import type { ReactNode } from "react";
@@ -100,33 +100,6 @@ export function SkyScore({ score, combo }: { score: number; combo: number }): Re
         <span className="sk-score__num">{shown}</span>
       </div>
       {combo > 1 && <span className="sk-combo">x{combo} combo</span>}
-    </div>
-  );
-}
-
-function Moon({ f }: { f: number }): ReactNode {
-  const r = 12, cx = 14, cy = 14, rx = Math.abs(1 - 2 * f) * r;
-  const lit = f >= 1 ? <circle cx={cx} cy={cy} r={r} className="sk-moon__lit" /> : (
-    <path d={`M${String(cx)},${String(cy - r)} A${String(r)},${String(r)} 0 0 1 ${String(cx)},${String(cy + r)} A${String(rx)},${String(r)} 0 0 ${f > 0.5 ? "1" : "0"} ${String(cx)},${String(cy - r)}Z`} className="sk-moon__lit" />
-  );
-  return (
-    <svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
-      <circle cx={cx} cy={cy} r={r} className="sk-moon__disc" />
-      {lit}
-    </svg>
-  );
-}
-
-/** The divine power chip. Hidden until the meter has started to fill, as the pebble bar is. */
-export function SkyPower({ power }: { power: number }): ReactNode {
-  if (power <= 0) return null;
-  const f = Math.min(1, power);
-  const full = f >= 1;
-  return (
-    <div className={`sk-power${full ? " is-full" : ""}`} role="meter" aria-label="Divine power" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(f * 100)}>
-      <Moon f={f} />
-      <span>Power</span>
-      <strong>{full ? "READY" : `${String(Math.round(f * 100))}%`}</strong>
     </div>
   );
 }

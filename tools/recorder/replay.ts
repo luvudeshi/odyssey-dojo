@@ -31,9 +31,12 @@ export function replay(trace: Trace, moves: ReadonlyMap<string, MoveDef>): Repla
   return { strikes, held: [...held], peaks };
 }
 
+/** Strikes that fire together by design: jab and cross read on either hand, and the fight counts only the one it asked for. */
+const TOGETHER: ReadonlyMap<string, string> = new Map([["jab", "cross"], ["cross", "jab"]]);
+
 /**
  * What is wrong with a take, in plain words, or an empty list when it is good.
- * A strike must fire once and alone. A defend move must be held, with no strike. Idle must fire and hold nothing.
+ * A strike must fire once and alone, apart from its TOGETHER partner. A defend move must be held, with no strike. Idle must fire and hold nothing.
  */
 export function problems(trace: Trace, moves: ReadonlyMap<string, MoveDef>): string[] {
   const result = replay(trace, moves);
@@ -54,7 +57,7 @@ export function problems(trace: Trace, moves: ReadonlyMap<string, MoveDef>): str
     if (times > 1) found.push(`${labelled.id} fired ${String(times)} times, not once`);
   }
   for (const id of new Set(result.strikes)) {
-    if (id !== labelled.id) found.push(`${id} also fired (peak ${peak(id)})`);
+    if (id !== labelled.id && id !== TOGETHER.get(labelled.id)) found.push(`${id} also fired (peak ${peak(id)})`);
   }
   return found;
 }
