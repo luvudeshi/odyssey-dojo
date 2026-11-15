@@ -41,8 +41,21 @@ export function videoFile(kind: VideoKind): string {
   return `video.${kind}`;
 }
 
-function root(dataDir: string): string {
-  return join(dataDir, "replays");
+/** The one piece of node:path a lookup uses. A test passes path.win32 to run the same code with Windows rules. */
+export interface PathJoin {
+  readonly join: (...parts: string[]) => string;
+}
+
+function root(dataDir: string, path: PathJoin = { join }): string {
+  return path.join(dataDir, "replays");
+}
+
+/**
+ * The folder of one replay, or null for anything but a well-formed id. On Windows "\", a drive letter, a trailing
+ * dot and upper case all change which folder a name means, so the id is checked before it touches a path.
+ */
+export function replayDir(dataDir: string, id: unknown, path: PathJoin = { join }): string | null {
+  return isReplayId(id) ? path.join(root(dataDir, path), id) : null;
 }
 
 function newId(): string {
@@ -160,8 +173,9 @@ async function writeReplay(
 }
 
 export async function findReplay(dataDir: string, id: unknown): Promise<StoredReplay | null> {
-  if (!isReplayId(id)) return null;
-  const dir = join(root(dataDir), id);
+  const dir = replayDir(dataDir, id);
+  // The second check only tells the compiler that the id is a string.
+  if (dir === null || !isReplayId(id)) return null;
   const record = await readRecord(dir);
   if (record === null) return null;
   const [hasCard, ...videos] = await Promise.all([
