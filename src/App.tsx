@@ -1,12 +1,14 @@
 // Screen flow (see screens/flow.ts): title -> style -> quest map -> intro -> fight -> result -> map.
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import "./screens/menus.css";
 import "./screens/rooms.css";
 import { setMusicVolume, startMusic, stopMusic } from "./audio/music";
 import type { GodReveal } from "./ai/revealGod";
 import { log } from "./core/log";
 import { ENEMIES } from "./enemies/registry";
+import { CameraPanelContext } from "./hud/cameraPanel";
 import { cameraErrorMessage } from "./pose/cameraError";
+import { createCameraSession } from "./pose/cameraSession";
 import { startTracker } from "./pose/tracker";
 import type { PoseTracker } from "./pose/tracker";
 import { MONSTER_MODELS } from "./render/monsters/registry";
@@ -30,6 +32,8 @@ import { StyleSelect } from "./screens/StyleSelect";
 import { STYLES } from "./styles/registry";
 
 const CAN_PLAY = playable(ENEMIES, MONSTER_MODELS);
+// The one camera of the session: every calibration and fight reads it, and nothing between fights stops it.
+const camera = createCameraSession(startTracker);
 
 export function App() {
   const [tracker, setTracker] = useState<PoseTracker | null>(null);
@@ -53,19 +57,25 @@ export function App() {
   const stop = ENEMIES[flow.index];
   const tuned = useMemo(() => (stop ? enemyFor(stop, flow.assessment) : undefined), [stop, flow.assessment]);
 
-  const starting = useRef(false);
+  const cameraStatus = useSyncExternalStore(camera.subscribe, camera.status, camera.status);
+  // The watchdog: plays the video again after a screen change paused it, restarts a camera that stopped.
+  useEffect(() => {
+    const timer = setInterval(() => { camera.check(performance.now()); }, 250);
+    return () => { clearInterval(timer); };
+  }, []);
+
   // Set once the player picks "Keyboard only", so a late camera grant cannot hijack the fight.
   const keyboardOnly = useRef(false);
 
+  // The title's camera button, and "Use camera" on the fight's panel. A second press while starting waits on the first.
   const startCamera = (): void => {
-    if (starting.current) return;
-    starting.current = true;
+    keyboardOnly.current = false;
     setCameraProblem("");
     setNotice("Starting the camera... If the browser asks for the camera at the top of this window, choose Allow.");
-    startTracker().then(
+    camera.start().then(
       (started) => {
         if (keyboardOnly.current) {
-          started.stop();
+          camera.stop();
           return;
         }
         setNotice("");
@@ -73,7 +83,6 @@ export function App() {
         dispatch({ type: "ready" });
       },
       (error: unknown) => {
-        starting.current = false;
         log("warn", "tracker_failed", error);
         setNotice("");
         // Stay put: the player chooses the keyboard, never the failure.
@@ -157,27 +166,29 @@ export function App() {
   }
 
   return (
-    <WebcamGate
-      key={flow.seed}
-      enemy={enemy}
-      style={flow.style}
-      tracker={tracker}
-      link={flow.hosting ? hostLink : null}
-      seed={flow.seed}
-      god={god?.god ?? null}
-      onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
-      onQuit={() => { hostLink?.stop(); dispatch({ type: "quit" }); }}
-      renderEnd={(won, _score, mastery) => (
-        <EndPanel
-          won={won}
-          enemyId={enemy.id}
-          mastery={mastery}
-          onShown={() => { dispatch({ type: "ended", enemyId: enemy.id, won }); }}
-          onRetry={() => { dispatch({ type: "retry", seed: Date.now() }); }}
-          onMap={() => { dispatch({ type: "toMap" }); }}
-          onStyle={() => { dispatch({ type: "changeStyle" }); }}
-        />
-      )}
-    />
+    <CameraPanelContext value={{ status: cameraStatus, onCamera: startCamera }}>
+      <WebcamGate
+        key={flow.seed}
+        enemy={enemy}
+        style={flow.style}
+        tracker={tracker}
+        link={flow.hosting ? hostLink : null}
+        seed={flow.seed}
+        god={god?.god ?? null}
+        onRestart={() => { dispatch({ type: "restart", seed: Date.now() }); }}
+        onQuit={() => { hostLink?.stop(); dispatch({ type: "quit" }); }}
+        renderEnd={(won, _score, mastery) => (
+          <EndPanel
+            won={won}
+            enemyId={enemy.id}
+            mastery={mastery}
+            onShown={() => { dispatch({ type: "ended", enemyId: enemy.id, won }); }}
+            onRetry={() => { dispatch({ type: "retry", seed: Date.now() }); }}
+            onMap={() => { dispatch({ type: "toMap" }); }}
+            onStyle={() => { dispatch({ type: "changeStyle" }); }}
+          />
+        )}
+      />
+    </CameraPanelContext>
   );
 }
