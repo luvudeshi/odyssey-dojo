@@ -17,6 +17,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
   const [friend, setFriend] = useState(false);
   const link = useRef<HostLink | null>(null);
   const made = useRef(false);
+  const left = useRef(false);
 
   useEffect(() => {
     // StrictMode runs effects twice in development; one room is enough.
@@ -24,6 +25,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
     made.current = true;
     void (async () => {
       const room = await createRoom(browserDeps);
+      if (left.current) return;
       if (typeof room === "string") {
         setPhase({ kind: "failed", why: ROOM_MESSAGES[room] ?? "" });
         return;
@@ -41,6 +43,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
   }, []);
 
   const leave = (): void => {
+    left.current = true;
     link.current?.close();
     props.onBack();
   };
@@ -52,7 +55,7 @@ export function RoomHost(props: { onStart: (link: HostLink) => void; onSolo: () 
       {phase.kind === "failed" && (
         <>
           <p className="notice" role="alert">{phase.why}</p>
-          <p>Start the game server (npm run server) to host a room, or play alone.</p>
+          {phase.why === ROOM_MESSAGES.unreachable && <p>Start the game server (npm run server) to host a room, or play alone.</p>}
           <button onClick={props.onSolo}>Play alone</button>
         </>
       )}
