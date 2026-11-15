@@ -38,6 +38,8 @@ export const POWER_DELAY: Readonly<Partial<Record<string, number>>> = {
   artemis: 0.26,
   apollo: 0.2,
 };
+/** With no god (keyboard play or a skipped scan) Athena lends her power, as the banner says (LENDER in src/ai/power/powerPrompt.ts). */
+export const NO_GOD_SOUND = "athena";
 /** A clip that failed to load is asked for again no more often than this. */
 const RETRY_MS = 10_000;
 
@@ -167,16 +169,16 @@ export function playPowerSound(): boolean {
 }
 
 /**
- * Makes `god`'s sound the one the power plays, and starts loading it. Returns the call that lets go again: the usual
- * power sound is back, unless someone else has taken hold since.
+ * Makes `god`'s sound the one the power plays (Athena's for no god), and starts loading it. Returns the call that lets
+ * go again: the usual power sound is back, unless someone else has taken hold since.
  */
-export function holdPowerSound(god: string): () => void {
-  const hold: Hold = { god };
+export function holdPowerSound(god: string | null): () => void {
+  const hold: Hold = { god: god ?? NO_GOD_SOUND };
   try {
     held = hold;
     setPowerSound(playPowerSound);
     const context = sharedAudioContext();
-    if (context) void load(context, god);
+    if (context) void load(context, hold.god);
   } catch (error) {
     log("warn", "power_sound.holdFailed", error);
   }

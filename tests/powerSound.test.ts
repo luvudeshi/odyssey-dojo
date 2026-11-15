@@ -7,6 +7,7 @@ import { POWER_CLIPS } from "../server/tools/powerClips";
 import { GOD_IDS } from "../src/ai/gods/gods";
 import type { GodId } from "../src/ai/gods/gods";
 import type { PowerReadyProps } from "../src/ai/power/PowerReady";
+import { LENDER } from "../src/ai/power/powerPrompt";
 import { leadSilence, listedPowerClips, POWER_DELAY, POWER_GAIN, POWER_LOUDNESS, POWER_PEAK } from "../src/audio/powerSound";
 import type { CombatEvent } from "../src/core/types";
 import { POWER_SPAN, WINDUP_S } from "../src/render/effects/power/powerTiming";
@@ -151,7 +152,8 @@ async function inBrowser({ index = [...GOD_IDS], offline = false, missing = [], 
   const mount = (god: GodId | null): (() => void) => {
     const props: PowerReadyProps = { god, power: 0, keyboard: true, phase: "defend" };
     const before = mounted.cleanups.length;
-    expect(PowerReady(props)).toBeNull();
+    // What the banner draws is not this file's business (tests/ai/powerReady.test.ts): only the sound it holds.
+    PowerReady(props);
     const own = mounted.cleanups.slice(before);
     return () => {
       for (const cleanup of own) cleanup();
@@ -202,6 +204,7 @@ describe("the power-ready banner chooses the sound of the power", () => {
     const { mount, settle, sfx, power, started } = await inBrowser();
     mount(null);
     expect(power.heldPowerSound()).toBe("athena");
+    expect(power.NO_GOD_SOUND).toBe(LENDER);
     await settle();
     sfx.playEvent(POWER);
     expect(started.map((sound) => sound.url)).toEqual([clipOf("athena")]);
