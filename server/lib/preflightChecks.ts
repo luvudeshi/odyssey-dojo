@@ -13,8 +13,9 @@ export interface Result {
   readonly detail: string;
 }
 
-/** Where src/pose/tracker.ts loads the pose model and its runtime from, under public/. A test fails if these drift. */
-export const POSE_MODEL = "mediapipe/pose_landmarker_lite.task";
+/** Where src/pose/tracker.ts loads the pose models and their runtime from, under public/. The tracker builds each
+ *  model path from its list of plans, so this is a list too. A test reads the tracker and fails if these drift. */
+export const POSE_MODELS: readonly string[] = ["mediapipe/pose_landmarker_lite.task"];
 export const POSE_WASM_DIR = "mediapipe/wasm";
 /** The two files the MediaPipe loader fetches from the wasm folder. */
 const POSE_WASM_FILES = ["vision_wasm_internal.js", "vision_wasm_internal.wasm"] as const;
@@ -161,7 +162,7 @@ export async function checkServer(port: number, keys: KeyFlags, fetcher: typeof 
 
 /** Check 6: the pose model and its runtime are on this disk, so the camera works with no network. */
 export function checkPoseFiles(publicDir: string, platform: string = process.platform): Result {
-  const needed = [POSE_MODEL, ...POSE_WASM_FILES.map((file) => `${POSE_WASM_DIR}/${file}`)];
+  const needed = [...POSE_MODELS, ...POSE_WASM_FILES.map((file) => `${POSE_WASM_DIR}/${file}`)];
   const missing = needed.filter((file) => !filled(join(publicDir, file)));
   if (missing.length === 0) return result("PASS", "pose model", `${String(needed.length)} files in public/mediapipe`);
   // The install step that copies these files is a shell script, and cmd and PowerShell have no sh to run it with.

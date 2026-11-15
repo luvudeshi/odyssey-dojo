@@ -44,20 +44,23 @@ export function QuestMap(props: {
   const points = routePoints(enemies.length);
   const pos = (i: number): Point => points[i] ?? [0, 0];
   const at = (p: Point) => ({ left: `${String(p[0] / 10)}%`, top: `${String((p[1] / H) * 100)}%` });
+  // Every stop won: the journey is done and Ithaca is lit.
+  const home = enemies.length > 0 && enemies.every((enemy) => cleared.includes(enemy.id));
+  const lit = home ? { fill: "var(--pb-ochre-light)", stroke: "var(--pb-cream)", filter: "drop-shadow(0 0 10px var(--pb-ochre-light))" } : undefined;
   return (
     <Panel as="main" ornament className="menu menu--map">
       <PebbleHeading as="h1" text="The Road Home" px={60} tone="ochre" />
-      <p>Choose your next stop on the sea. The fight starts as soon as you pick one.</p>
+      <p>{home ? "The journey is done. Odysseus is home in Ithaca." : "Choose your next stop on the sea. The fight starts as soon as you pick one."}</p>
       <div className="chart">
         <svg viewBox={`0 0 ${String(W)} ${String(H)}`} aria-hidden="true">
           {[62, 150, 238, 326, 392].map((y, i) => <path key={y} className="wave" d={wave(y, i % 2 === 0 ? 0 : 15)} />)}
           <path className="route" d={pathThrough(points)} />
           {[0, points.length - 1].map((i) => (
-            <circle key={i} className="harbour" cx={pos(i)[0]} cy={pos(i)[1]} r="12" />
+            <circle key={i} className="harbour" cx={pos(i)[0]} cy={pos(i)[1]} r={home && i > 0 ? "17" : "12"} style={i > 0 ? lit : undefined} />
           ))}
         </svg>
         <span className="port" style={at(pos(0))}>Troy</span>
-        <span className="port" style={at(pos(points.length - 1))}>Ithaca</span>
+        <span className="port" style={home ? { ...at(pos(points.length - 1)), color: "var(--pb-ochre-light)" } : at(pos(points.length - 1))}>Ithaca</span>
         {enemies.map((enemy, i) => {
           const open = props.open(i);
           const state = cleared.includes(enemy.id) ? "cleared" : open ? "open" : "locked";
