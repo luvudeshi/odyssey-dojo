@@ -186,7 +186,7 @@ export function Dojo(props: DojoProps) {
       <Backdrop src={picking ? "/textures/set/storm/storm-armoury.jpg" : "/textures/set/storm/yard.jpg"} />
       <header className="dojo-top">
         {/* The title is centred and Change moves sits top right: shrink a long style name so it ends before that button (about 0.7 em a letter). */}
-        <p className="dojo-title set-title" style={{ fontSize: `min(var(--st-title), calc((100vw - 720px) / ${String((13 + (pick?.styleName.length ?? 0)) * 0.7)}))` }}>Training dojo{pick ? ": " : ""}<span>{pick?.styleName ?? ""}</span></p>
+        <p className="dojo-title set-title" style={pick ? { fontSize: `min(var(--st-title), calc((100vw - 720px) / ${String((13 + pick.styleName.length) * 0.7)}))` } : undefined}>Training dojo{pick ? ": " : ""}<span>{pick?.styleName ?? ""}</span></p>
         {!done && !picking && <p className="dojo-progress set-sub">Move {String(view.moveIndex + 1)} of {String(ids.length)}</p>}
         {leave && <button type="button" className="set-back dojo-quit" onClick={leave}>{picking || done ? "Back" : "Quit"}</button>}
         {!picking && (
