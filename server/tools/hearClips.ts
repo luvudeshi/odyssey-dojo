@@ -3,6 +3,7 @@
 //   npx tsx --env-file=<path to .env> server/tools/hearClips.ts --check    the same, and exit 1 when a clip differs
 //                                                                          (a clip that could not be checked is always exit 1)
 //                                                                          (--cache=<file> keeps the transcripts somewhere else)
+//                                                                          (--only=<text> checks just the clips whose path has it)
 // A machine transcript, not a person listening: docs/audio-heard.md says what that does and does not show.
 // Uses ElevenLabs speech to text (POST /v1/speech-to-text, checked against the API reference on 2026-11-14), which
 // gives the time of each word and how sure it was of it: a clip with the right words and a half guessed one is
@@ -101,7 +102,8 @@ async function main(): Promise<void> {
   const onDisk = VOICE_FOLDERS.flatMap((folder) =>
     readdirSync(join(audio, folder)).filter((file) => file.endsWith(".mp3")).map((file) => `${folder}/${file}`),
   );
-  const paths = [...new Set([...lines.keys(), ...onDisk])].sort();
+  const only = flags.find((flag) => flag.startsWith("--only="))?.slice("--only=".length) ?? "";
+  const paths = [...new Set([...lines.keys(), ...onDisk])].sort().filter((path) => path.includes(only));
   const key = loadConfig(root).elevenLabsKey;
 
   const counts: Record<Verdict | "failed", number> = { same: 0, differs: 0, "cut?": 0, "unsure?": 0, failed: 0 };

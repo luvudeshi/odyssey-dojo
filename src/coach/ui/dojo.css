@@ -175,6 +175,13 @@
   .dojo[data-tier="needs_work"] .dojo-grade { font-size: 3.8rem; }
   .dojo-tip { font-size: 1.8rem; }
 }
+/* A short window (a 720 p laptop): a smaller thumbnail and a tighter result card, so the camera clears the card and the bottom strip stays on screen. */
+@media (max-height: 800px) {
+  .dojo-camera video { width: 7rem; }
+  .dojo-result { min-height: 0; gap: 0.2rem; }
+  .dojo-tip { margin-top: 0.2rem; padding: 0.4rem 0.8rem; font-size: 1rem; line-height: 1.2; }
+  .dojo[data-tier="needs_work"] .dojo-grade { font-size: 2rem; }
+}
 @media (max-width: 62rem) {
   .dojo-stage { flex-direction: column; }
   .dojo-columns { flex-direction: column; }

@@ -1,7 +1,7 @@
 // What a character carries: Poseidon's trident, Zeus's thunderbolt, Athena's owl shield, Achilles's shield.
 // All of it rides on the back (spine_03 rest frame, back at z -0.14), never in a hand: the fists punch and block,
-// and the right hand is where the style's own spear or stake appears (src/render/hero/gearRule.ts).
-// The long pieces lean over the hero's right shoulder, so the Hoplite's slung spear (over the left) crosses them.
+// and the right hand is where the stake appears (src/render/hero/gearRule.ts).
+// The long pieces lean over the hero's right shoulder.
 import { ExtrudeGeometry, Shape } from "three";
 import { WOOD } from "../../render/hero/gear/spartanGear";
 import { Glow, Matte, Metal } from "./materials";
