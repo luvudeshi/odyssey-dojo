@@ -149,7 +149,7 @@ test("sameSave does not mind the order of keys and lists", () => {
   const b: Save = { ...a, profile: { ...a.profile, moves: { block: 1, jab: 7 }, cleared: ["circe", "polyphemus"] }, settings: Object.fromEntries(Object.entries(a.settings).reverse()) };
   expect(sameSave({ ...a, profile: { ...a.profile, cleared: ["polyphemus", "circe"] } }, b)).toBe(true);
   expect(sameSave(a, { ...a, profile: { ...a.profile, wins: 2 } })).toBe(false);
-  expect(sameSave(a, { ...a, profile: { ...a.profile, styles: ["boxer", "hoplite"] } })).toBe(false);
+  expect(sameSave(a, { ...a, profile: { ...a.profile, styles: ["boxer", "jiu_jitsu"] } })).toBe(false);
   expect(sameSave(a, { ...a, character: "athena" })).toBe(false);
 });
 

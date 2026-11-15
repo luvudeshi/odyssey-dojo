@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { GODS } from "../../ai/gods/gods";
 import { ENEMIES } from "../../enemies/registry";
+import { currentStyleId } from "../../styles/oldIds";
 import { STYLES } from "../../styles/registry";
 import { Dialog } from "../../ui/Dialog";
 import { Button } from "../../ui/pebble";
@@ -64,11 +65,11 @@ function useHall(there: boolean, open: boolean): Hall | null {
 
 const words = (id: string): string => id.split(/[_-]/).filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 const stopName = (id: string): string => ENEMIES.find((enemy) => enemy.id === id)?.name ?? words(id);
-const styleName = (id: string): string => STYLES.find((style) => style.id === id)?.name ?? words(id);
+const styleName = (id: string): string => STYLES.find((style) => style.id === currentStyleId(id))?.name ?? words(id);
 const godName = (id: string | null): string | null => (id === null ? null : Object.values(GODS).find((god) => god.id === id)?.name ?? words(id));
 const points = (score: number): string => score.toLocaleString("en-US");
 
-/** Where a score was made, in words: "Scylla, as a Hoplite, with Athena". */
+/** Where a score was made, in words: "Scylla, Boxer, with Athena". */
 function where(row: HallRow): string {
   const god = godName(row.god);
   return `${stopName(row.stop)}, ${styleName(row.style)}${god === null ? "" : `, with ${god}`}`;

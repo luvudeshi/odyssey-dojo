@@ -9,7 +9,7 @@ Tasks live in [GitHub issues](https://github.com/toyeshhm/odyssey-dojo/issues). 
 A full-body 3D fight training game. Your webcam tracks your body. You follow Odysseus's route home, fight the monsters he met in the order he met them, and learn real fighting moves as you go.
 
 1. **Meet your god.** The camera looks at you and names the Olympian you take after. That god grants you one power.
-2. **Pick a fighting style.** Boxer (jab, cross, hook), Hoplite (spear thrust, overhead strike) or Pankration (kicks and knees).
+2. **Pick a fighting style.** Boxer (jab, cross, hook), Jiu-jitsu (double palm, rising palm, knife hand) or Taekwondo (kicks and knees).
 3. **Follow the quest map.** Cyclops, Circe, the Sirens, Scylla, Charybdis, then the suitors in Ithaca. Each fight you win opens the next.
 4. **Fight.** Every exchange has two beats:
    - **Defend.** The monster winds up and a prompt says what stops it: BLOCK, DUCK, DODGE LEFT, DODGE RIGHT.
@@ -39,7 +39,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 - Balance: a first-time player wins the first fight (toyeshhm's ruling), the five later stops retuned, adaptive difficulty (PR #135, #164, #76).
 - Detectors hold for any body size and distance and for a player turned 30 degrees; the baseline carries a 3D shoulder width and torso length (PR #137, #168).
 - Built but not yet shown in the game: the 15 second warm-up skill check (PR #165, #166), the real situation each attack stands for and the story ending of each stop (PR #169, #170), AI-made fights engine half (PR #78).
-- Styles (Boxer, Hoplite, Karate, Kung Fu, Pankration with kicks), their mythic figures, what each move teaches (#45, #74, #36, #25).
+- Styles (Boxer, Jiu-jitsu, Karate, Kung Fu, Taekwondo with kicks), their mythic figures, what each move teaches (#45, #74, #36, #25).
 - AI server: god scan, god card, replay sharing, rooms relay (#43, #62, #64, #65, PR #103).
 - Tools: frame rate check, licence report with audio credits, smoke run of every stop, demo preflight, pose recorder, a CREDITS.md row for every shipped asset, server tests on Windows (PR #141, #143, #162, #175, #104, #116, #185, #184).
 - Rules for agents: nobody sits blocked or idle, and every post from gatik-g gets a reply and, if worth building, a task (PR #152).
@@ -77,7 +77,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 |---|---|---|
 | 1 | Webcam pose drives every move, with a key for each as fallback | #7 |
 | 2 | Calibration countdown; "step back, I can't see you" pause | #8 |
-| 3 | Style select: Boxer, Hoplite | built |
+| 3 | Style select: Boxer, Jiu-jitsu | built |
 | 4 | Moves taught in the fight, prompts that fade as you learn; each move says what it teaches | built, #4 |
 | 5 | The player's movements shown live on a 3D figure | built, #7 |
 | 6 | Damage scales with how well the move is done (GOOD, GREAT, PERFECT) | #23 |
@@ -97,7 +97,7 @@ The lead's agent keeps this section true after every batch of merges. The [board
 |---|---|---|
 | 16 | God scan: a webcam snapshot goes to Gemini and comes back as your god; falls back to body measurements in the browser | #20, #2 |
 | 17 | Divine power: defends fill a meter, your god's gesture spends it | #30 |
-| 18 | Kicks and the Pankration style | #25 |
+| 18 | Kicks and the Taekwondo style | #25 |
 | 19 | Two players on one camera, double damage | #28 |
 | 20 | Scylla, the second stop | #27 |
 | 21 | Online rooms: host a fight, a friend joins with a code | #29 |
