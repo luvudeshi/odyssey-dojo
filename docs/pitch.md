@@ -127,7 +127,7 @@ Do not say the phase's name, Blinded, out loud: the stake that blinds him comes 
 
 **Say (30 words):** "His health is gone but he is still standing. Hands together at your chest, then drive them forward and down. That is the olive stake into his eye, Book 9."
 
-If two tries do not register, press O and say "I will drive it for you" `[pending #7: the stake has not been thrown by a real body yet]`.
+If two tries do not register, press T and say "I will drive it for you" `[pending #7: the stake has not been thrown by a real body yet]`.
 
 ### The close: as he falls, and no later than 2:50
 
@@ -185,7 +185,7 @@ After five clean reps of a move its card is a thin timer bar with no word and no
 | Hoplite: spear thrust, overhead strike | U, I |
 | Karate: reverse punch, knife hand, hammer fist | R, H, M |
 | Kung Fu: double palm, chain punch, rising palm | P, C, G |
-| Stake thrust | O (only when the card reads DRIVE THE STAKE) |
+| Stake thrust | T (only when the card reads DRIVE THE STAKE) |
 
 **A strike will not register.** While `#7` and `#17` are open this is the likeliest failure: the camera works and one move does not fire. Press that strike's key and say "I will throw that one for you." After three misfires of the same move, swap jobs: the judge keeps defending with their body and you throw every strike from the keys.
 
