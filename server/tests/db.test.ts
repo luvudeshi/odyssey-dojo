@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import {
-  APPLICATION, CONNECT_MS, MAX_CONNECTIONS, QUERY_MS, STATEMENT_MS, dbRedactor, dbSecrets, failureCode, isEncrypted, openDb, poolSettings, tlsFor,
+  APPLICATION, CONNECT_MS, MAX_CONNECTIONS, QUERY_MS, STATEMENT_MS, dbRedactor, dbSecrets, failureCode, isChecked, isEncrypted, openDb, poolSettings, tlsFor,
   withoutAddresses,
 } from "../lib/db";
 import type { MakePool } from "../lib/db";
@@ -134,7 +134,7 @@ test("require encrypts without checking the certificate, and a CA file or verify
     const caFile = join(dir, "ca.pem");
     writeFileSync(caFile, "made-up certificate text\n");
     const base = `postgres://dojo:${SECRET_PASSWORD}@${HOST}:5432/dojo`;
-    // What psql does for `require`: a free Tiger Data service signs its own certificate, so there is nothing to check it against.
+    // What psql does for `require` with no CA file. Tiger Data signs with a CA of its own, so with that CA in a file it is checked.
     expect(tlsFor(`${base}?sslmode=require`)).toEqual({ rejectUnauthorized: false });
     expect(tlsFor(`${base}?sslmode=verify-ca`)).toEqual({ rejectUnauthorized: true });
     expect(tlsFor(`${base}?sslmode=verify-full`)).toEqual({ rejectUnauthorized: true });
@@ -146,6 +146,9 @@ test("require encrypts without checking the certificate, and a CA file or verify
     // A database on this machine with no sslmode is the one case that is not encrypted.
     expect(tlsFor("postgres://u:p@localhost:5432/d")).toBe(false);
     expect(tlsFor("postgres://u:p@localhost:5432/d?sslmode=require")).toEqual({ rejectUnauthorized: false });
+    // The same, as the one word the preflight prints.
+    expect([isChecked(`${base}?sslmode=require`), isChecked(`${base}?sslmode=require`, caFile), isChecked(`${base}?sslmode=verify-full`), isChecked("postgres://u:p@localhost:5432/d")])
+      .toEqual([false, true, true, false]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -159,6 +162,23 @@ test("a CA file that cannot be read leaves accounts off: they never run unchecke
   expect(log.lines.join("\n")).not.toContain("private-folder");
   expect(asked.options).toEqual([]);
   noSecret(log.lines);
+});
+
+test("whoever asks why the database did not open is told the reason and the code, and then nothing is logged", async () => {
+  const log = captureLog();
+  const told: (readonly [string, string | null])[] = [];
+  const onOff = (reason: string, code: string | null): void => { told.push([reason, code]); };
+  const refusing = driver(() => Promise.reject(Object.assign(new Error(`password authentication failed for ${SECRET_URL}`), { code: "28P01" })));
+  expect(await openDb("mysql://u:p@h/d", { makePool: refusing.makePool, onOff })).toBeNull();
+  expect(await openDb(SECRET_URL.replace("?sslmode=require", ""), { makePool: refusing.makePool, onOff })).toBeNull();
+  expect(await openDb(SECRET_URL, { makePool: refusing.makePool, caFile: "/nonexistent/private-folder/ca.pem", onOff })).toBeNull();
+  expect(await openDb(SECRET_URL, { makePool: refusing.makePool, onOff })).toBeNull();
+  expect(told).toEqual([["bad_url", null], ["not_encrypted", null], ["bad_ca_file", "ENOENT"], ["no_answer", "28P01"]]);
+  expect(log.lines).toEqual([]);
+  // And a database that opens tells nothing.
+  const fine = driver(() => Promise.resolve({ rows: [] }));
+  expect(await openDb(SECRET_URL, { makePool: fine.makePool, onOff })).not.toBeNull();
+  expect(told).toHaveLength(4);
 });
 
 test("a failure is logged as a short code or one of a few words, never as what the driver said", () => {
