@@ -211,14 +211,16 @@ export function App() {
           open={(index) => CAN_PLAY[index] ?? false}
           onEnter={(index) => {
             const next = ENEMIES[index];
-            if (next) stopIntro.current = narrateIntro(next.id);
             if (LOOK === "a" && next) setCut(index);
-            else dispatch({ type: "enter", index, seed: Date.now() });
+            else {
+              if (next) stopIntro.current = narrateIntro(next.id);
+              dispatch({ type: "enter", index, seed: Date.now() });
+            }
           }}
           onStyle={() => { dispatch({ type: "changeStyle" }); }}
           onMenu={() => { setPanel(null); dispatch({ type: "toTitle" }); }}
         />
-        {cutBoss && cut !== null ? <Cutscene id={cutBoss.id} name={cutBoss.name} onDone={() => { setCut(null); dispatch({ type: "enter", index: cut, seed: Date.now() }); }} /> : null}
+        {cutBoss && cut !== null ? <Cutscene id={cutBoss.id} name={cutBoss.name} onDone={() => { setCut(null); stopIntro.current = narrateIntro(cutBoss.id); dispatch({ type: "enter", index: cut, seed: Date.now() }); }} /> : null}
       </>
     );
   }

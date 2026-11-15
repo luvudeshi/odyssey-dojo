@@ -64,11 +64,20 @@ export function Cutscene({ id, name, onDone }: { readonly id: string; readonly n
     return () => { cancelAnimationFrame(frame); };
   }, [reduced]);
 
-  // Any key skips, and the key goes no further: the fight never sees it.
+  // Any plain key skips, and the key goes no further: the fight never sees it. Browser shortcuts (Cmd, Ctrl, Alt) pass.
+  // Key releases are swallowed too, until a moment after the cutscene unmounts, so a key held at skip time cannot reach the fight.
   useEffect(() => {
-    const onKey = (event: KeyboardEvent): void => { event.preventDefault(); event.stopImmediatePropagation(); finishRef.current(); };
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      event.preventDefault(); event.stopImmediatePropagation(); finishRef.current();
+    };
+    const onUp = (event: KeyboardEvent): void => { event.stopImmediatePropagation(); };
     window.addEventListener("keydown", onKey, true);
-    return () => { window.removeEventListener("keydown", onKey, true); };
+    window.addEventListener("keyup", onUp, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      setTimeout(() => { window.removeEventListener("keyup", onUp, true); }, 400);
+    };
   }, []);
 
   // The one sound: the war horn, on the big beat.
