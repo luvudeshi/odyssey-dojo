@@ -8,6 +8,8 @@ Issue #156. The judging room's Wi-Fi may fail, so the judged path must need noth
 
 Run on 14 November 2026 on `main` at `7557bdf`. Apple M4, macOS 15.6, Chrome 157.0.8103.51 headless on the GPU (ANGLE metal). Playwright-core 1.64.1 from another project on this machine, through `FPS_PLAYWRIGHT`.
 
+**Since then:** the god scan was taken out of the game (PR #392, 15 November), so the webcam path no longer shows it or sends `POST /api/reveal`. The check was not run again after that, and `scripts/offline-check.mjs` still waits for the scan's button. Read the god scan lines below as what those runs saw.
+
 | Path | Result |
 | --- | --- |
 | Keyboard fight (main menu with the "Play with" setting on Keyboard, Story mode, Boxer, map, Polyphemus, fight, end screen, map) | Nothing left localhost. The page did not throw. Exit 0 with `--no-camera`. |
