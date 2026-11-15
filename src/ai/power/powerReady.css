@@ -55,9 +55,11 @@
 @media (prefers-reduced-motion: reduce) {
   .power-ready .power-ready__frame { animation: none; }
 }
-/* Short screens (1280 x 720 and under): a little tighter, so the plate stays below the prompt card. */
+/* Short screens (1280 x 720 and under): tighter and lower, so a two-line plate stays below the prompt card, whose
+   foot is at 554px of 720 on the star-chart HUD. */
 @media (max-height: 760px) {
-  .power-ready .power-ready__plate { padding-top: 8px; padding-bottom: 10px; }
-  .power-ready .power-ready__move { margin-top: 3px; }
-  .power-ready .power-ready__how { margin-top: 4px; }
+  .power-ready.power-ready--live { bottom: var(--power-ready-bottom, 10px); }
+  .power-ready .power-ready__plate { padding-top: 7px; padding-bottom: 8px; }
+  .power-ready .power-ready__move { margin-top: 2px; }
+  .power-ready .power-ready__how { margin-top: 3px; line-height: 1.18; }
 }
