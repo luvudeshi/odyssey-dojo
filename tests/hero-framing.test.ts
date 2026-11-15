@@ -7,6 +7,7 @@ import { startFight } from "../src/combat/engine";
 import { battle, resetBattle } from "../src/render/battle";
 import type { Battle } from "../src/render/battle";
 import { MONSTER_Z, cameraShot, makeShot } from "../src/render/cameraShots";
+import { REACH } from "../src/render/strikeReach";
 
 const ASPECT = 16 / 9;
 /** The spartan's group mark (HOME_Z 1.2) less the 0.8 m it is stepped back inside its turned group. */
@@ -24,18 +25,23 @@ interface Scene {
   readonly heroZ: number;
   readonly phase: (enemy: EnemySpec) => CombatPhase;
   readonly hitAgo?: number;
+  readonly lift?: number;
 }
 
 const SCENES: readonly Scene[] = [
   { label: "rest", heroX: 0, heroZ: 0, phase: () => ({ kind: "recover", msLeft: 1000 }) },
   { label: "defend start", heroX: 0, heroZ: 0, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 1000, totalMs: 1000 }) },
   { label: "defend end", heroX: 0, heroZ: 0, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
-  { label: "defend, dodging left", heroX: -0.7, heroZ: 0, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
-  { label: "defend, dodging right", heroX: 0.7, heroZ: 0, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
+  { label: "defend, dodging left", heroX: -0.9, heroZ: 0, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
+  { label: "defend, dodging right", heroX: 0.9, heroZ: 0, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
+  // A held jump lifts him 0.75 m (hero/leapPose.ts).
+  { label: "defend, jumping", heroX: 0, heroZ: 0, lift: 0.75, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
   { label: "defend, knocked back", heroX: 0, heroZ: 0.6, phase: (e) => ({ kind: "defend", attack: e.attacks[0], msLeft: 0, totalMs: 1000 }) },
-  { label: "strike", heroX: 0, heroZ: -0.15, phase: (e) => ({ kind: "strike", weakSpot: e.weakSpots[0], move: "jab", msLeft: 500, totalMs: 1000 }) },
-  { label: "strike, hit lands", heroX: 0, heroZ: -0.15, hitAgo: 0.05, phase: (e) => ({ kind: "strike", weakSpot: e.weakSpots[0], move: "jab", msLeft: 500, totalMs: 1000 }) },
-  { label: "finisher", heroX: 0, heroZ: -0.15, phase: () => ({ kind: "finisher", move: "jab", msLeft: 500, totalMs: 1000 }) },
+  { label: "strike", heroX: 0, heroZ: 0, phase: (e) => ({ kind: "strike", weakSpot: e.weakSpots[0], move: "jab", msLeft: 500, totalMs: 1000 }) },
+  // The camera's punch-in on the blow fades as he hops home: while it is strong he is up at the monster, not on his
+  // mark. This is the frame he touches down again, with what is left of it.
+  { label: "strike, back from the hit", heroX: 0, heroZ: 0, hitAgo: REACH.back, phase: (e) => ({ kind: "strike", weakSpot: e.weakSpots[0], move: "jab", msLeft: 500, totalMs: 1000 }) },
+  { label: "finisher", heroX: 0, heroZ: 0, phase: () => ({ kind: "finisher", move: "jab", msLeft: 500, totalMs: 1000 }) },
   { label: "won", heroX: 0, heroZ: -0.3, phase: () => ({ kind: "won" }) },
   { label: "lost", heroX: 0, heroZ: 0.4, phase: () => ({ kind: "lost" }) },
 ];
@@ -66,10 +72,11 @@ test("the hero's feet, head and shoulders are inside the frame in every camera s
     for (const now of TIMES) {
       const shot = cameraShot(makeShot(), battleFor(enemy, scene, now), now, false);
       const z = HERO_Z + scene.heroZ;
+      const y = scene.lift ?? 0;
       // His stance is deep: one foot 0.26 m ahead of the mark and the other 0.25 m behind it, plus 0.15 m of boot (measured from the foot bones).
       const points = [
-        ...[-0.4, 0, 0.4].flatMap((dz) => [-HALF_WIDTH, 0, HALF_WIDTH].map((dx) => new Vector3(scene.heroX + dx, 0, z + dz))),
-        new Vector3(scene.heroX, HERO_TOP, z),
+        ...[-0.4, 0, 0.4].flatMap((dz) => [-HALF_WIDTH, 0, HALF_WIDTH].map((dx) => new Vector3(scene.heroX + dx, y, z + dz))),
+        new Vector3(scene.heroX, y + HERO_TOP, z),
       ];
       for (const p of points) {
         const ndc = project(shot, p);
@@ -85,7 +92,7 @@ test("the hero's feet, head and shoulders are inside the frame in every camera s
 test("the hero never covers a weak spot while it is the target", () => {
   for (const enemy of ENEMIES) {
     for (const spot of enemy.weakSpots) {
-      const scene: Scene = { label: spot.id, heroX: 0, heroZ: -0.15, phase: () => ({ kind: "strike", weakSpot: spot, move: "jab", msLeft: 500, totalMs: 1000 }) };
+      const scene: Scene = { label: spot.id, heroX: 0, heroZ: 0, phase: () => ({ kind: "strike", weakSpot: spot, move: "jab", msLeft: 500, totalMs: 1000 }) };
       for (const now of TIMES) {
         const shot = cameraShot(makeShot(), battleFor(enemy, scene, now), now, false);
         const [sx, sy, sz] = spot.position;
