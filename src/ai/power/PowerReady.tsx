@@ -4,6 +4,7 @@
 // scan found stays on screen through the fight. Mount it once inside the fight screen's root; it never takes a click.
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
+import { holdPowerSound } from "../../audio/powerSound";
 import { speakPowerReady } from "../../audio/voice";
 import { log } from "../../core/log";
 import type { GodId } from "../gods/gods";
@@ -41,6 +42,10 @@ export function PowerReady(props: PowerReadyProps) {
   const prompt = ready ? safePrompt(god, keyboard) : null;
   const moveId = prompt?.moveId ?? null;
   const track = useRef(READY_START);
+
+  // The power sounds like this god's own (src/audio/powerSound.ts) for as long as the banner is in the fight, full meter
+  // or not: the engine's event does not name the god. No god: Athena's, as the banner says.
+  useEffect(() => holdPowerSound(god), [god]);
 
   useEffect(() => {
     if (moveId === null) {
