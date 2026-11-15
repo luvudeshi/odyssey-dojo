@@ -1,12 +1,12 @@
 // Which bone each piece of a character's gear hangs on, in exactly the shape of the spartan's SPARTAN_ANCHORS
 // (bone name to nodes), so Hero can take `anchorsFor(id)` in its place.
-// Every character keeps the style gear the fight needs: the Hoplite's spear slung on the back, and the spear or the
-// stake appearing in the right hand for the move that uses it (src/render/hero/gearRule.ts). Character pieces never
+// Every character keeps the gear the fight needs: the stake appearing in the right hand for the stake finisher
+// (src/render/hero/gearRule.ts). Character pieces never
 // go in a hand.
 import { Fragment } from "react";
 import type { ReactNode } from "react";
 import { SPARTAN_ANCHORS } from "../render/hero/gear/anchors";
-import { HandGear, SlungSpear, World } from "../render/hero/gear/carriedGear";
+import { HandGear, World } from "../render/hero/gear/carriedGear";
 import { Frame } from "../render/hero/gear/spartanGear";
 import { CHARACTERS, DEFAULT_CHARACTER, characterById } from "./characters";
 import type { Character, CharacterId } from "./characters";
@@ -22,7 +22,6 @@ function build(character: Character): Anchors {
     anchors[bone] = (
       <Frame bone={bone}>
         {pieces.map((id) => <Fragment key={id}>{GEAR[id].render(character.palette)}</Fragment>)}
-        {bone === "spine_03" && <SlungSpear />}
       </Frame>
     );
   }

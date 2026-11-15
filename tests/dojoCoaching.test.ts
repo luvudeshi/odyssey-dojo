@@ -36,10 +36,11 @@ const plain = (line: string, about: string, most: number): void => {
 
 describe("every move the dojo can train has its coaching written by hand", () => {
   test("the list is the real one: every style's strikes, the kicks, the defends and the dojo's own moves", () => {
-    expect(TRAINABLE.length).toBe(26);
+    expect(TRAINABLE.length).toBe(24);
     for (const id of ["jab", "reverse_punch", "block", "front_kick", "roundhouse_kick", "palm_heel", "high_block", "wrist_release"]) expect(TRAINABLE).toContain(id);
-    // Nothing is written for a move nobody can train, and nothing trainable is left out.
-    expect(Object.keys(COACHING).sort()).toEqual([...TRAINABLE].sort());
+    // Nothing trainable is left out. The two strikes no style teaches since the known styles went in (they are finishers now) keep their lines.
+    const finishersOnly = ["spear_thrust", "overhead_strike"];
+    expect(Object.keys(COACHING).filter((id) => !finishersOnly.includes(id)).sort()).toEqual([...TRAINABLE].sort());
   });
 
   test("every checklist line of every move is written, plain, short enough, and no two rows of a list read the same", () => {

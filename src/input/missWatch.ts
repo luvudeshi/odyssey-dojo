@@ -50,9 +50,13 @@ export function createMissWatch(): MissWatch {
   };
 }
 
+/** The move a phase asks the player for: the strike, the finisher, or the counter to an attack; null when nothing is asked. */
+export function askedMove(phase: CombatPhase | null | undefined): string | null {
+  if (!phase) return null;
+  return phase.kind === "strike" || phase.kind === "finisher" ? phase.move : phase.kind === "defend" ? phase.attack.counter : null;
+}
+
 /** The fight's phase as the watch wants it. */
 export function watchPhase(watch: MissWatch, phase: CombatPhase, input: CombatInput, events: readonly CombatEvent[], nowMs: number): boolean {
-  const defend = phase.kind === "defend";
-  const ask = phase.kind === "strike" || phase.kind === "finisher" ? phase.move : defend ? phase.attack.counter : null;
-  return watch(ask, defend, input, events.some((e) => e.type === "whiffed"), nowMs);
+  return watch(askedMove(phase), phase.kind === "defend", input, events.some((e) => e.type === "whiffed"), nowMs);
 }
