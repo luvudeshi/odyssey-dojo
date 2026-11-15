@@ -4,6 +4,8 @@ Part of issue #33. One page to copy from when you fill in Devpost, and to open w
 
 Every path below was checked on `main` at PR #363. Each track has four parts: what we do with it, the files that prove it, what to show in 30 seconds, and the limits. **"To confirm" means the repo does not prove it.** Do not say it to a judge until somebody has checked.
 
+The lines about the hosted copy (sections 2, 3, the Tiger Data part of 4, and rooms in 6) were brought up to date on Sunday 15 November, against `main` at PR #391 and the live site.
+
 The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This page does not replace it.
 
 ## 1. Chert: Best Use of FaceTime
@@ -32,39 +34,43 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 ## 2. Vultr (MLH)
 
-**What we do with it.** The game's server runs on one Vultr instance, in Docker, with Caddy in front of it for https. That server is the relay for online rooms: a visitor can join a room and play in it there. Today the same instance also serves the game page.
+**What we do with it.** The game's server runs on one Vultr instance, in Docker, with Caddy in front of it for https. That server is the relay for online rooms: a visitor to `https://odysseydojo.club` can open a room or join one and play in it there. The game page itself is on Vercel (Hobby plan) and passes `/api/` on to the instance, which answers on `api.odysseydojo.club`.
 
 **Proof in the repo.**
 
 - `deploy/vultr/Dockerfile`, `deploy/vultr/docker-compose.yml`, `deploy/vultr/Caddyfile`, `deploy/vultr/setup.sh`, `deploy/vultr/.env.example`.
-- [deploy-vultr.md](deploy-vultr.md): the steps, and "Run for real, once": a 1 vCPU / 2 GB instance in Dallas on Ubuntu 24.04, where Caddy got its own certificate and `https://odysseydojo.club` serves the game.
+- [deploy-vultr.md](deploy-vultr.md): the steps, and "Run for real, once": a 1 vCPU / 2 GB instance in Dallas on Ubuntu 24.04, where Caddy got its own certificate and `https://odysseydojo.club` served the game from the instance. That doc is older than the move of the page to Vercel and than rooms being opened to visitors; PR #386, not merged, brings it up to date.
 - The room relay: `server/routes/rooms.ts`, `server/lib/rooms.ts`. What a hosted visitor may reach: `server/lib/localOnly.ts`.
+- Rooms for visitors: `PUBLIC_ROOMS=1` on the instance (PR #373; `server/lib/localOnly.ts`, `server/lib/roomLimits.ts`, `server/tests/publicRooms.test.ts`, and "The hosted copy" in [rooms-tunnel.md](rooms-tunnel.md)).
+- Rooms behind Vercel: the page's build long-polls for rooms (`VITE_ROOMS_POLL=1`, read in `src/net/transport.ts`, PR #382), because Vercel's proxy does not tell the server when a browser has gone.
+- The check: `node scripts/rooms-smoke.mjs --url=https://odysseydojo.club` plays a room on the live site in two pages of headless Chrome.
 
-**Show it in 30 seconds.** Open `https://odysseydojo.club` on any laptop: the padlock, then a keyboard fight. Then open `deploy/vultr/docker-compose.yml` and point at the two services, `game` and `caddy`. If asked for more, show the instance in the Vultr dashboard (to confirm who has the login).
+**Show it in 30 seconds.** Open `https://odysseydojo.club` on any laptop: the padlock, then a keyboard fight. On a second laptop or a phone open the same address; one opens a room on the Multiplayer screen and the other types the code. Then open `deploy/vultr/docker-compose.yml` and point at the two services, `game` and `caddy`. If asked for more, show the instance in the Vultr dashboard (to confirm who has the login).
 
 **Limits.**
 
-- A visitor to the hosted copy can join a room but cannot make one. The owner can make one through an SSH tunnel, and [deploy-vultr.md](deploy-vultr.md) says that was not tried.
-- The god scan, speech made on demand, replays and FaceTime answer 403 on the hosted copy. It is the offline game plus joining rooms.
-- Not checked on the real domain, by that doc: the camera prompt, a full fight, and a room joined through Caddy. To confirm before you say "online rooms run on Vultr" as a thing a judge can try.
-- The page is on Vercel and the room server answers on `api.`: this went live on Sunday 15 November (the page 200, the pose model 200, `/api` reaching the room server were checked). The config is in PR #351 (`vercel.json`, `docs/deploy-vercel.md`), which is not merged into `main` yet; the live page is deployed from that branch on top of `main`. Not yet run: a two-device room fight through the public site.
+- Checked on the live site on 15 November with the smoke script above: a fight plays to the same result on both pages, a guest who dropped is let back in after about 18 seconds, and a guest hears that the host left after about 38 seconds. Both pages were headless Chrome on one machine. Not checked: two real devices, a real phone, a camera on either side. Try the two-device room yourself before you show it to a judge.
+- The waits are long because a page that only closes is noticed late behind Vercel. A leave call fixes that: the server side is on `main` (`POST /api/rooms/:code/leave`, PR #388); the page does not send it yet (PR #390, not merged).
+- Everybody who comes through the same Vercel address counts as one caller for the room limits ([rooms-tunnel.md](rooms-tunnel.md)). A full hall may share one budget of rooms.
+- The god scan, speech made on demand, replays and FaceTime answer 403 on the hosted copy. It is the offline game plus rooms.
+- The Vercel config (`vercel.json`, `docs/deploy-vercel.md`) is in PR #351, which is not merged into `main`; the live page is deployed from that branch on top of `main`. So `main` alone does not show how the page is hosted.
 
 ## 3. GoDaddy Registry (MLH): the domain
 
-**What we do with it.** The game lives at `https://odysseydojo.club`. The name's A record points at the Vultr instance, and Caddy gets and renews the https certificate for it. https matters here: a browser only gives a page the camera over https.
+**What we do with it.** The game lives at `https://odysseydojo.club`. The name opens the game page on Vercel, and `api.odysseydojo.club` is the Vultr instance, with Caddy in front of it for https. https matters here: a browser only gives a page the camera over https.
 
 **Proof in the repo.**
 
-- [deploy-vultr.md](deploy-vultr.md), step 3 "Point the domain at it" (it names GoDaddy as the registrar) and "Run for real, once" (it names `https://odysseydojo.club`).
+- [deploy-vultr.md](deploy-vultr.md), step 3 "Point the domain at it" (it names GoDaddy as the registrar) and "Run for real, once" (it names `https://odysseydojo.club`). It was written when the name pointed straight at the instance.
 - `deploy/vultr/Caddyfile` and `deploy/vultr/.env.example`: the one `DOMAIN` setting.
 
 **Show it in 30 seconds.** Type `odysseydojo.club` in a browser. The game loads with a padlock.
 
 **Limits.**
 
-- `www.odysseydojo.club` is not served.
+- `www.odysseydojo.club` answered with the game page on 15 November. Nothing in the repo sets it up, so give out the bare name.
 - The worked example in the guide is `odysseydojo.us`; the real name is `odysseydojo.club`.
-- No `api.odysseydojo.club` on `main`: that name is only in open PR #351, as a placeholder.
+- `api.odysseydojo.club` is live, but nothing on `main` names it: the file that sends the page's `/api/` calls there (`vercel.json`) is in open PR #351.
 - **To confirm with MLH that a `.club` name qualifies**, and that it was registered through the MLH GoDaddy Registry offer. The repo has no rule text and no receipt.
 
 ## 4. Gemini, ElevenLabs and Tiger Data
@@ -95,9 +101,9 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 **Proof.** [accounts.md](accounts.md), above all "What Tiger Data does for the game" and "What was run against the real database". Code: `server/lib/db.ts`, `server/lib/accounts.ts`, `server/lib/heroes.ts`, `server/routes/account.ts`, `server/routes/heroes.ts`, `src/account/ui/AccountSignIn.tsx`, `src/account/ui/HallOfHeroes.tsx`. Tests: `server/tests/accountsDb.test.ts`, `server/tests/heroesDb.test.ts`.
 
-**Show it.** Open [accounts.md](accounts.md) at "What Tiger Data does for the game" and `server/lib/heroes.ts` for the SQL. On a laptop with the database set: `/api/account/status` answers `{"available":true}`.
+**Show it.** Open [accounts.md](accounts.md) at "What Tiger Data does for the game" and `server/lib/heroes.ts` for the SQL. On a laptop with the database set: `/api/account/status` answers `{"available":true}`. The hosted copy has the database connected too: `https://odysseydojo.club/api/account/status` gave the same answer on 15 November, and the Hall of heroes route answered with an empty list.
 
-**Limits.** **A player cannot see it on `main`.** Nothing outside `src/account/` imports the sign-in dialog or the hall board, so the Account page shows neither. Accounts are off unless the server has `DATABASE_URL`. To confirm whether the team enters this track at all with the feature not on a screen.
+**Limits.** **A player cannot see it on `main`, or on the hosted copy.** Nothing outside `src/account/` imports the sign-in dialog or the hall board, so the Account page shows neither. Nobody has tried to sign up on the live site. `PUBLIC_ACCOUNTS=1`, the setting meant to open accounts to visitors there, is in PR #384, not merged. Accounts are off unless the server has `DATABASE_URL`. To confirm whether the team enters this track at all with the feature not on a screen.
 
 ## 5. Cursor / SpaceXSI
 
@@ -111,8 +117,8 @@ From [ARCHITECTURE.md](ARCHITECTURE.md), [FEATURES.md](FEATURES.md) and [pitch.m
 
 - **A full game with your body or the keyboard.** Six stops in the Odyssey's order, five fighting styles, 26 moves, each with a line on what it is for in self-defense ([moves.md](moves.md)). Pose tracking runs in the browser; every move also has a key.
 - **Training Dojo with pick-your-moves.** The Dojo card on the main menu opens a setup step where you tick the moves to practise and the tries at each (`src/coach/ui/DojoSetup.tsx`, `src/coach/catalog.ts`), then grades every try and gives one tip ([dojo.md](dojo.md), [dojo-moves.md](dojo-moves.md)).
-- **Online rooms.** Host a room, a friend joins with a four-letter code or a QR code from a laptop or a phone, and strikes thrown together do double damage ([rooms.md](rooms.md), `src/net/`, `server/routes/rooms.ts`).
-- **Two players on one camera: the logic is merged, the card is not on `main`.** `src/duo/` and its tests (`tests/duoAssign.test.ts`, `tests/duoLink.test.ts`) are in. `src/screens/Multiplayer.tsx` does not mount `DuoCard`; it has Host, Join and FaceTime only. [duo.md](duo.md) lists the four lead-file changes that turn it on. Do not show it as playable until those land.
+- **Online rooms.** Host a room, a friend joins with a four-letter code or a QR code from a laptop or a phone, and strikes thrown together do double damage ([rooms.md](rooms.md), `src/net/`, `server/routes/rooms.ts`). On the hosted copy a visitor can open a room as well as join one; what was checked there is in section 2.
+- **Two players on one camera: the logic is merged, the card is not on `main`.** `src/duo/` and its tests (`tests/duoAssign.test.ts`, `tests/duoLink.test.ts`) are in (PRs #357, #372, #381). `src/screens/Multiplayer.tsx` does not mount `DuoCard`; it has Host, Join and FaceTime only. [duo.md](duo.md) has the one diff to five lead-owned files that turns it on (`src/duo/mount.diff`). It has only been tried with a fake camera and made-up bodies, never with two real people. Do not show it as playable until the diff lands; it is not on the hosted copy either.
 - **Athena's coaching and the god scan** as in section 4, and a FaceTime friend as in section 1.
 
 **Limits.** [FEATURES.md](FEATURES.md) "Not done" says no full webcam fight on a real body on the demo laptop was recorded in the repo, and detectors were tested on made-up poses. To confirm that this has been done since.
