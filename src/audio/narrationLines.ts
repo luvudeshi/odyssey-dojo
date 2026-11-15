@@ -100,7 +100,7 @@ export const NARRATION_LINES: readonly QuestLine[] = [
     enemyId: "suitors",
     speaker: "homer",
     when: "The quest is won: the last stop's result screen",
-    text: "The great bow sang, and the suitors fell. After twenty years Odysseus was home in Ithaca, with Penelope beside him at last.",
+    text: "The bow sang, then the spear, and the suitors fell. After twenty years Odysseus was home in Ithaca, with Penelope beside him.",
   },
 ];
 

@@ -31,7 +31,7 @@ The game only asks for clips an index lists, and stays silent for the rest. The 
 | `homer_after_charybdis` | Homer | After the Charybdis fight is won | The ship was gone. He hung from the fig tree like a bat, until she gave his timbers back. |
 | `homer_before_suitors` | Homer | Before the fight with the suitors | In beggar's rags he strung the great bow no suitor could bend, and the string sang like a swallow. |
 | `homer_after_suitors` | Homer | After the fight with the suitors is won | So the hall fell silent. Odysseus, sacker of cities, was home, and Penelope knew him by the secret of their bed. |
-| `homer_homecoming` | Homer | The quest is won: the last stop's result screen | The great bow sang, and the suitors fell. After twenty years Odysseus was home in Ithaca, with Penelope beside him at last. |
+| `homer_homecoming` | Homer | The quest is won: the last stop's result screen | The bow sang, then the spear, and the suitors fell. After twenty years Odysseus was home in Ithaca, with Penelope beside him. |
 | `taunt_circe_1` | Circe | Circe taunts the player | Drink, stranger. You have come a long way. |
 | `taunt_circe_2` | Circe | Circe taunts the player | To the sty with you. Lie down with your friends. |
 | `taunt_circe_3` | Circe | Circe taunts the player | No man has ever tasted this and kept his mind. |
