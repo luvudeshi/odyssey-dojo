@@ -2,38 +2,51 @@
 // Picture measurements are in shoulder widths of the mirrored webcam picture, so they hold at any distance from
 // the camera. Measurements on the 3D points are in shoulder widths of the 3D body, so they hold for a child and
 // for a tall adult alike: nothing here is an absolute share of the frame or an absolute number of metres.
-import type { PoseFrame, PoseHistory } from "../core/types";
-import { JOINT, distance2d, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth } from "../pose/signals";
+// The 3D rulers come from the calibrated baseline, measured while the player stood facing the camera, so they
+// do not change when the tracker's 3D body is off for a frame or the player turns. A baseline without them
+// (or none yet) falls back to measuring the current frame.
+import type { Baseline, PoseFrame, PoseHistory } from "../core/types";
+import {
+  JOINT, distance2d, elbowAngle, joint, latest, recent, shoulderCenter, shoulderWidth, shoulderWidth3d, torsoLength3d,
+} from "../pose/signals";
 
 export type Side = "left" | "right";
 
-/** Shoulder width of the 3D body, in metres: the ruler for every 3D distance. About 0.4 for an adult. */
-export function bodyWidth(frame: PoseFrame): number {
-  const left = joint(frame.world, JOINT.leftShoulder);
-  const right = joint(frame.world, JOINT.rightShoulder);
-  return Math.hypot(left.x - right.x, left.y - right.y, left.z - right.z);
+/** A ruler from the baseline, or null when the baseline has none: left out, or zero because it had no 3D points. */
+function calibrated(ruler: number | undefined): number | null {
+  return ruler !== undefined && ruler > 0 ? ruler : null;
 }
 
-/** How far a fist may sit above or below its shoulder and still be at shoulder height, in 3D shoulder widths. */
-const SHOULDER_HEIGHT = 0.75;
+/** Shoulder width of the 3D body, in metres: the ruler for 3D distances across and forward. About 0.4 for an adult. */
+export function bodyWidth(frame: PoseFrame, baseline: Baseline | null): number {
+  return calibrated(baseline?.shoulderWidth3d) ?? shoulderWidth3d(frame);
+}
+
+/** Shoulders to hips on the 3D body, in metres: the ruler for 3D heights. About 0.5 for an adult. */
+export function torsoLength(frame: PoseFrame, baseline: Baseline | null): number {
+  return calibrated(baseline?.torsoLength3d) ?? torsoLength3d(frame);
+}
+
+/** How far a fist may sit above or below its shoulder and still be at shoulder height, in 3D torso lengths (0.3 m on a 0.5 m torso). */
+export const SHOULDER_HEIGHT = 0.6;
 
 /** True when the fist is at shoulder height in 3D. */
-function fistLevel(frame: PoseFrame, side: Side): boolean {
+function fistLevel(frame: PoseFrame, side: Side, baseline: Baseline | null): boolean {
   const left = side === "left";
   const shoulder = joint(frame.world, left ? JOINT.leftShoulder : JOINT.rightShoulder);
   const fist = joint(frame.world, left ? JOINT.leftWrist : JOINT.rightWrist);
-  return Math.abs(fist.y - shoulder.y) < SHOULDER_HEIGHT * bodyWidth(frame);
+  return Math.abs(fist.y - shoulder.y) < SHOULDER_HEIGHT * torsoLength(frame, baseline);
 }
 
 /** True when the arm is straight and the fist is at shoulder height. */
-export function armOut(frame: PoseFrame, side: Side): boolean {
-  return elbowAngle(frame, side) > 145 && fistLevel(frame, side);
+export function armOut(frame: PoseFrame, side: Side, baseline: Baseline | null): boolean {
+  return elbowAngle(frame, side) > 145 && fistLevel(frame, side, baseline);
 }
 
 /** True when the arm just went from bent to straight at shoulder height: a punch. */
 export function armThrust(history: PoseHistory, side: Side): boolean {
   const now = latest(history);
-  if (!now || !armOut(now, side)) return false;
+  if (!now || !armOut(now, side, history.baseline)) return false;
   return recent(history, 450).some((frame) => elbowAngle(frame, side) < 115);
 }
 
@@ -115,7 +128,7 @@ export function punch(history: PoseHistory, side: Side): number {
   if (!frame) return 0;
   const bend = elbowAngle(frame, side);
   if (bend <= NEARLY_STRAIGHT) return 0;
-  if (!fistLevel(frame, side)) return 0;
+  if (!fistLevel(frame, side, history.baseline)) return 0;
   if (!recent(history, SNAP_MS).some((old) => elbowAngle(old, side) < BENT)) return 0;
   if (handWasOverhead(history, side, 500)) return 0;
   return bend > STRAIGHT ? 1 : 0.5;

@@ -21,6 +21,10 @@ export interface Baseline {
   readonly centerX: number;
   readonly shoulderY: number;
   readonly shoulderWidth: number;
+  /** Shoulder to shoulder on the 3D body, in metres: the ruler for 3D distances. Left out by code that has no 3D points. */
+  readonly shoulderWidth3d?: number;
+  /** Middle of the shoulders to middle of the hips on the 3D body, in metres: the ruler for 3D heights. */
+  readonly torsoLength3d?: number;
 }
 
 /** About one second of frames, oldest first. */

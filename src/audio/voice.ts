@@ -2,7 +2,7 @@
 import type { CombatEvent, CombatPhase } from "../core/types";
 import { log } from "../core/log";
 import { getSettings } from "../settings/store";
-import { clipUrl } from "./athenaLines";
+import { clipUrl, phaseLineId } from "./athenaLines";
 import { pickTaunt, STORY_INDEX_URLS, storyClipUrl } from "./narrationLines";
 
 const PRAISE = ["praise_1", "praise_2", "praise_3"] as const;
@@ -27,8 +27,8 @@ export function lineFor(event: CombatEvent, random: () => number): string | null
     case "playerHit":
       return pick(WARNINGS, random);
     case "phaseChanged":
-      // Index 0 is where the fight starts; only later phases get a line.
-      return event.index > 0 ? `phase_${String(event.index)}` : null;
+      // Index 0 is where the fight starts; only later phases get a line, picked by the phase's own name.
+      return event.index > 0 ? phaseLineId(event.name) : null;
     case "won":
       return "win";
     case "lost":
@@ -145,6 +145,12 @@ export function createVoice(deps: VoiceDeps = browserDeps()): Voice {
       }
       finishing = phase?.kind === "finisher";
       const best = wanted.reduce<string | null>((top, id) => (top === null || urgency(id) > urgency(top) ? id : top), null);
+      // The strike that call asked for has just landed, so it is stale and the phase line may take its place.
+      if (best?.startsWith("phase_") && current?.id.startsWith("call_") && events.some((event) => event.type === "enemyHit")) {
+        current.stop();
+        current = null;
+        onSpeaking(false);
+      }
       if (best !== null) speak(best);
     },
     playing: () => current?.id ?? null,
