@@ -4,7 +4,7 @@ A player picks one of five characters. A character is a **look**: gear and colou
 
 All five are the same rigged body, `public/models/hero/spartan.glb`, with gear built in code and hung on its bones, the way the spartan's helmet and cape already are. No model or image was added, and all five share spartan.glb, so no new CREDITS.md row.
 
-Code is in `src/characters/`. Nothing in the game uses it yet: see NEEDS at the end.
+Code is in `src/characters/`. Nothing in the game uses it, and the picker is not mounted: that waits on toyeshhm's answer (see NEEDS at the end).
 
 ## The five
 
@@ -65,7 +65,9 @@ The picker draws five small canvases. Only the card under the pointer (or the ch
 
 ## NEEDS (for the lead)
 
-Two changes, both in the lead's files. Neither has been run.
+**Mounting waits on toyeshhm's answer.** Whether the game gets five characters at all is a look and scope choice the lead is putting to toyeshhm (#33). Until he says yes, nothing below should be done: the picker stays an unmounted piece and the hero stays the spartan.
+
+If the answer is yes, it is two changes, both in the lead's files. Neither has been run.
 
 **1. The hero wears the chosen character.** `src/render/hero/Hero.tsx`, lines 163 to 165. Replace
 
