@@ -1,7 +1,7 @@
 // The live camera panel on the fight screen: the player's own picture with the tracked skeleton drawn on it,
 // and a caption saying whether the body is tracked and which move was just recognised. Drawn from one
-// requestAnimationFrame loop over refs, so React never re-renders per frame.
-import { useEffect, useRef } from "react";
+// requestAnimationFrame loop over refs, so React never re-renders per frame (memo keeps the per-frame FightScreen state from reaching it).
+import { memo, useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import type { PoseFrame } from "../core/types";
 import { MOVES } from "../moves/registry";
@@ -15,7 +15,7 @@ import { skeletonLines } from "./skeletonLines";
 
 const nameOf = (id: string): string => MOVES.get(id)?.name ?? id;
 
-export function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObject<PoseFrame | null> }) {
+export const CameraView = memo(function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObject<PoseFrame | null> }) {
   const { tracker, poseRef } = props;
   const { mirror } = useSettings();
   const mirrorRef = useRef(mirror);
@@ -36,6 +36,10 @@ export function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObj
     let shownState = "";
     let shownMove = "";
     const tick = (): void => {
+      // Size the frame to the camera's real shape so the skeleton lines up with the picture whatever the aspect.
+      const { videoWidth, videoHeight } = tracker.video;
+      const shape = videoWidth > 0 && videoHeight > 0 ? `${videoWidth} / ${videoHeight}` : "";
+      if (box.style.aspectRatio !== shape) box.style.aspectRatio = shape;
       const rect = box.getBoundingClientRect();
       const ratio = window.devicePixelRatio || 1;
       const width = Math.round(rect.width * ratio);
@@ -69,7 +73,7 @@ export function CameraView(props: { tracker: PoseTracker | null; poseRef: RefObj
       </figcaption>
     </figure>
   );
-}
+});
 
 function draw(context: CanvasRenderingContext2D, frame: PoseFrame, mirror: boolean, width: number, height: number, ratio: number): void {
   const { lines, dots } = skeletonLines(frame.image, mirror, width, height);
