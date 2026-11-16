@@ -2,6 +2,8 @@
 
 > **HackUTA 2026** (November 14 to 15, 2026). Theme: Homer's Odyssey.
 >
+> 🥇 **Winner: Best Use of Tiger Data**
+>
 > 🎮 **[Play at OdysseyDojo.club](https://odysseydojo.club)**
 > · 📺 **[Watch the demo video](https://youtu.be/_zRIFUWPyI0)** · 🏆 **[Devpost submission](https://devpost.com/software/oddysey-fighter)**
 
@@ -20,7 +22,7 @@ same camera, in an online room, or with a friend on a FaceTime call.
 | 📞 | **Chert** | A friend FaceTimes the game from an iPhone, sees the fight on the call and can strike as the second fighter |
 | ☁️ | **Vultr** | Runs the game's server (rooms, accounts) in Docker with Caddy for https |
 | 🌐 | **GoDaddy** | The game's domain, [odysseydojo.club](https://odysseydojo.club) |
-| 🐯 | **Tiger Data** | Accounts and the Hall of heroes: every fight of a signed-in player is a row in a hypertable |
+| 🐯 | **Tiger Data** | Accounts and the Hall of heroes: every fight of a signed-in player is a row in a hypertable. **Won Best Use of Tiger Data** |
 | 🎙️ | **ElevenLabs** | The voices of Athena, Homer and every monster, plus the sound effects, all made ahead of time |
 | ✨ | **Google Gemini** | Writes a whole fight from one sentence about how you fight (a hidden page, `?ai=1`) |
 
@@ -109,6 +111,8 @@ The game lives at **[odysseydojo.club](https://odysseydojo.club)**, served over 
 a page the camera over https, so the domain is what lets anyone play with their body.
 
 ### 🐯 Tiger Data: accounts and the Hall of heroes
+🥇 **Winner of Best Use of Tiger Data at HackUTA 2026.**
+
 Accounts and the Hall of heroes run on Tiger Data (Postgres with TimescaleDB). Every finished fight of a
 signed-in player is a row in a **hypertable**, a **continuous aggregate** keeps each hero's best score by
 the hour, and `time_bucket_gapfill` draws recent activity with the quiet stretches as zeros. The server
