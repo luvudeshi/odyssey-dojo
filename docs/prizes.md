@@ -97,6 +97,8 @@ The Devpost text itself is in [devpost/devpost.md](devpost/devpost.md). This pag
 
 ### Tiger Data: accounts and the Hall of heroes
 
+**Result: won Best Use of Tiger Data at HackUTA 2026.**
+
 **What we do with it.** The server code for accounts (a hero name, a password, one saved game) and for a Hall of heroes (best scores, built on a hypertable, a continuous aggregate and `time_bucket_gapfill`) is written for Tiger Data and was run against a real Tiger Data service.
 
 **Proof.** [accounts.md](accounts.md), above all "What Tiger Data does for the game" and "What was run against the real database". Code: `server/lib/db.ts`, `server/lib/accounts.ts`, `server/lib/heroes.ts`, `server/routes/account.ts`, `server/routes/heroes.ts`, `src/account/ui/AccountSignIn.tsx`, `src/account/ui/HallOfHeroes.tsx`. Tests: `server/tests/accountsDb.test.ts`, `server/tests/heroesDb.test.ts`.
